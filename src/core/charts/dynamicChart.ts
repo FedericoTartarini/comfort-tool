@@ -3,17 +3,16 @@ import {
   axisRangeFor,
   dynamicChartOf,
   isPolygonsChart,
-  psychrometricChartOf,
   requireAxisRange,
+  requireScan,
   type ChartAxes,
   type ComfortZone,
   type DeclaredDynamicChart,
-  type DeclaredScannedChart,
   type RegisteredModel,
   type ZonePolygon,
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import type { Quantity } from "$lib/core/quantities";
 import {
   enteredQuantities,
   enteredValue,
@@ -47,38 +46,38 @@ import { containsPoint } from "./polygon";
 export const GRID = 51;
 
 /**
- * What every slot's scan on one chart shares: the model and its scanned
- * chart, the two axes swept, the entry modes they are in, and the
+ * What every slot's scan on one chart shares: the model and the output it
+ * scans, the two axes swept, the entry modes they are in, and the
  * atmospheric pressure. A slot's scan is a function of this and the slot
  * alone, so the outputs can keep one per slot and an edit to one slot scans
  * that slot and no other (`state/compute.svelte.ts`).
  */
 export interface ScanFrame {
   readonly model: RegisteredModel;
-  readonly chart: DeclaredScannedChart;
+  readonly output: Quantity;
   readonly axes: ChartAxes;
   readonly entryModes: ValueEntryModes;
   readonly atmosphericPressure: number;
 }
 
 /**
- * One slot's scan: the model's own number for `chart.output` at every cell of
+ * One slot's scan: the model's own number for the frame's output at every cell of
  * the `GRID × GRID` field, `[yIndex][xIndex]`, in the output's SI unit.
  */
 export type ScannedField = readonly (readonly number[])[];
 
 /**
- * The frame `chart` is scanned in for `model`: the picked `axes` resolved
- * under `modes` ({@link resolvedAxes}).
+ * The frame `model`'s scanned dynamic chart is scanned in: the model's scan's
+ * output, on the picked `axes` resolved under `modes` ({@link resolvedAxes}).
  */
 export function scanFrameFor(
   model: RegisteredModel,
-  chart: DeclaredScannedChart,
   axes: ChartAxes,
   modes: ValueEntryModes,
   atmosphericPressure: number,
 ): ScanFrame {
-  return { model, chart, axes: resolvedAxes(model, axes, modes), entryModes: modes, atmosphericPressure };
+  const { output } = requireScan(model);
+  return { model, output, axes: resolvedAxes(model, axes, modes), entryModes: modes, atmosphericPressure };
 }
 
 /**
@@ -87,7 +86,7 @@ export function scanFrameFor(
  * is swept on the quantities it would hold after that change.
  */
 export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
-  const { model, chart, axes, atmosphericPressure } = frame;
+  const { model, output, axes, atmosphericPressure } = frame;
   const converted = withEntryModes(slot, frame.entryModes, model);
   const xValues = samples(requireAxisRange(model, axes.x), GRID);
   return samples(requireAxisRange(model, axes.y), GRID).map((yValue) =>
@@ -96,7 +95,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
         [axes.x, xValue],
         [axes.y, yValue],
       ]));
-      return resultNumber(runOn(point, model, atmosphericPressure), chart.output);
+      return resultNumber(runOn(point, model, atmosphericPressure), output);
     }),
   );
 }
@@ -105,14 +104,14 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
  * The dynamic chart of every slot of the request (ADR-0002 decision 50), on
  * the axes {@link ChartRequest.entryModes} puts them in.
  *
- * A scanned chart scans the declared numeric output over a `GRID × GRID` field
+ * A scanned chart scans the model's scanned output over a `GRID × GRID` field
  * of two entered quantities, once per slot. Each cell keeps the model's own
- * number for `chart.output`, so a drawn boundary falls where the value
+ * number for it, so a drawn boundary falls where the value
  * crosses it rather than half a cell away (ADR-0002 decision 27). Given a
  * Band list ({@link ChartRequest.bands}), the chart paints its bands over
  * the first slot's field, each over its interval of the number in its own
  * colour, a band without one nowhere, and the legend lists the painted ones.
- * Given none, each slot draws the declaration's Comfort zones as contours of
+ * Given none, each slot draws the model's Comfort zones as contours of
  * its own field, a lone slot exactly as each of several (ADR-0002 decisions
  * 50 and 58), painted as the psychrometric chart paints its own. Either way
  * one hover grid reads both axis values and every slot's number, formatted
@@ -124,7 +123,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
  * scanned here.
  *
  * A polygons chart skips the scan altogether and draws the exact polygons its
- * `zones` source traces for each slot (ADR §4.4), on its own declared axes:
+ * `comfortZones` source traces for each slot (ADR §4.4), on its own declared axes:
  * they are locked, so `axes` is not read and nothing is mapped to the entry
  * mode, and an operative axis is marked at the slot's operative temperature
  * in either mode (ADR-0002 decision 37). The polygons are nested Comfort
@@ -170,7 +169,7 @@ export function dynamicSpec(
 
   if (isPolygonsChart(chart)) {
     const polygonsOfSlot = request.slots.map((charted) =>
-      chart.zones({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
+      chart.comfortZones({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
     );
     request.slots.forEach((charted, position) => {
       const polygons = polygonsOfSlot[position];
@@ -198,9 +197,9 @@ export function dynamicSpec(
       ),
     );
   } else {
-    const frame = scanFrameFor(model, chart, axes, modes, atmosphericPressure);
+    const frame = scanFrameFor(model, axes, modes, atmosphericPressure);
     const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
-    const outputUnit = displayUnitFor(frame.chart.output, unitSystem);
+    const outputUnit = displayUnitFor(frame.output, unitSystem);
     const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
     const { bands } = request;
     if (bands) {
@@ -208,7 +207,7 @@ export function dynamicSpec(
       traces.push(painted.trace);
       legend.push(...painted.legendEntries);
     } else {
-      const zones = contouredZonesOf(model, frame.chart);
+      const zones = contouredZonesOf(model);
       request.slots.forEach((charted, position) => {
         zones.forEach((zone, index) => {
           const drawn = contourZoneFor(
@@ -227,7 +226,7 @@ export function dynamicSpec(
       hoverGrid((xIndex, yIndex) =>
         request.slots.flatMap((charted, position) => {
           const value = fields[position][yIndex][xIndex];
-          const lines = [readoutLine(frame.chart.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
+          const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
           return lines.map((line) => labelFor(request, charted, line));
         }),
       ),
@@ -256,16 +255,11 @@ export function dynamicSpec(
 
 /**
  * The Comfort zones a scanned chart cuts from each slot's field, largest
- * first: the declaration's own, which its psychrometric chart declares
- * (`core/comfortZones`), each where |PMV| is inside its limit. They are PMV
- * intervals, so a chart scanning any other output has none, and neither has a
- * model that declares no zone.
+ * first: the model's scan's own (`core/comfortZones`), each where its output
+ * lies within ± its limit. None for a model whose scan declares none.
  */
-function contouredZonesOf(model: RegisteredModel, chart: DeclaredScannedChart): readonly ComfortZone[] {
-  if (chart.output !== quantities.pmv) {
-    return [];
-  }
-  return [...(psychrometricChartOf(model)?.zones ?? [])].sort((a, b) => b.limit - a.limit);
+function contouredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
+  return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 
 /**

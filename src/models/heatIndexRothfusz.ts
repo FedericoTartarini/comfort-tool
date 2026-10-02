@@ -28,14 +28,9 @@ export const heatIndexRothfusz = {
     { quantity: q.rh, min: 0, max: 100 },
   ],
   table: [q.hi],
-  charts: [
-    // The scanned number is `hi`, cut by the same stress-category bins the
-    // kernel classifies `stress_category` with.
-    {
-      type: chartType.dynamic,
-      axes: { x: q.tdb, y: q.rh },
-      output: q.hi,
-      bands: HEAT_INDEX_STRESS_CATEGORY_BINS,
-    },
-  ],
+  // The scanned number is `hi`, cut by the same stress-category bins the
+  // kernel classifies `stress_category` with. No Comfort zones: the model has
+  // no standard to draw a limit on it.
+  scan: { output: q.hi, classifier: HEAT_INDEX_STRESS_CATEGORY_BINS },
+  charts: [{ type: chartType.dynamic, axes: { x: q.tdb, y: q.rh } }],
 } satisfies RegisteredModel;

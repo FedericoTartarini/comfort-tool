@@ -3,13 +3,9 @@ import { classifyFromBins, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermal
 import { registeredModels } from "$lib/models";
 import { bandColors } from "./bandPalette";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
-import { dynamicChartOf, isPolygonsChart } from "./modelDeclaration";
 
-/** Every classifier a registered model's scanned dynamic chart declares. */
-const classifiers = registeredModels.flatMap((model) => {
-  const chart = dynamicChartOf(model);
-  return chart && !isPolygonsChart(chart) ? [chart.bands] : [];
-});
+/** Every classifier a registered model's scan declares. */
+const classifiers = registeredModels.flatMap((model) => (model.scan ? [model.scan.classifier] : []));
 
 /** PMV's thermal sensation, the classifier the operations are shown on: seven bands, Cold … Hot. */
 const sensation = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;

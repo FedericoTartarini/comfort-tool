@@ -149,7 +149,7 @@ export class Outputs {
     if (drawnPsychrometricOf(session) || !chart || isPolygonsChart(chart) || pressure === null) {
       return null;
     }
-    return scanFrameFor(session.model, chart, session.chart.axes, this.#entryModes, pressure);
+    return scanFrameFor(session.model, session.chart.axes, this.#entryModes, pressure);
   });
 
   /** What every slot's psychrometric scan shares, or `null` while that chart is drawn without Bands, or not drawn. */
@@ -454,7 +454,7 @@ function chartSpecOf(
   };
   const psychrometric = drawnPsychrometricOf(session);
   if (psychrometric) {
-    return psychrometricSpec(request, psychrometric, scanned ? charted[0].outputs.psychrometricScan : undefined);
+    return psychrometricSpec(request, scanned ? charted[0].outputs.psychrometricScan : undefined);
   }
   const dynamic = dynamicChartOf(session.model);
   return dynamic

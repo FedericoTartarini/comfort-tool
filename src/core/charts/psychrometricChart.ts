@@ -4,11 +4,9 @@ import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library
 import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
-  dynamicChartOf,
-  isPolygonsChart,
   requireAxisRange,
+  requireScan,
   takesRelativeAirSpeed,
-  type DeclaredPsychrometricChart,
   type OptionsReader,
   type Range,
   type RegisteredModel,
@@ -37,8 +35,8 @@ const ISOLINE_SAMPLES = 121;
 const ZONE_RH_STEP = 5;
 
 /**
- * What a psychrometric scan is drawn in: the model, the output its Band list
- * cuts, the entry modes, whose temperature mode puts its temperature on x, and
+ * What a psychrometric scan is drawn in: the model, the output it scans, the
+ * entry modes, whose temperature mode puts its temperature on x, and
  * the atmospheric pressure. A slot's scan is a function of this and the slot
  * alone, as a dynamic chart's is of its `ScanFrame`.
  */
@@ -50,21 +48,16 @@ export interface PsychrometricScanFrame {
 }
 
 /**
- * The frame `model`'s psychrometric chart is scanned in. The output is its
- * scanned dynamic chart's, the one its Band list is a copy of the classifier
- * of (ADR-0002 decision 59), so a model with a Band list always has one; a
- * model without throws, naming it.
+ * The frame `model`'s psychrometric chart is scanned in. The output is the
+ * model's scan's, the one its Band list is a copy of the classifier of
+ * (ADR-0002 decisions 59 and 61); a model without a scan throws, naming it.
  */
 export function psychrometricScanFrameFor(
   model: RegisteredModel,
   entryModes: ValueEntryModes,
   atmosphericPressure: number,
 ): PsychrometricScanFrame {
-  const dynamic = dynamicChartOf(model);
-  if (!dynamic || isPolygonsChart(dynamic)) {
-    throw new Error(`${model.info.label} scans no output, so its psychrometric chart has no Band list to paint`);
-  }
-  return { model, output: dynamic.output, entryModes, atmosphericPressure };
+  return { model, output: requireScan(model).output, entryModes, atmosphericPressure };
 }
 
 /**
@@ -111,7 +104,7 @@ export function psychrometricField(frame: PsychrometricScanFrame, slot: Slot): S
  * in on the list. `scan` is that slot's field, handed over by a caller that
  * keeps it; without it the slot is scanned here. No Comfort zone is drawn.
  *
- * Given none, for every slot of the request the declaration's Comfort zones
+ * Given none, for every slot of the request the model's scan's Comfort zones
  * traced by `pmv_psychrometric_zone` at that slot's own values and the slot's
  * current state (ADR-0002 decision 50), and nothing reads the pointer.
  *
@@ -132,11 +125,7 @@ export function psychrometricField(frame: PsychrometricScanFrame, slot: Slot): S
  * atmospheric pressure, and the humidity-ratio axis reaches as far as
  * {@link drawnHumidityRatioRange} says (ADR-0002 decision 49).
  */
-export function psychrometricSpec(
-  request: ChartRequest,
-  chart: DeclaredPsychrometricChart,
-  scan?: ScannedField,
-): ChartSpec {
+export function psychrometricSpec(request: ChartRequest, scan?: ScannedField): ChartSpec {
   const { model, unitSystem, atmosphericPressure, bands } = request;
   const { mode } = request.entryModes.temperature;
   const operative = mode === temperatureMode.operative;
@@ -147,8 +136,11 @@ export function psychrometricSpec(
   const xRange = requireAxisRange(model, axisQuantity);
   const hrRange = drawnHumidityRatioRange(requireAxisRange(model, q.hr), atmosphericPressure);
   const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
-  // A Band list paints no Comfort zone (ADR-0002 decision 58).
-  const largestFirst = bands ? [] : [...chart.zones].sort((a, b) => b.limit - a.limit);
+  // A Band list paints no Comfort zone (ADR-0002 decision 58). A model
+  // declaring this chart has zones in its scan, which a registry-wide test
+  // holds (`core/modelDeclaration.test.ts`); one without, which that test
+  // refuses, would draw no zone.
+  const largestFirst = bands ? [] : [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];

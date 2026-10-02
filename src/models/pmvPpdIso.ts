@@ -63,23 +63,17 @@ export const pmvPpdIso = {
     { quantity: q.clo_dynamic, min: 0, max: 2 },
   ],
   table: [q.pmv, q.ppd],
-  charts: [
-    // The zones are solved on `run` itself: Fanger unmodified at this edition.
-    // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
-    // Categories A, B and C, read off the bins the library classifies
-    // `category` with: the category on the result is the library's, strict at
-    // both ends, so a PMV of exactly 0.5 is C. The deployed tool's `≤` is a
-    // difference not ported.
-    { type: chartType.psychrometric, zones: categoryZones(PMV_CATEGORY_BINS_ISO) },
-    // The scanned number is `pmv`, cut by the same thermal-sensation bins the
-    // kernel classifies `tsv` with. The category bins cannot be the Bands:
-    // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
-    // pairs Bands with the output they classify by identity.
-    {
-      type: chartType.dynamic,
-      axes: { x: q.tdb, y: q.v },
-      output: q.pmv,
-      bands: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-    },
-  ],
+  // The scanned number is `pmv`, cut by the same thermal-sensation bins the
+  // kernel classifies `tsv` with. The category bins cannot be the Bands:
+  // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
+  // pairs Bands with the output they classify by identity.
+  //
+  // The zones are solved on `run` itself: Fanger unmodified at this edition.
+  // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
+  // Categories A, B and C, read off the bins the library classifies
+  // `category` with: the category on the result is the library's, strict at
+  // both ends, so a PMV of exactly 0.5 is C. The deployed tool's `≤` is a
+  // difference not ported.
+  scan: { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO, comfortZones: categoryZones(PMV_CATEGORY_BINS_ISO) },
+  charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;

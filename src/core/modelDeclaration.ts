@@ -81,18 +81,18 @@ export interface ZonePolygon {
   readonly y: readonly number[];
 }
 
-/** What a `zones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
+/** What a `comfortZones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
 export interface ZoneRequest {
   readonly values: Values;
   readonly xRange: Range;
 }
 
 /**
- * One Comfort zone of a psychrometric chart: where |PMV| < `limit`, or
- * |PMV| ≤ `limit` when `inclusive`, as the library object it was read from
- * says (a classifier's `right`, the strict compliance interval). `label`
- * names it in the legend. Written through `core/comfortZones`, so a
- * declaration copies no limit.
+ * One Comfort zone of the model: where |PMV| < `limit`, or |PMV| ≤ `limit`
+ * when `inclusive`, as the library object it was read from says (a
+ * classifier's `right`, the strict compliance interval). `label` names it in
+ * the legend. Written through `core/comfortZones`, so a declaration copies no
+ * limit.
  */
 export interface ComfortZone {
   readonly label: string;
@@ -101,58 +101,70 @@ export interface ComfortZone {
 }
 
 /**
+ * What the model scans, declared once for every chart that scans it
+ * (ADR-0002 decision 61): the dynamic chart that is not polygons and the
+ * psychrometric chart both scan {@link output}; on Explore both paint the
+ * Band list copied from {@link classifier}, on Standard both draw
+ * {@link comfortZones} (decision 58). Each field is named for the CONTEXT.md
+ * term it holds, not for the page that paints it.
+ */
+export interface DeclaredScan {
+  /**
+   * The numeric output a scan keeps at each grid cell, so a boundary lands
+   * where the value really crosses an Edge or a limit (ADR-0002 decisions 27
+   * and 58). A classified output would be the wrong handle: a category per
+   * cell says nothing about where inside the cell the crossing is.
+   */
+  readonly output: Quantity;
+  /**
+   * The library classifier that cuts {@link output}, as a reference to the
+   * library's own object. Nothing in `_INFO` says which quantity a
+   * classifier cuts and no key string pairs the two, so the pairing is the
+   * object identity itself (ADR-0002 decision 27).
+   *
+   * Written as `<MODEL>_INFO.outputs.<key>.classifier` where that types as
+   * defined, else as the library's exported bins constant — the same
+   * object either way, and never a cast or a `!`. The model's default
+   * Band list is a copy of it (`core/bands.ts`), and the library's own
+   * `classifyFromBins` against that list answers Explore's hover readout,
+   * so the app holds no Edge, no label and no inclusivity rule of its own.
+   */
+  readonly classifier: ClassifierBins;
+  /**
+   * The Comfort zones Standard draws on {@link output}, nested, one per
+   * limit: one for a standard with one interval, one per category for a
+   * category standard. Absent for a model whose standard draws no limit on
+   * it. A model declaring the psychrometric chart has them, which a
+   * registry-wide test holds (`core/modelDeclaration.test.ts`).
+   */
+  readonly comfortZones?: readonly [ComfortZone, ...ComfortZone[]];
+}
+
+/**
  * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
  * object: the psychrometric chart's axes are fixed by the temperature entry
  * mode, and the dynamic chart comes in two shapes, scanned or drawn from
- * declared polygons (ADR-0002 decision 37).
+ * declared polygons (ADR-0002 decision 37). What a chart scans is the model's
+ * {@link DeclaredScan}, so no chart names an output or a classifier
+ * (decision 61).
  *
- * The two dynamic shapes share their `type`, so nothing discriminates them but
- * which fields they carry, and each marks the other's fields `never`. Without
- * that the compiler would take a polygons chart with an invented `output`: an
- * object literal checked against a union has only the keys no member knows
- * reported as excess.
+ * The members' types are object identities, which discriminate nothing for
+ * the compiler, and an object literal checked against a union has only the
+ * keys no member knows reported as excess. So each member marks the others'
+ * fields `never`: without that the compiler would take a psychrometric chart
+ * with axes, or a scanned chart with an invented `comfortZones`.
  */
 export type DeclaredChart =
   | {
-      /**
-       * The comfort zone is solved on `run`'s own `pmv`, so the model's result
-       * must carry one, unrounded (ADR-0002 decision 18, revised 2026-09-18).
-       */
       readonly type: typeof chartType.psychrometric;
-      /**
-       * The Comfort zones the chart draws, nested, one per limit: one for a
-       * standard with one interval, one per category for a category standard.
-       */
-      readonly zones: readonly [ComfortZone, ...ComfortZone[]];
+      readonly axes?: never;
+      readonly comfortZones?: never;
     }
   | {
       readonly type: typeof chartType.dynamic;
       /** Starting axes; the user may pick any entered quantity that has an axis range ({@link axisRangeFor}). */
       readonly axes: ChartAxes;
-      /**
-       * The numeric output the chart scans. Each grid cell keeps this number,
-       * and the surface is contoured at the Edges of the Band list copied from
-       * {@link bands}, or at the Comfort zones' limits (ADR-0002 decisions 27
-       * and 58), so a boundary lands where the value really crosses one.
-       * A classified output would be the wrong handle: a category per cell
-       * says nothing about where inside the cell the crossing is.
-       */
-      readonly output: Quantity;
-      /**
-       * The library classifier that cuts {@link output}, as a reference to the
-       * library's own object. Nothing in `_INFO` says which quantity a
-       * classifier cuts and no key string pairs the two, so the pairing is the
-       * object identity itself (ADR-0002 decision 27).
-       *
-       * Written as `<MODEL>_INFO.outputs.<key>.classifier` where that types as
-       * defined, else as the library's exported bins constant — the same
-       * object either way, and never a cast or a `!`. The model's default
-       * Band list is a copy of it (`core/bands.ts`), and the library's own
-       * `classifyFromBins` against that list answers Explore's hover readout,
-       * so the app holds no Edge, no label and no inclusivity rule of its own.
-       */
-      readonly bands: ClassifierBins;
-      readonly zones?: never;
+      readonly comfortZones?: never;
     }
   | {
       readonly type: typeof chartType.dynamic;
@@ -168,25 +180,21 @@ export type DeclaredChart =
        * Exact Comfort zone polygons, for a model whose geometry is traced
        * rather than scanned — Adaptive's acceptability zones. No grid is run
        * at all, because the polygons are the answer rather than an
-       * approximation of it (ADR §4.4), so the chart names no output and no
-       * bands. The zones are nested and returned largest first, the order the
-       * chart draws them in.
+       * approximation of it (ADR §4.4). The zones are nested and returned
+       * largest first, the order the chart draws them in.
        */
-      readonly zones: (request: ZoneRequest) => readonly ZonePolygon[];
-      readonly output?: never;
-      readonly bands?: never;
+      readonly comfortZones: (request: ZoneRequest) => readonly ZonePolygon[];
     };
 
 /** The psychrometric member of {@link DeclaredChart}. */
 export type DeclaredPsychrometricChart = Extract<DeclaredChart, { type: typeof chartType.psychrometric }>;
 /** Either dynamic member of {@link DeclaredChart}. */
 export type DeclaredDynamicChart = Extract<DeclaredChart, { type: typeof chartType.dynamic }>;
-/** The dynamic chart that scans a numeric output, which a classifier cuts. */
-export type DeclaredScannedChart = Extract<DeclaredDynamicChart, { readonly bands: ClassifierBins }>;
 /** The dynamic chart drawn from declared polygons on locked axes. */
-export type DeclaredPolygonsChart = Exclude<DeclaredDynamicChart, DeclaredScannedChart>;
+export type DeclaredPolygonsChart = Extract<DeclaredDynamicChart, { readonly comfortZones: unknown }>;
 
-export interface RegisteredModel {
+/** What every registered model declares, whatever it scans: {@link RegisteredModel} adds the scan and the charts. */
+interface CommonDeclaration {
   /**
    * The library's own `_INFO` object: name, label, description, inputs,
    * outputs, derived quantities, applicability bounds and classifiers. Its
@@ -261,26 +269,46 @@ export interface RegisteredModel {
   readonly axisRanges: readonly AxisRange[];
   /** Result table columns, in order. Required (ADR §4.3). */
   readonly table: readonly Quantity[];
-  /** Charts, in offering order; the first is the default. Every model has at least one. */
-  readonly charts: readonly [DeclaredChart, ...DeclaredChart[]];
 }
+
+/**
+ * One model's declaration. Charts are in offering order, the first the
+ * default, and every model has at least one. A model with a
+ * {@link DeclaredScan} may offer any chart; a model without one scans nothing,
+ * so it offers only polygons charts (ADR-0002 decision 61).
+ */
+export type RegisteredModel = CommonDeclaration &
+  (
+    | {
+        readonly scan: DeclaredScan;
+        readonly charts: readonly [DeclaredChart, ...DeclaredChart[]];
+      }
+    | {
+        readonly scan?: never;
+        readonly charts: readonly [DeclaredPolygonsChart, ...DeclaredPolygonsChart[]];
+      }
+  );
 
 // The union is discriminated by an object identity, which TypeScript does not
 // narrow on `===` the way it narrows a literal, so each lookup carries its own
 // predicate. Comparing `type.id` strings instead would be the string-keyed
-// closed set ADR §4.0 rules out.
+// closed set ADR §4.0 rules out. `find` on {@link RegisteredModel}'s two
+// tuple types drops the predicate's overload, so it is called on the charts
+// widened to one array type.
 
 export function psychrometricChartOf(model: RegisteredModel): DeclaredPsychrometricChart | undefined {
-  return model.charts.find((chart): chart is DeclaredPsychrometricChart => chart.type === chartType.psychrometric);
+  const charts: readonly DeclaredChart[] = model.charts;
+  return charts.find((chart): chart is DeclaredPsychrometricChart => chart.type === chartType.psychrometric);
 }
 
 export function dynamicChartOf(model: RegisteredModel): DeclaredDynamicChart | undefined {
-  return model.charts.find((chart): chart is DeclaredDynamicChart => chart.type === chartType.dynamic);
+  const charts: readonly DeclaredChart[] = model.charts;
+  return charts.find((chart): chart is DeclaredDynamicChart => chart.type === chartType.dynamic);
 }
 
 /** A dynamic chart drawn from declared polygons, whose axes are therefore locked (ADR-0002 decision 37). */
 export function isPolygonsChart(chart: DeclaredDynamicChart): chart is DeclaredPolygonsChart {
-  return chart.zones !== undefined;
+  return chart.comfortZones !== undefined;
 }
 
 /**
@@ -307,6 +335,14 @@ export function requireAxisRange(model: RegisteredModel, quantity: Quantity): Ra
     throw new Error(`${model.info.label} declares no axis range for ${quantity.label}, so it cannot carry an axis`);
   }
   return range;
+}
+
+/** What `model` scans, for a scanned chart already being drawn: a model without a scan is a declaration bug. */
+export function requireScan(model: RegisteredModel): DeclaredScan {
+  if (!model.scan) {
+    throw new Error(`${model.info.label} declares no scan, so it has no scanned chart`);
+  }
+  return model.scan;
 }
 
 /**

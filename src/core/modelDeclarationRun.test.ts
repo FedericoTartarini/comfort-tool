@@ -1,6 +1,6 @@
 /**
  * What every registered declaration's `run` returns, in the two ways the
- * compiler cannot see: the bands a scanned chart declares have to cut its
+ * compiler cannot see: the bands a model's scan declares have to cut its
  * output into the category the run itself returned (ADR-0002 decision 27), and
  * the number in the table's first column has to come back unrounded (decisions
  * 35 and 38). How it calls its library function is the sibling
@@ -16,10 +16,9 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import {
   dynamicChartOf,
-  isPolygonsChart,
   requireAxisRange,
   type DeclaredDynamicChart,
-  type DeclaredScannedChart,
+  type DeclaredScan,
   type Range,
   type RegisteredModel,
   type Values,
@@ -44,13 +43,14 @@ function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quant
 }
 
 /**
- * The ISO declaration with its dynamic chart drawn from polygons, as
- * Adaptive's is: the chart names no output and no bands, so only the table
- * says which number `run` must return unrounded.
+ * The ISO declaration scanning nothing, its dynamic chart drawn from
+ * polygons, as Adaptive's is: the model names no output and no bands, so only
+ * the table says which number `run` must return unrounded.
  */
 const isoWithPolygonsChart = {
   ...pmvPpdIso,
-  charts: [{ type: chartType.dynamic, axes: { x: quantities.tdb, y: quantities.v }, zones: () => [] }],
+  scan: undefined,
+  charts: [{ type: chartType.dynamic, axes: { x: quantities.tdb, y: quantities.v }, comfortZones: () => [] }],
 } satisfies RegisteredModel;
 
 /**
@@ -96,18 +96,18 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
 }
 
 /**
- * The declaration's defaults, and inputs either side of every Edge the chart's
- * x axis can reach. Bands that are not the kernel's own disagree at both: at
+ * The declaration's defaults, and inputs either side of every Edge of the
+ * scan's bands the dynamic chart's x axis can reach. Bands that are not the kernel's own disagree at both: at
  * the defaults when they are the wrong bins altogether, and within a hair of
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
  */
-function driftProbes(model: RegisteredModel, chart: DeclaredScannedChart): Slot[] {
+function driftProbes(model: RegisteredModel, chart: DeclaredDynamicChart, scan: DeclaredScan): Slot[] {
   const { defaults, range, at, valueAt } = alongTheXAxis(model, chart);
-  const outputAt = (position: number) => Number(valueAt(position, chart.output));
+  const outputAt = (position: number) => Number(valueAt(position, scan.output));
 
   const probes = [defaults];
-  for (const edge of chart.bands.edges) {
+  for (const edge of scan.classifier.edges) {
     const bracket = bracketAcross(outputAt, range, edge);
     if (bracket) {
       probes.push(at(bracket[0]), at(bracket[1]));
@@ -116,33 +116,34 @@ function driftProbes(model: RegisteredModel, chart: DeclaredScannedChart): Slot[
   return probes;
 }
 
-/** Asserts that the dynamic chart's bands cut the run's output where the run itself does, at every probe. */
+/** Asserts that the scan's bands cut the run's output where the run itself does, at every probe. */
 function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
+  const { scan } = model;
   const chart = dynamicChartOf(model);
-  // A chart drawn from polygons scans nothing, so it declares no bands to check.
-  if (!chart || isPolygonsChart(chart)) return;
-  const classified = classifiedOutputOf(model, chart.bands);
-  const probes = driftProbes(model, chart);
+  // A model that scans nothing declares no bands to check.
+  if (!scan || !chart) return;
+  const classified = classifiedOutputOf(model, scan.classifier);
+  const probes = driftProbes(model, chart, scan);
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
   for (const slot of probes) {
     const result = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
-    const value = resultValue(result, chart.output);
-    expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
-    expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(
+    const value = resultValue(result, scan.output);
+    expect(typeof value, `${model.info.label} ${scan.output.label}`).toBe("number");
+    expect(classifyFromBins(Number(value), scan.classifier), `${model.info.label} at ${scan.output.label} ${String(value)}`).toBe(
       resultValue(result, classified),
     );
   }
 }
 
-describe("the dynamic chart's declared bands", () => {
+describe("the scan's declared bands", () => {
   it("bin the scanned output into the category the run itself returned, for every registered model", () => {
     for (const model of registeredModels) {
       expectBandsToBinAsRunDoes(model);
     }
   });
 
-  it("are not looked for on a chart drawn from polygons", () => {
+  it("are not looked for on a model that scans nothing", () => {
     const neverRun = {
       ...isoWithPolygonsChart,
       run: () => {

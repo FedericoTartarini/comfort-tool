@@ -8,7 +8,6 @@ import {
 } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { bandColors, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
-import { dynamicChartOf, isPolygonsChart } from "./modelDeclaration";
 
 // The fills the CBE tool has published for Cold … Hot.
 const cbeFills = ["#0571b0", "#4c78a8", "#92c5de", "#f2f2f2", "#f4a582", "#e15759", "#cc79a7"];
@@ -54,15 +53,14 @@ describe("bandColors", () => {
   });
 
   it("has an entry whose colour count is its band count for every classifier a registered model paints", () => {
-    // The Compliance column paints each classified output; the scanned
-    // dynamic chart's declared bands are Explore's default Band list.
+    // The Compliance column paints each classified output; the scan's
+    // declared bands are Explore's default Band list.
     for (const model of registeredModels) {
       const painted = Object.entries(model.info.outputs).flatMap(([key, variable]) =>
         variable.classifier ? [{ name: `${model.info.label} ${key}`, bins: variable.classifier }] : [],
       );
-      const chart = dynamicChartOf(model);
-      if (chart && !isPolygonsChart(chart)) {
-        painted.push({ name: `${model.info.label} dynamic chart`, bins: chart.bands });
+      if (model.scan) {
+        painted.push({ name: `${model.info.label} scan`, bins: model.scan.classifier });
       }
       for (const { name, bins } of painted) {
         expect(bandColors(bins), name).toHaveLength(bins.labels.length);

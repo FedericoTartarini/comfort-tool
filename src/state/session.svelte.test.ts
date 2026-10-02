@@ -326,7 +326,7 @@ const drawsPolygons = {
     {
       type: chartType.dynamic,
       axes: { x: q.operative_tmp, y: q.v },
-      zones: () => [{ label: "Acceptable", x: [20, 30, 30], y: [0, 0, 1] }],
+      comfortZones: () => [{ label: "Acceptable", x: [20, 30, 30], y: [0, 0, 1] }],
     },
   ],
 } satisfies RegisteredModel;

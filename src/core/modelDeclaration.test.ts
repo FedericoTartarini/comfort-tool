@@ -82,6 +82,16 @@ function expectPmvUnderAPsychrometricChart(model: RegisteredModel): void {
   expect(model.info.outputs[q.pmv.key], model.info.label).toBeDefined();
 }
 
+/**
+ * The psychrometric chart declares nothing but its type, so what it paints on
+ * Standard is the model's scan's Comfort zones: a model without them would
+ * draw the chart with nothing on it (ADR-0002 decision 61).
+ */
+function expectZonesUnderAPsychrometricChart(model: RegisteredModel): void {
+  if (!psychrometricChartOf(model)) return;
+  expect(model.scan?.comfortZones, `${model.info.label} declares a psychrometric chart and no Comfort zones in its scan`).toBeDefined();
+}
+
 describe("charts", () => {
   it("include a dynamic chart, for every registered model", () => {
     for (const model of registeredModels) {
@@ -99,6 +109,21 @@ describe("charts", () => {
     for (const model of registeredModels) {
       expectPmvUnderAPsychrometricChart(model);
     }
+  });
+
+  it("include a psychrometric chart only where the model's scan has Comfort zones, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectZonesUnderAPsychrometricChart(model);
+    }
+  });
+
+  it("that include a psychrometric chart on a model whose scan has no Comfort zones fail the check", () => {
+    const noZones: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture scanning without Comfort zones" },
+      scan: { output: pmvPpdIso.scan.output, classifier: pmvPpdIso.scan.classifier },
+    };
+    expect(() => expectZonesUnderAPsychrometricChart(noZones)).toThrow(noZones.info.label);
   });
 
   it("that leave out the dynamic chart fail the check", () => {
@@ -341,22 +366,47 @@ describe("requireAxisRange", () => {
 });
 
 /**
- * Type-level proof of the dynamic chart's two shapes (ADR-0002 decision 37),
+ * Type-level proof of the declaration's shapes (ADR-0002 decisions 37 and 61),
  * compiled by `npm run check` and never called: each `@ts-expect-error` fails
- * the build the day the compiler stops refusing that chart. Exported
- * only because `noUnusedLocals` would otherwise flag it.
+ * the build the day the compiler stops refusing that literal. What the model
+ * scans is its own, so no chart names an output or a classifier, the
+ * psychrometric chart names nothing but its type, and a scanned dynamic chart
+ * needs a model with a scan. Exported only because `noUnusedLocals` would
+ * otherwise flag it.
  */
-export function dynamicShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
+export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
   const bands = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
+  const zone = { label: "Zone", limit: 0.5, inclusive: false };
   return [
-    { type: chartType.dynamic, axes, output: q.pmv, bands },
-    { type: chartType.dynamic, axes, zones: () => polygons },
-    // @ts-expect-error a scanned chart without the bands that cut its output
+    { type: chartType.psychrometric },
+    { type: chartType.dynamic, axes },
+    { type: chartType.dynamic, axes, comfortZones: () => polygons },
+    // @ts-expect-error an output on a chart, which is the model's scan's
     { type: chartType.dynamic, axes, output: q.pmv },
+    // @ts-expect-error a classifier on a chart, which is the model's scan's
+    { type: chartType.dynamic, axes, bands },
+    // @ts-expect-error a psychrometric chart with axes, which its temperature entry mode fixes
+    { type: chartType.psychrometric, axes },
+    // @ts-expect-error a psychrometric chart with Comfort zones, which are the model's scan's
+    { type: chartType.psychrometric, comfortZones: [zone] },
     // @ts-expect-error a polygons chart with an output it does not scan
-    { type: chartType.dynamic, axes, zones: () => polygons, output: q.pmv },
-    // @ts-expect-error a polygons chart with bands it does not draw
-    { type: chartType.dynamic, axes, zones: () => polygons, bands },
+    { type: chartType.dynamic, axes, comfortZones: () => polygons, output: q.pmv },
+  ];
+}
+
+/** The same, for which charts a model may declare with and without a scan. */
+export function scanShapesTypeProof(polygons: readonly ZonePolygon[]): RegisteredModel[] {
+  const { charts: _charts, ...unscanned } = adaptiveAshrae;
+  const scan = { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO };
+  const axes = { x: q.v, y: q.operative_tmp };
+  return [
+    { ...unscanned, scan, charts: [{ type: chartType.dynamic, axes }] },
+    { ...unscanned, scan, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes }] },
+    { ...unscanned, charts: [{ type: chartType.dynamic, axes, comfortZones: () => polygons }] },
+    // @ts-expect-error a scanned dynamic chart on a model that declares no scan
+    { ...unscanned, charts: [{ type: chartType.dynamic, axes }] },
+    // @ts-expect-error a psychrometric chart on a model that declares no scan
+    { ...unscanned, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes, comfortZones: () => polygons }] },
   ];
 }

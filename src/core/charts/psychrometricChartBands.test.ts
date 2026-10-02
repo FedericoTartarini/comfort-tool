@@ -10,14 +10,7 @@ import { classifyFromBins, hr_to_rh } from "jsthermalcomfort";
 import { bandListOf, moveEdge, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import {
-  dynamicChartOf,
-  isPolygonsChart,
-  psychrometricChartOf,
-  type DeclaredPsychrometricChart,
-  type DeclaredScannedChart,
-  type RegisteredModel,
-} from "$lib/core/modelDeclaration";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
@@ -35,24 +28,7 @@ const q = quantities;
 const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const p = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
-  const chart = dynamicChartOf(model);
-  if (!chart || isPolygonsChart(chart)) {
-    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
-  }
-  return chart;
-}
-
-function psychrometricOf(model: RegisteredModel): DeclaredPsychrometricChart {
-  const chart = psychrometricChartOf(model);
-  if (!chart) {
-    throw new Error(`${model.info.label} no longer declares a psychrometric chart`);
-  }
-  return chart;
-}
-
-const isoBands = bandListOf(scannedChartOf(pmvPpdIso).bands);
-const isoChart = psychrometricOf(pmvPpdIso);
+const isoBands = bandListOf(pmvPpdIso.scan.classifier);
 
 /** `model`'s psychrometric chart of `slot` as slot 1, painting `bands`, with `changes` to the request. */
 function bandedSpec(
@@ -61,7 +37,7 @@ function bandedSpec(
   changes: Partial<ChartRequest> = {},
   model: RegisteredModel = pmvPpdIso,
 ): ChartSpec {
-  return psychrometricSpec({ ...chartRequestFor(model, slot), bands, ...changes }, psychrometricOf(model));
+  return psychrometricSpec({ ...chartRequestFor(model, slot), bands, ...changes });
 }
 
 function bandTraceOf(spec: ChartSpec): BandTrace {
@@ -200,19 +176,19 @@ describe("the psychrometric chart given a Band list", () => {
   });
 
   it("paints PMV (ASHRAE 55)'s list over its own scan", () => {
-    const ashraeBands = bandListOf(scannedChartOf(pmvPpdAshrae).bands);
+    const ashraeBands = bandListOf(pmvPpdAshrae.scan.classifier);
     const drawn = bandedSpec(ashraeBands, startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
     expect(bandTraceOf(drawn).bands.map((band) => band.label)).toEqual(ashraeBands.labels);
   });
 
   it("paints the scan it is handed rather than scanning again", () => {
     const handed = trace.z.map((row) => row.map(() => 0.1));
-    const drawn = psychrometricSpec({ ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: isoBands }, isoChart, handed);
+    const drawn = psychrometricSpec({ ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: isoBands }, handed);
     expect(bandTraceOf(drawn).z).toEqual(handed);
   });
 
   it("paints Comfort zones and no band when given nothing", () => {
-    const drawn = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), isoChart);
+    const drawn = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
     expect(drawn.traces.some((entry) => entry.kind === "bands" || entry.kind === "hoverGrid")).toBe(false);
     expect(drawn.traces.filter((entry) => entry.kind === "path" && entry.fill !== undefined)).toHaveLength(3);
   });

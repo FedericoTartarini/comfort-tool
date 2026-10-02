@@ -3,12 +3,12 @@
   model's Band list, in the chart's order, each with its label, its colour and
   its upper Edge; the first band is open below, so no row has a lower Edge.
   Every edit is effective at once and goes through the chart settings, which
-  call the Band list module; the panel writes nothing itself. A polygons
-  chart has no Band list, and the panel shows nothing for it.
+  call the Band list module; the panel writes nothing itself. A model
+  that scans nothing has no Band list, and the panel shows nothing for it.
 -->
 <script lang="ts">
   import { chartInk } from "$lib/core/bandPalette";
-  import { dynamicChartOf, isPolygonsChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { displayUnitFor, labelWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { ChartState } from "$lib/state/session.svelte";
@@ -28,11 +28,8 @@
 
   let { model, chart, unitSystem }: Props = $props();
 
-  // The number the Edges cut: the scanned dynamic chart's output, read in its display unit.
-  const output = $derived.by(() => {
-    const dynamic = dynamicChartOf(model);
-    return dynamic && !isPolygonsChart(dynamic) ? dynamic.output : undefined;
-  });
+  // The number the Edges cut: the model's scanned output, read in its display unit.
+  const output = $derived(model.scan?.output);
   const unit = $derived(output && displayUnitFor(output, unitSystem));
   const edgeColumn = $derived(output && unit ? copy.bandEdgeColumn(labelWithUnit(output, unit)) : "");
 

@@ -9,23 +9,13 @@ import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import type { BandFill, BandTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
-import { dynamicChartOf, isPolygonsChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type ChartState } from "./session.svelte";
 
-/** `model`'s scanned dynamic chart's classifier. */
-function classifierOf(model: RegisteredModel) {
-  const chart = dynamicChartOf(model);
-  if (!chart || isPolygonsChart(chart)) {
-    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
-  }
-  return chart.bands;
-}
-
-const sensation = classifierOf(pmvPpdIso);
+const sensation = pmvPpdIso.scan.classifier;
 // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10; band 3 is Neutral.
 const defaultList = bandListOf(sensation);
 
@@ -130,7 +120,7 @@ describe("The Bands panel's edits through the session", () => {
 
     session.requestModel(pmvPpdAshrae);
     expect(session.model).toBe(pmvPpdAshrae);
-    expect(session.chart.bands).toEqual(bandListOf(classifierOf(pmvPpdAshrae)));
+    expect(session.chart.bands).toEqual(bandListOf(pmvPpdAshrae.scan.classifier));
     session.requestModel(pmvPpdIso);
 
     expect(session.model).toBe(pmvPpdIso);

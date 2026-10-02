@@ -10,9 +10,8 @@ import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryMode
 import {
   dynamicChartOf,
   isPolygonsChart,
-  psychrometricChartOf,
+  type ComfortZone,
   type DeclaredDynamicChart,
-  type DeclaredPsychrometricChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import {
@@ -72,12 +71,13 @@ function alphaOf(fill: string | undefined): number {
   return Number(match[1]);
 }
 
-function psychrometricOf(model: RegisteredModel): DeclaredPsychrometricChart {
-  const chart = psychrometricChartOf(model);
-  if (!chart) {
-    throw new Error(`${model.info.label} declares no psychrometric chart`);
+/** The Comfort zones `model`'s scan declares. */
+function declaredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
+  const zones = model.scan?.comfortZones;
+  if (!zones) {
+    throw new Error(`${model.info.label} declares no Comfort zones`);
   }
-  return chart;
+  return zones;
 }
 
 function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
@@ -105,12 +105,11 @@ interface Drawing {
 }
 
 function psychrometricDrawing(model: RegisteredModel): Drawing {
-  const chart = psychrometricOf(model);
   return {
     name: `${model.info.label}, psychrometric`,
     slots: threeSlots(model),
-    draw: (slots) => psychrometricSpec(chartRequestForSlots(model, slots), chart),
-    zonesPerSlot: chart.zones.length,
+    draw: (slots) => psychrometricSpec(chartRequestForSlots(model, slots)),
+    zonesPerSlot: declaredZonesOf(model).length,
   };
 }
 
@@ -120,7 +119,7 @@ function dynamicDrawing(model: RegisteredModel, slots: readonly Slot[]): Drawing
     name: `${model.info.label}, dynamic`,
     slots,
     draw: (drawn) => dynamicSpec(chartRequestForSlots(model, drawn), chart, chart.axes),
-    zonesPerSlot: isPolygonsChart(chart) ? 2 : psychrometricOf(model).zones.length,
+    zonesPerSlot: isPolygonsChart(chart) ? 2 : declaredZonesOf(model).length,
   };
 }
 
@@ -195,13 +194,13 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
   it("gives nine zones on either chart", () => {
     const slots = threeSlots(pmvPpdIso);
     const dynamic = dynamicOf(pmvPpdIso);
-    expect(zonesOf(psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots), psychrometricOf(pmvPpdIso)))).toHaveLength(9);
+    expect(zonesOf(psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots)))).toHaveLength(9);
     expect(zonesOf(dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), dynamic, dynamic.axes))).toHaveLength(9);
   });
 
   it("names each zone by its slot and by the zone", () => {
-    const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)), psychrometricOf(pmvPpdIso));
-    const largest = [...psychrometricOf(pmvPpdIso).zones].sort((a, b) => b.limit - a.limit)[0];
+    const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
+    const largest = [...declaredZonesOf(pmvPpdIso)].sort((a, b) => b.limit - a.limit)[0];
     expect(zonesOf(spec)[3].label).toBe(copy.slotEntry(slotBadges[1].name, copy.zoneLegend(largest)));
   });
 });
@@ -258,19 +257,16 @@ describe("a slot in another temperature entry mode than the session's", () => {
   it("is drawn on the session's axes, at the temperature the entry-mode change converts it to", () => {
     const spec = psychrometricSpec(
       chartRequestForSlots(pmvPpdIso, [operative, separate], unitSystem.si, entryModesWithTemperature(temperatureMode.operative)),
-      psychrometricOf(pmvPpdIso),
     );
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     expect(markersOf(spec)[1].x).toBe(xUnit.fromSi(operativeTemperatureOf(separate, pmvPpdIso)));
   });
 
   it("does not decide the axes when it is slot 1", () => {
-    const chart = psychrometricOf(pmvPpdIso);
     const spec = psychrometricSpec(
       chartRequestForSlots(pmvPpdIso, [separate, operative], unitSystem.si, entryModesWithTemperature(temperatureMode.operative)),
-      chart,
     );
-    const alone = psychrometricSpec(chartRequestFor(pmvPpdIso, withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso)), chart);
+    const alone = psychrometricSpec(chartRequestFor(pmvPpdIso, withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso)));
     expect(spec.layout).toEqual(alone.layout);
     expect(markersOf(spec)[0].x).toBe(markersOf(alone)[0].x);
   });
@@ -321,17 +317,15 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     expect(markersOf(spec)[0].y).toBe(0.4);
     expect(relativeAirSpeedOf(back)).toBe(relativeAirSpeedOf(kept));
 
-    const zones = psychrometricOf(pmvPpdIso);
-    const drawn = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), zones);
-    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, back), zones).traces);
-    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, kept), zones).traces);
+    const drawn = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected));
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, back)).traces);
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, kept)).traces);
   });
 
   it("has its comfort zones solved on the relative air speed the model is given, in either mode", () => {
-    const chart = psychrometricOf(pmvPpdIso);
-    const kept = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [entered], unitSystem.si, corrected), chart);
-    const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart);
-    const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered), chart);
+    const kept = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [entered], unitSystem.si, corrected));
+    const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)));
+    const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered));
     expect(kept.traces).toEqual(converted.traces);
     expect(converted.traces).toEqual(uncorrected.traces);
   });
@@ -353,14 +347,13 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
   });
 
   it("has its comfort zones solved on the dynamic clothing insulation the model is given, in either mode", () => {
-    const chart = psychrometricOf(model);
-    const kept = psychrometricSpec(chartRequestForSlots(model, [entered], unitSystem.si, corrected), chart);
-    const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), chart);
-    const uncorrected = psychrometricSpec(chartRequestFor(model, entered), chart);
+    const kept = psychrometricSpec(chartRequestForSlots(model, [entered], unitSystem.si, corrected));
+    const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)));
+    const uncorrected = psychrometricSpec(chartRequestFor(model, entered));
     expect(kept.traces).toEqual(converted.traces);
     expect(converted.traces).toEqual(uncorrected.traces);
     // Not the zones of the number entered: those are of 1 clo given to the model as it is.
-    const uncorrectedNumber = psychrometricSpec(chartRequestFor(model, enteredSlotFor(model, { clo_dynamic: 1, met: 2 })), chart);
+    const uncorrectedNumber = psychrometricSpec(chartRequestFor(model, enteredSlotFor(model, { clo_dynamic: 1, met: 2 })));
     expect(zonesOf(uncorrected).map(shapeOf)).not.toEqual(zonesOf(uncorrectedNumber).map(shapeOf));
   });
 
@@ -379,9 +372,8 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     expect(markersOf(spec)[0].y).toBe(1);
     expect(dynamicClothingOf(back, model)).toBe(dynamicClothingOf(kept, model));
 
-    const zones = psychrometricOf(model);
-    const drawn = psychrometricSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), zones);
-    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back), zones).traces);
-    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, kept), zones).traces);
+    const drawn = psychrometricSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected));
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back)).traces);
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, kept)).traces);
   });
 });

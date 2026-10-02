@@ -7,11 +7,10 @@ import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
-  psychrometricChartOf,
   requireAxisRange,
   type ComfortZone,
+  type DeclaredDynamicChart,
   type DeclaredPolygonsChart,
-  type DeclaredScannedChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
@@ -79,7 +78,7 @@ function hoverGridOf(spec: ChartSpec): HoverGridTrace {
 }
 
 /** `model`'s scanned dynamic chart. */
-function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
+function scannedChartOf(model: RegisteredModel): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
   if (!chart || isPolygonsChart(chart)) {
     throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
@@ -87,9 +86,9 @@ function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
   return chart;
 }
 
-/** The Comfort zones `model`'s psychrometric chart declares, largest first. */
+/** The Comfort zones `model`'s scan declares, largest first. */
 function declaredZonesOf(model: RegisteredModel): ComfortZone[] {
-  return [...(psychrometricChartOf(model)?.zones ?? [])].sort((a, b) => b.limit - a.limit);
+  return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 
 describe("dynamicSpec", () => {
@@ -235,7 +234,7 @@ describe("a declared zones source", () => {
   const zoned: DeclaredPolygonsChart = {
     type: chartType.dynamic,
     axes: { x: q.operative_tmp, y: q.v },
-    zones: ({ values, xRange }) => [
+    comfortZones: ({ values, xRange }) => [
       {
         label: "80% acceptability",
         x: [xRange.min, xRange.max, xRange.max],
@@ -318,7 +317,7 @@ describe("a declared zones source", () => {
   it("throws, naming it, when the source reads a quantity the slot does not hold", () => {
     const readsMissing: DeclaredPolygonsChart = {
       ...zoned,
-      zones: ({ values }) => [{ label: "Unreached", x: [values.t_running_mean], y: [0] }],
+      comfortZones: ({ values }) => [{ label: "Unreached", x: [values.t_running_mean], y: [0] }],
     };
     expect(() => dynamicSpec(request, readsMissing, readsMissing.axes)).toThrow(q.t_running_mean.label);
   });
@@ -489,11 +488,7 @@ describe("Adaptive's acceptability zones", () => {
   // chart paints its own (ADR-0002 decision 37's note of 2026-09-28).
   const spec = dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes);
   const zones = zoneTraces(spec);
-  const psychrometric = psychrometricChartOf(pmvPpdIso);
-  if (!psychrometric) {
-    throw new Error("pmvPpdIso no longer declares a psychrometric chart");
-  }
-  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), psychrometric));
+  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso))));
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
@@ -560,7 +555,7 @@ describe("a polygons chart's hover grid", () => {
   const rectangles: DeclaredPolygonsChart = {
     type: chartType.dynamic,
     axes: { x: q.operative_tmp, y: q.v },
-    zones: () => [
+    comfortZones: () => [
       { label: "Outer", x: [15, 35, 35, 15], y: [0, 0, 1, 1] },
       { label: "Inner", x: [20, 30, 30, 20], y: [0.2, 0.2, 0.6, 0.6] },
     ],

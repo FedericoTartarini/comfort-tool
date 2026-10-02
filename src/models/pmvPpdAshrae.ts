@@ -82,19 +82,16 @@ export const pmvPpdAshrae = {
   ],
   // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
   table: [q.pmv, q.ppd, q.compliance],
-  charts: [
-    // The zone is solved on `run` itself, so on the cooling-effect PMV at the
-    // relative air speed derived from the entered one. One zone, the interval
-    // `compliance` is read against.
-    { type: chartType.psychrometric, zones: [intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)] },
-    // The scanned number is `pmv`, cut by the same thermal-sensation bins the
-    // kernel classifies `tsv` with: ISO's Edges, right-inclusive where ISO's
-    // are not, so a PMV of exactly 0.5 is Neutral here.
-    {
-      type: chartType.dynamic,
-      axes: { x: q.tdb, y: q.v },
-      output: q.pmv,
-      bands: PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
-    },
-  ],
+  // The scanned number is `pmv`, cut by the same thermal-sensation bins the
+  // kernel classifies `tsv` with: ISO's Edges, right-inclusive where ISO's
+  // are not, so a PMV of exactly 0.5 is Neutral here. The zone is solved on
+  // `run` itself, so on the cooling-effect PMV at the relative air speed
+  // derived from the entered one. One zone, the interval `compliance` is read
+  // against.
+  scan: {
+    output: q.pmv,
+    classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
+    comfortZones: [intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)],
+  },
+  charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;

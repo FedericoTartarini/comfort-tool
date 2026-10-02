@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { classifyFromBins } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { dynamicChartOf, isPolygonsChart, type DeclaredScannedChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, isPolygonsChart, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
@@ -22,7 +22,7 @@ import { dynamicSpec } from "./dynamicChart";
 const q = quantities;
 
 /** `model`'s scanned dynamic chart. */
-function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
+function scannedChartOf(model: RegisteredModel): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
   if (!chart || isPolygonsChart(chart)) {
     throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
@@ -31,7 +31,7 @@ function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
 }
 
 const isoChart = scannedChartOf(pmvPpdIso);
-const isoBands = bandListOf(isoChart.bands);
+const isoBands = bandListOf(pmvPpdIso.scan.classifier);
 const isoRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
 /** `model`'s dynamic chart of its starting slot, painting `bands`. */
@@ -80,7 +80,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   });
 
   it("paints Heat Index's five bands in its own palette", () => {
-    const heatBands = bandListOf(scannedChartOf(heatIndexRothfusz).bands);
+    const heatBands = bandListOf(heatIndexRothfusz.scan.classifier);
     expect(bandTraceOf(bandedSpec(heatBands, heatIndexRothfusz)).bands).toEqual(intervalsOf(heatBands));
     expect(heatBands.labels).toHaveLength(5);
   });
@@ -184,10 +184,13 @@ describe("a Band list whose Edges are unevenly spaced", () => {
   it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
     // They are never shown, only compared with each other, so nothing converts
     // them — the one exception to the chart spec's display-unit rule.
-    const celsius: DeclaredScannedChart = { ...isoChart, output: q.operative_tmp };
-    const model = { ...pmvPpdIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
+    const model = {
+      ...pmvPpdIso,
+      scan: { ...pmvPpdIso.scan, output: q.operative_tmp },
+      run: () => ({ operative_tmp: 30 }),
+    } satisfies RegisteredModel;
     const trace = bandTraceOf(
-      dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, celsius, celsius.axes),
+      dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart, isoChart.axes),
     );
     // 30 °C reads as 86 °F on an axis; here it stays 30.
     expect(trace.z[0][0]).toBe(30);

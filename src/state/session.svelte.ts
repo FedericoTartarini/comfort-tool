@@ -131,7 +131,7 @@ export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
   axes: ChartAxes;
-  /** The classifier the Band list began as, which Add and Reset read; none for a polygons chart. */
+  /** The classifier the Band list began as, which Add and Reset read; none for a model that scans nothing. */
   readonly #classifier: ClassifierBins | null;
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
@@ -145,15 +145,16 @@ export class ChartState {
     }
     this.type = $state.raw(model.charts[0].type);
     this.axes = $state.raw(dynamic.axes);
-    this.#classifier = isPolygonsChart(dynamic) ? null : dynamic.bands;
+    this.#classifier = model.scan?.classifier ?? null;
     this.#bands = $state.raw(this.#classifier && bandListOf(this.#classifier));
     this.#axesLocked = isPolygonsChart(dynamic);
   }
 
   /**
    * The model's Band list, which Explore paints on its charts and its Bands
-   * panel edits (ADR-0002 decision 59): its scanned chart's classifier to
-   * begin with. A polygons chart has none, and every edit below does nothing.
+   * panel edits (ADR-0002 decision 59): its scan's classifier to begin with
+   * (decision 61). A model that scans nothing has none, and every edit below
+   * does nothing.
    * Changed only by the Band list module's operations, through the methods
    * below.
    */
@@ -210,7 +211,7 @@ export class ChartState {
     this.#bands = this.#classifier && bandListOf(this.#classifier);
   }
 
-  /** The list replaced by `operation`'s answer; nothing for a polygons chart, which has neither list nor classifier. */
+  /** The list replaced by `operation`'s answer; nothing for a model that scans nothing, which has neither list nor classifier. */
   #edit(operation: (list: BandList, classifier: ClassifierBins) => BandList): void {
     if (this.#bands && this.#classifier) {
       this.#bands = operation(this.#bands, this.#classifier);

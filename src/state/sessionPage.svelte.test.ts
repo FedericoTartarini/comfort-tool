@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import type { BandTrace, ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
-import { dynamicChartOf, isPolygonsChart, type DeclaredScannedChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
 import { slotBadges } from "$lib/core/slotBadge";
@@ -27,15 +27,6 @@ const q = quantities;
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   const markers = (chart?.traces ?? []).filter((trace): trace is PointTrace => trace.kind === "point");
   return slotPositions.filter((position) => markers.some((marker) => marker.color === slotBadges[position].hue.marker));
-}
-
-/** `model`'s scanned dynamic chart. */
-function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
-  const chart = dynamicChartOf(model);
-  if (!chart || isPolygonsChart(chart)) {
-    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
-  }
-  return chart;
 }
 
 /** `session` sent to `target` and its model, as the address sends it. */
@@ -82,7 +73,7 @@ describe("The page in the session", () => {
         const list = session.chart.bands;
         const traces = outputs.chart?.traces ?? [];
         const bands = traces.filter((trace): trace is BandTrace => trace.kind === "bands");
-        expect(list).toEqual(bandListOf(scannedChartOf(pmvPpdIso).bands));
+        expect(list).toEqual(bandListOf(pmvPpdIso.scan.classifier));
         expect(bands.map((trace) => trace.bands.map((band) => [band.label, band.color]))).toEqual([
           list?.labels.map((label, index) => [label, list.colors[index]]),
         ]);
