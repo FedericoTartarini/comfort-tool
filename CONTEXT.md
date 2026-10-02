@@ -117,5 +117,5 @@ A model's output computed over a grid of two quantities, from which a chart cont
 _Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
 **Temporary library**:
-A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver and Adaptive's band geometry live there.
+A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. Adaptive's zone geometry and the inverses of the two activity corrections live there.
 _Avoid_: stand-in, shim, polyfill, helper

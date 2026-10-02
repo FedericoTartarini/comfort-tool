@@ -64,6 +64,21 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > as a ticket of its own first, the humidity axis stays `rh`. Time-series is in v1 with PHS and gets a phase later;
 > `core/page.ts` names it now. **Next: the spec and tickets in `.scratch/explore/`, then Phase 5 item 4.**
 
+> **2026-10-02 — position, Explore done and every scanned chart one scan**: Phase 5 items 3 and 8 landed on
+> `rewrite/v1`, as `.scratch/explore/` tickets 01 to 08 and `.scratch/one-scan/` tickets 01 to 04 (the commits are
+> under the two items). Explore is a page at `/explore/:model`, one session serves both pages, the navigation offers
+> the standards and Explore, Standard paints Comfort zones and Explore the model's Band list, edited in the Bands
+> panel, and a classifier's colours come from its own palette. Ticket 08's open point 1 became ADR-0002 decision 61:
+> every chart not declared polygons is one scan, contoured, the region above the saturation line covered, the scanned
+> output declared once on the model; the zone solver and the root finders are deleted, and acceptance criterion 3 is
+> two tests, 3a against the library and 3b against the deployed tool, whose bounds and measurements are in ADR-0001
+> §7's note. The full psychrometric scan of PMV (ASHRAE 55) is 50.5 ms for one slot and 234.2 ms for three
+> (Chromium 154), under decision 29's line. `.scratch/explore/` ticket 09 read the documents against the code:
+> decisions 7, 31, 53 and 57 to 61 carry notes of 2026-10-02, one Consequences bullet is amended, and ADR-0001's
+> §3, §4.0, §4.2, §4.3, §4.4, §4.5, §4.7, §5, §6 and §7 carry markers. The four scripts are green at 736 tests. What the
+> checklist's human half and `CONTEXT.md` found is in ticket 09's Comments, none changed but `CONTEXT.md`'s
+> Temporary library. **Next: a grilling of three chart changes.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -961,6 +976,17 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    says its own bound, a ticket before this item's) and the humidity axis (stays `rh`, out of v1). Suggested order:
    `BS04`; `core/page.ts`, the route, the session lifted, the navigation; Standard's one-slot zones; `core/bands.ts` and
    the palette table; the Explore page; the Bands panel; the psychrometric scan; the docs close-out.
+   **Done 2026-10-02** (`.scratch/explore/` tickets 01 to 08: `d71f9a4`, `eb9ecd4`, `c6a38ae` + `e2877db` + `2ccbf7c`
+   + `5e33d7e`, `2a397c4`, `e39791a`, `47498cb`, `9f95582`, `92d5408`; then `.scratch/one-scan/` tickets 01 to 04,
+   ADR-0002 decision 61: `c5bcbf0` + `bbc7c08` + `21edd69` + `c6acfbc`, `d13fe36`, `76589c0`, `3e397c8`). Ticket 08
+   left the psychrometric Bands stopping under the saturation line at cell resolution while Standard's solved zones
+   met it, so decision 61 made every chart not declared polygons one scan, contoured, with a cover above saturation,
+   and deleted the zone solver and the root finders. As built it differs from the text above where decisions 57 to
+   61 carry a note of 2026-10-02: the session survives a page change made in the app, not a typed address; the
+   navigation's standards come from an app table, ASHRAE 55 then ISO 7730; Explore paints Bands on a chart the model
+   scans, and Adaptive's polygons stay Comfort zones there; the Bands panel sits under the legend, commits at every
+   keystroke, and refuses an Edge at full precision, not at the shown one; the first band's Add splits halfway to the
+   classifier's default Edge below; ISO's categories are coloured at four, "none" unpainted.
 4. `src/core/shareLink.ts`: `?share=v1.<Base64URL(JSON)>`, schema in ADR §4.8.
    **This is the only file in the whole project that reads and writes string ids** (`Quantity.key`, each closed set's `.id` / `xxxFromId()`).
    On a parse failure, fall back to defaults and notify; no blank screen.
@@ -981,6 +1007,10 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    chart has since `88f179d`. This is the probe layer ADR-0001 §4.4 deferred here on 2026-09-05. What the readout
    reports is settled in this phase's grilling; the deployed tool's reports t, rh and hr. Where it sits is Phase 5c
    item 6.
+   **Done 2026-10-02** with `.scratch/one-scan/` ticket 03 (`76589c0`, ADR-0002 decision 61 rule 4). The hover grid
+   both scanned charts share reads, on Standard, the temperature on the drawn axis, the humidity ratio and each drawn
+   slot's number labelled by slot, and "—" above the saturation line; on Explore it reads the same two axis values,
+   slot 1's number and its band. It reports no relative humidity. Where it sits is still Phase 5c item 6.
 9. Activity-adjusted inputs (added 2026-09-30, ADR-0002 decision 54; `.scratch/activity-adjusted-inputs/`). Air speed
    and clothing are each an entry group with two entry modes: the first, the default, enters the uncorrected value
    and the model gets the corrected one (`vr = v_relative(v, met)`; the dynamic clo by the model's standard's rule,
