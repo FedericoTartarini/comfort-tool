@@ -63,6 +63,8 @@
 > **Superseded in part by [ADR-0002](0002-library-interface-model-info.md)** (2026-09-13): the library column below describes the fork. Quantities are now an app table, the `io` / `reference` / `charts` layers are gone, comfort-zone geometry lives in the app, and the library ships `ModelInfo` — see ADR-0002 Context and decisions 1, 2, 9, 10.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 12, 24 and 29**: the convention paragraph below has no `src/workers/`; v1 has no Worker, and a model is called synchronously through its declaration's `run` (decision 29). The library's model functions are imported only in `src/models/` and in `src/temporary-library/`, which calls a model as the library's own functions do (decision 24, revised 2026-09-27). Lint draws the boundary with `importNames` on the package root, since root-only imports leave no subpath to fence, so `Standard`, `classifyFromBins` and the psychrometrics are importable anywhere but `src/ui/charts/`, whose boundary is unchanged (decision 12).
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 61** (2026-10-02): the "Comfort-zone geometry" row below is withdrawn for PMV. The psychrometric chart's Comfort zones are contours of the app's scan, as the dynamic chart's are, so no root finder exists on either side of the boundary; `adaptive_ashrae_zone` is the one geometry the temporary library keeps.
 
 
 **The test (consensus 2026-09-03): would pythermalcomfort ship it?** `jsthermalcomfort` is its port, and its audience is researchers and arbitrary tools. Anything where "another tool with a completely different design would need exactly the same value for the same model" belongs to the library; anything that might differ from one tool to the next belongs to the app.
@@ -309,6 +311,8 @@ Result table (`table`):
 > **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Every compared slot" is every compared slot that has a last valid run. "At that slot's own values" is at the chart's one atmospheric pressure, the first drawn slot's run's (decision 52's note). On the scanned dynamic chart one drawn slot still draws the bands, as before Compare; two or more draw each slot's Comfort zones as contours of its own scan, and no bands. Explore is not built.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 58** (2026-10-01): the page decides what every chart paints. On Standard the dynamic chart paints Comfort zones for one drawn slot as for two or more, and no bands. On Explore both charts paint the model's Band list: the dynamic chart as before, and the psychrometric chart as a scan of the model's `output` over its temperature axis and the humidity ratio, the cells above saturation unpainted. The hover rules below hold; on Explore the readout names the band of the edited list.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 61** (2026-10-02): the "compliance-zone polygon (`psychrometricZone` …)" in the psychrometric row is a contour of a scan of the model's `scan.output` over the temperature axis and the humidity ratio, one per drawn slot, the field above the saturation line covered; the chart reads the pointer through a hover grid (temperature, humidity ratio, each slot's number), which is Phase 5 item 8. The dynamic row's `output` and `bands` are the model's `scan`, declared once. "The probe layer stays deferred for the psychrometric chart" below is closed.
 
 
 | Type | Definition |
@@ -435,6 +439,8 @@ Rules:
 > **Superseded in part by [ADR-0002](0002-library-interface-model-info.md) decisions 28 and 29** (2026-09-21): no Worker, no Comlink, no stamp and no "computing" indicator in v1; the pipeline below runs synchronously, and the grid is 51×51. The zone-boundary parameters and the 300 ms line (now the condition for reopening decision 29) stand.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 29 as amended 2026-09-28** (review after Phase 4b, Proposal 16): the Grid bullet's cache key is dropped. v1 caches no grid: every valid edit rescans it, whichever quantity changed.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 61** (2026-10-02): `charts.psychrometricZone` leaves the pipeline and the "Zone boundary" bullet with it; the psychrometric chart is the grid scan, contoured at the zones' limits.
 
 `Session change → toLibraryInputs → compute.worker (Comlink) → model.run / charts.psychrometricZone / grid scan → Outputs (with stamp, stale ones discarded) → ChartSpec → PlotlyChart`
 
@@ -501,6 +507,8 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 47** (2026-09-28): the tree gains `core/slot.ts` — the slot's shape `Slot`, the slot a model starts on and the seeding a switch uses, the changes a person makes to a slot (entering values, setting an option, either entry mode) and the reads of what the person entered (`enteredValue`, `enteredQuantities`, `panelQuantities`, `resolvedTdb`, `relativeHumidityOf`, `operativeTemperatureOf`, with the get-or-throws `requireValue` and `requireHumidity`). `enteredQuantities` and `withTemperatureMode`, which the Proposal 4 marker above keeps in `core/libraryInputs.ts`, moved there too; `libraryInputs.ts` keeps what turns a slot into the library's params. The adjuster decision 32's marker above names is `adjustToBounds(slot, rows)`; it stays in `core/modelSwitch.ts` and writes through `withEnteredValues`.
 
 > **Noted 2026-10-01** ([ADR-0002](0002-library-interface-model-info.md) decision 54; `.scratch/activity-adjusted-inputs/`): the tree gains `core/clothingCorrection.ts`, the clothing rule per standard, and, in `src/temporary-library/`, `v_relative_inverse.ts` and `clo_dynamic_inverse.ts`, the inverses of the two activity corrections (decision 54 as revised 2026-09-30).
+>
+> **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decision 61): `psychrometricChart.ts` calls no solver; `src/temporary-library/` loses `pmv_psychrometric_zone.ts` and `root_finding.ts` and keeps `chart-online.json`.
 
 
 ```
@@ -572,6 +580,8 @@ index.html              embedded ES5 feature check + read-only summary page
 > **Scope and acceptance criterion 1 superseded by [ADR-0002](0002-library-interface-model-info.md) decision 13**: v1 is the models whose `_INFO` the main repository ships; the second-model acceptance runs on `heat_index_rothfusz`, and PMV (ASHRAE 55) / Adaptive wait for their `_INFO` as Phase 4b.
 >
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 35; `P031`): acceptance criterion 3's bound is per model, ≤ 0.01 °C for PMV (ISO 7730) and ≤ 0.02 °C for PMV (ASHRAE 55). The ASHRAE 55 bound is needed against the deployed tool's published vertices (`src/temporary-library/chart-online.json`), whose `cooling_effect` is unrounded; the library's rounds to two decimals, as pythermalcomfort's does, and so does the old tool's vendored copy. Measured 2026-09-28 over the fixture's four ASHRAE 55 zones: the worst vertex is 0.0143 °C off, and the worst is 0.0093 °C with only that rounding removed. The app follows the library, so the bound is widened rather than the rounding worked around.
+>
+> **Amended 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decision 61): once the zone is a contour of a scan, criterion 3 is two criteria. **3a, rendering, against the library**: on every grid row, the library's PMV at the contour's crossing of a zone's limit differs from the limit by at most a bound in PMV, per model — a candidate 0.005 for PMV (ISO 7730), whose kernel is smooth, and 0.01 for PMV (ASHRAE 55), one two-decimal `cooling_effect` step plus interpolation — measured in `.scratch/one-scan/` before it is fixed. **3b, oracle, against the deployed tool**: the crossing on each fixture vertex's row differs from the vertex by at most 0.02 °C for ISO 7730 and 0.03 °C for ASHRAE 55; a loose bound that holds the kernel difference and the rendering together, there to catch a wrong binding, not to state a precision. The deployed tool is neither kernel's reference: ISO 7730's Annex D initial guess is the library's, the unrounded cooling effect the deployed tool's.
 
 
 Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;

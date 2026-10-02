@@ -113,7 +113,7 @@ One of the app's screens, each with its own address: Standard (a model under its
 _Avoid_: workspace, surface, view, tab, mode
 
 **Scan**:
-A model's output computed over a grid of two quantities, from which a chart contours its Bands or its Comfort zones. The dynamic chart is a scan or declared polygons; on the Explore page the psychrometric chart is a scan too.
+A model's output computed over a grid of two quantities, from which a chart contours its Bands or its Comfort zones. The dynamic chart is a scan or declared polygons; the psychrometric chart is a scan.
 _Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
 **Temporary library**:

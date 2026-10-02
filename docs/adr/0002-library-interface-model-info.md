@@ -295,6 +295,9 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     own extension and a type on its own `import type` line, as the library's TypeScript tests do, and calls no API only
     vitest has, so it mocks no module. A test that needs a stand-in for a model passes it to an underscore-prefixed
     internal that takes the model as a parameter; the public function calls that internal with the library's model.
+    **Amended 2026-10-02 (decision 61).** The first members are deleted: the zone solver and the two root finders go
+    with the psychrometric chart's contouring, nothing having moved upstream. `chart-online.json` stays, read by the
+    app's criterion-3b test. The members are `adaptive_ashrae_zone`, `v_relative_inverse` and `clo_dynamic_inverse`.
 25. **`_INFO` carries its standards** (upstream, `.scratch/library-boundary/issues/06`). `ModelInfo` gains
     `standards: readonly Standard[]`: every edition the function accepts, the function's default first; the ASHRAE
     functions get a one-element list. A standard is a property a model declares and several models may share, defined
@@ -343,6 +346,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     shapes; a polygons chart declares neither.
     **Amended 2026-10-01 (decisions 58 and 59).** "Explore's editable bands re-bin stored numbers" is the Band list of
     `core/bands.ts`, one per model; and on the Explore page the psychrometric chart is a scan of the same `output` too.
+    **Amended 2026-10-02 (decision 61).** `output` and `bands` are the model's `scan`, not a chart's; both charts scan
+    it, on every page.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
@@ -385,6 +390,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     328.3 ms; Input 1 alone took 98.0 ms, and PMV (ISO 7730)'s three took 42.4 ms. The slots with a higher `met` and
     `clo` scanned slower, so three scans are not three times one. v1 stays synchronous whatever three slots cost: no
     Worker, no row-sliced scan and no cache, because v1 puts a simpler app ahead of a faster one.
+    **Noted 2026-10-02 (decision 61).** The psychrometric chart is a scan on every page, every cell run: 50.0 ms for
+    one slot of PMV (ASHRAE 55) at its defaults and 219.8 ms for three (Chromium 154). The line stands as one scan.
 30. **Model name.** Revises decision 3: the declaration's `pathSegment` is replaced by `name`, the library's function
     name for the model (`"pmv_ppd_iso"`), written once. Everything the app calls a model follows it, in three mechanical
     forms: the share link carries the exact name, like a quantity key; the route segment is its kebab-case
@@ -708,6 +715,8 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     from the drawn chart, which is a `ChartSpec`.
     **Noted 2026-10-01 (decisions 58 and 59).** On the Explore page a polygons chart draws its zones as it does on
     Standard and has no Band list and no Bands panel.
+    **Amended 2026-10-02 (decision 61).** A scanned chart declares `axes` alone; `output` and `bands` are the model's
+    `scan`. The two shapes are still told apart by the polygons chart's `zones`, and the `never` marks stay.
 38. **What the table shows first is what must come back unrounded; the registry-wide tests hold for a polygons chart
     and prove silence.** Amends decision 35, and restates the two tests decision 37 left throwing on a polygons chart.
     The unrounded test samples the table's first column, which every model declares (ADR-0001 §4.3), along the
@@ -1562,6 +1571,10 @@ notes under decisions 51 and 53:
     there, and the scan is the dynamic chart's size, about 90 ms for PMV (ASHRAE 55). Rejected: keeping Comfort
     zones on Explore's psychrometric chart, which would make "Explore paints Bands" a sentence about one chart, and
     a `ChartRequest.page`, a branch in core on a word core need not know.
+    **Revised 2026-10-02 (decision 61).** Rule 1's "the psychrometric chart is unchanged" and rule 4's "reads nothing
+    until Phase 5 item 8" are superseded: on Standard the psychrometric chart paints its Comfort zones as contours of
+    each drawn slot's scan and reads the temperature, the humidity ratio and each slot's number. Rule 2's "the cells
+    above saturation left unpainted" is a cover over a field that is run everywhere.
 59. **A Band list is the library's classifier plus a colour per band, built and changed only in `core/bands.ts`, one
     per model, edited in place in a panel named Bands.** Revises decision 31's "saved per (model, chart)" to one list
     per model, since both charts cut the same `output`, and replaces ADR-0001 §4.5's "Explore thresholds" rule.
@@ -1586,6 +1599,8 @@ notes under decisions 51 and 53:
     band (`{ label, color, upper }`), more readable but converted back to the library's shape at every
     classification; reassigning colours by position after an edit, which recolours every band on an Add; sorting
     what was typed, as the prototype did.
+    **Noted 2026-10-02 (decision 61).** "Both charts cut the same `output`" is now the declaration's shape: the
+    classifier the list copies is `model.scan.bands`.
 60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
     classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
     ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
@@ -1605,6 +1620,59 @@ notes under decisions 51 and 53:
     made to match; the legend is the key. Rejected: the declaration naming its palette, which puts appearance in the
     one file a model author writes; a ramp interpolated by band count, which cannot say that Heat Index's first band
     is "no risk" and not "neutral".
+
+61. **Every chart that is not declared polygons is one scan, contoured: the psychrometric chart's Comfort zones are
+    contours of the same scan its Bands are, the zone solver and the root finders are deleted, and the scanned
+    output is declared once, on the model.** Taken 2026-10-02 (`.scratch/explore/` ticket 08's open point 1;
+    `.scratch/one-scan/`). Revises decision 58's rule 1 ("the psychrometric chart is unchanged") and rule 4 ("reads
+    nothing until Phase 5 item 8"); amends decisions 24, 27, 37 and 59, ADR-0001 §3's boundary table, §4.4, §4.7, §5
+    and acceptance criterion 3. Facts. On Explore the psychrometric scan left its supersaturated cells `NaN`, so the
+    bands stopped at cell resolution under the saturation line while Standard's solved polygons met it exactly: two
+    accuracies for one boundary, and two mechanisms to carry. Measured 2026-10-02 (ticket 08's Comments): a 51×51
+    contour of the library's PMV sits within 0.0093 °C of the deployed tool's vertices for every ISO 7730 zone, within
+    0.0149 °C for three of the four ASHRAE 55 zones and 0.0228 °C for the fourth, where the two-decimal
+    `cooling_effect` makes PMV a staircase (a step of up to 0.0048 PMV, about 0.016 °C) that no grid locates
+    (0.0333 / 0.0210 / 0.0169 °C against bisection at 51 / 101 / 201 points); the full scan, supersaturated cells run
+    too, is 50.0 ms for one slot of PMV (ASHRAE 55) and 219.8 ms for three (Chromium 154); PMV is finite and smooth
+    above 100 % (25 °C: −0.10 at 90 %, 0.74 at 200 %). pythermalcomfort 4.6.0 ships `plots.PsychrometricPlot`, whose
+    boundaries are bisected row by row (`plots/matplotlib/_boundaries.py`: "Rasterising the whole plane and
+    contouring it makes every edge out of grid cells") and which hides the supersaturated region under a white fill
+    from the smooth saturation curve; jsthermalcomfort has no plots module. Rules. (1) The scanned output is the
+    model's: `scan: { output, bands, zones? }` on the declaration, one per model. A psychrometric chart declares
+    nothing but its type; a scanned dynamic chart its `axes`; a polygons chart `axes` and its `zones` function, as
+    before. A registry-wide test holds that a model declaring a psychrometric chart has `scan.zones`.
+    `DeclaredScannedChart` goes; `core/bands.ts`, the session's classifier and the Standard page's zones read
+    `model.scan`. (2) One `ScanFrame` — the model, the output, the two swept quantities each with its range, the
+    entry modes and the pressure — one `scannedField`, and one painting of a field, Bands given a list and else the
+    Comfort zones as contours, with its hover grid, that both builders share; a builder adds its axes and its chrome.
+    The psychrometric frame locks x to `temperatureMode.axis`, y to `hr` over the range drawn at the pressure, and
+    the humidity entry mode to `humidityMode.humidityRatio`, so the slot's own conversion gives each cell its `rh`
+    and the scan knows no psychrometrics. The state keeps one frame and one scan per slot; `chartSpecOf`'s
+    `scanned` boolean goes. (3) A supersaturated cell is run at its true `rh` above 100. The region above the
+    saturation line is covered by one path filled in `chartInk.ground`, with no legend entry and hover off, drawn
+    under the saturation line, on both pages; the hover grid reads "—" and no band at `rh` > 100. A zone's outline
+    runs on under the cover, so its top edge is the saturation line itself. A model that returns `NaN` above
+    saturation falls back to the cell-resolution edge, alone. (4) On Standard the psychrometric chart scans every
+    drawn slot and paints each slot's Comfort zones as contours of its own scan, as the dynamic chart does (decision
+    50); its hover grid reads the temperature, the humidity ratio and each slot's number, which is Phase 5 item 8,
+    landed; where the readout sits stays Phase 5c item 6. On Explore the readout is unchanged. (5)
+    `pmv_psychrometric_zone.ts`, `root_finding.ts` and their tests are deleted; `chart-online.json` stays in
+    `src/temporary-library/` as the deployed tool's record. The app does not follow pythermalcomfort's `plots`
+    here: one app draws one boundary one way, and `plots` is presentation, not a calculation decision 21's test
+    would send to the library. (6) ADR-0001 acceptance criterion 3 becomes two. 3a, rendering, against the library:
+    on every grid row, the library's PMV at the contour's crossing of a zone's limit differs from the limit by at
+    most a bound in PMV, per model — a candidate 0.005 for PMV (ISO 7730), whose kernel is smooth, and 0.01 for PMV
+    (ASHRAE 55), one staircase step plus interpolation — measured in the ticket before it is fixed, as the
+    2026-09-28 widening was. 3b, oracle, against the fixture: the crossing on each fixture vertex's row differs from
+    the deployed tool's vertex by at most 0.02 °C for ISO 7730 and 0.03 °C for ASHRAE 55, a loose bound that holds
+    the kernel difference and the rendering together and catches a wrong binding, not a precision. (7) Decisions 28
+    and 29 stand: `GRID = 51`, and the 300 ms line is one scan. Rejected: keeping the solver for the Standard page,
+    two accuracies for one boundary; clamping supersaturated cells to `rh` = 100 as `plots` does, which needs a hook
+    the shared scan has no place for; a top edge in the zone's own line along the saturation line, which needs the
+    crossings, which is root finding again; `GRID = 101`, which halves nothing on the staircase; an `output` on the
+    psychrometric chart, a field with one legal value; a scan per chart with the psychrometric frame borrowing the
+    dynamic chart's `output`, which keeps three cross-reads between the two chart declarations where the glossary
+    says a Band list and a Comfort zone are the model's.
 
 ## Consequences
 
