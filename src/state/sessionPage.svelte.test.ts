@@ -92,6 +92,39 @@ describe("The page in the session", () => {
       }
     });
 
+    it("paints the current model's Band list on the psychrometric chart over slot 1's scan, and no zone", () => {
+      const session = sessionComparingThreeSlots(pmvPpdIso);
+      session.chart.type = chartType.psychrometric;
+      const outputs = new Outputs(session);
+      const zonePaths = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill !== undefined);
+      expect(zonePaths()).toHaveLength(9);
+      openAt(session, page.explore);
+
+      const list = session.chart.bands;
+      const bands = (outputs.chart?.traces ?? []).filter((trace): trace is BandTrace => trace.kind === "bands");
+      expect(bands.map((trace) => trace.bands.map((band) => [band.label, band.color]))).toEqual([
+        list?.labels.map((label, index) => [label, list.colors[index]]),
+      ]);
+      const scan = outputs.slots[0].psychrometricScan;
+      expect(bands[0].z).toEqual(scan.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
+      expect(bands[0].z.flat()).toContain(null);
+      expect(zonePaths()).toHaveLength(0);
+      expect(markedPositions(outputs.chart)).toEqual([0]);
+    });
+
+    it("moves the psychrometric chart's boundary with an Edge, on the same scan", () => {
+      const session = new Session(pmvPpdIso);
+      session.chart.type = chartType.psychrometric;
+      const outputs = new Outputs(session);
+      openAt(session, page.explore);
+      const scan = outputs.slots[0].psychrometricScan;
+
+      expect(session.chart.moveBandEdge(2, -0.1)).toBe(true);
+      const bands = outputs.chart?.traces.find((trace): trace is BandTrace => trace.kind === "bands");
+      expect(bands?.bands.map((band) => band.upper)).toEqual(session.chart.bands?.edges);
+      expect(outputs.slots[0].psychrometricScan).toBe(scan);
+    });
+
     it("paints Adaptive's polygons, which have no Band list", () => {
       const session = new Session(pmvPpdIso);
       openAt(session, page.explore, adaptiveAshrae);

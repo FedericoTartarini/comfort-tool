@@ -1,17 +1,19 @@
 /**
  * The pieces both spec builders assemble: the slot marker, a Comfort zone, an
- * axis, the samples of a range, and what the slots of a request share. Each is
- * written here once, so the psychrometric and the dynamic chart draw them
- * alike.
+ * axis, the samples of a range, what the slots of a request share, a Band
+ * list's paint and a readout's lines. Each is written here once, so the
+ * psychrometric and the dynamic chart draw them alike.
  */
+import { classifyFromBins } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
+import type { BandList } from "$lib/core/bands";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
-import { labelWithUnit, type DisplayUnit } from "$lib/core/units";
+import { labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest, ChartedSlot } from "./chartRequest";
-import type { AxisSpec, ContourZoneTrace, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
+import type { AxisSpec, BandFill, BandTrace, ContourZoneTrace, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for
@@ -92,4 +94,54 @@ export function contourZoneFor(
     trace: { kind: "contourZone", ...field, color: hue.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
     legendEntry: { label, swatch: "fill", color: fill },
   };
+}
+
+/**
+ * `list` painted over a scanned field `z` on `x` and `y`, already in display
+ * units ({@link BandTrace}), and a legend entry per painted band. Its fills
+ * cannot say where the pointer is, so it never captures the pointer.
+ */
+export function bandsFor(
+  list: BandList,
+  field: Pick<BandTrace, "x" | "y" | "z">,
+): { readonly trace: BandTrace; readonly legendEntries: readonly LegendEntry[] } {
+  const fills = bandFillsOf(list);
+  return {
+    trace: { kind: "bands", hover: "off", ...field, bands: fills },
+    legendEntries: fills.map((band) => ({ label: band.label, swatch: "fill", color: band.color })),
+  };
+}
+
+/**
+ * The bands a chart fills from `list`, in the list's order: one per band with
+ * a colour, over the interval of the scanned number between its own Edge and
+ * the one below; a band without one is painted nowhere. The first band is
+ * open below, as every library classifier is; the last Edge is where the list
+ * stops answering, and it bounds the last band's fill.
+ */
+function bandFillsOf(list: BandList): readonly BandFill[] {
+  return list.labels.flatMap((label, index) => {
+    const color = list.colors[index];
+    return color === undefined
+      ? []
+      : [{ label, color, upper: list.edges[index], lower: index === 0 ? undefined : list.edges[index - 1] }];
+  });
+}
+
+/**
+ * The band the library itself puts `value` in on `list`, so the inclusivity
+ * is the list's: one label, or none past the last Edge or without a number.
+ */
+export function bandLabels(value: number, list: BandList): readonly string[] {
+  const band = classifyFromBins(value, list);
+  return typeof band === "string" ? [band] : [];
+}
+
+/**
+ * One line of a hover readout, `Label: value unit`, the SI `value` shown as
+ * the results table shows it: in `unit`, formatted, and a dash where there is
+ * no number.
+ */
+export function readoutLine(quantity: Quantity, unit: DisplayUnit, value: number): string {
+  return `${quantity.label}: ${numberWithUnit(value, unit)}`;
 }

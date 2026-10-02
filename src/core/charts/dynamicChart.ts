@@ -1,5 +1,3 @@
-import { classifyFromBins } from "jsthermalcomfort";
-import type { BandList } from "$lib/core/bands";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
@@ -25,15 +23,28 @@ import {
   type Slot,
   type ValueEntryModes,
 } from "$lib/core/slot";
-import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
+import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { BandFill, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, contourZoneFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
+import type { ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import {
+  axisFor,
+  bandLabels,
+  bandsFor,
+  contourZoneFor,
+  labelFor,
+  markerFor,
+  readoutLine,
+  samples,
+  zoneFor,
+} from "./specParts";
 import { containsPoint } from "./polygon";
 
-/** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
-const GRID = 51;
+/**
+ * One count for every axis, every model and both scanned charts: 51 points are
+ * 50 intervals, so the SI steps are round (ADR-0002 decision 28).
+ */
+export const GRID = 51;
 
 /**
  * What every slot's scan on one chart shares: the model and its scanned
@@ -193,9 +204,9 @@ export function dynamicSpec(
     const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
     const { bands } = request;
     if (bands) {
-      const fills = bandFillsOf(bands);
-      traces.push({ kind: "bands", hover: "off", ...displayedAxes, z: surfaces[0], bands: fills });
-      legend.push(...fills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
+      const painted = bandsFor(bands, { ...displayedAxes, z: surfaces[0] });
+      traces.push(painted.trace);
+      legend.push(...painted.legendEntries);
     } else {
       const zones = contouredZonesOf(model, frame.chart);
       request.slots.forEach((charted, position) => {
@@ -289,44 +300,10 @@ export function dynamicAxisQuantities(model: RegisteredModel, modes: ValueEntryM
 }
 
 /**
- * The bands the chart fills, in the list's order: one per band with a colour,
- * over the interval of the scanned number between its own Edge and the one
- * below; a band without one is painted nowhere. The first band is open below,
- * as every library classifier is; the last Edge is where the list stops
- * answering, and it bounds the last band's fill.
- */
-function bandFillsOf(list: BandList): readonly BandFill[] {
-  return list.labels.flatMap((label, index) => {
-    const color = list.colors[index];
-    return color === undefined
-      ? []
-      : [{ label, color, upper: list.edges[index], lower: index === 0 ? undefined : list.edges[index - 1] }];
-  });
-}
-
-/**
- * The band the library itself puts `value` in on `list`, so the inclusivity
- * is the list's: one label, or none past the last Edge or without a number.
- */
-function bandLabels(value: number, list: BandList): readonly string[] {
-  const band = classifyFromBins(value, list);
-  return typeof band === "string" ? [band] : [];
-}
-
-/**
  * The label of the innermost zone containing the point: the zones are nested
  * and listed largest first, so the last one that contains it. None outside
  * every zone.
  */
 function innermostLabels(zones: readonly ZonePolygon[], x: number, y: number): readonly string[] {
   return zones.filter((zone) => containsPoint(zone, x, y)).slice(-1).map((zone) => zone.label);
-}
-
-/**
- * One line of a hover readout, `Label: value unit`, the SI `value` shown as
- * the results table shows it: in `unit`, formatted, and a dash where there is
- * no number.
- */
-function readoutLine(quantity: Quantity, unit: DisplayUnit, value: number): string {
-  return `${quantity.label}: ${numberWithUnit(value, unit)}`;
 }

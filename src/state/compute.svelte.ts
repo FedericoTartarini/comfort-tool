@@ -4,6 +4,7 @@ import {
   violationRows,
   type ViolationRow,
 } from "$lib/core/applicability";
+import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
 import {
@@ -15,7 +16,12 @@ import {
   type ScanFrame,
   type ScannedField,
 } from "$lib/core/charts/dynamicChart";
-import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
+import {
+  psychrometricField,
+  psychrometricScanFrameFor,
+  psychrometricSpec,
+  type PsychrometricScanFrame,
+} from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
 import {
   dynamicChartOf,
@@ -126,6 +132,15 @@ export class Outputs {
   });
   readonly #chartPressure = $derived.by((): number | null => this.#charted[0]?.last.atmosphericPressure ?? null);
 
+  /** The Band list the charts paint: the current model's on Explore, none on Standard (ADR-0002 decision 58). */
+  readonly #paintedBands = $derived.by((): BandList | null =>
+    this.#session.page === page.explore ? this.#session.chart.bands : null,
+  );
+  // Whether a list is painted, apart from which: an edit to the list makes a
+  // new one, and this derivation's equality keeps the psychrometric frame,
+  // and so every slot's scan, from following it.
+  readonly #paintsBands = $derived.by(() => this.#paintedBands !== null);
+
   /** What every slot's scan shares, or `null` while the chart drawn is not a scanned one. */
   readonly #scanFrame = $derived.by((): ScanFrame | null => {
     const session = this.#session;
@@ -137,9 +152,19 @@ export class Outputs {
     return scanFrameFor(session.model, chart, session.chart.axes, this.#entryModes, pressure);
   });
 
+  /** What every slot's psychrometric scan shares, or `null` while that chart is drawn without Bands, or not drawn. */
+  readonly #psychrometricScanFrame = $derived.by((): PsychrometricScanFrame | null => {
+    const pressure = this.#chartPressure;
+    if (!drawnPsychrometricOf(this.#session) || !this.#paintsBands || pressure === null) {
+      return null;
+    }
+    return psychrometricScanFrameFor(this.#session.model, this.#entryModes, pressure);
+  });
+
   readonly #chart = $derived.by((): ChartSpec | null => {
     const charted = this.#charted;
-    return charted.length > 0 ? chartSpecOf(this.#session, charted, this.#scanFrame !== null) : null;
+    const scanned = this.#scanFrame !== null || this.#psychrometricScanFrame !== null;
+    return charted.length > 0 ? chartSpecOf(this.#session, charted, this.#paintedBands, scanned) : null;
   });
 
   readonly #drawnAxes = $derived.by((): DrawnAxes | null =>
@@ -149,8 +174,8 @@ export class Outputs {
   constructor(session: Session) {
     this.#session = session;
     const atmosphericPressureOutOfRange = () => this.#atmosphericPressureOutOfRange;
-    const scanFrame = () => this.#scanFrame;
-    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange, scanFrame);
+    const scanFrames = { dynamic: () => this.#scanFrame, psychrometric: () => this.#psychrometricScanFrame };
+    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange, scanFrames);
     this.#everySlot = [slotAt(0), slotAt(1), slotAt(2)];
   }
 
@@ -221,7 +246,7 @@ export class SlotOutputs {
   readonly badge: SlotBadge;
   readonly #session: Session;
   readonly #atmosphericPressureOutOfRange: () => boolean;
-  readonly #scanFrame: () => ScanFrame | null;
+  readonly #scanFrames: ScanFrames;
   /** What {@link #lastValid} last returned. Written and read only there. */
   #remembered: LastValidRun | null = null;
 
@@ -278,7 +303,7 @@ export class SlotOutputs {
   // Of the last valid run, so a closed gate stops here too; and of the shared
   // frame, which an edit to another slot leaves as it was.
   readonly #scan = $derived.by((): ScannedField => {
-    const frame = this.#scanFrame();
+    const frame = this.#scanFrames.dynamic();
     const last = this.#lastValid;
     if (!frame || !last) {
       throw new Error(`${this.badge.name} is scanned while no scanned chart is drawn of a run of it`);
@@ -286,22 +311,32 @@ export class SlotOutputs {
     return scannedField(frame, last.slot);
   });
 
+  // The same, for the psychrometric chart while it paints Bands.
+  readonly #psychrometricScan = $derived.by((): ScannedField => {
+    const frame = this.#scanFrames.psychrometric();
+    const last = this.#lastValid;
+    if (!frame || !last) {
+      throw new Error(`${this.badge.name} is scanned while no psychrometric chart paints Bands of a run of it`);
+    }
+    return psychrometricField(frame, last.slot);
+  });
+
   /**
    * The slot at `position` in `session`, whose gate the session-wide
    * `atmosphericPressureOutOfRange` closes as well, scanned in the chart's
-   * shared `scanFrame`.
+   * shared `scanFrames`.
    */
   constructor(
     session: Session,
     position: SlotPosition,
     atmosphericPressureOutOfRange: () => boolean,
-    scanFrame: () => ScanFrame | null,
+    scanFrames: ScanFrames,
   ) {
     this.position = position;
     this.badge = slotBadges[position];
     this.#session = session;
     this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
-    this.#scanFrame = scanFrame;
+    this.#scanFrames = scanFrames;
   }
 
   /** The last valid result. Kept as it is while an input is out of range. */
@@ -344,6 +379,21 @@ export class SlotOutputs {
   get scan(): ScannedField {
     return this.#scan;
   }
+
+  /**
+   * The slot's psychrometric scan, of its last valid run (ADR-0002 decision
+   * 58). Read only while the psychrometric chart on screen paints Bands and
+   * the slot has a run.
+   */
+  get psychrometricScan(): ScannedField {
+    return this.#psychrometricScan;
+  }
+}
+
+/** The frames the slots' scans are drawn in, one per scanned chart, each `null` while its chart is not drawn scanned. */
+interface ScanFrames {
+  readonly dynamic: () => ScanFrame | null;
+  readonly psychrometric: () => PsychrometricScanFrame | null;
 }
 
 /** A compared slot the chart is drawn of, with the run it is drawn at. */
@@ -380,25 +430,31 @@ function drawnPsychrometricOf(session: Session): DeclaredPsychrometricChart | un
 
 /**
  * The spec for the chart the session currently shows of the `charted` slots,
- * at the first one's atmospheric pressure, or `null` when the model declares
- * none. Each run's model is the session's own — {@link SlotOutputs.lastValid}
- * remembers no other — so the session's chart settings are this model's, its
- * Band list among them, which the chart paints on Explore alone.
- * `scanned` says the slots keep scans of the chart drawn, which it is handed.
+ * at the first one's atmospheric pressure, painting `bands` or, for `null`,
+ * the Comfort zones, or `null` when the model declares none. Each run's model
+ * is the session's own — {@link SlotOutputs.lastValid} remembers no other —
+ * so the session's chart settings are this model's.
+ * `scanned` says the slots keep scans of the chart drawn, which it is handed:
+ * every slot's of the dynamic chart, the first slot's of the psychrometric
+ * chart, which paints that one alone.
  */
-function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: boolean): ChartSpec | null {
+function chartSpecOf(
+  session: Session,
+  charted: readonly ChartedRun[],
+  bands: BandList | null,
+  scanned: boolean,
+): ChartSpec | null {
   const request: ChartRequest = {
     model: session.model,
     slots: charted.map(({ outputs, last }) => ({ ...outputs.badge, slot: last.slot })),
     unitSystem: session.unitSystem,
     entryModes: session.entryModes,
     atmosphericPressure: charted[0].last.atmosphericPressure,
-    // The page decides what the chart paints (ADR-0002 decision 58).
-    bands: session.page === page.explore ? session.chart.bands : null,
+    bands,
   };
   const psychrometric = drawnPsychrometricOf(session);
   if (psychrometric) {
-    return psychrometricSpec(request, psychrometric);
+    return psychrometricSpec(request, psychrometric, scanned ? charted[0].outputs.psychrometricScan : undefined);
   }
   const dynamic = dynamicChartOf(session.model);
   return dynamic

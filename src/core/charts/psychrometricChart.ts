@@ -1,9 +1,11 @@
-import { psy_ta_rh } from "jsthermalcomfort";
+import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
+  dynamicChartOf,
+  isPolygonsChart,
   requireAxisRange,
   takesRelativeAirSpeed,
   type DeclaredPsychrometricChart,
@@ -11,14 +13,15 @@ import {
   type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { resultNumber } from "$lib/core/modelRun";
+import { resultNumber, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { requireValue, withEntryModes } from "$lib/core/slot";
+import { requireValue, withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { Annotation, ChartSpec, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
+import { GRID, type ScannedField } from "./dynamicChart";
+import { axisFor, bandLabels, bandsFor, labelFor, markerFor, readoutLine, samples, zoneFor } from "./specParts";
 
 const q = quantities;
 
@@ -34,10 +37,83 @@ const ISOLINE_SAMPLES = 121;
 const ZONE_RH_STEP = 5;
 
 /**
- * The psychrometric chart: relative-humidity isolines, and for every slot of
- * the request the declaration's Comfort zones traced by
- * `pmv_psychrometric_zone` at that slot's own values and the slot's current
- * state (ADR-0002 decision 50).
+ * What a psychrometric scan is drawn in: the model, the output its Band list
+ * cuts, the entry modes, whose temperature mode puts its temperature on x, and
+ * the atmospheric pressure. A slot's scan is a function of this and the slot
+ * alone, as a dynamic chart's is of its `ScanFrame`.
+ */
+export interface PsychrometricScanFrame {
+  readonly model: RegisteredModel;
+  readonly output: Quantity;
+  readonly entryModes: ValueEntryModes;
+  readonly atmosphericPressure: number;
+}
+
+/**
+ * The frame `model`'s psychrometric chart is scanned in. The output is its
+ * scanned dynamic chart's, the one its Band list is a copy of the classifier
+ * of (ADR-0002 decision 59), so a model with a Band list always has one; a
+ * model without throws, naming it.
+ */
+export function psychrometricScanFrameFor(
+  model: RegisteredModel,
+  entryModes: ValueEntryModes,
+  atmosphericPressure: number,
+): PsychrometricScanFrame {
+  const dynamic = dynamicChartOf(model);
+  if (!dynamic || isPolygonsChart(dynamic)) {
+    throw new Error(`${model.info.label} scans no output, so its psychrometric chart has no Band list to paint`);
+  }
+  return { model, output: dynamic.output, entryModes, atmosphericPressure };
+}
+
+/**
+ * `slot`'s psychrometric scan in `frame`: the model's own number for the
+ * frame's output at every cell of a `GRID × GRID` field, `[yIndex][xIndex]`,
+ * over the temperature axis — `tdb`, or `operative_tmp` under operative entry
+ * — and the humidity ratio, both across the ranges the chart draws them over.
+ * A cell is the slot, converted into the frame's entry modes, with that
+ * temperature entered and the relative humidity the library's `hr_to_rh`
+ * gives for its humidity ratio at that temperature and the frame's pressure;
+ * a cell above saturation, `rh` > 100, is air that cannot exist and has no
+ * number (`NaN`), so it is left unpainted (ADR-0002 decision 58).
+ */
+export function psychrometricField(frame: PsychrometricScanFrame, slot: Slot): ScannedField {
+  const { model, output, entryModes, atmosphericPressure } = frame;
+  const axis = entryModes.temperature.mode.axis;
+  const converted = withEntryModes(slot, entryModes, model);
+  const temperatures = samples(requireAxisRange(model, axis), GRID);
+  const humidityRatios = samples(drawnHumidityRatioRange(requireAxisRange(model, q.hr), atmosphericPressure), GRID);
+  return humidityRatios.map((hr) =>
+    temperatures.map((temperature) => {
+      const rh = hr_to_rh(hr, temperature, atmosphericPressure);
+      if (rh > 100) {
+        return Number.NaN;
+      }
+      const cell = withEnteredValues(converted, new Map([
+        [axis, temperature],
+        [q.rh, rh],
+      ]));
+      return resultNumber(runOn(cell, model, atmosphericPressure), output);
+    }),
+  );
+}
+
+/**
+ * The psychrometric chart: relative-humidity isolines, the marker of every
+ * slot of the request, and what the request paints (ADR-0002 decision 58).
+ *
+ * Given a Band list ({@link ChartRequest.bands}), the first slot's
+ * {@link psychrometricField} cut by the list, as the dynamic chart cuts its
+ * own: each coloured band over its interval of the number, under the
+ * isolines, and a hover grid reading the temperature, the humidity ratio,
+ * that slot's number and the band the library's `classifyFromBins` puts it
+ * in on the list. `scan` is that slot's field, handed over by a caller that
+ * keeps it; without it the slot is scanned here. No Comfort zone is drawn.
+ *
+ * Given none, for every slot of the request the declaration's Comfort zones
+ * traced by `pmv_psychrometric_zone` at that slot's own values and the slot's
+ * current state (ADR-0002 decision 50), and nothing reads the pointer.
  *
  * A slot's zones are drawn largest first, so each inner one sits on top, in
  * the slot's hue with the opacity rising inwards. Never the thermal-sensation
@@ -56,8 +132,12 @@ const ZONE_RH_STEP = 5;
  * atmospheric pressure, and the humidity-ratio axis reaches as far as
  * {@link drawnHumidityRatioRange} says (ADR-0002 decision 49).
  */
-export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
-  const { model, unitSystem, atmosphericPressure } = request;
+export function psychrometricSpec(
+  request: ChartRequest,
+  chart: DeclaredPsychrometricChart,
+  scan?: ScannedField,
+): ChartSpec {
+  const { model, unitSystem, atmosphericPressure, bands } = request;
   const { mode } = request.entryModes.temperature;
   const operative = mode === temperatureMode.operative;
   const axisQuantity = mode.axis;
@@ -67,11 +147,47 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   const xRange = requireAxisRange(model, axisQuantity);
   const hrRange = drawnHumidityRatioRange(requireAxisRange(model, q.hr), atmosphericPressure);
   const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
-  const largestFirst = [...chart.zones].sort((a, b) => b.limit - a.limit);
+  // A Band list paints no Comfort zone (ADR-0002 decision 58).
+  const largestFirst = bands ? [] : [...chart.zones].sort((a, b) => b.limit - a.limit);
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
   const annotations: Annotation[] = [];
+  /** The Band list's legend entries, after the isolines' as the zones' are. */
+  const bandLegend: LegendEntry[] = [];
+  // The bands below the isolines, so the lines read across the paint; the
+  // hover grid after them, as the chart reads nothing else.
+  let hoverGrid: Trace | undefined;
+
+  if (bands) {
+    const first = request.slots[0];
+    const frame = psychrometricScanFrameFor(model, request.entryModes, atmosphericPressure);
+    const field = scan ?? psychrometricField(frame, first.slot);
+    const outputUnit = displayUnitFor(frame.output, unitSystem);
+    const xValues = samples(xRange, GRID);
+    const yValues = samples(hrRange, GRID);
+    const displayedAxes = { x: xValues.map((value) => xUnit.fromSi(value)), y: yValues.map((value) => hrUnit.fromSi(value)) };
+    const z = field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value)));
+    const painted = bandsFor(bands, { ...displayedAxes, z });
+    traces.push(painted.trace);
+    bandLegend.push(...painted.legendEntries);
+    hoverGrid = {
+      kind: "hoverGrid",
+      hover: "field",
+      ...displayedAxes,
+      hoverText: yValues.map((hr, yIndex) =>
+        xValues.map((temperature, xIndex) => {
+          const value = field[yIndex][xIndex];
+          return [
+            readoutLine(axisQuantity, xUnit, temperature),
+            readoutLine(q.hr, hrUnit, hr),
+            readoutLine(frame.output, outputUnit, value),
+            ...bandLabels(value, bands),
+          ];
+        }),
+      ),
+    };
+  }
 
   const temperatures = samples(xRange, ISOLINE_SAMPLES);
   for (let rh = ISOLINE_STEP; rh <= 100; rh += ISOLINE_STEP) {
@@ -103,7 +219,10 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
       text: rhText,
     });
   }
-  legend.push({ label: q.rh.label, swatch: "line", color: chartInk.isoline });
+  legend.push({ label: q.rh.label, swatch: "line", color: chartInk.isoline }, ...bandLegend);
+  if (hoverGrid) {
+    traces.push(hoverGrid);
+  }
 
   // Every slot's zones below every marker, so no slot's zone covers another's marker.
   const markers: Trace[] = [];
