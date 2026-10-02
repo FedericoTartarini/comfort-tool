@@ -63,8 +63,8 @@ Read the diff once against each of these. They are judgement calls; none of them
 
 - Is a type annotation adding meaning, or restating what inference already knows? *(Google TS Style Guide: rely on
   inference; annotate where it aids readability.)*
-- Do mapped and conditional types still read plainly? `Omit<RegisteredModel, "run">` in `defineModel` and the two
-  `Extract<DeclaredChart, …>` aliases are the current ones. *("A little bit of repetition or verbosity is often much
+- Do mapped and conditional types still read plainly? `Omit<RegisteredModel, "run">` in `defineModel`, the three
+  `Extract<DeclaredChart, …>` aliases and `RegisteredModel`'s union over the scan are the current ones. *("A little bit of repetition or verbosity is often much
   cheaper than the long term cost of complex type expressions.")*
 - Callbacks whose return value is ignored are typed `void`, not `any`.
 
@@ -84,7 +84,7 @@ Read the diff once against each of these. They are judgement calls; none of them
 - Does `src/` still match the tree in ADR §5, and does each file hold one concept?
 - Is a file outside the 100–400 line band, and if so does it earn it?
 - Was anything abstracted for a second caller that does not exist? The one sanctioned exception is recorded in the plan:
-  the `zones` source added in Phase 3.5 for Phase 4's Adaptive.
+  the `comfortZones` source added in Phase 3.5 for Phase 4's Adaptive.
 
 ## Not used as criteria
 

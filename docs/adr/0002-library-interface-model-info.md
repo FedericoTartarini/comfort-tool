@@ -1644,6 +1644,10 @@ notes under decisions 51 and 53:
     declares nothing but its type; a scanned dynamic chart its `axes`; a polygons chart `axes` and its
     `comfortZones` function, renamed from `zones` because Adaptive's acceptability zones are Comfort zones drawn as
     polygons. A registry-wide test holds that a model declaring a psychrometric chart has `scan.comfortZones`.
+    *(Revised 2026-10-02 with the user before ticket 01 landed: `bands` → `classifier` and `zones` → `comfortZones`,
+    on the scan and on the polygons chart; naming the fields for the page, `exploreBands` and `standardZones`, was
+    rejected as tying the declaration to the page decision 58 decides, and `complianceZones` as a word CONTEXT.md
+    avoids.)*
     `DeclaredScannedChart` goes; `core/bands.ts`, the session's classifier and the Standard page's zones read
     `model.scan`. (2) One `ScanFrame` — the model, the output, the two swept quantities each with its range, the
     entry modes and the pressure — one `scannedField`, and one painting of a field, Bands given a list and else the
