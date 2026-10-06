@@ -79,6 +79,20 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > checklist's human half and `CONTEXT.md` found is in ticket 09's Comments, none changed but `CONTEXT.md`'s
 > Temporary library. **Next: a grilling of three chart changes.**
 
+> **2026-10-06 — position, three chart types**: the three chart changes the user brought on 2026-10-02 landed on
+> `rewrite/v1` as `.scratch/three-chart-types/` tickets 01 to 05 (ADR-0002 decision 62): 01 `fd36196` the adaptive
+> chart is its own chart type with its own builder, and a model without a dynamic chart holds no axes; 02 `ede7891`
+> Adaptive's declaration hands over each Comfort zone's two limit lines, both stroked and the closing sides not, and
+> `04d48f6` its readout names a zone on its outline; 03 `6f61623` a Comfort zone and a Band are a fill and a line,
+> made by one constructor; 04 `4f97433` the chart draws the spec's traces in their order across Plotly's trace types,
+> and `c1186a9` every chart is drawn in one order, the isolines cut only by an outline; 05 `17f3380` a Band is
+> outlined at its Edge, painted or not. A zone drawn as two contours costs about 2 to 3 ms of redraw, and Explore's
+> seven Edge lines about 3 to 6 ms (Chrome 154).
+> Ticket 06 read the documents against the code: decisions 27, 37, 38, 61 and 62 carry notes of 2026-10-06, ADR-0001
+> §4.4 and §5 carry markers, and the checklist's sanctioned exception names `limits`. The four scripts are green at
+> 781 tests. What the checklist's human half and `CONTEXT.md` found is in ticket 06's Comments, none changed.
+> **Next: Phase 5 item 4, the share link.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /

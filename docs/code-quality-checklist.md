@@ -84,7 +84,7 @@ Read the diff once against each of these. They are judgement calls; none of them
 - Does `src/` still match the tree in ADR §5, and does each file hold one concept?
 - Is a file outside the 100–400 line band, and if so does it earn it?
 - Was anything abstracted for a second caller that does not exist? The one sanctioned exception is recorded in the plan:
-  the `comfortZones` source added in Phase 3.5 for Phase 4's Adaptive.
+  the `zones` source added in Phase 3.5 for Phase 4's Adaptive, the adaptive chart's `limits` since ADR-0002 decision 62.
 
 ## Not used as criteria
 
