@@ -10,21 +10,25 @@
  * set. The registry is the caller's; the codec reads declarations and the
  * entry-group table, and names no model and no entry group.
  *
- * A text is taken whole or not at all (rule 6): there is no partial answer
- * and no default for a field. An entered value outside its bound and a
- * pressure out of range are not refused; the gate marks them. Until the app is
- * deployed the format may change, and a text an earlier build wrote may be
- * refused (rule 9).
+ * A text is refused whole where it cannot be read (rule 6 as amended
+ * 2026-10-06): no partial answer. Where it can, a key the app does not read is
+ * dropped, and a value, option or entry group it lacks starts at its default,
+ * as a switch seeds a slot; the answer says whether either happened, so that
+ * a model changed after deployment does not void the texts written before it.
+ * An entered value outside its bound and a pressure out of range are taken as
+ * written; the gate marks them. Until the app is deployed the format may
+ * change, and a text an earlier build wrote may be refused (rule 9).
  */
 import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { dynamicChartOf, hasHumidityGroup, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { dynamicChartOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import {
   defaultEntryModes,
   isHumidityQuantity,
+  seedDeclaredDefaults,
   underEntryModes,
   valueEntryGroups,
   type Slot,
@@ -40,12 +44,43 @@ const entryModeFields = Object.keys(defaultEntryModes) as (keyof ValueEntryModes
 
 /** `session` written out as a text, its options grouped under the model in `models` that declares each. */
 export function toText(session: WrittenSession, models: readonly RegisteredModel[]): string {
+  return PREFIX + toBase64Url(JSON.stringify(sessionJson(session, models)));
+}
+
+/** What a text reads as. */
+export interface DecodedSession {
+  readonly session: WrittenSession;
+  /** Whether the session is what the text wrote: `false` where a key was dropped or something started at its default. */
+  readonly exact: boolean;
+}
+
+/**
+ * The written session `text` holds, its names looked up in `models`, or
+ * `undefined` for a text refused: one that does not parse, lacks a member
+ * rule 1 requires, or names a model, unit system, entry mode, chart type or
+ * axis the app does not have.
+ */
+export function toWrittenSession(text: string, models: readonly RegisteredModel[]): DecodedSession | undefined {
+  try {
+    const json = jsonOf(text);
+    const session = sessionFrom(json, models);
+    // Anything dropped or started at a default makes the session written out again differ from the text.
+    return { session, exact: canonicalOf(sessionJson(session, models)) === canonicalOf(json) };
+  } catch (error) {
+    if (error instanceof Refused) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function sessionJson(session: WrittenSession, models: readonly RegisteredModel[]) {
   const [first] = session.slots;
   const entryModes: Record<string, string> = Object.fromEntries(entryModeFields.map((field) => [field, first[field].mode.id]));
   if (first.humidity) {
     entryModes.humidity = first.humidity.mode.id;
   }
-  const json = {
+  return {
     model: session.model.info.name,
     unitSystem: session.unitSystem.id,
     [quantities.p_atm.key]: session.atmosphericPressure,
@@ -55,23 +90,6 @@ export function toText(session: WrittenSession, models: readonly RegisteredModel
     slots: session.slots.map((slot) => slot && slotJson(slot, models)),
     charts: Object.fromEntries([...session.charts].map(([model, settings]) => [model.info.name, chartJson(settings)])),
   };
-  return PREFIX + toBase64Url(JSON.stringify(json));
-}
-
-/**
- * The written session `text` holds, its names looked up in `models`, or
- * `undefined` for a text refused: one that is not rule 1's whole, or that
- * names anything the app does not have.
- */
-export function toWrittenSession(text: string, models: readonly RegisteredModel[]): WrittenSession | undefined {
-  try {
-    return sessionFrom(jsonOf(text), models);
-  } catch (error) {
-    if (error instanceof Refused) {
-      return undefined;
-    }
-    throw error;
-  }
 }
 
 function slotJson(slot: Slot, models: readonly RegisteredModel[]) {
@@ -110,6 +128,15 @@ function toBase64Url(text: string): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** `json` as one string whatever the order of each object's members, so that two JSON values compare. */
+function canonicalOf(json: unknown): string {
+  return JSON.stringify(json, (key, value: unknown) =>
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : value,
+  );
+}
+
 /** Why a text is refused: thrown anywhere below and caught in {@link toWrittenSession} alone. */
 class Refused extends Error {}
 
@@ -138,7 +165,7 @@ function jsonOf(text: string): unknown {
 
 function sessionFrom(json: unknown, models: readonly RegisteredModel[]): WrittenSession {
   const written = membersOf(json, ["model", "unitSystem", quantities.p_atm.key, "compare", "enabled", "entryModes", "slots", "charts"]);
-  const model = modelNamed(written.model, models);
+  const model = modelNamed(written.model, models) ?? refuse();
   const modes = entryModesFrom(written.entryModes);
   const [second, third] = arrayOf(written.enabled, 2).map(booleanOf);
   const slots = arrayOf(written.slots, 3).map((slot) => (slot === null ? null : slotFrom(slot, modes, model, models)));
@@ -148,15 +175,17 @@ function sessionFrom(json: unknown, models: readonly RegisteredModel[]): Written
   }
   return {
     model,
-    unitSystem: memberWithId(Object.values(unitSystem), (system) => system.id, written.unitSystem),
+    unitSystem: memberWithId(Object.values(unitSystem), (system) => system.id, written.unitSystem) ?? refuse(),
     atmosphericPressure: finiteNumberOf(written[quantities.p_atm.key]),
     compare: booleanOf(written.compare),
     enabled: [second, third],
     slots: [first, slots[1], slots[2]],
-    charts: new Map(Object.entries(recordOf(written.charts)).map(([name, settings]) => {
-      const charted = modelNamed(name, models);
-      return [charted, chartSettingsFrom(settings, charted, modes)];
-    })),
+    charts: new Map(
+      Object.entries(recordOf(written.charts)).flatMap(([name, settings]) => {
+        const charted = modelNamed(name, models);
+        return charted ? [[charted, chartSettingsFrom(settings, charted, modes)] as const] : [];
+      }),
+    ),
   };
 }
 
@@ -166,22 +195,28 @@ interface WrittenEntryModes {
   readonly humidity: HumidityMode | undefined;
 }
 
+/** The entry modes `json` writes, an entry group it lacks in its default mode. */
 function entryModesFrom(json: unknown): WrittenEntryModes {
-  const written = membersOf(json, entryModeFields, ["humidity"]);
+  const written = recordOf(json);
   const values = { ...defaultEntryModes };
   for (const field of entryModeFields) {
-    const group = valueEntryGroups.find((candidate) => candidate.modes.includes(defaultEntryModes[field].mode));
-    const mode: ValueEntryMode = memberWithId(group?.modes ?? [], (candidate) => candidate.id, written[field]);
+    const fieldDefault = defaultEntryModes[field].mode;
+    const group = valueEntryGroups.find((candidate) => candidate.modes.includes(fieldDefault));
+    const mode: ValueEntryMode =
+      written[field] === undefined ? fieldDefault : (memberWithId(group?.modes ?? [], (candidate) => candidate.id, written[field]) ?? refuse());
     values[field] = { mode };
   }
-  const humidity = written.humidity === undefined ? undefined : memberWithId(Object.values(humidityMode), (mode) => mode.id, written.humidity);
+  const humidity =
+    written.humidity === undefined ? undefined : (memberWithId(Object.values(humidityMode), (mode) => mode.id, written.humidity) ?? refuse());
   return { values, humidity };
 }
 
 /**
- * A slot in `modes`, its values those some model in `models` enters under
- * them, and every quantity and option `model` takes among them; its humidity
- * entry exactly where the text writes a humidity mode.
+ * A slot in `modes`: the values some model in `models` enters under them and
+ * the options a model in `models` declares, each other key dropped, and what
+ * `model` takes that the slot lacks at its default, seeded as a switch seeds
+ * it. A slot without a value in the humidity mode the text writes is
+ * refused, since a default there would be in another mode than slot 1's.
  */
 function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredModel, models: readonly RegisteredModel[]): Slot {
   const written = membersOf(json, ["values", "options"]);
@@ -192,31 +227,31 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
     if (key === modes.humidity?.quantity.key) {
       humidity = { mode: modes.humidity, value: finiteNumberOf(value) };
     } else {
-      values.set(memberWithId(enterable, (quantity) => quantity.key, key), finiteNumberOf(value));
+      const quantity = memberWithId(enterable, (candidate) => candidate.key, key);
+      if (quantity) {
+        values.set(quantity, finiteNumberOf(value));
+      }
     }
   }
   const options = new Map<OptionSpec, boolean>();
   for (const [name, declared] of Object.entries(recordOf(written.options))) {
     const owner = modelNamed(name, models);
     for (const [key, value] of Object.entries(recordOf(declared))) {
-      options.set(memberWithId(owner.options, (option) => option.key, key), booleanOf(value));
+      const option = owner && memberWithId(owner.options, (candidate) => candidate.key, key);
+      if (option) {
+        options.set(option, booleanOf(value));
+      }
     }
   }
-  const lacksHumidity = modes.humidity ? humidity === undefined : hasHumidityGroup(model);
-  if (
-    lacksHumidity ||
-    heldQuantities(model, modes.values).some((quantity) => !values.has(quantity)) ||
-    model.options.some((option) => !options.has(option))
-  ) {
+  if (modes.humidity && humidity === undefined) {
     refuse();
   }
-  return { values, humidity, ...modes.values, options };
+  return seedDeclaredDefaults({ values, humidity, ...modes.values, options }, model);
 }
 
 /**
  * The quantities a slot in `modes` holds `model`'s inputs under among its
- * values, each sought as a switch seeds it (`seedDeclaredDefaults`): humidity
- * is held apart from them.
+ * values, each sought as a switch seeds it: humidity is held apart from them.
  */
 function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
   return model.inputs.map(({ quantity }) => underEntryModes(quantity, modes)).filter((quantity) => !isHumidityQuantity(quantity));
@@ -230,11 +265,12 @@ function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantit
 function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: WrittenEntryModes): ChartSettings {
   const dynamic = dynamicChartOf(model);
   const written = membersOf(json, ["type", ...(dynamic ? ["axes"] : []), ...(model.scan ? ["bands"] : [])]);
-  const type = memberWithId(
-    model.charts.map((chart) => chart.type),
-    (candidate) => candidate.id,
-    written.type,
-  );
+  const type =
+    memberWithId(
+      model.charts.map((chart) => chart.type),
+      (candidate) => candidate.id,
+      written.type,
+    ) ?? refuse();
   return {
     type,
     axes: dynamic ? axesFrom(written.axes, model, modes.values) : null,
@@ -249,7 +285,7 @@ function axesFrom(json: unknown, model: RegisteredModel, modes: ValueEntryModes)
   // under the modes (`resolvedAxes`). A model offers a quantity of a group it
   // lacks as it is, whatever the modes: Heat Index's `tdb` under operative entry.
   const axis = (key: unknown) => {
-    const quantity = memberWithId(Object.values(quantities), (candidate) => candidate.key, key);
+    const quantity = memberWithId(Object.values(quantities), (candidate) => candidate.key, key) ?? refuse();
     return offered.includes(quantity) || offered.includes(underEntryModes(quantity, modes)) ? quantity : refuse();
   };
   return { x: axis(written.x), y: axis(written.y) };
@@ -265,25 +301,24 @@ function bandsFrom(json: unknown, classifier: ClassifierBins): ChartSettings["ba
   return list ?? refuse();
 }
 
-function modelNamed(name: unknown, models: readonly RegisteredModel[]): RegisteredModel {
+function modelNamed(name: unknown, models: readonly RegisteredModel[]): RegisteredModel | undefined {
   return memberWithId(models, (model) => model.info.name, name);
 }
 
-/** The member of `items` whose id is `id`. */
-function memberWithId<T>(items: Iterable<T>, idOf: (item: T) => string, id: unknown): T {
+/** The member of `items` whose id is `id`, if any. */
+function memberWithId<T>(items: Iterable<T>, idOf: (item: T) => string, id: unknown): T | undefined {
   for (const item of items) {
     if (idOf(item) === id) {
       return item;
     }
   }
-  return refuse();
+  return undefined;
 }
 
-/** A JSON object's members by name: no other, every `required` one, any `optional` one. */
-function membersOf<K extends string>(json: unknown, required: readonly K[], optional: readonly K[] = []): Record<K, unknown> {
+/** A JSON object's members by name, every one of `required` among them; any other is not read. */
+function membersOf<K extends string>(json: unknown, required: readonly K[]): Record<K, unknown> {
   const record = recordOf(json);
-  const names: readonly string[] = [...required, ...optional];
-  if (Object.keys(record).some((name) => !names.includes(name)) || required.some((name) => !(name in record))) {
+  if (required.some((name) => !(name in record))) {
     refuse();
   }
   return record as Record<K, unknown>;
