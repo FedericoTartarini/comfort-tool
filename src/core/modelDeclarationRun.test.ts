@@ -51,7 +51,7 @@ function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quant
 const isoWithAdaptiveChart = {
   ...pmvPpdIso,
   scan: undefined,
-  charts: [{ type: chartType.adaptive, axes: { x: quantities.tdb, y: quantities.v }, comfortZones: () => [] }],
+  charts: [{ type: chartType.adaptive, axes: { x: quantities.tdb, y: quantities.v }, limits: () => [] }],
 } satisfies RegisteredModel;
 
 /** The axes of `model`'s chart that has some: its dynamic chart's, else its adaptive chart's. */

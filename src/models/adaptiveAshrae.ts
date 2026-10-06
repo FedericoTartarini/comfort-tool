@@ -1,18 +1,19 @@
 import { adaptive_ashrae, ADAPTIVE_ASHRAE_INFO, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
-import type { RegisteredModel, ZonePolygon } from "$lib/core/modelDeclaration";
+import type { RegisteredModel, ZoneLimits } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
-import { adaptive_ashrae_zone, type AdaptiveAshraeBand } from "$lib/temporary-library/adaptive_ashrae_zone";
+import { adaptive_ashrae_zone, type AdaptiveAshraeBand, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 
 const q = quantities;
 
-/** One band of the temporary library's SI geometry, split onto the chart's two axes. */
-function toZonePolygon(band: AdaptiveAshraeBand, label: string): ZonePolygon {
-  return {
-    label,
-    x: band.polygon.map((point) => point.t_running_mean),
-    y: band.polygon.map((point) => point.operative_tmp),
-  };
+/** A point of the temporary library's SI geometry on the chart's two axes. */
+function toAxes(point: AdaptivePoint): { x: number; y: number } {
+  return { x: point.t_running_mean, y: point.operative_tmp };
+}
+
+/** One band of the temporary library's SI geometry as its two limit lines on the chart's axes. */
+function toZoneLimits(band: AdaptiveAshraeBand, label: string): ZoneLimits {
+  return { label, lower: band.lower_limit.map(toAxes), upper: band.upper_limit.map(toAxes) };
 }
 
 export const adaptiveAshrae = {
@@ -78,11 +79,11 @@ export const adaptiveAshrae = {
     {
       type: chartType.adaptive,
       axes: { x: q.t_running_mean, y: q.operative_tmp },
-      comfortZones: ({ values, xRange }) => {
+      limits: ({ values, xRange }) => {
         const zone = adaptive_ashrae_zone({ v: values.v, t_running_mean_range: [xRange.min, xRange.max] });
         return [
-          toZonePolygon(zone.acceptability_80, q.acceptability_80.label),
-          toZonePolygon(zone.acceptability_90, q.acceptability_90.label),
+          toZoneLimits(zone.acceptability_80, q.acceptability_80.label),
+          toZoneLimits(zone.acceptability_90, q.acceptability_90.label),
         ];
       },
     },

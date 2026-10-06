@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, t_o } from "jsthermalcomfort";
+import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { valuesReader } from "$lib/core/libraryInputs";
@@ -9,9 +10,10 @@ import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { adaptive_ashrae_zone, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 import { adaptiveSpec } from "./adaptiveChart";
-import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
-import { chartRequestFor } from "./chartTestRequests";
+import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
+import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
@@ -44,9 +46,14 @@ function hoverGridOf(spec: ChartSpec): HoverGridTrace {
   return trace;
 }
 
-/** The adaptive chart's zones: its filled paths. */
-function zoneTraces(spec: ChartSpec): PathTrace[] {
+/** The adaptive chart's zone fills: its filled paths. */
+function fillsOf(spec: ChartSpec): PathTrace[] {
   return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+}
+
+/** Its limit lines: its stroked paths, which fill nothing. */
+function linesOf(spec: ChartSpec): PathTrace[] {
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined);
 }
 
 function contourZonesOf(spec: ChartSpec): ContourZoneTrace[] {
@@ -61,7 +68,7 @@ function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
   return { rgb: match[1], alpha: Number(match[2]) };
 }
 
-describe("a declared zones source", () => {
+describe("a declared limits source", () => {
   // Adaptive is the real consumer; this stands in for it on PMV (ISO 7730)'s
   // inputs and ranges, and proves the source is handed the resolved SI
   // inputs, read through the checked reader, and the drawn x range, and that
@@ -69,13 +76,13 @@ describe("a declared zones source", () => {
   const zoned: DeclaredAdaptiveChart = {
     type: chartType.adaptive,
     axes: { x: q.operative_tmp, y: q.v },
-    comfortZones: ({ values, xRange }) => [
+    limits: ({ values, xRange }) => [
       {
         label: "80% acceptability",
-        x: [xRange.min, xRange.max, xRange.max],
-        y: [0, 0, values.vr],
+        lower: [{ x: xRange.min, y: 0 }, { x: xRange.max, y: 0 }],
+        upper: [{ x: xRange.min, y: values.vr }, { x: xRange.max, y: values.vr }],
       },
-      { label: "90% acceptability", x: [20, 30, 30], y: [0, 0, 1] },
+      { label: "90% acceptability", lower: [{ x: 20, y: 0 }, { x: 30, y: 0 }], upper: [{ x: 20, y: 1 }, { x: 30, y: 1 }] },
     ],
   };
   const model = isoDrawing(zoned);
@@ -87,18 +94,22 @@ describe("a declared zones source", () => {
     [q.tr, 30],
   ]));
 
-  it("draws the exact polygons, with no grid scan", () => {
+  it("fills between the lines it is handed and strokes them, with no grid scan", () => {
     const spec = adaptiveSpec(request);
     expect(spec.traces.find((trace) => trace.kind === "bands" || trace.kind === "contourZone")).toBeUndefined();
-    const polygon = spec.traces.find((trace): trace is PathTrace => trace.kind === "path");
-    expect(polygon?.label).toBe("80% acceptability");
+    const [fill] = fillsOf(spec);
+    const [upper, lower] = linesOf(spec);
+    expect(fill?.label).toBe("80% acceptability");
     const [min, max] = declaredRangeOf(q.operative_tmp);
-    expect(polygon?.x).toEqual([min, max, max]);
+    expect(fill?.x).toEqual([min, max, max, min]);
+    expect(upper?.x).toEqual([min, max]);
+    expect(lower?.y).toEqual([0, 0]);
     // The slot's entered v = 0.1 at met = 1.1 reaches the source as vr.
-    expect(polygon?.y[2]).toBeCloseTo(0.13, 12);
+    expect(fill?.y[0]).toBeCloseTo(0.13, 12);
+    expect(upper?.y[0]).toBeCloseTo(0.13, 2);
   });
 
-  it("carries every polygon into the one legend, ahead of the slot marker", () => {
+  it("carries every zone into the one legend, ahead of the slot marker", () => {
     const spec = adaptiveSpec(request);
     expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "90% acceptability", "Input 1"]);
   });
@@ -132,13 +143,16 @@ describe("a declared zones source", () => {
     expect(marker?.y).toBe(v);
   });
 
-  it("converts the polygons and the marker to the displayed unit", () => {
+  it("converts the fill, the lines and the marker to the displayed unit", () => {
     const spec = adaptiveSpec(chartRequestFor(model, apart, unitSystem.ip));
-    const polygon = spec.traces.find((trace): trace is PathTrace => trace.kind === "path");
-    expect(polygon?.x[0]).toBeCloseTo(50, 10);
-    expect(polygon?.x[1]).toBeCloseTo(104, 10);
+    const [fill] = fillsOf(spec);
+    const [upper] = linesOf(spec);
+    expect(fill?.x[0]).toBeCloseTo(50, 10);
+    expect(fill?.x[1]).toBeCloseTo(104, 10);
+    expect(upper?.x[1]).toBeCloseTo(104, 10);
     // 0.13 m/s of vr is 25.6 fpm.
-    expect(polygon?.y[2]).toBeCloseTo(25.59, 2);
+    expect(fill?.y[0]).toBeCloseTo(25.59, 2);
+    expect(upper?.y[0]).toBeCloseTo(25.59, 2);
     const marker = markerOf(spec);
     expect(marker?.x).toBeCloseTo(80.6, 10);
     expect(marker?.y).toBeCloseTo(19.69, 2);
@@ -148,7 +162,7 @@ describe("a declared zones source", () => {
   it("throws, naming it, when the source reads a quantity the slot does not hold", () => {
     const readsMissing = isoDrawing({
       ...zoned,
-      comfortZones: ({ values }) => [{ label: "Unreached", x: [values.t_running_mean], y: [0] }],
+      limits: ({ values }) => [{ label: "Unreached", lower: [{ x: values.t_running_mean, y: 0 }], upper: [] }],
     });
     expect(() => adaptiveSpec(chartRequestFor(readsMissing, slot))).toThrow(q.t_running_mean.label);
   });
@@ -159,6 +173,9 @@ describe("a declared zones source", () => {
 });
 
 const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae));
+
+/** Adaptive's own air speed, at which `adaptiveRequest` draws. */
+const { v: startingAirSpeed } = valuesReader(startingSlot(adaptiveAshrae).values);
 
 describe("Adaptive's running mean axis", () => {
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -189,32 +206,120 @@ describe("Adaptive's running mean axis", () => {
   });
 });
 
+/** Adaptive at its defaults but `v`, slot 1. */
+function adaptiveAt(airSpeed: number): Slot {
+  return enteredSlotFor(adaptiveAshrae, { v: airSpeed });
+}
+
+/** The temporary library's two bands for Adaptive's chart at `airSpeed`, over the drawn running means, 80 % first. */
+function libraryBandsAt(airSpeed: number) {
+  const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
+  const zone = adaptive_ashrae_zone({ v: airSpeed, t_running_mean_range: [min, max] });
+  return [zone.acceptability_80, zone.acceptability_90];
+}
+
+/** A limit of the temporary library's as a path's two coordinate lists. */
+function pathOf(points: readonly AdaptivePoint[]): { x: number[]; y: number[] } {
+  return { x: points.map((point) => point.t_running_mean), y: points.map((point) => point.operative_tmp) };
+}
+
+/** Whether `path` has a segment with both ends at `x`: a side running down it. */
+function runsDownAt(path: PathTrace, x: number): boolean {
+  return path.x.some((value, index) => index > 0 && value === x && path.x[index - 1] === x);
+}
+
+/** Whether `path` has two consecutive vertices at one x: a step. */
+function holdsStep(path: PathTrace): boolean {
+  return path.x.some((value, index) => index > 0 && value === path.x[index - 1]);
+}
+
+/** Which layer of the one drawing order a trace is laid in: a fill, an outline, or its own kind. */
+function layerOf(trace: Trace): string {
+  if (trace.kind === "path") {
+    return trace.fill === undefined ? "outline" : "fill";
+  }
+  return trace.kind;
+}
+
 describe("Adaptive's acceptability zones", () => {
   // Nested Comfort zones on the Standard page, painted as the psychrometric
-  // chart paints its own (ADR-0002 decision 37's note of 2026-09-28).
+  // chart paints its own (ADR-0002 decision 37's note of 2026-09-28), each
+  // a fill between its two limit lines and the two lines stroked (decision 62).
   const spec = adaptiveSpec(adaptiveRequest);
-  const zones = zoneTraces(spec);
+  const fills = fillsOf(spec);
+  const lines = linesOf(spec);
   const psychrometricZones = contourZonesOf(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso))));
+  const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
+
+  it("gives each zone one fill of no stroke, closed from the upper limit out and the lower limit back", () => {
+    expect(fills.map((fill) => ({ label: fill.label, width: fill.width }))).toEqual([
+      { label: q.acceptability_80.label, width: 0 },
+      { label: q.acceptability_90.label, width: 0 },
+    ]);
+    expect(fills.map((fill) => ({ x: fill.x, y: fill.y }))).toEqual(
+      libraryBandsAt(startingAirSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
+    );
+  });
+
+  it("strokes each zone's upper and lower limit as two open paths, the temporary library's own", () => {
+    expect(lines.map((line) => ({ label: line.label, x: line.x, y: line.y }))).toEqual(
+      libraryBandsAt(startingAirSpeed).flatMap((band, index) =>
+        [band.upper_limit, band.lower_limit].map((limit) => ({ label: fills[index]?.label, ...pathOf(limit) })),
+      ),
+    );
+  });
+
+  it.each([0, startingAirSpeed, 0.9])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
+    const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed)));
+    for (const line of linesOf(drawn)) {
+      expect(line.x[0]).toBe(min);
+      expect(line.x[line.x.length - 1]).toBe(max);
+      expect(runsDownAt(line, min) || runsDownAt(line, max)).toBe(false);
+    }
+    for (const fill of fillsOf(drawn)) {
+      expect(runsDownAt(fill, max)).toBe(true);
+    }
+  });
+
+  it("strokes the step in each upper limit at 0.9 m/s, and none in still air", () => {
+    const moving = linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0.9))));
+    const uppers = libraryBandsAt(0.9).map((band) => pathOf(band.upper_limit));
+    expect(moving.filter(holdsStep).map((line) => ({ x: line.x, y: line.y }))).toEqual(uppers);
+    expect(linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0)))).filter(holdsStep)).toEqual([]);
+  });
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
-    expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
-    const fills = zones.map((zone) => rgbaOf(zone.fill));
+    const rgbas = fills.map((fill) => rgbaOf(fill.fill));
     const hue = rgbaOf(psychrometricZones[0]?.fill).rgb;
-    expect(fills.map((fill) => fill.rgb)).toEqual([hue, hue]);
-    expect(fills[0]?.alpha).toBeGreaterThan(0);
-    expect(fills[1]?.alpha).toBeGreaterThan(fills[0]?.alpha ?? Infinity);
+    expect(rgbas.map((fill) => fill.rgb)).toEqual([hue, hue]);
+    expect(rgbas[0]?.alpha).toBeGreaterThan(0);
+    expect(rgbas[1]?.alpha).toBeGreaterThan(rgbas[0]?.alpha ?? Infinity);
     // The innermost zone keeps the fill a lone zone has, on either chart.
-    expect(fills[1]?.alpha).toBeCloseTo(rgbaOf(psychrometricZones[psychrometricZones.length - 1]?.fill).alpha, 12);
+    expect(rgbas[1]?.alpha).toBeCloseTo(rgbaOf(psychrometricZones[psychrometricZones.length - 1]?.fill).alpha, 12);
   });
 
-  it("outlines both in the psychrometric chart's zone line", () => {
+  it("strokes the four limit lines in the psychrometric chart's zone line", () => {
     const line = { color: psychrometricZones[0]?.color, width: psychrometricZones[0]?.width };
-    expect(zones.map((zone) => ({ color: zone.color, width: zone.width }))).toEqual([line, line]);
+    expect(lines.map((path) => ({ color: path.color, width: path.width }))).toEqual([line, line, line, line]);
+    expect(line.width).toBe(chartInk.zoneLineWidth);
   });
 
-  it("gives each a legend swatch in its own fill", () => {
-    const swatches = spec.legend.filter((entry) => zones.some((zone) => zone.label === entry.label));
-    expect(swatches).toEqual(zones.map((zone) => ({ label: zone.label, swatch: "fill", color: zone.fill })));
+  it("gives each zone a legend swatch in its own fill, then the slot", () => {
+    expect(spec.legend).toEqual([
+      ...fills.map((fill) => ({ label: fill.label, swatch: "fill", color: fill.fill })),
+      expect.objectContaining({ label: "Input 1", swatch: "marker" }),
+    ]);
+  });
+
+  it.each([1, 3])("lays every fill, then every outline, then the hover grid, then the markers, for %s slot(s)", (count) => {
+    const slots = [startingSlot(adaptiveAshrae), adaptiveAt(0.9), adaptiveAt(1.2)].slice(0, count);
+    const layers = adaptiveSpec(chartRequestForSlots(adaptiveAshrae, slots)).traces.map(layerOf);
+    expect(layers).toEqual([
+      ...Array(2 * count).fill("fill"),
+      ...Array(4 * count).fill("outline"),
+      "hoverGrid",
+      ...Array(count).fill("point"),
+    ]);
   });
 });
 
@@ -223,9 +328,9 @@ describe("the adaptive chart's hover grid", () => {
   const rectangles = isoDrawing({
     type: chartType.adaptive,
     axes: { x: q.operative_tmp, y: q.v },
-    comfortZones: () => [
-      { label: "Outer", x: [15, 35, 35, 15], y: [0, 0, 1, 1] },
-      { label: "Inner", x: [20, 30, 30, 20], y: [0.2, 0.2, 0.6, 0.6] },
+    limits: () => [
+      { label: "Outer", lower: [{ x: 15, y: 0 }, { x: 35, y: 0 }], upper: [{ x: 15, y: 1 }, { x: 35, y: 1 }] },
+      { label: "Inner", lower: [{ x: 20, y: 0.2 }, { x: 30, y: 0.2 }], upper: [{ x: 20, y: 0.6 }, { x: 30, y: 0.6 }] },
     ],
   });
   const request = chartRequestFor(rectangles, slot);
@@ -251,7 +356,7 @@ describe("the adaptive chart's hover grid", () => {
     expect(grid.hoverText[10][25]).toEqual(["Operative temperature: 77 °F", "Air speed: 78.74 fpm", "Inner"]);
   });
 
-  it("is the only trace that reads the pointer: the polygons and the marker do not", () => {
+  it("is the only trace that reads the pointer: the fills, the lines and the marker do not", () => {
     const spec = adaptiveSpec(request);
     expect(spec.traces.filter((trace) => trace.hover !== "off")).toEqual([hoverGridOf(spec)]);
   });
@@ -260,5 +365,18 @@ describe("the adaptive chart's hover grid", () => {
     const grid = hoverGridOf(adaptiveSpec(adaptiveRequest));
     const named = new Set(grid.hoverText.flat().map((readout) => readout[2]));
     expect(named).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
+  });
+
+  it("names Adaptive's inner zone at a cell level with its unstroked closing side", () => {
+    // Column 0 is the lowest running mean drawn, where the 90 % zone's left
+    // side closes the fill and no line is stroked; the row is the first whose
+    // operative temperature lies between that zone's limits there.
+    const grid = hoverGridOf(adaptiveSpec(adaptiveRequest));
+    const [, inner] = libraryBandsAt(startingAirSpeed);
+    const low = inner?.lower_limit[0]?.operative_tmp ?? NaN;
+    const high = inner?.upper_limit[0]?.operative_tmp ?? NaN;
+    const row = grid.y.findIndex((y) => y > low && y < high);
+    expect(row).toBeGreaterThanOrEqual(0);
+    expect(grid.hoverText[row]?.[0]?.[2]).toBe(q.acceptability_90.label);
   });
 });

@@ -72,16 +72,19 @@ export interface ChartAxes {
 }
 
 /**
- * One exact Comfort zone a model supplies instead of the scanned grid, in SI.
- * `x` and `y` run along the adaptive chart's own axes and close the polygon.
+ * One exact Comfort zone a model supplies instead of the scanned grid, as
+ * the model's geometry gives it: its two limit lines, open, not a polygon
+ * (ADR-0002 decision 62). The builder closes the region between them.
  */
-export interface ZonePolygon {
+export interface ZoneLimits {
   readonly label: string;
-  readonly x: readonly number[];
-  readonly y: readonly number[];
+  /** The lower limit line, in SI along the chart's axes, in ascending x. */
+  readonly lower: readonly { readonly x: number; readonly y: number }[];
+  /** The upper limit line, likewise. */
+  readonly upper: readonly { readonly x: number; readonly y: number }[];
 }
 
-/** What a `comfortZones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
+/** What a `limits` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
 export interface ZoneRequest {
   readonly values: Values;
   readonly xRange: Range;
@@ -154,7 +157,7 @@ export interface DeclaredScan {
  * the compiler, and an object literal checked against a union has only the
  * keys no member knows reported as excess. So each member marks the others'
  * fields `never`: without that the compiler would take a psychrometric chart
- * with axes, or a dynamic chart with an invented `comfortZones`.
+ * with axes, or a dynamic chart with an invented `limits`.
  */
 export type DeclaredChart =
   | {
@@ -165,13 +168,13 @@ export type DeclaredChart =
        */
       readonly type: typeof chartType.psychrometric;
       readonly axes?: never;
-      readonly comfortZones?: never;
+      readonly limits?: never;
     }
   | {
       readonly type: typeof chartType.dynamic;
       /** Starting axes; the user may pick any entered quantity that has an axis range ({@link axisRangeFor}). */
       readonly axes: ChartAxes;
-      readonly comfortZones?: never;
+      readonly limits?: never;
     }
   | {
       readonly type: typeof chartType.adaptive;
@@ -184,13 +187,13 @@ export type DeclaredChart =
        */
       readonly axes: ChartAxes;
       /**
-       * Exact Comfort zone polygons, for a model whose geometry is traced
-       * rather than scanned — Adaptive's acceptability zones. No grid is run
-       * at all, because the polygons are the answer rather than an
+       * Each exact Comfort zone's two limit lines, for a model whose geometry
+       * is traced rather than scanned — Adaptive's acceptability zones. No
+       * grid is run at all, because the lines are the answer rather than an
        * approximation of it (ADR §4.4). The zones are nested and returned
        * largest first, the order the chart draws them in.
        */
-      readonly comfortZones: (request: ZoneRequest) => readonly ZonePolygon[];
+      readonly limits: (request: ZoneRequest) => readonly ZoneLimits[];
     };
 
 /** The psychrometric member of {@link DeclaredChart}. */

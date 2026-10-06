@@ -46,7 +46,7 @@ import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 
-/** A zone of either kind: a traced polygon, or a contour of a scanned field. */
+/** A zone of either kind: a fill between two limit lines, or a contour of a scanned field. */
 type ZoneTrace = PathTrace | ContourZoneTrace;
 
 /** The zones: the contours and the filled paths but the cover in the plot's ground. */
@@ -54,6 +54,23 @@ function zonesOf(spec: ChartSpec): ZoneTrace[] {
   return spec.traces.filter(
     (trace): trace is ZoneTrace =>
       trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground),
+  );
+}
+
+/** The relative-humidity curves: the paths in the isolines' and the saturation line's ink. */
+function isolinesOf(spec: ChartSpec): PathTrace[] {
+  return spec.traces.filter(
+    (trace): trace is PathTrace =>
+      trace.kind === "path" && (trace.color === chartInk.isoline || trace.color === chartInk.saturationLine),
+  );
+}
+
+/** What strokes a zone: a contour, which strokes its own boundary, or a limit line, a stroked path but an isoline. */
+function outlinesOf(spec: ChartSpec): ZoneTrace[] {
+  const isolines = isolinesOf(spec);
+  return spec.traces.filter(
+    (trace): trace is ZoneTrace =>
+      trace.kind === "contourZone" || (trace.kind === "path" && trace.fill === undefined && !isolines.includes(trace)),
   );
 }
 
@@ -150,13 +167,17 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
       slotBadges.map((badge) => ({ label: badge.name, color: badge.hue.marker })),
     );
     expect(zones).toHaveLength(3 * zonesPerSlot);
+    const outlines = outlinesOf(spec);
     slotBadges.forEach((badge, position) => {
       for (const zone of zonesOfSlot(position)) {
         expect(zone.label?.startsWith(badge.name)).toBe(true);
-        expect(zone.color).toBe(badge.hue.zoneLine);
         expect(zone.fill).toContain(badge.hue.zoneFillRgb);
       }
+      const outlinesOfSlot = outlines.filter((outline) => outline.label?.startsWith(badge.name));
+      expect(outlinesOfSlot.length).toBeGreaterThanOrEqual(zonesPerSlot);
+      expect(outlinesOfSlot.map((outline) => outline.color)).toEqual(outlinesOfSlot.map(() => badge.hue.zoneLine));
     });
+    expect(outlines.every((outline) => slotBadges.some((badge) => outline.label?.startsWith(badge.name)))).toBe(true);
   });
 
   it("nests each slot's zones, the opacity rising inwards within the slot", () => {
@@ -180,8 +201,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
     const alone = draw([slots[0]]);
     expect(spec.layout).toEqual(alone.layout);
     expect(spec.annotations).toEqual(alone.annotations);
-    const isolines = (drawn: ChartSpec) => drawn.traces.filter((trace) => trace.kind === "path" && trace.fill === undefined);
-    expect(isolines(spec)).toEqual(isolines(alone));
+    expect(isolinesOf(spec)).toEqual(isolinesOf(alone));
     expect(spec.traces.filter((trace) => trace.hover !== "off").length).toBe(
       alone.traces.filter((trace) => trace.hover !== "off").length,
     );

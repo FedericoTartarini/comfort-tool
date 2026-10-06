@@ -51,8 +51,8 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
 }
 
 /**
- * The values a declaration reads for `slot`, in `run` and in a polygons
- * chart's `comfortZones`: its resolved quantities, wrapped by {@link valuesReader}.
+ * The values a declaration reads for `slot`, in `run` and in an adaptive
+ * chart's `limits`: its resolved quantities, wrapped by {@link valuesReader}.
  * On the `run` side, the declaration hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers

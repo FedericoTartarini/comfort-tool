@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { adaptiveSpec } from "$lib/core/charts/adaptiveChart";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
+import type { PathTrace } from "$lib/core/charts/chartSpec";
 import { chartRequestForSlots } from "$lib/core/charts/chartTestRequests";
 import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
@@ -68,6 +69,26 @@ describe("a session on Adaptive", () => {
           expect(() => slot.scan).toThrow(slot.badge.name);
         }
         expect(outputs.drawnAxes).toBeNull();
+      });
+
+      it(`draws each Comfort zone as a fill and two lines in its slot's hue on ${target.title}, Compare ${compare ? "on" : "off"}`, () => {
+        const session = sessionComparingThreeSlots(adaptiveAshrae);
+        heldSlot(session, 1).setEntered(q.v, 0.9);
+        session.setCompare(compare);
+        openAt(session, target);
+        const outputs = new Outputs(session);
+
+        const paths = (outputs.chart?.traces ?? []).filter((trace): trace is PathTrace => trace.kind === "path");
+        let drawn = 0;
+        for (const { badge } of outputs.slots) {
+          const fills = paths.filter((path) => path.fill?.includes(badge.hue.zoneFillRgb));
+          const lines = paths.filter((path) => path.fill === undefined && path.color === badge.hue.zoneLine);
+          expect(fills.length).toBeGreaterThan(0);
+          expect(fills.map((fill) => fill.width)).toEqual(fills.map(() => 0));
+          expect(lines).toHaveLength(2 * fills.length);
+          drawn += fills.length + lines.length;
+        }
+        expect(paths).toHaveLength(drawn);
       });
     }
   }

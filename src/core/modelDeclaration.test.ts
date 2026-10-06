@@ -24,7 +24,7 @@ import {
   takesRelativeAirSpeed,
   type DeclaredChart,
   type RegisteredModel,
-  type ZonePolygon,
+  type ZoneLimits,
 } from "./modelDeclaration";
 import { quantities } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
@@ -335,18 +335,18 @@ describe("requireAxisRange", () => {
  * fails the build the day the compiler stops refusing that literal. What the
  * model scans is its own, so no chart names an output or a classifier; the
  * psychrometric chart names nothing but its type, the dynamic chart its axes,
- * and the adaptive chart its axes and its zones source; and only the adaptive
+ * and the adaptive chart its axes and its limits source; and only the adaptive
  * chart may be declared by a model without a scan. Exported only because
  * `noUnusedLocals` would otherwise flag it.
  */
-export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
+export function chartShapesTypeProof(limits: readonly ZoneLimits[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
   const classifier = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
   const zone = { label: "Zone", limit: 0.5, inclusive: false };
   return [
     { type: chartType.psychrometric },
     { type: chartType.dynamic, axes },
-    { type: chartType.adaptive, axes, comfortZones: () => polygons },
+    { type: chartType.adaptive, axes, limits: () => limits },
     // @ts-expect-error an output on a chart, which is the model's scan's
     { type: chartType.dynamic, axes, output: q.pmv },
     // @ts-expect-error a classifier on a chart, which is the model's scan's
@@ -355,23 +355,27 @@ export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): Declared
     { type: chartType.psychrometric, axes },
     // @ts-expect-error a psychrometric chart with Comfort zones, which are the model's scan's
     { type: chartType.psychrometric, comfortZones: [zone] },
-    // @ts-expect-error a dynamic chart with a zones source, which is the adaptive chart's
-    { type: chartType.dynamic, axes, comfortZones: () => polygons },
-    // @ts-expect-error an adaptive chart without its zones source
+    // @ts-expect-error a psychrometric chart with limit lines, which are the adaptive chart's
+    { type: chartType.psychrometric, limits: () => limits },
+    // @ts-expect-error a dynamic chart with limit lines, which are the adaptive chart's
+    { type: chartType.dynamic, axes, limits: () => limits },
+    // @ts-expect-error an adaptive chart without its limits source
     { type: chartType.adaptive, axes },
+    // @ts-expect-error an adaptive chart whose source closes polygons, which the builder closes from the limits
+    { type: chartType.adaptive, axes, limits: () => [{ label: "Zone", x: [0, 1, 1], y: [0, 0, 1] }] },
     // @ts-expect-error an adaptive chart with an output it does not scan
-    { type: chartType.adaptive, axes, comfortZones: () => polygons, output: q.pmv },
+    { type: chartType.adaptive, axes, limits: () => limits, output: q.pmv },
     // @ts-expect-error an adaptive chart with a classifier it does not scan
-    { type: chartType.adaptive, axes, comfortZones: () => polygons, classifier },
+    { type: chartType.adaptive, axes, limits: () => limits, classifier },
   ];
 }
 
 /** The same, for which charts a model may declare with and without a scan. */
-export function scanShapesTypeProof(polygons: readonly ZonePolygon[]): RegisteredModel[] {
+export function scanShapesTypeProof(limits: readonly ZoneLimits[]): RegisteredModel[] {
   const { charts: _charts, ...unscanned } = adaptiveAshrae;
   const scan = { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO };
   const axes = { x: q.v, y: q.operative_tmp };
-  const adaptive = { type: chartType.adaptive, axes, comfortZones: () => polygons };
+  const adaptive = { type: chartType.adaptive, axes, limits: () => limits };
   return [
     { ...unscanned, scan, charts: [{ type: chartType.dynamic, axes }] },
     { ...unscanned, scan, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes }, adaptive] },
