@@ -29,6 +29,24 @@ export function bandListOf(bins: ClassifierBins): BandList {
 }
 
 /**
+ * The list a share link wrote for `bins` (ADR-0002 decision 63, rule 6): its
+ * Edges, labels and colours, with the classifier's inclusivity flag, which is
+ * not written. `undefined` for one no operation here could have built: no
+ * band, arrays of unequal length, Edges that do not rise strictly, or a colour
+ * that is not a six-digit hex colour.
+ */
+export function bandListFrom(bins: ClassifierBins, written: Pick<BandList, "edges" | "labels" | "colors">): BandList | undefined {
+  const { edges, labels, colors } = written;
+  const wellFormed =
+    labels.length > 0 &&
+    edges.length === labels.length &&
+    colors.length === labels.length &&
+    edges.every((edge, index) => index === 0 || edges[index - 1] < edge) &&
+    colors.every((color) => color === undefined || /^#[0-9a-f]{6}$/i.test(color));
+  return wellFormed ? { edges: [...edges], labels: [...labels], right: bins.right, colors: [...colors] } : undefined;
+}
+
+/**
  * Band `index`'s Edge moved to `edge`, which must fall strictly between its
  * neighbours: the Edge below and the Edge above, where each exists. Otherwise
  * the move is refused and `list` itself is returned.

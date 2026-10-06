@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyFromBins, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { bandColors } from "./bandPalette";
-import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
+import { addEdge, bandListFrom, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
 
 /** Every classifier a registered model's scan declares. */
 const classifiers = registeredModels.flatMap((model) => (model.scan ? [model.scan.classifier] : []));
@@ -154,5 +154,44 @@ describe("setLabel and setColor", () => {
     expect(cleared.colors[3]).toBeUndefined();
     expect(cleared.labels).toEqual(defaultList.labels);
     expectWellFormed(cleared);
+  });
+});
+
+describe("bandListFrom", () => {
+  /** What a written list holds of `list`: everything but the inclusivity flag, which is the classifier's. */
+  function writtenOf({ edges, labels, colors }: BandList) {
+    return { edges, labels, colors };
+  }
+
+  it("takes every registered classifier's default list back as it is, the flag the classifier's", () => {
+    for (const bins of classifiers) {
+      expect(bandListFrom(bins, writtenOf(bandListOf(bins)))).toEqual(bandListOf(bins));
+    }
+  });
+
+  it("takes an edited list back as it is", () => {
+    const edited = setColor(setLabel(addEdge(moveEdge(defaultList, 3, 0.4), 1, sensation), 0, "Freezing"), 4, undefined);
+    expect(bandListFrom(sensation, writtenOf(edited))).toEqual(edited);
+  });
+
+  it("refuses arrays of unequal length, and no band at all", () => {
+    const written = writtenOf(defaultList);
+    expect(bandListFrom(sensation, { ...written, labels: written.labels.slice(1) })).toBeUndefined();
+    expect(bandListFrom(sensation, { ...written, colors: written.colors.slice(1) })).toBeUndefined();
+    expect(bandListFrom(sensation, { ...written, edges: [...written.edges, 20] })).toBeUndefined();
+    expect(bandListFrom(sensation, { edges: [], labels: [], colors: [] })).toBeUndefined();
+  });
+
+  it("refuses Edges that do not rise strictly", () => {
+    const { edges } = defaultList;
+    const written = writtenOf(defaultList);
+    expect(bandListFrom(sensation, { ...written, edges: edges.map((edge, index) => (index === 3 ? edges[2] : edge)) })).toBeUndefined();
+    expect(bandListFrom(sensation, { ...written, edges: [...edges].reverse() })).toBeUndefined();
+  });
+
+  it("refuses a colour that is not a six-digit hex colour", () => {
+    for (const color of ["#fff", "red", "#00ff0", "#00ff000", "00ff00", "#00gg00", ""]) {
+      expect(bandListFrom(sensation, writtenOf(setColor(defaultList, 3, color))), color).toBeUndefined();
+    }
   });
 });
