@@ -1120,6 +1120,14 @@ the local `../comfort_tool` checkout:
     tab's: the text it keeps holds every slot that holds values, Compare and both enabled flags. A share link
     carries the compared slots alone: a slot that is not compared is `null` in it and not enabled, and a link
     copied on Explore has Compare off (decision 63, rule 5).
+    **Noted 2026-10-07 (`.scratch/open-points.md` D4).** "In the legend a zone is named by its slot … only while
+    more than one slot is drawn" is refined: a legend entry or readout line names its slot unless the chart draws
+    slot 1 alone, which reads as with Compare off. A compared slot 1 with no run leaves the chart to the others
+    (`state/compute.svelte.ts:96`), so slot 2 drawn alone and unnamed would read as the one slot while the table's
+    caption names slot 1 as not calculated, and an exported image would carry that. The code is not yet written
+    (`core/charts/specParts.ts:249`). Accepted as they are, the same day: the chart drawing the other slots when
+    slot 1 has no run, and the not-calculated note as a caption line rather than in the slot's row (decision 52's
+    note), which the image export does not carry.
 51. **An entry mode is the session's, and every slot is entered in it.** Amends decision 47, whose `Slot` keeps its
     shape: each slot still holds its humidity and temperature entry, and the session keeps the three in step.
     Changing an entry mode converts every slot, compared or not, each by the rule `core/slot.ts` states and at its
@@ -1753,6 +1761,14 @@ notes under decisions 51 and 53:
     parameter, which only the ten-label test passes. And "closes `.scratch/compliance-column/` 02" closes its swatch
     half: a category of `NaN` (|PMV| ≥ 10) still prints "ISO 7730 category: NaN", now with no swatch; whether it
     reads a dash or is left out is undecided.
+    **Noted 2026-10-07 (`.scratch/open-points.md` D2).** Decided: a classified output whose category is none of its
+    classifier's labels reads "—" (`copy.notAvailable`), with no swatch. Today that is only ISO 7730's `NaN` at
+    |PMV| ≥ 10, which the library returns with `limit_inputs: false` for inputs inside the standard's applicability
+    (pmv −31.45, `tsv` "Cold" at tdb 10, tr 10, vr 1, rh 0, met 0.8, clo 0). A dash keeps a compared slot's row in
+    line with the others, where leaving the entry out cannot tell "no category" from "no such output". Rejected: an
+    `Infinity` final edge in the library, since a Band list copies the classifier's edges, the share link refuses a
+    non-finite one (`core/shareLink.ts:360`) and JSON cannot write it. This closes `.scratch/compliance-column/` 02's
+    text half; the code is not yet written.
 
 61. **Every chart that is not declared polygons is one scan, contoured: the psychrometric chart's Comfort zones are
     contours of the same scan its Bands are, the zone solver and the root finders are deleted, and the scanned
