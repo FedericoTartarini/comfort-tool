@@ -16,8 +16,9 @@ export { defaultModel, isCurrentLink, modelChoicesOn, standardLinks };
 /**
  * The only place sv-router is used (ADR §2). The app and its pages import
  * what they need from here — the address the route names, a path, a way to
- * move the address, a way to follow it, a way to take a click on a link — and
- * never the router itself.
+ * move the address, a way to follow it, a way to take a click on a link, the
+ * reading of a share link's parameter and the writing of a link to an address
+ * — and never the router itself.
  */
 const STANDARD_ROUTE = "/standard/:standard/:model";
 /** The query parameter a share link carries its text in (ADR-0002 decision 63, rule 3). */

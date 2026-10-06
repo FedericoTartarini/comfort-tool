@@ -12,7 +12,8 @@ export type Notice = "linkRefused" | "linkFilled" | "copyRefused";
 /**
  * The app's one session and the outputs derived from it, created once above
  * the router and read by every page, so nothing of it is lost by a change of
- * page (ADR-0002 decision 57). Reset replaces both, and the pages are built
+ * page (ADR-0002 decision 57). Reset, or a share link the person says yes
+ * to, replaces both, and the pages are built
  * again on the new ones (decision 63, rule 8).
  */
 export interface OpenSession {
