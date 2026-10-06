@@ -2120,7 +2120,7 @@ notes under decisions 51 and 53:
     (`state/tab.svelte.ts:119`), which the after-load hook keeps equal to the router's (decision 43). The link's
     question is drawn by `App.svelte` outside that key, so its own yes does not rebuild it. A reload while it stands
     drops the link unasked: the parameter has left the address and the waiting link is held in memory alone (ticket
-    06's open point 2, for the user). Rule 10: the codec's exports are `toText`, `toDecodedSession` and
+    06's open point 2, accepted by the user the same day as a no). Rule 10: the codec's exports are `toText`, `toDecodedSession` and
     `narrowedToPage`, the written session is `core/writtenSession.ts`'s `WrittenSession`, and `App.svelte` does not
     join the load: `firstLoadAt` decides it, `Tab` runs it at the first address and in the one replacement Reset and
     a link's yes call (`state/tab.svelte.ts:115-123`), and `App.svelte` creates the `Tab`, writes the kept text in

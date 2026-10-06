@@ -1189,7 +1189,10 @@ business components never encode appearance, so redesigning them is not a rewrit
 3. Run all nine ADR §7 acceptance items (item 3 compares vertex geometry).
 4. One line of gtag; send `page_view` manually on route change, with the query string stripped from `page_location`
    (do not send the share payload to Google).
-5. Merge back into `main`, remove the `git worktree`.
+5. Freeze the share format (ADR-0002 decision 63, rule 9; added 2026-10-06, `.scratch/share-link/` ticket 07): a test
+   decodes a text the deployed build wrote, kept as a fixture, so a renamed key or member fails it. Until then no
+   expected text is written as a literal.
+6. Merge back into `main`, remove the `git worktree`.
 
 The site shell (header, footer, Reset) was briefly assigned here on 2026-09-04 and moved to Phase 5c the same day:
 it is design work, and doing it apart from the design would mean doing it twice. `Save` / `Reload` are not built at

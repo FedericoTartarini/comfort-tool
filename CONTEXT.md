@@ -77,7 +77,7 @@ Showing up to three slots side by side on the Standard page, each with its own r
 _Avoid_: baseline, active slot, scenario
 
 **Session**:
-What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot. A session lasts as long as its tab: it survives a reload and an address typed into the tab, and is replaced only on the person's yes, by a share link opened in the tab or by Reset, which returns it to what a new tab would show.
+What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot. A session lasts as long as its tab, where the browser allows storage: it survives a reload and an address typed into the tab, and is replaced only on the person's yes, by a share link opened in the tab or by Reset, which returns it to what a new tab at the same address would show.
 _Avoid_: store, app state
 
 **Share link**:
