@@ -2,16 +2,21 @@
  * How the session tests read a session's state: a slot as plain data, a slot
  * the session is known to hold, a value the result table would show, and what
  * a pending switch lists; the session comparing all three slots and the
- * bounded model they start from; and the check of the invariant the session's
- * entry modes rest on. Shared by the state tests so that all of them compare
- * the same way.
+ * bounded model they start from; the check of the invariant the session's
+ * entry modes rest on; and what a page would open on, the address a session
+ * is on, and the texts a tab keeps and a link carries of it. Shared by the
+ * state tests so that all of them compare the same way.
  */
 import { expect } from "vitest";
 import type { Bound, OutOfRangeRow } from "$lib/core/applicability";
 import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
+import type { Address } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
+import { narrowedToPage, toText } from "$lib/core/shareLink";
 import { entryModesOf } from "$lib/core/slot";
+import type { WrittenSession } from "$lib/core/writtenSession";
+import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Session, type InputSlot, type SlotPosition } from "./session.svelte";
 
@@ -82,4 +87,24 @@ export function withBounds(bounds: Readonly<Record<string, Bound>>): RegisteredM
       ),
     },
   };
+}
+
+/** What the page would open on: the session written out, the page it is on, and the question it holds. */
+export function openedOn(session: Session) {
+  return { written: session.toWrittenSession(), page: session.page, pendingSwitch: session.pendingSwitch };
+}
+
+/** The address `session` is on. */
+export function addressOf(session: Session): Address {
+  return { page: session.page, model: session.model };
+}
+
+/** `session` as the tab would keep it. */
+export function keptTextOf(session: Session): string {
+  return toText(session.toWrittenSession(), registeredModels);
+}
+
+/** The narrowed session a link copied from `session` on its page carries. */
+export function linkSessionOf(session: Session): WrittenSession {
+  return narrowedToPage(session.toWrittenSession(), session.page);
 }

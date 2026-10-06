@@ -46,6 +46,11 @@ export const copy = {
   resetQuestion: "This returns every input, every chart setting and the Bands of every model to their defaults. It cannot be undone.",
   resetAccept: "Yes, reset",
   resetDecline: "No, keep everything",
+  // A share link's question in a tab that kept a session (ADR-0002 decision 63, rule 8).
+  linkQuestionTitle: "Open the shared link?",
+  linkQuestion: "This tab already holds a session. Opening the link replaces it, and that cannot be undone.",
+  linkAccept: "Yes, open the link",
+  linkDecline: "No, keep mine",
   // Copy link and the notice line (ADR-0002 decision 63, rules 6 and 7).
   copyLink: "Copy link",
   linkCopied: "Link copied",

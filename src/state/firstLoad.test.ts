@@ -7,49 +7,40 @@
  * from, or the live session the text was written from, moved to the address
  * as the back button moves it.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
-import { narrowedToPage, toDecodedSession, toText } from "$lib/core/shareLink";
+import { toDecodedSession, toText } from "$lib/core/shareLink";
 import type { Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
-import { startingChartSettings, startingSession, type WrittenSession } from "$lib/core/writtenSession";
+import { startingChartSettings, startingSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
-import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { firstLoadAt } from "./firstLoad";
-import { clearKeptText, readKeptText, writeKeptText } from "./keptText";
 import { Session } from "./session.svelte";
-import { expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots } from "./sessionTestReaders";
+import {
+  addressOf,
+  expectEverySlotInSessionEntryModes,
+  heldSlot,
+  keptTextOf,
+  linkSessionOf,
+  openedOn,
+  sessionComparingThreeSlots,
+} from "./sessionTestReaders";
 
 const q = quantities;
 /** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
 const PRESSURE_OUT_OF_RANGE = 20000;
 const [airSpeedControl] = pmvPpdAshrae.options;
 
-/** What the page would open on: the session written out, the page it is on, and the question it holds. */
-function openedOn(session: Session) {
-  return { written: session.toWrittenSession(), page: session.page, pendingSwitch: session.pendingSwitch };
-}
-
-/** The narrowed session a link copied from `session` on its page carries. */
-function linkSessionOf(session: Session): WrittenSession {
-  return narrowedToPage(session.toWrittenSession(), session.page);
-}
-
 /** The text of a link copied from `session` on its page. */
 function linkTextOf(session: Session): string {
   return toText(linkSessionOf(session), registeredModels);
-}
-
-/** `session` as the tab would keep it. */
-function keptTextOf(session: Session): string {
-  return toText(session.toWrittenSession(), registeredModels);
 }
 
 /**
@@ -82,15 +73,6 @@ function editedSession(): Session {
 function standardAddress(model: RegisteredModel): Address {
   return { page: page.standard, model };
 }
-
-/** The address `session` is on. */
-function addressOf(session: Session): Address {
-  return { page: session.page, model: session.model };
-}
-
-afterEach(() => {
-  sessionStorage.clear();
-});
 
 describe("the first address's load", () => {
   it("with nothing kept is the address's model on its defaults, on the address's page, for every registered model", () => {
@@ -181,27 +163,6 @@ describe("the first address's load", () => {
     kept.setAddress({ page: page.explore, model: pmvPpdIso });
     expect(openedOn(session)).toEqual(openedOn(kept));
     expectEverySlotInSessionEntryModes(session);
-  });
-});
-
-describe("the first address's load run again (Reset, ADR-0002 decision 63, rule 8)", () => {
-  it("with the kept text cleared is the address's model on its defaults, whatever the session before held", () => {
-    const onExplore = editedSession();
-    onExplore.setAddress({ page: page.explore, model: heatIndexRothfusz });
-
-    for (const before of [editedSession(), onExplore]) {
-      writeKeptText(keptTextOf(before));
-      const address = addressOf(before);
-
-      clearKeptText();
-      const { session } = firstLoadAt(address, { link: undefined, kept: readKeptText() }, registeredModels);
-
-      expect(openedOn(session), `${address.model.info.label} on ${address.page.title}`).toEqual({
-        written: startingSession(address.model),
-        page: address.page,
-        pendingSwitch: null,
-      });
-    }
   });
 });
 

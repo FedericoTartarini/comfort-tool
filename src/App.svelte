@@ -1,113 +1,74 @@
 <!--
-  Root shell: the one session, opened at the first address from its share
-  link or what the tab kept, and kept for every page after it, until Reset
-  replaces it (ADR-0002 decisions 57 and 63); beside it what the notice line
-  says, which each page draws; the router renders the page for the current URL.
+  Root shell: the tab (`state/tab.svelte.ts`) holds the one session, opened at
+  the first address from its share link or what the tab kept, and kept for
+  every page after it, until Reset or a link's yes replaces it (ADR-0002
+  decisions 57 and 63); beside it what the notice line says, which each page
+  draws, and the question a waiting link asks, which is drawn here; the router
+  renders the page for the current URL.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import type { Address } from "$lib/core/page";
   import { narrowedToPage, toText } from "$lib/core/shareLink";
   import { registeredModels } from "$lib/models";
   import { followAddress, Router, shareLinkTo } from "$lib/routes/navigation";
-  import { Outputs } from "$lib/state/compute.svelte";
-  import { firstLoadAt } from "$lib/state/firstLoad";
-  import { clearKeptText, readKeptText, writeKeptText } from "$lib/state/keptText";
-  import { setOpenSession, setTabControls, type Notice, type OpenSession } from "$lib/state/openSession";
+  import { writeKeptText } from "$lib/state/keptText";
+  import { setOpenSession, setTabControls } from "$lib/state/openSession";
+  import { Tab } from "$lib/state/tab.svelte";
+  import { copy } from "$lib/text/copy";
+  import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
 
-  /**
-   * Set by the first address, and again by each replacement. `$state.raw` so
-   * the effect below, which runs before the router has loaded that address,
-   * runs again when it is set; a page reads it once, when it is created.
-   */
-  let opened = $state.raw<OpenSession>();
-  /**
-   * Counts the replacements of the session. A page reads the open session
-   * once, when it is created, so a new one is not told to it: the router is
-   * created again, and the page with it (ADR-0002 decision 63, rule 8).
-   */
-  let replacements = $state(0);
-  /** What the notice line says: the tab's, beside the session and not in it (ADR-0002 decision 63, rule 6). */
-  let notice = $state<Notice | null>(null);
-
-  /**
-   * Run the first address's load at `address`, with the share link's text it
-   * carried if any: the link's session, the session the tab kept, or the
-   * model's defaults, and the notice the load raises. Until a link can be
-   * asked about (ticket 06), a link over a kept session is left unopened.
-   */
-  function openAt(address: Address, link: string | undefined) {
-    const load = firstLoadAt(address, { link, kept: readKeptText() }, registeredModels);
-    opened = { session: load.session, outputs: new Outputs(load.session) };
-    notice = load.notice;
-  }
-
-  /**
-   * The URL names the page and the model: the first address opens the
-   * session on them, from its link or what the tab kept, and every one after
-   * it — a typed URL, the back button — moves the session there. This is the
-   * address's path, and it never asks.
-   */
-  function onAddress(address: Address, link: string | undefined) {
-    if (opened) {
-      opened.session.setAddress(address);
-      return;
-    }
-    openAt(address, link);
-  }
-
-  /**
-   * Replace the tab's session (ADR-0002 decision 63, rule 8): forget what the
-   * tab kept and run the first address's load again on the page and model
-   * the session is on, which then finds nothing kept and builds the defaults.
-   * Reset is its caller, and so holds no list of what it resets.
-   */
-  function replaceSession() {
-    if (!opened) {
-      throw new Error("The session was replaced before the address opened it");
-    }
-    const { page, model } = opened.session;
-    clearKeptText();
-    openAt({ page, model }, undefined);
-    replacements += 1;
-  }
+  const tab = new Tab(registeredModels);
 
   /** The share link to the page the session is on: its address, and the session narrowed to it (ADR-0002 decision 63, rule 5). */
   function linkToPage(): string {
-    if (!opened) {
+    if (!tab.opened) {
       throw new Error("A link was asked for before the address opened the session");
     }
-    const { session } = opened;
+    const { session } = tab.opened;
     return shareLinkTo(session, toText(narrowedToPage(session.toWrittenSession(), session.page), registeredModels));
   }
 
-  onDestroy(followAddress(onAddress));
+  onDestroy(followAddress((address, link) => tab.arrive(address, link)));
 
   // The tab keeps the whole session, written again at every change of it
   // (ADR-0002 decision 63, rule 2): external synchronisation, assigning no state.
   $effect(() => {
-    if (opened) {
-      writeKeptText(toText(opened.session.toWrittenSession(), registeredModels));
+    if (tab.opened) {
+      writeKeptText(toText(tab.opened.session.toWrittenSession(), registeredModels));
     }
   });
 
   setOpenSession(() => {
-    if (!opened) {
+    if (!tab.opened) {
       throw new Error("A page was created before the address opened the session");
     }
-    return opened;
+    return tab.opened;
   });
   setTabControls({
-    reset: replaceSession,
+    reset: () => tab.reset(),
     link: linkToPage,
     get notice() {
-      return notice;
+      return tab.notice;
     },
-    raiseNotice: (raised) => (notice = raised),
-    closeNotice: () => (notice = null),
+    raiseNotice: (notice) => tab.raiseNotice(notice),
+    closeNotice: () => tab.closeNotice(),
   });
 </script>
 
-{#key replacements}
+{#key tab.replacements}
   <Router />
 {/key}
+<!--
+  Asked over the kept session, which the page shows meanwhile at the link's
+  address (rule 8). Its yes replaces the session and so builds the page again;
+  the question is the tab's, so it is drawn here and not by the page.
+-->
+<QuestionDialog
+  open={tab.waitingLink !== null}
+  title={copy.linkQuestionTitle}
+  question={copy.linkQuestion}
+  acceptLabel={copy.linkAccept}
+  declineLabel={copy.linkDecline}
+  onaccept={() => tab.acceptLink()}
+  ondecline={() => tab.declineLink()}
+/>

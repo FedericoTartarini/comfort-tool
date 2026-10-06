@@ -1,25 +1,29 @@
 <!--
-  Reset's question (ADR-0002 decision 63, rule 8), asked as a model switch
-  asks: modal, and only its yes changes anything. It decides nothing; both
-  answers go straight back to the caller.
+  A question about the whole tab, asked as a model switch asks: modal, and
+  only its yes changes anything (ADR-0002 decision 63, rule 8). Reset asks
+  one, and so does a share link reaching a tab that kept a session. It decides
+  nothing; both answers go straight back to the caller.
 
   Its look is provisional — the designed version is Phase 5c's — so it composes
   the generated dialog primitive and adds no styling of its own.
 -->
 <script lang="ts">
-  import { copy } from "$lib/text/copy";
   import { Button } from "$lib/ui/primitives/button";
   import * as Dialog from "$lib/ui/primitives/dialog";
 
   interface Props {
     /** Whether the question stands. */
     open: boolean;
+    title: string;
+    question: string;
+    acceptLabel: string;
+    declineLabel: string;
     onaccept: () => void;
-    /** "No, keep everything", and every other way the dialog closes. */
+    /** The decline button, and every other way the dialog closes. */
     ondecline: () => void;
   }
 
-  let { open, onaccept, ondecline }: Props = $props();
+  let { open, title, question, acceptLabel, declineLabel, onaccept, ondecline }: Props = $props();
 
   // The close button, the Escape key and a click outside all arrive here, and
   // all of them are a no: there is no third outcome.
@@ -33,13 +37,13 @@
 <Dialog.Root {open} {onOpenChange}>
   <Dialog.Content>
     <Dialog.Header>
-      <Dialog.Title>{copy.reset}</Dialog.Title>
+      <Dialog.Title>{title}</Dialog.Title>
     </Dialog.Header>
     <!-- The question is the dialog's description, so it is announced with the title. -->
-    <Dialog.Description>{copy.resetQuestion}</Dialog.Description>
+    <Dialog.Description>{question}</Dialog.Description>
     <Dialog.Footer>
-      <Button variant="outline" onclick={ondecline}>{copy.resetDecline}</Button>
-      <Button onclick={onaccept}>{copy.resetAccept}</Button>
+      <Button variant="outline" onclick={ondecline}>{declineLabel}</Button>
+      <Button onclick={onaccept}>{acceptLabel}</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

@@ -6,7 +6,7 @@
   import CopyLinkButton from "./CopyLinkButton.svelte";
   import EntryModeControls from "./EntryModeControls.svelte";
   import QuantityInput from "./QuantityInput.svelte";
-  import ResetDialog from "./ResetDialog.svelte";
+  import QuestionDialog from "./QuestionDialog.svelte";
 
   interface Props {
     /** Whose atmospheric pressure and entry modes the controls show and change: the session's, on every page. */
@@ -55,4 +55,12 @@
 -->
 <CopyLinkButton {link} onrefused={oncopyrefused} />
 <Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
-<ResetDialog open={askingReset} onaccept={acceptReset} ondecline={() => (askingReset = false)} />
+<QuestionDialog
+  open={askingReset}
+  title={copy.reset}
+  question={copy.resetQuestion}
+  acceptLabel={copy.resetAccept}
+  declineLabel={copy.resetDecline}
+  onaccept={acceptReset}
+  ondecline={() => (askingReset = false)}
+/>
