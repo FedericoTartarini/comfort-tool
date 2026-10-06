@@ -20,6 +20,13 @@ import type {
 } from "$lib/core/charts/chartSpec";
 
 /**
+ * Plotly's colour for painting nothing: a contour line's fill and the page
+ * behind the plot. Not a colour of the chart, which the spec resolves, but how
+ * the adapter tells Plotly to leave a surface unpainted.
+ */
+const TRANSPARENT = "rgba(0, 0, 0, 0)";
+
+/**
  * The spec's traces drawn in their order, the first at the bottom. Plotly
  * draws a subplot's traces by type, in order only within one, so a trace
  * whose type it would draw under the one before opens the next `zorder`,
@@ -126,7 +133,7 @@ function contourLineData(trace: ContourLineTrace): PlotlyData {
   return {
     ...contourOf(trace),
     contours: { ...constraintOf(trace), showlines: true },
-    fillcolor: "rgba(0, 0, 0, 0)",
+    fillcolor: TRANSPARENT,
     line: { color: trace.color, width: trace.width },
   };
 }
@@ -232,7 +239,7 @@ export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
     hovermode: "closest",
     annotations: source.annotations.map(annotation),
     plot_bgcolor: chartInk.ground,
-    paper_bgcolor: "rgba(0, 0, 0, 0)",
+    paper_bgcolor: TRANSPARENT,
     xaxis: axis(source.layout.x),
     yaxis: axis(source.layout.y),
   };
