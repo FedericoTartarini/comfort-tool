@@ -1065,6 +1065,24 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    modebar's own PNG button was removed in Phase 3 precisely because it could not do this.
    **Revised 2026-10-06** (ADR-0002 decision 63): Export Link is item 4's Copy link button; this item is the image
    export.
+   **Grilled 2026-10-07** (ADR-0002 decision 64; ADR-0001 §4.4 and §7 carry notes of the same day; `CONTEXT.md`
+   gains Image and Input summary). The deployed tool exports no image, so the reference is the prototype's
+   `plotlyExport.ts`, and what publishers ask of a figure. An image is a Plotly figure built for the file from the
+   page's `ChartSpec`, never the plot on screen: the same adapter without the hover grid, Plotly's own legend made
+   from `ChartSpec.legend`, the spec's axis ranges and not the viewport. From the top it holds the title, the
+   chart, the legend, the Input summary and the footer. The title starts as the model's name and the chart type's
+   and may be emptied; one choice leaves out the summary and the footer, for a figure that goes into a paper. The
+   Input summary says what the chart is computed from: the model and its standard, the pressure, the entry modes
+   and the options, then each drawn slot's last valid run as the panel's rows, stacked, with no result, and on
+   Explore the Band list's Edges. The footer is the tool's name, the app's and the library's versions and the date
+   of the export. **Added to the scope the same day**: two printed sizes, a single column of 90 mm and a double
+   column of 190 mm, 8 pt lettering at both, PNG at 600 dpi; no JPEG and no PDF. An **Export image** button by the
+   chart on Standard and Explore opens a dialog (title, size, format, the choice, Download) whose choices are kept
+   nowhere; the image is made at the click, by pure functions in core and one adapter in `ui/charts/`, and a
+   failure is a notice. Suggested order: the measurement (how the legend's height is had, what a hover grid
+   becomes in an SVG, the double column at 600 dpi); the adapter's conversion moved out of `PlotlyChart.svelte`,
+   with `.scratch/tidy-later.md`'s T14; the image's description and its figure; the Input summary; the dialog and
+   the download; the docs close-out.
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
    **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
    its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,
@@ -1104,6 +1122,7 @@ units, chart type, thresholds, atmospheric pressure, numbers)")
 - From any state, a reload, or an address typed into the tab, keeps the whole session: three slots, whether Compare is on and which slots are enabled, every model's chart settings and Band list
 - Reset, confirmed, shows what a new tab at the same address shows, and a reload after it does too
 - A share link opened in a tab that holds a session asks first: a yes shows the link's page, a no keeps the session
+- Export image, at either size and in either format, gives a file whose chart and legend are the page's and whose input summary lists the values that chart is drawn from (added 2026-10-07, ADR-0002 decision 64)
 - Opening a share link in an environment with `Proxy` disabled does not crash
 
 ---

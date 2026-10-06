@@ -120,6 +120,14 @@ _Avoid_: workspace, surface, view, tab, mode
 A model's output computed over a grid of two quantities, from which a chart contours its Bands or its Comfort zones. The dynamic chart and the psychrometric chart are scans; the adaptive chart is not: its Comfort zones are the limit lines the model itself returns, drawn across the chart.
 _Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
+**Image**:
+A file a person downloads of the chart a page shows: the chart and its legend and, unless left out, a title, an Input summary and a footer naming the tool, its version and the date. It comes at the printed width of a single or a double column. It shows the chart as the session gives it, not as the person has zoomed it.
+_Avoid_: export (alone), screenshot, figure, download
+
+**Input summary**:
+The text in an Image that says what its chart is computed from: the model and its standard, the atmospheric pressure, the entry modes and the options, and for each slot drawn the values it was last calculated from, which are not the panel's while one of them is Out of range. On the Explore page it gives the Edges too. It never holds a result.
+_Avoid_: parameters, inputs table, caption
+
 **Temporary library**:
 A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. Adaptive's zone geometry and the inverses of the two activity corrections live there.
 _Avoid_: stand-in, shim, polyfill, helper
