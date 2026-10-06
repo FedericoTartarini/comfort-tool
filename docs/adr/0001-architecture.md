@@ -369,6 +369,8 @@ Hover rules (2026-09-04):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as noted 2026-09-28** (review after Phase 4b, `P008`): a zone polygon no longer answers inside its fill; a polygons chart answers through its spec's hover grid. The probe layer stays deferred for the psychrometric chart.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 62** (2026-10-02): "the banded surface is a contour" is one `contourFill` per Band and one `contourLine` at each Edge, and a Comfort zone the same pair; the Plotly adapter draws fills and lines and knows no band. Band outlines are chrome, `hover: "off"`, like the isolines.
+>
+> **Noted 2026-10-06** ([ADR-0002](0002-library-interface-model-info.md) decisions 37, 61 and 62; `.scratch/three-chart-types/` ticket 06): the third hover rule above no longer holds. No drawn surface reads the pointer: a Comfort zone's and a Band's `contourFill` and `contourLine` are `hover: "off"` (`core/charts/specParts.ts:313, 320`), as the adaptive chart's paths are, and each chart's one hover grid, the only trace with `hover: "field"` (`:220`), reads the cell under the pointer for them.
 
 
 Legend rules:

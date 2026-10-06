@@ -89,7 +89,7 @@ A region of a chart inside one limit a standard draws: what it accepts, a yes or
 _Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
 
 **Band**:
-One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library Classifier's; on the Explore page the user may edit them. A band may have no colour, and is then painted nowhere but still names what falls in it.
+One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library Classifier's; on the Explore page the user may edit them. A band may have no colour, and is then filled nowhere but still names what falls in it; its upper Edge is drawn either way.
 _Avoid_: category (the library's word for the label a value falls in), class, level, threshold, unclassified (a band without a colour is uncoloured)
 
 **Band list**:

@@ -88,9 +88,9 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > and `c1186a9` every chart is drawn in one order, the isolines cut only by an outline; 05 `17f3380` a Band is
 > outlined at its Edge, painted or not. A zone drawn as two contours costs about 2 to 3 ms of redraw, and Explore's
 > seven Edge lines about 3 to 6 ms (Chrome 154).
-> Ticket 06 read the documents against the code: decisions 27, 37, 38, 61 and 62 carry notes of 2026-10-06, ADR-0001
-> §4.4 and §5 carry markers, and the checklist's sanctioned exception names `limits`. The four scripts are green at
-> 781 tests. What the checklist's human half and `CONTEXT.md` found is in ticket 06's Comments, none changed.
+> Ticket 06 read the documents against the code: decisions 27, 37, 38, 58, 61 and 62 carry notes of 2026-10-06,
+> ADR-0001 §4.4 and §5 carry markers, and the checklist's sanctioned exception names `limits`. The four scripts are green at
+> 781 tests. What the checklist's human half and `CONTEXT.md` found is in ticket 06's Comments, none changed but `CONTEXT.md`'s Band.
 > **Next: Phase 5 item 4, the share link.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
