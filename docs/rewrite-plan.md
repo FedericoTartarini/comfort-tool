@@ -107,6 +107,20 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > app is deployed. Withdrawn on the way: the link naming no model, the parameter left in the address, the back
 > button reloading the link, a link replacing the tab's session unasked. **Next: the spec and tickets in `.scratch/share-link/`, then Phase 5 item 5.**
 
+> **2026-10-06 — position, the share link done**: Phase 5 item 4 landed on `rewrite/v1` as `.scratch/share-link/`
+> tickets 01 to 06: 01 `bdcc451` a session is built from a written session and reads itself out as one; 02 `d68d4e8`
+> the codec, then `cd3e560` and `12857d1` rule 6 as amended, a text filling what it lacks and saying so; 03 `a9daa48`
+> the tab keeps its session and a reload restores it; 04 `44e41e1` Reset asks, then runs the first load again;
+> 05 `788d03c` Copy link writes the page's narrowed session and a link opens it, with the notice line; 06 `fcb2ca8` a
+> link reaching a tab that holds a session asks first. Ticket 07 read the documents against the code: decisions 57
+> and 63 carry notes of 2026-10-06, ADR-0001 §4.8 and §5 carry markers, and Phase 6's `Save` / `Reload` sentence a
+> note. The four scripts are green at 852 tests. Tickets 03 to 06 were walked in Chrome: 03 on the dev server (a
+> reload, a typed address, a second tab, storage refused by a simulated getter, the back/forward cache), 04 to 06 on
+> the preview build (the address bar, the clipboard, Reset and a link's question both ways, a damaged link), with
+> the console clean; a link measured 663 to 971 characters.
+> What is open for the user, and what the checklist's human half and `CONTEXT.md` found, is in ticket 07's
+> Comments, none changed. **Next: Phase 5 item 5, the image export.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1040,6 +1054,12 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    frozen when the app is deployed. Suggested order: the session read out and built from a text, with the codec
    and its registry-wide round trip; the kept session and the load order; the link, narrowed, with Copy link and
    the notice; Reset; the docs close-out.
+   **Done 2026-10-06** (`.scratch/share-link/` tickets 01 to 06: `bdcc451`, `d68d4e8` + `cd3e560` + `12857d1`,
+   `a9daa48`, `44e41e1`, `788d03c`, `fcb2ca8`). As built it differs from the text above where decision 63 carries a
+   note of 2026-10-06: a chart entry may lack its Band list, as a Standard link writes it, and the session starts on
+   the classifier's; a link meets a question only where the tab's kept text can be read, and a filled link's notice
+   waits for the yes; Reset and a link's yes rebuild the pages by re-creating the router, with no reload; a reload
+   while a link's question stands drops the link unasked. A link is 663 to 971 characters as measured.
 5. Export Link + image export: editable title + input summary + tool name/version/date footer, PNG + SVG. The same
    `ChartSpec.legend` generates Plotly's horizontal bottom legend in the export layout, so screen and file agree — the
    modebar's own PNG button was removed in Phase 3 precisely because it could not do this.
@@ -1174,6 +1194,12 @@ business components never encode appearance, so redesigning them is not a rewrit
 The site shell (header, footer, Reset) was briefly assigned here on 2026-09-04 and moved to Phase 5c the same day:
 it is design work, and doing it apart from the design would mean doing it twice. `Save` / `Reload` are not built at
 all — Export Link covers them.
+
+> **Noted 2026-10-06** (ADR-0002 decision 63; `.scratch/share-link/` ticket 07): Reset left the shell for Phase 5
+> item 4, where it is built beside Copy link; its look and place are still Phase 5c's. Export Link is that Copy link,
+> and the deployed tool's `Save` / `Reload`, which keep the inputs in `localStorage` across visits, are covered within
+> a tab by the session it keeps across a reload. Nothing is kept beyond the tab (decision 63's Rejected list:
+> `localStorage`), so `Save` / `Reload` stay unbuilt.
 
 > **Amended 2026-10-01** (ADR-0002 decision 57): Time-series with PHS is in v1 and will be given a phase of its own; the
 > line below keeps it as written, and the rest of the line stays after v1.
