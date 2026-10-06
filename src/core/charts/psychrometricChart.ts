@@ -6,7 +6,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { requireValue, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
-import type { Annotation, ChartSpec, LegendEntry, Trace } from "./chartSpec";
+import type { Annotation, ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
 import { axisFor, fieldPaintFor, markerFor, samples, type ScanFrame, type ScannedField } from "./specParts";
 
 const q = quantities;
@@ -72,8 +72,10 @@ export function psychrometricScanFrameFor(
  * A cell above saturation, `rh` > 100 at the pressure, is air that cannot
  * exist: it is scanned and painted, the cover ({@link coverFor}) hides it, and
  * it reads "—" and no band. The cover sits over the paint and the hover grid
- * and under the isolines and the markers, so a zone's or a band's top edge is
- * the saturation line itself (ADR-0002 decision 61).
+ * and under the saturation line and the markers, so a zone's or a band's top
+ * edge is the saturation line itself (ADR-0002 decision 61). The other
+ * isolines lie between the fills and the outlines, so only an outline cuts
+ * one (decision 62).
  */
 export function psychrometricSpec(request: ChartRequest, scans?: readonly ScannedField[]): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
@@ -86,12 +88,13 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
   const hrRange = frame.y.range;
 
   const paint = fieldPaintFor(request, frame, scans, (temperature, hr) => hr_to_rh(hr, temperature, atmosphericPressure) > 100);
-  const traces: Trace[] = [...paint.traces];
   const annotations: Annotation[] = [];
 
   const temperatures = samples(xRange, ISOLINE_SAMPLES);
-  const isolines: Trace[] = [];
-  let cover: Trace | undefined;
+  /** The isolines below saturation, 10 to 90 %. */
+  const isolines: PathTrace[] = [];
+  let saturationLine: PathTrace | undefined;
+  let cover: PathTrace | undefined;
   for (let rh = ISOLINE_STEP; rh <= 100; rh += ISOLINE_STEP) {
     const sampled = temperatures.map((temperature) => ({ temperature, hr: psy_ta_rh(temperature, rh, atmosphericPressure).hr }));
     // Cut the curve where it leaves the top of the viewport, so the label sits
@@ -117,7 +120,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       };
     }
     const rhText = numberWithUnit(rh, rhUnit);
-    isolines.push({
+    const isoline: PathTrace = {
       kind: "path",
       x: curve.map((point) => xUnit.fromSi(point.temperature)),
       y: curve.map((point) => hrUnit.fromSi(point.hr)),
@@ -127,18 +130,26 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       // the pointer (ADR §4.4).
       hover: "off",
       label: `${q.rh.label} ${rhText}`,
-    });
+    };
+    if (saturation) {
+      saturationLine = isoline;
+    } else {
+      isolines.push(isoline);
+    }
     annotations.push({
       x: xUnit.fromSi(end.temperature),
       y: hrUnit.fromSi(end.hr),
       text: rhText,
     });
   }
-  // The cover over the paint and the hover grid, under the isolines.
+  // The one drawing order (ADR-0002 decision 62); the function's comment says why.
+  const traces: Trace[] = [...paint.fills, ...isolines, ...paint.outlines, paint.hoverGrid];
   if (cover) {
     traces.push(cover);
   }
-  traces.push(...isolines);
+  if (saturationLine) {
+    traces.push(saturationLine);
+  }
 
   // Each slot's legend entries, its zones then its marker, so the legend reads slot by slot.
   const legend: LegendEntry[] = [{ label: q.rh.label, swatch: "line", color: chartInk.isoline }, ...paint.bandLegend];

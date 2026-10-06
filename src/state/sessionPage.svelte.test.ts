@@ -35,6 +35,24 @@ function fillsOf(traces: readonly Trace[]): ContourFillTrace[] {
   return traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
 }
 
+/**
+ * The layers of the psychrometric chart's `traces` in drawing order, each run
+ * of one layer named once: a trace's kind, or for a path, which of the
+ * isolines, the cover and the saturation line it is.
+ */
+function psychrometricLayersOf(traces: readonly Trace[]): string[] {
+  const layerOf = (trace: Trace) => {
+    if (trace.kind !== "path") {
+      return trace.kind;
+    }
+    if (trace.fill === chartInk.ground) {
+      return "cover";
+    }
+    return trace.color === chartInk.saturationLine ? "saturationLine" : "isoline";
+  };
+  return traces.map(layerOf).filter((layer, index, layers) => layer !== layers[index - 1]);
+}
+
 /** `session` sent to `target` and its model, as the address sends it. */
 function openAt(session: Session, target: Page, model: RegisteredModel = session.model): void {
   session.setAddress({ page: target, model });
@@ -84,6 +102,34 @@ describe("The page in the session", () => {
       expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
       expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
     }
+  });
+
+  it("lays the psychrometric chart out in one order, on Standard with Compare on and on Explore painting the Band list", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    session.chart.type = chartType.psychrometric;
+    const outputs = new Outputs(session);
+
+    expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
+      "contourFill",
+      "isoline",
+      "contourLine",
+      "hoverGrid",
+      "cover",
+      "saturationLine",
+      "point",
+    ]);
+    expect(markedPositions(outputs.chart)).toEqual([0, 1, 2]);
+
+    openAt(session, page.explore);
+    // A band strokes no Edge yet, so there is no outline between the isolines and the hover grid.
+    expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
+      "contourFill",
+      "isoline",
+      "hoverGrid",
+      "cover",
+      "saturationLine",
+      "point",
+    ]);
   });
 
   describe("on Explore", () => {

@@ -23,7 +23,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace } from "./chartSpec";
-import { chartRequestFor } from "./chartTestRequests";
+import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
@@ -44,6 +44,10 @@ function bandedSpec(
 
 function fillsOf(spec: ChartSpec): ContourFillTrace[] {
   return spec.traces.filter((entry): entry is ContourFillTrace => entry.kind === "contourFill");
+}
+
+function linesOf(spec: ChartSpec): ContourLineTrace[] {
+  return spec.traces.filter((entry): entry is ContourLineTrace => entry.kind === "contourLine");
 }
 
 /** The first fill, which carries slot 1's scanned field. */
@@ -110,13 +114,27 @@ describe("the psychrometric chart given a Band list", () => {
     expect(spec.traces.some((entry) => entry.kind === "path" && entry.fill !== undefined && entry.fill !== chartInk.ground)).toBe(false);
   });
 
-  it("draws the bands, the hover grid, the cover, the isolines with the saturation line last, then the marker", () => {
-    const isolines = isolinesOf(spec);
-    expect(isolines).toHaveLength(10);
-    expect(isolines[isolines.length - 1].color).toBe(chartInk.saturationLine);
-    expect(spec.traces).toEqual([...fillsOf(spec), hoverGridOf(spec), coverOf(spec), ...isolines, spec.traces[spec.traces.length - 1]]);
-    expect(spec.traces[spec.traces.length - 1].kind).toBe("point");
-  });
+  it.each([1, 3])(
+    "draws the fills, the isolines below saturation, the outlines, the hover grid, the cover, the saturation line, then the markers, of %i slot(s)",
+    (count) => {
+      const slots = Array.from({ length: count }, () => startingSlot(pmvPpdIso));
+      const drawn = psychrometricSpec({ ...chartRequestForSlots(pmvPpdIso, slots), bands: isoBands });
+      const isolines = isolinesOf(drawn);
+      const saturationLine = isolines[isolines.length - 1];
+      const markers = drawn.traces.filter((trace) => trace.kind === "point");
+      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartInk.isoline), chartInk.saturationLine]);
+      expect(markers).toHaveLength(count);
+      expect(drawn.traces).toEqual([
+        ...fillsOf(drawn),
+        ...isolines.slice(0, -1),
+        ...linesOf(drawn),
+        hoverGridOf(drawn),
+        coverOf(drawn),
+        saturationLine,
+        ...markers,
+      ]);
+    },
+  );
 
   it("covers the chart above the saturation line in the ground colour, read by nothing and named nowhere", () => {
     const cover = coverOf(spec);

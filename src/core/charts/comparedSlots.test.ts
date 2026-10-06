@@ -196,6 +196,12 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
     });
   });
 
+  it("lays every slot's outlines after every slot's fills, so no fill hides an outline", () => {
+    const lastFill = Math.max(...zones.map((zone) => spec.traces.indexOf(zone)));
+    const firstOutline = Math.min(...outlinesOf(spec).map((outline) => spec.traces.indexOf(outline)));
+    expect(firstOutline).toBeGreaterThan(lastFill);
+  });
+
   it("draws each slot's zones and marker as a list holding that slot alone draws them", () => {
     slots.forEach((slot, position) => {
       const alone = draw([slot]);

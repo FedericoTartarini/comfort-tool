@@ -25,7 +25,6 @@ import type {
   HoverReadout,
   LegendEntry,
   PointTrace,
-  Trace,
 } from "./chartSpec";
 
 /**
@@ -91,12 +90,17 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
 
 /**
  * What a chart paints of its slots' scans, written once for both scanned
- * charts (ADR-0002 decision 61): the paint, the hover grid over it, and their
- * legend entries. A builder adds its axes and its chrome around it.
+ * charts (ADR-0002 decision 61): the fills, the outlines and the hover grid,
+ * kept apart, and their legend entries. A builder lays them in the one
+ * drawing order, its chrome between the fills and the outlines (decision 62).
  */
 export interface FieldPaint {
-  /** The paint, then the hover grid that reads for it, in drawing order. */
-  readonly traces: readonly Trace[];
+  /** Every region's fill: the slots in the request's order, each slot's zones largest first; or the bands in the list's. */
+  readonly fills: readonly ContourFillTrace[];
+  /** Every region's outline, in the fills' order. */
+  readonly outlines: readonly ContourLineTrace[];
+  /** The one grid that reads every slot's number for the fills. */
+  readonly hoverGrid: HoverGridTrace;
   /** The Band list's legend entries, one per painted band; none without a list. */
   readonly bandLegend: readonly LegendEntry[];
   /** Each slot's Comfort zones' legend entries, largest first, in the request's slot order; none with a list. */
@@ -135,13 +139,14 @@ export function fieldPaintFor(
   const outputUnit = displayUnitFor(frame.output, unitSystem);
   const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
   const drawn = displayedSamplesOf(frame.x, frame.y, unitSystem);
-  const traces: Trace[] = [];
+  const fills: ContourFillTrace[] = [];
+  const outlines: ContourLineTrace[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
 
   if (bands) {
     const painted = bandsFor(bands, { ...drawn, z: surfaces[0] });
-    traces.push(...painted.fills);
+    fills.push(...painted.fills);
     bandLegend.push(...painted.legendEntries);
   } else {
     const zones = contouredZonesOf(frame.model);
@@ -155,24 +160,22 @@ export function fieldPaintFor(
           lineColor: charted.hue.zoneLine,
           lineWidth: chartInk.zoneLineWidth,
         });
-        // Each zone's line directly over its own fill.
-        traces.push(region.fill, region.line);
+        fills.push(region.fill);
+        outlines.push(region.line);
         zoneLegendOfSlot[position].push(region.legendEntry);
       });
     });
   }
 
-  traces.push(
-    hoverGridFor(frame.x, frame.y, unitSystem, ({ x, y, xIndex, yIndex }) => {
-      const masked = isMasked(x, y);
-      return request.slots.flatMap((charted, position) => {
-        const value = masked ? Number.NaN : fields[position][yIndex][xIndex];
-        const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
-        return lines.map((line) => labelFor(request, charted, line));
-      });
-    }),
-  );
-  return { traces, bandLegend, zoneLegendOfSlot };
+  const hoverGrid = hoverGridFor(frame.x, frame.y, unitSystem, ({ x, y, xIndex, yIndex }) => {
+    const masked = isMasked(x, y);
+    return request.slots.flatMap((charted, position) => {
+      const value = masked ? Number.NaN : fields[position][yIndex][xIndex];
+      const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
+      return lines.map((line) => labelFor(request, charted, line));
+    });
+  });
+  return { fills, outlines, hoverGrid, bandLegend, zoneLegendOfSlot };
 }
 
 /**

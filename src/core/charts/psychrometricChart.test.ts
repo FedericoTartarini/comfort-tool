@@ -166,10 +166,10 @@ describe("psychrometricSpec", () => {
     expect(spec.traces.some((trace) => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground)).toBe(false);
   });
 
-  it("lays each zone's line directly after its fill, over the same interval, in the slot's zone line", () => {
+  it("lays every zone's line after every zone's fill, each over its own fill's interval, in the slot's zone line", () => {
     const fills = fillsOf(spec);
     const lines = linesOf(spec);
-    expect(paintOf(spec)).toEqual(fills.flatMap((fill, index) => [fill, lines[index]]));
+    expect(paintOf(spec)).toEqual([...fills, ...lines]);
     expect(lines.map((line) => [line.label, line.z, line.lower, line.upper])).toEqual(
       fills.map((fill) => [fill.label, fill.z, fill.lower, fill.upper]),
     );
@@ -227,13 +227,26 @@ describe("psychrometricSpec", () => {
     expect(fillsOf(drawn).map((zone) => zone.z)).toEqual([handed, handed, handed]);
   });
 
-  it("draws the zones, the hover grid, the cover, the isolines with the saturation line last, then the marker", () => {
-    const isolines = isolinesOf(spec);
-    expect(isolines).toHaveLength(10);
-    expect(isolines[isolines.length - 1].color).toBe(chartInk.saturationLine);
-    expect(spec.traces).toEqual([...paintOf(spec), hoverGridOf(spec), coverOf(spec), ...isolines, ...markersOf(spec)]);
-    expect(markersOf(spec)).toHaveLength(1);
-  });
+  it.each([1, 3])(
+    "draws the fills, the isolines below saturation, the outlines, the hover grid, the cover, the saturation line, then the markers, of %i slot(s)",
+    (count) => {
+      const drawn = psychrometricSpec(chartRequestForSlots(pmvPpdIso, Array.from({ length: count }, () => slot(temperatureMode.separate))));
+      const isolines = isolinesOf(drawn);
+      const saturationLine = isolines[isolines.length - 1];
+      expect(isolines).toHaveLength(10);
+      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartInk.isoline), chartInk.saturationLine]);
+      expect(markersOf(drawn)).toHaveLength(count);
+      expect(drawn.traces).toEqual([
+        ...fillsOf(drawn),
+        ...isolines.slice(0, -1),
+        ...linesOf(drawn),
+        hoverGridOf(drawn),
+        coverOf(drawn),
+        saturationLine,
+        ...markersOf(drawn),
+      ]);
+    },
+  );
 
   it("covers the chart above the saturation line as it does given a Band list", () => {
     const banded = psychrometricSpec({ ...request(temperatureMode.separate), bands: bandListOf(pmvPpdIso.scan.classifier) });

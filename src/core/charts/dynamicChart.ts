@@ -43,11 +43,11 @@ export function dynamicScanFrameFor(
  * quantities, once per slot, and paints it as the psychrometric chart paints
  * its own ({@link fieldPaintFor}): the Band list over the first slot's scan,
  * or each slot's Comfort zones as contours of its own, with one hover grid
- * reading both axis values and every slot's number (ADR §4.4's hover rules).
- * Then each slot's marker; no other chrome. `scans`, one per slot in the
- * request's order, are the slots' scans in the frame this chart is drawn in
- * ({@link dynamicScanFrameFor}); a caller that keeps them hands them over, and
- * without them every slot is scanned here.
+ * reading both axis values and every slot's number (ADR §4.4's hover rules),
+ * every outline over every fill. Then each slot's marker; no other chrome.
+ * `scans`, one per slot in the request's order, are the slots' scans in the
+ * frame this chart is drawn in ({@link dynamicScanFrameFor}); a caller that
+ * keeps them hands them over, and without them every slot is scanned here.
  */
 export function dynamicSpec(request: ChartRequest, axes: ChartAxes, scans?: readonly ScannedField[]): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
@@ -58,13 +58,13 @@ export function dynamicSpec(request: ChartRequest, axes: ChartAxes, scans?: read
   const xUnit = displayUnitFor(x, unitSystem);
   const yUnit = displayUnitFor(y, unitSystem);
 
-  const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
   /** Each slot's legend entries, zones first, so the legend reads slot by slot. */
   const legendOfSlot = request.slots.map((): LegendEntry[] => []);
 
   const paint = fieldPaintFor(request, dynamicScanFrameFor(model, axes, modes, atmosphericPressure), scans);
-  traces.push(...paint.traces);
+  // The one drawing order (ADR-0002 decision 62), with no chrome: the fills, the outlines, the hover grid, the markers.
+  const traces: Trace[] = [...paint.fills, ...paint.outlines, paint.hoverGrid];
   legend.push(...paint.bandLegend);
   paint.zoneLegendOfSlot.forEach((entries, position) => legendOfSlot[position].push(...entries));
 

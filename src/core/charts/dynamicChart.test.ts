@@ -162,10 +162,10 @@ describe("the scanned dynamic chart of one slot", () => {
     expect(spec.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
   });
 
-  it("paints each zone as a fill in the slot's hue by its level, its line directly after over the same interval", () => {
+  it("paints each zone as a fill in the slot's hue by its level, and after every fill its line over the same interval", () => {
     const zones = declaredZonesOf(pmvPpdIso);
     const hue = slotBadges[0].hue;
-    expect(contourKindsOf(spec)).toEqual(zones.flatMap(() => ["contourFill", "contourLine"]));
+    expect(contourKindsOf(spec)).toEqual([...zones.map(() => "contourFill"), ...zones.map(() => "contourLine")]);
     expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
     expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
       zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit, hue.zoneLine, chartInk.zoneLineWidth]),
@@ -198,6 +198,13 @@ describe("the scanned dynamic chart of one slot", () => {
     const drawn = dynamicSpec(chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz)), heat.axes);
     expect(drawn.traces.filter((trace) => trace.hover === "off").map((trace) => trace.kind)).toEqual(["point"]);
     expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["marker"]);
+  });
+
+  it.each([1, 3])("draws the fills, the outlines, the hover grid, then the markers, of %i slot(s)", (count) => {
+    const drawn = dynamicSpec(chartRequestForSlots(pmvPpdIso, Array.from({ length: count }, () => slot)), isoChart.axes);
+    const markers = drawn.traces.filter((trace) => trace.kind === "point");
+    expect(markers).toHaveLength(count);
+    expect(drawn.traces).toEqual([...fillsOf(drawn), ...linesOf(drawn), hoverGridOf(drawn), ...markers]);
   });
 
   it("reads both axis values and the slot's number in every cell, and no band", () => {
