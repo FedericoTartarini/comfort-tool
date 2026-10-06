@@ -32,6 +32,7 @@
     HoverMode,
     PathTrace,
     PointTrace,
+    Trace,
   } from "$lib/core/charts/chartSpec";
 
   interface Props {
@@ -84,21 +85,51 @@
     void api.react(node, data, layout, plotlyConfig);
   });
 
+  /**
+   * The spec's traces drawn in their order, the first at the bottom. Plotly
+   * draws a subplot's traces by type, in order only within one, so a trace
+   * whose type it would draw under the one before opens the next `zorder`,
+   * which it draws over every lower one.
+   */
   function toData(source: ChartSpec): PlotlyData[] {
-    return source.traces.flatMap((trace) => {
-      switch (trace.kind) {
-        case "path":
-          return [pathData(trace)];
-        case "point":
-          return [pointData(trace)];
-        case "contourFill":
-          return [contourFillData(trace)];
-        case "contourLine":
-          return [contourLineData(trace)];
-        case "hoverGrid":
-          return [hoverGridData(trace)];
+    let zorder = 0;
+    let layer = 0;
+    return source.traces.map((trace) => {
+      const next = plotlyLayerOf[trace.kind];
+      if (next < layer) {
+        zorder += 1;
       }
+      layer = next;
+      return { ...dataOf(trace), zorder };
     });
+  }
+
+  /**
+   * Where Plotly draws each trace kind within one `zorder`: plotly.js 4.0.0
+   * draws every heatmap under every contour under every scatter, whatever
+   * their order (its `traceLayerClasses`).
+   */
+  const plotlyLayerOf = {
+    hoverGrid: 0,
+    contourFill: 1,
+    contourLine: 1,
+    path: 2,
+    point: 2,
+  } satisfies Record<Trace["kind"], number>;
+
+  function dataOf(trace: Trace): PlotlyData {
+    switch (trace.kind) {
+      case "path":
+        return pathData(trace);
+      case "point":
+        return pointData(trace);
+      case "contourFill":
+        return contourFillData(trace);
+      case "contourLine":
+        return contourLineData(trace);
+      case "hoverGrid":
+        return hoverGridData(trace);
+    }
   }
 
   function pathData(trace: PathTrace): PlotlyData {
