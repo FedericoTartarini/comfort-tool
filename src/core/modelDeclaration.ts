@@ -73,7 +73,7 @@ export interface ChartAxes {
 
 /**
  * One exact Comfort zone a model supplies instead of the scanned grid, in SI.
- * `x` and `y` run along the dynamic chart's own axes and close the polygon.
+ * `x` and `y` run along the adaptive chart's own axes and close the polygon.
  */
 export interface ZonePolygon {
   readonly label: string;
@@ -102,10 +102,10 @@ export interface ComfortZone {
 
 /**
  * What the model scans, declared once for every chart that scans it
- * (ADR-0002 decision 61): the dynamic chart that is not polygons and the
- * psychrometric chart both scan {@link output}; on Explore both paint the
- * Band list copied from {@link classifier}, on Standard both draw
- * {@link comfortZones} (decision 58). Each field is named for the CONTEXT.md
+ * (ADR-0002 decision 61): the dynamic chart and the psychrometric chart both
+ * scan {@link output}; on Explore both paint the Band list copied from
+ * {@link classifier}, on Standard both draw {@link comfortZones} (decision
+ * 58). Each field is named for the CONTEXT.md
  * term it holds, not for the page that paints it.
  */
 export interface DeclaredScan {
@@ -143,18 +143,18 @@ export interface DeclaredScan {
 }
 
 /**
- * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
- * object: the psychrometric chart's axes are fixed by the temperature entry
- * mode, and the dynamic chart comes in two shapes, scanned or drawn from
- * declared polygons (ADR-0002 decision 37). What a chart scans is the model's
- * {@link DeclaredScan}, so no chart names an output or a classifier
- * (decision 61).
+ * A chart a model offers (ADR §4.4): one member per chart type (ADR-0002
+ * decision 62). The psychrometric chart's axes are fixed by the temperature
+ * entry mode, the dynamic chart starts on axes the user may change, and the
+ * adaptive chart is drawn from its model's geometry on axes it declares. What
+ * a chart scans is the model's {@link DeclaredScan}, so no chart names an
+ * output or a classifier (decision 61).
  *
  * The members' types are object identities, which discriminate nothing for
  * the compiler, and an object literal checked against a union has only the
  * keys no member knows reported as excess. So each member marks the others'
  * fields `never`: without that the compiler would take a psychrometric chart
- * with axes, or a scanned chart with an invented `comfortZones`.
+ * with axes, or a dynamic chart with an invented `comfortZones`.
  */
 export type DeclaredChart =
   | {
@@ -174,12 +174,12 @@ export type DeclaredChart =
       readonly comfortZones?: never;
     }
   | {
-      readonly type: typeof chartType.dynamic;
+      readonly type: typeof chartType.adaptive;
       /**
-       * Locked: the chart is drawn on these two quantities whatever the entry
-       * mode, and the picker is not offered. An operative-temperature axis
-       * stays operative under separate entry, marked at the library's `t_o` of
-       * the entered temperatures and air speed by the model's standard
+       * The chart is drawn on these two quantities whatever the entry mode,
+       * and the picker is not offered. An operative-temperature axis stays
+       * operative under separate entry, marked at the library's `t_o` of the
+       * entered temperatures and air speed by the model's standard
        * (`slot.operativeTemperatureOf`).
        */
       readonly axes: ChartAxes;
@@ -195,10 +195,10 @@ export type DeclaredChart =
 
 /** The psychrometric member of {@link DeclaredChart}. */
 export type DeclaredPsychrometricChart = Extract<DeclaredChart, { type: typeof chartType.psychrometric }>;
-/** Either dynamic member of {@link DeclaredChart}. */
+/** The dynamic member of {@link DeclaredChart}. */
 export type DeclaredDynamicChart = Extract<DeclaredChart, { type: typeof chartType.dynamic }>;
-/** The dynamic chart drawn from declared polygons on locked axes. */
-export type DeclaredPolygonsChart = Extract<DeclaredDynamicChart, { readonly comfortZones: unknown }>;
+/** The adaptive member of {@link DeclaredChart}. */
+export type DeclaredAdaptiveChart = Extract<DeclaredChart, { type: typeof chartType.adaptive }>;
 
 /** What every registered model declares, whatever it scans: {@link RegisteredModel} adds the scan and the charts. */
 interface CommonDeclaration {
@@ -282,7 +282,7 @@ interface CommonDeclaration {
  * One model's declaration. Charts are in offering order, the first the
  * default, and every model has at least one. A model with a
  * {@link DeclaredScan} may offer any chart; a model without one scans nothing,
- * so it offers only polygons charts (ADR-0002 decision 61).
+ * so it offers only adaptive charts (ADR-0002 decisions 61 and 62).
  */
 export type RegisteredModel = CommonDeclaration &
   (
@@ -292,7 +292,7 @@ export type RegisteredModel = CommonDeclaration &
       }
     | {
         readonly scan?: never;
-        readonly charts: readonly [DeclaredPolygonsChart, ...DeclaredPolygonsChart[]];
+        readonly charts: readonly [DeclaredAdaptiveChart, ...DeclaredAdaptiveChart[]];
       }
   );
 
@@ -313,9 +313,9 @@ export function dynamicChartOf(model: RegisteredModel): DeclaredDynamicChart | u
   return charts.find((chart): chart is DeclaredDynamicChart => chart.type === chartType.dynamic);
 }
 
-/** A dynamic chart drawn from declared polygons, whose axes are therefore locked (ADR-0002 decision 37). */
-export function isPolygonsChart(chart: DeclaredDynamicChart): chart is DeclaredPolygonsChart {
-  return chart.comfortZones !== undefined;
+export function adaptiveChartOf(model: RegisteredModel): DeclaredAdaptiveChart | undefined {
+  const charts: readonly DeclaredChart[] = model.charts;
+  return charts.find((chart): chart is DeclaredAdaptiveChart => chart.type === chartType.adaptive);
 }
 
 /**

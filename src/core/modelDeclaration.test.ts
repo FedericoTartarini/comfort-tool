@@ -14,6 +14,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor } from "./clothingCorrection";
 import {
+  adaptiveChartOf,
   axisRangeFor,
   clothingCorrectionOf,
   dynamicChartOf,
@@ -61,11 +62,6 @@ describe("table", () => {
   });
 });
 
-/** Every model has a dynamic chart (ADR §4.4); only the chart state's throw at session start would otherwise say so. */
-function expectADynamicChart(model: RegisteredModel): void {
-  expect(dynamicChartOf(model), model.info.label).toBeDefined();
-}
-
 /**
  * v1 has one chart per chart type (ADR-0002 decision 31's note): the chart
  * lookups return the first entry of a type, and the chart picker keys its
@@ -87,12 +83,6 @@ function expectZonesUnderAPsychrometricChart(model: RegisteredModel): void {
 }
 
 describe("charts", () => {
-  it("include a dynamic chart, for every registered model", () => {
-    for (const model of registeredModels) {
-      expectADynamicChart(model);
-    }
-  });
-
   it("name each chart type once, for every registered model", () => {
     for (const model of registeredModels) {
       expectEachChartTypeOnce(model);
@@ -114,17 +104,6 @@ describe("charts", () => {
     expect(() => expectZonesUnderAPsychrometricChart(noZones)).toThrow(noZones.info.label);
   });
 
-  it("that leave out the dynamic chart fail the check", () => {
-    const psychrometric = psychrometricChartOf(pmvPpdIso);
-    if (!psychrometric) throw new Error("PMV (ISO 7730) declares a psychrometric chart");
-    const noDynamicChart: RegisteredModel = {
-      ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, label: "Fixture without a dynamic chart" },
-      charts: [psychrometric],
-    };
-    expect(() => expectADynamicChart(noDynamicChart)).toThrow(noDynamicChart.info.label);
-  });
-
   it("that name the dynamic chart twice fail the check", () => {
     const dynamic = dynamicChartOf(pmvPpdIso);
     if (!dynamic) throw new Error("PMV (ISO 7730) declares a dynamic chart");
@@ -134,6 +113,12 @@ describe("charts", () => {
       charts: [...pmvPpdIso.charts, dynamic],
     };
     expect(() => expectEachChartTypeOnce(twoDynamicCharts)).toThrow(twoDynamicCharts.info.label);
+  });
+
+  it("are the adaptive chart alone for Adaptive, which scans nothing", () => {
+    expect(adaptiveAshrae.charts.map((chart) => chart.type)).toEqual([chartType.adaptive]);
+    expect(adaptiveChartOf(adaptiveAshrae)).toBe(adaptiveAshrae.charts[0]);
+    expect(dynamicChartOf(adaptiveAshrae)).toBeUndefined();
   });
 });
 
@@ -345,13 +330,14 @@ describe("requireAxisRange", () => {
 });
 
 /**
- * Type-level proof of the declaration's shapes (ADR-0002 decisions 37 and 61),
- * compiled by `npm run check` and never called: each `@ts-expect-error` fails
- * the build the day the compiler stops refusing that literal. What the model
- * scans is its own, so no chart names an output or a classifier, the
- * psychrometric chart names nothing but its type, and a scanned dynamic chart
- * needs a model with a scan. Exported only because `noUnusedLocals` would
- * otherwise flag it.
+ * Type-level proof of the declaration's shapes (ADR-0002 decisions 37, 61 and
+ * 62), compiled by `npm run check` and never called: each `@ts-expect-error`
+ * fails the build the day the compiler stops refusing that literal. What the
+ * model scans is its own, so no chart names an output or a classifier; the
+ * psychrometric chart names nothing but its type, the dynamic chart its axes,
+ * and the adaptive chart its axes and its zones source; and only the adaptive
+ * chart may be declared by a model without a scan. Exported only because
+ * `noUnusedLocals` would otherwise flag it.
  */
 export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
@@ -360,7 +346,7 @@ export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): Declared
   return [
     { type: chartType.psychrometric },
     { type: chartType.dynamic, axes },
-    { type: chartType.dynamic, axes, comfortZones: () => polygons },
+    { type: chartType.adaptive, axes, comfortZones: () => polygons },
     // @ts-expect-error an output on a chart, which is the model's scan's
     { type: chartType.dynamic, axes, output: q.pmv },
     // @ts-expect-error a classifier on a chart, which is the model's scan's
@@ -369,8 +355,14 @@ export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): Declared
     { type: chartType.psychrometric, axes },
     // @ts-expect-error a psychrometric chart with Comfort zones, which are the model's scan's
     { type: chartType.psychrometric, comfortZones: [zone] },
-    // @ts-expect-error a polygons chart with an output it does not scan
-    { type: chartType.dynamic, axes, comfortZones: () => polygons, output: q.pmv },
+    // @ts-expect-error a dynamic chart with a zones source, which is the adaptive chart's
+    { type: chartType.dynamic, axes, comfortZones: () => polygons },
+    // @ts-expect-error an adaptive chart without its zones source
+    { type: chartType.adaptive, axes },
+    // @ts-expect-error an adaptive chart with an output it does not scan
+    { type: chartType.adaptive, axes, comfortZones: () => polygons, output: q.pmv },
+    // @ts-expect-error an adaptive chart with a classifier it does not scan
+    { type: chartType.adaptive, axes, comfortZones: () => polygons, classifier },
   ];
 }
 
@@ -379,13 +371,14 @@ export function scanShapesTypeProof(polygons: readonly ZonePolygon[]): Registere
   const { charts: _charts, ...unscanned } = adaptiveAshrae;
   const scan = { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO };
   const axes = { x: q.v, y: q.operative_tmp };
+  const adaptive = { type: chartType.adaptive, axes, comfortZones: () => polygons };
   return [
     { ...unscanned, scan, charts: [{ type: chartType.dynamic, axes }] },
-    { ...unscanned, scan, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes }] },
-    { ...unscanned, charts: [{ type: chartType.dynamic, axes, comfortZones: () => polygons }] },
-    // @ts-expect-error a scanned dynamic chart on a model that declares no scan
+    { ...unscanned, scan, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes }, adaptive] },
+    { ...unscanned, charts: [adaptive] },
+    // @ts-expect-error a dynamic chart on a model that declares no scan
     { ...unscanned, charts: [{ type: chartType.dynamic, axes }] },
     // @ts-expect-error a psychrometric chart on a model that declares no scan
-    { ...unscanned, charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes, comfortZones: () => polygons }] },
+    { ...unscanned, charts: [{ type: chartType.psychrometric }, adaptive] },
   ];
 }

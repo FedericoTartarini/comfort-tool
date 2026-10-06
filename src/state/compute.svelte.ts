@@ -7,19 +7,12 @@ import {
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
+import { adaptiveSpec } from "$lib/core/charts/adaptiveChart";
 import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor, psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/specParts";
 import { chartType } from "$lib/core/chartType";
-import {
-  dynamicChartOf,
-  isPolygonsChart,
-  psychrometricChartOf,
-  type ChartAxes,
-  type DeclaredPsychrometricChart,
-  type ModelResult,
-  type RegisteredModel,
-} from "$lib/core/modelDeclaration";
+import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { page } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
@@ -127,9 +120,9 @@ export class Outputs {
 
   /**
    * What every slot's scan of the chart on screen shares (ADR-0002 decision
-   * 61): the psychrometric chart's frame, the scanned dynamic chart's, or
-   * `null` while it is a polygons chart, or none is drawn. It reads neither
-   * the page nor the Band list, so a band edit rescans nothing.
+   * 61): the psychrometric chart's frame, the dynamic chart's, or `null`
+   * while it is the adaptive chart, which scans nothing, or none is drawn. It
+   * reads neither the page nor the Band list, so a band edit rescans nothing.
    */
   readonly #scanFrame = $derived.by((): ScanFrame | null => {
     const session = this.#session;
@@ -137,13 +130,11 @@ export class Outputs {
     if (pressure === null) {
       return null;
     }
-    if (drawnPsychrometricOf(session)) {
+    const { type, axes } = session.chart;
+    if (type === chartType.psychrometric) {
       return psychrometricScanFrameFor(session.model, this.#entryModes, pressure);
     }
-    const chart = dynamicChartOf(session.model);
-    return chart && !isPolygonsChart(chart)
-      ? dynamicScanFrameFor(session.model, session.chart.axes, this.#entryModes, pressure)
-      : null;
+    return type === chartType.dynamic && axes ? dynamicScanFrameFor(session.model, axes, this.#entryModes, pressure) : null;
   });
 
   readonly #chart = $derived.by((): ChartSpec | null => {
@@ -191,8 +182,8 @@ export class Outputs {
    * The axes {@link chart} is drawn on and the ones the picker offers beside
    * them, resolved from the same entry mode, the session's, so the picker is
    * never in an entry mode the chart is not drawn in. `null` when
-   * the chart on screen has no axis to pick: none is drawn, it is not the
-   * dynamic chart, or its axes are locked.
+   * the chart on screen has no axis to pick: none is drawn, or it is not the
+   * dynamic chart.
    */
   get drawnAxes(): DrawnAxes | null {
     return this.#drawnAxes;
@@ -353,9 +344,9 @@ export class SlotOutputs {
 
   /**
    * The slot's scan of the chart on screen, of its last valid run (ADR-0002
-   * decision 61): the psychrometric chart's or the scanned dynamic chart's.
-   * Read only while that chart is scanned, not a polygons chart, and the slot
-   * has a run.
+   * decision 61): the psychrometric chart's or the dynamic chart's. Read
+   * only while one of the two is on screen, not the adaptive chart, and the
+   * slot has a run.
    */
   get scan(): ScannedField {
     return this.#scan;
@@ -387,21 +378,14 @@ function detach(slot: Slot): Slot {
 }
 
 /**
- * The psychrometric chart, while it is the one the session shows: the type
- * set, and the model declares one. Otherwise the dynamic chart is shown.
- */
-function drawnPsychrometricOf(session: Session): DeclaredPsychrometricChart | undefined {
-  return session.chart.type === chartType.psychrometric ? psychrometricChartOf(session.model) : undefined;
-}
-
-/**
  * The spec for the chart the session currently shows of the `charted` slots,
- * at the first one's atmospheric pressure, painting `bands` or, for `null`,
- * the Comfort zones, or `null` when the model declares none. Each run's model
- * is the session's own — {@link SlotOutputs.lastValid} remembers no other —
- * so the session's chart settings are this model's.
- * `scans` are the `charted` slots' scans of the chart drawn, in their order,
- * which the builder paints rather than scanning; none for a polygons chart.
+ * built by its type's builder, at the first one's atmospheric pressure,
+ * painting `bands` or, for `null`, the Comfort zones. Each run's model is the
+ * session's own — {@link SlotOutputs.lastValid} remembers no other — so the
+ * session's chart settings are this model's, and its chart type one the
+ * model declares. `scans` are the `charted` slots' scans of the chart drawn,
+ * in their order, which the builder paints rather than scanning; none for the
+ * adaptive chart.
  */
 function chartSpecOf(
   session: Session,
@@ -417,12 +401,14 @@ function chartSpecOf(
     atmosphericPressure: charted[0].last.atmosphericPressure,
     bands,
   };
-  const psychrometric = drawnPsychrometricOf(session);
-  if (psychrometric) {
+  const { type, axes } = session.chart;
+  if (type === chartType.psychrometric) {
     return psychrometricSpec(request, scans);
   }
-  const dynamic = dynamicChartOf(session.model);
-  return dynamic ? dynamicSpec(request, dynamic, session.chart.axes, scans) : null;
+  if (type === chartType.adaptive) {
+    return adaptiveSpec(request);
+  }
+  return axes ? dynamicSpec(request, axes, scans) : null;
 }
 
 /**
@@ -431,14 +417,10 @@ function chartSpecOf(
  * of its entry group that is.
  */
 function drawnAxesOf(session: Session): DrawnAxes | null {
-  if (session.chart.type !== chartType.dynamic) {
+  const { type, axes } = session.chart;
+  if (type !== chartType.dynamic || !axes) {
     return null;
   }
   const modes = session.entryModes;
-  const choices = dynamicAxisQuantities(session.model, modes);
-  // A polygons chart offers none: its axes are locked (ADR-0002 decision 37).
-  if (choices.length === 0) {
-    return null;
-  }
-  return { choices, selected: resolvedAxes(session.model, session.chart.axes, modes) };
+  return { choices: dynamicAxisQuantities(session.model, modes), selected: resolvedAxes(session.model, axes, modes) };
 }

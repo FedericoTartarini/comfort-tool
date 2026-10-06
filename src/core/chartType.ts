@@ -11,4 +11,5 @@ export interface ChartType {
 export const chartType = {
   psychrometric: { id: "psychrometric", title: "Psychrometric" },
   dynamic: { id: "dynamic", title: "Dynamic" },
+  adaptive: { id: "adaptive", title: "Adaptive" },
 } as const satisfies Record<string, ChartType>;

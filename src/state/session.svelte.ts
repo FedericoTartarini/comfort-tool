@@ -3,7 +3,7 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
-import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
@@ -130,24 +130,18 @@ function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>
 export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
-  axes: ChartAxes;
+  /** The dynamic chart's picked axes, its declared ones to begin with; `null` for a model that declares no dynamic chart. */
+  axes: ChartAxes | null;
   /** The classifier the Band list began as, which Add and Reset read; none for a model that scans nothing. */
   readonly #classifier: ClassifierBins | null;
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
-  /** A polygons chart's axes are the ones its model declares, and never move (ADR-0002 decision 37). */
-  readonly #axesLocked: boolean;
 
   constructor(model: RegisteredModel) {
-    const dynamic = dynamicChartOf(model);
-    if (!dynamic) {
-      throw new Error(`${model.info.label} declares no dynamic chart; ADR §4.4 gives every model one`);
-    }
     this.type = $state.raw(model.charts[0].type);
-    this.axes = $state.raw(dynamic.axes);
+    this.axes = $state.raw(dynamicChartOf(model)?.axes ?? null);
     this.#classifier = model.scan?.classifier ?? null;
     this.#bands = $state.raw(this.#classifier && bandListOf(this.#classifier));
-    this.#axesLocked = isPolygonsChart(dynamic);
   }
 
   /**
@@ -162,8 +156,9 @@ export class ChartState {
     return this.#bands;
   }
 
+  /** The dynamic chart's axes moved; nothing for a model without one, which has none to move. */
   setAxes(axes: Partial<ChartAxes>): void {
-    if (this.#axesLocked) {
+    if (!this.axes) {
       return;
     }
     this.axes = { ...this.axes, ...axes };

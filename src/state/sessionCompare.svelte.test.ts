@@ -669,10 +669,12 @@ describe("the compared slots' scans", () => {
     session.chart.type = chartType.dynamic;
     const outputs = new Outputs(session);
 
-    expectScansOf(outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, session.chart.axes, modes, pressure));
+    const axes = session.chart.axes;
+    if (!axes) throw new Error("PMV (ISO 7730) declares a dynamic chart");
+    expectScansOf(outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
   });
 
-  it("are none while a polygons chart is on screen", () => {
+  it("are none while the adaptive chart is on screen", () => {
     const session = new Session(adaptiveAshrae);
     const outputs = new Outputs(session);
 

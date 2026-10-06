@@ -218,10 +218,11 @@ export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): num
  * The air speed it weighs by is the slot's air-speed entry: the relative air
  * speed under relative air speed entry, the one air speed the slot then holds,
  * as the library's own ASHRAE 55 check weighs by the `vr` it is given.
- * How a chart locked on an operative axis marks a slot in separate entry
- * (ADR-0002 decision 37), and the value the switch into operative entry
- * stores ({@link withTemperatureMode}, decision 39), so the click does not
- * move the marker. The one place the app calls `t_o`.
+ * How the adaptive chart, drawn on an operative axis in every entry mode,
+ * marks a slot in separate entry (ADR-0002 decisions 37 and 62), and the
+ * value the switch into operative entry stores ({@link withTemperatureMode},
+ * decision 39), so the click does not move the marker. The one place the app
+ * calls `t_o`.
  *
  * Off the deployed chart's marker, the plain mean `(tdb + tr) / 2`, whenever
  * `tdb ≠ tr`, except under ASHRAE 55 below 0.2 m/s and under ISO 7726 at
@@ -373,9 +374,9 @@ export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] 
  * What the user entered for `quantity`, humidity included. `rh` is answered
  * in every mode, at `atmosphericPressure` — the dynamic chart sweeps and marks
  * the library's `rh`, not the entered representation — and so is
- * `operative_tmp`, which a chart with locked axes marks under separate entry
- * too, at `model`'s {@link operativeTemperatureOf}. A slot that holds no
- * humidity has no entered value for any humidity quantity.
+ * `operative_tmp`, which the adaptive chart marks under separate entry too,
+ * at `model`'s {@link operativeTemperatureOf}. A slot that holds no humidity
+ * has no entered value for any humidity quantity.
  */
 export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredModel, atmosphericPressure: number): number | undefined {
   const { humidity } = slot;

@@ -13,7 +13,7 @@ export interface ChartedSlot extends SlotBadge {
 }
 
 /**
- * What both spec builders are asked to draw (ADR-0002 decision 50): the slots,
+ * What every spec builder is asked to draw (ADR-0002 decision 50): the slots,
  * in slot order, beside what they share. The selected axes are the dynamic
  * chart's alone. Kept apart from `chartSpec.ts`, which holds only what the
  * chart component reads.

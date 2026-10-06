@@ -15,9 +15,10 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import {
+  adaptiveChartOf,
   dynamicChartOf,
   requireAxisRange,
-  type DeclaredDynamicChart,
+  type ChartAxes,
   type DeclaredScan,
   type Range,
   type RegisteredModel,
@@ -43,24 +44,29 @@ function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quant
 }
 
 /**
- * The ISO declaration scanning nothing, its dynamic chart drawn from
- * polygons, as Adaptive's is: the model names no output and no bands, so only
- * the table says which number `run` must return unrounded.
+ * The ISO declaration scanning nothing, its one chart the adaptive chart, as
+ * Adaptive's is: the model names no output and no bands, so only the table
+ * says which number `run` must return unrounded.
  */
-const isoWithPolygonsChart = {
+const isoWithAdaptiveChart = {
   ...pmvPpdIso,
   scan: undefined,
-  charts: [{ type: chartType.dynamic, axes: { x: quantities.tdb, y: quantities.v }, comfortZones: () => [] }],
+  charts: [{ type: chartType.adaptive, axes: { x: quantities.tdb, y: quantities.v }, comfortZones: () => [] }],
 } satisfies RegisteredModel;
+
+/** The axes of `model`'s chart that has some: its dynamic chart's, else its adaptive chart's. */
+function chartAxesOf(model: RegisteredModel): ChartAxes | undefined {
+  return (dynamicChartOf(model) ?? adaptiveChartOf(model))?.axes;
+}
 
 /**
  * The chart's x axis, as both of the tests below walk it: the model's own
  * declared defaults, the range the axis is drawn over, the slot at a position
  * along it, and the run's value for a quantity there.
  */
-function alongTheXAxis(model: RegisteredModel, chart: DeclaredDynamicChart) {
+function alongTheXAxis(model: RegisteredModel, axes: ChartAxes) {
   const defaults = startingSlot(model);
-  const axis = chart.axes.x;
+  const axis = axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
   return {
     defaults,
@@ -102,8 +108,8 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
  */
-function driftProbes(model: RegisteredModel, chart: DeclaredDynamicChart, scan: DeclaredScan): Slot[] {
-  const { defaults, range, at, valueAt } = alongTheXAxis(model, chart);
+function driftProbes(model: RegisteredModel, axes: ChartAxes, scan: DeclaredScan): Slot[] {
+  const { defaults, range, at, valueAt } = alongTheXAxis(model, axes);
   const outputAt = (position: number) => Number(valueAt(position, scan.output));
 
   const probes = [defaults];
@@ -123,7 +129,7 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
   // A model that scans nothing declares no bands to check.
   if (!scan || !chart) return;
   const classified = classifiedOutputOf(model, scan.classifier);
-  const probes = driftProbes(model, chart, scan);
+  const probes = driftProbes(model, chart.axes, scan);
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
   for (const slot of probes) {
@@ -145,7 +151,7 @@ describe("the scan's declared bands", () => {
 
   it("are not looked for on a model that scans nothing", () => {
     const neverRun = {
-      ...isoWithPolygonsChart,
+      ...isoWithAdaptiveChart,
       run: () => {
         throw new Error("a chart with no bands was probed");
       },
@@ -168,9 +174,9 @@ const ROUNDED_GRID_PER_UNIT = 100;
 const SAMPLES_ALONG_THE_AXIS = 25;
 
 /**
- * How many of `quantity`'s values, sampled along the dynamic chart's x axis,
- * carry more decimals than any rounding the library applies would leave. The
- * first table column by default, because every model declares one, whatever
+ * How many of `quantity`'s values, sampled along the x axis `axes` has
+ * ({@link chartAxesOf}), carry more decimals than any rounding the library
+ * applies would leave. The first table column by default, because every model declares one, whatever
  * its chart scans or draws, and what the table shows is what must be
  * unrounded (ADR-0002 decision 38); the scan's output beside it, which every
  * scanned chart contours (decision 61). A count over the whole sample rather
@@ -179,10 +185,10 @@ const SAMPLES_ALONG_THE_AXIS = 25;
  */
 function unroundedSampleCount(
   model: RegisteredModel,
-  chart: DeclaredDynamicChart,
+  axes: ChartAxes,
   quantity: Quantity | undefined = model.table[0],
 ): number {
-  const { range, valueAt } = alongTheXAxis(model, chart);
+  const { range, valueAt } = alongTheXAxis(model, axes);
   if (!quantity) {
     throw new Error(`${model.info.label} declares no table column`);
   }
@@ -194,7 +200,7 @@ function unroundedSampleCount(
   const finite = (position: number) => {
     const value = valueAt(position, quantity);
     if (typeof value !== "number" || !Number.isFinite(value)) {
-      throw new Error(`${model.info.label} returns ${String(value)} for ${quantity.label} at ${chart.axes.x.label} ${position}`);
+      throw new Error(`${model.info.label} returns ${String(value)} for ${quantity.label} at ${axes.x.label} ${position}`);
     }
     return value;
   };
@@ -239,17 +245,17 @@ function isoRounding(round_output: boolean) {
 describe("run's numbers", () => {
   it("come back unrounded in the table's first column and the scan's output, for every registered model", () => {
     for (const model of registeredModels) {
-      const chart = dynamicChartOf(model);
-      if (!chart) continue;
+      const axes = chartAxesOf(model);
+      if (!axes) continue;
       // The rounding switch is written by hand in each declaration's call,
       // under whatever name the library function gives it, so nothing but this
       // stops the next author from leaving it on (ADR-0002 decisions 18 and
       // 35). What it costs is silent: within half a rounding step of an Edge
       // the chart's band and the table's category disagree, and the dynamic
       // chart's surface becomes a staircase.
-      expect(unroundedSampleCount(model, chart), `${model.info.label} first table column`).toBeGreaterThan(0);
+      expect(unroundedSampleCount(model, axes), `${model.info.label} first table column`).toBeGreaterThan(0);
       if (model.scan) {
-        expect(unroundedSampleCount(model, chart, model.scan.output), `${model.info.label} scan output`).toBeGreaterThan(0);
+        expect(unroundedSampleCount(model, axes, model.scan.output), `${model.info.label} scan output`).toBeGreaterThan(0);
       }
     }
   });
@@ -264,11 +270,13 @@ describe("run's numbers", () => {
     // where both ends agree.
     const chart = dynamicChartOf(pmvPpdIso);
     if (!chart) throw new Error("PMV (ISO 7730) declares a dynamic chart");
-    expect(unroundedSampleCount(isoRounding(true), chart)).toBe(0);
-    expect(unroundedSampleCount(isoRounding(false), chart)).toBeGreaterThan(0);
+    expect(unroundedSampleCount(isoRounding(true), chart.axes)).toBe(0);
+    expect(unroundedSampleCount(isoRounding(false), chart.axes)).toBeGreaterThan(0);
   });
 
-  it("are asserted for a model whose chart is polygons, which scans no output", () => {
-    expect(unroundedSampleCount(isoWithPolygonsChart, isoWithPolygonsChart.charts[0])).toBeGreaterThan(0);
+  it("are asserted for a model whose chart is adaptive, which scans no output", () => {
+    const axes = chartAxesOf(isoWithAdaptiveChart);
+    if (!axes) throw new Error("the fixture declares an adaptive chart");
+    expect(unroundedSampleCount(isoWithAdaptiveChart, axes)).toBeGreaterThan(0);
   });
 });

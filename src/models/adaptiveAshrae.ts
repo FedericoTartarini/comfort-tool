@@ -62,11 +62,11 @@ export const adaptiveAshrae = {
     q.acceptability_90,
   ],
   charts: [
-    // Locked on running mean × operative temperature. The marker sits at the
-    // library's air-speed-weighted `t_o` of dry-bulb and mean radiant under
-    // separate entry (`slot.operativeTemperatureOf`), where the run's
-    // two answers are read, and not at the plain mean the deployed tool puts
-    // it at.
+    // On running mean × operative temperature in every entry mode. The marker
+    // sits at the library's air-speed-weighted `t_o` of dry-bulb and mean
+    // radiant under separate entry (`slot.operativeTemperatureOf`), where the
+    // run's two answers are read, and not at the plain mean the deployed tool
+    // puts it at.
     //
     // The bands step where the deployed tool steps them: each upper edge once
     // its own base line reaches 25 °C, whatever was entered. The run's upper
@@ -76,7 +76,7 @@ export const adaptiveAshrae = {
     // more the table's upper limits and the chart's upper edge above the
     // marker can differ by the cooling effect; each follows its own source.
     {
-      type: chartType.dynamic,
+      type: chartType.adaptive,
       axes: { x: q.t_running_mean, y: q.operative_tmp },
       comfortZones: ({ values, xRange }) => {
         const zone = adaptive_ashrae_zone({ v: values.v, t_running_mean_range: [xRange.min, xRange.max] });

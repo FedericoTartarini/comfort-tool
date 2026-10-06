@@ -140,7 +140,7 @@ describe("The page in the session", () => {
       expect(outputs.slots[0].scan).toBe(scan);
     });
 
-    it("paints Adaptive's polygons, which have no Band list", () => {
+    it("paints Adaptive's Comfort zones, which have no Band list", () => {
       const session = new Session(pmvPpdIso);
       openAt(session, page.explore, adaptiveAshrae);
 
@@ -201,7 +201,7 @@ describe("The page in the session", () => {
     expect(slotPositions.map((position) => session.isSlotEnabled(position))).toEqual([true, true, false]);
     expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(before);
     expect(session.chart).toBe(chart);
-    expect(session.chart.axes.y).toBe(q.vr);
+    expect(session.chart.axes?.y).toBe(q.vr);
     expect(outputs.slots.map((slot) => slot.position)).toEqual([0, 1]);
     expect(markedPositions(outputs.chart)).toEqual([0, 1]);
   });

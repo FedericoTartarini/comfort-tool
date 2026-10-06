@@ -318,41 +318,31 @@ describe("options", () => {
   });
 });
 
-/** A model whose one chart is drawn from polygons, on operative temperature against air speed. */
-const drawsPolygons = {
-  ...pmvPpdIso,
-  info: { ...pmvPpdIso.info, name: "fixture_polygons_chart" },
-  charts: [
-    {
-      type: chartType.dynamic,
-      axes: { x: q.operative_tmp, y: q.v },
-      comfortZones: () => [{ label: "Acceptable", x: [20, 30, 30], y: [0, 0, 1] }],
-    },
-  ],
-} satisfies RegisteredModel;
-
 /**
- * A polygons chart's axes are locked (ADR-0002 decision 37): the picker is not
- * offered, and a request to move an axis changes nothing the chart draws.
+ * A model that declares no dynamic chart has no axes to pick (ADR-0002
+ * decision 62): its chart state holds none, and a request to move an axis
+ * changes nothing the chart draws.
  */
-describe("the axes of a polygons chart", () => {
-  it("do not move when an axis is set", () => {
-    const session = new Session(drawsPolygons);
+describe("the axes of a model without a dynamic chart", () => {
+  it("are none, and stay none when an axis is set", () => {
+    const session = new Session(adaptiveAshrae);
     const outputs = new Outputs(session);
 
+    expect(session.chart.type).toBe(chartType.adaptive);
+    expect(session.chart.axes).toBeNull();
     session.chart.setAxes({ x: q.clo, y: q.met });
 
-    expect(session.chart.axes).toEqual({ x: q.operative_tmp, y: q.v });
-    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
-    expect(outputs.chart?.layout.y.title).toContain(q.v.label);
+    expect(session.chart.axes).toBeNull();
+    expect(outputs.chart?.layout.x.title).toContain(q.t_running_mean.label);
+    expect(outputs.chart?.layout.y.title).toContain(q.operative_tmp.label);
   });
 
-  it("stay operative under separate entry", () => {
-    const session = new Session(drawsPolygons);
+  it("leave the adaptive chart operative under separate entry", () => {
+    const session = new Session(adaptiveAshrae);
     const outputs = new Outputs(session);
 
     expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
-    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
+    expect(outputs.chart?.layout.y.title).toContain(q.operative_tmp.label);
   });
 });
 

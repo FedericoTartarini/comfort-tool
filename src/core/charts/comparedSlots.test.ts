@@ -1,5 +1,5 @@
 /**
- * Both builders given a list of slots (ADR-0002 decision 50): every slot
+ * Every builder given a list of slots (ADR-0002 decision 50): every slot
  * draws the declaration's Comfort zones at its own values and one
  * marker, in its own hue, and what the slots share is drawn once. A slot's
  * expected zones and marker are the ones a list holding that slot alone
@@ -10,7 +10,6 @@ import { chartInk } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
-  isPolygonsChart,
   type ComfortZone,
   type DeclaredDynamicChart,
   type RegisteredModel,
@@ -39,6 +38,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
+import { adaptiveSpec } from "./adaptiveChart";
 import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
@@ -96,9 +96,6 @@ function threeSlots(model: RegisteredModel): Slot[] {
   return [startingSlot(model), enteredSlotFor(model, { clo: 1 }), enteredSlotFor(model, { met: 1.4 })];
 }
 
-/** Adaptive's three: its zones move with the air speed alone. */
-const adaptiveSlots = [startingSlot(adaptiveAshrae), enteredSlotFor(adaptiveAshrae, { v: 0.9 }), enteredSlotFor(adaptiveAshrae, { v: 1.2 })];
-
 /** A named way to draw a model's chart of a list of slots, and how many zones each slot has on it. */
 interface Drawing {
   readonly name: string;
@@ -116,22 +113,30 @@ function psychrometricDrawing(model: RegisteredModel): Drawing {
   };
 }
 
-function dynamicDrawing(model: RegisteredModel, slots: readonly Slot[]): Drawing {
+function dynamicDrawing(model: RegisteredModel): Drawing {
   const chart = dynamicOf(model);
   return {
     name: `${model.info.label}, dynamic`,
-    slots,
-    draw: (drawn) => dynamicSpec(chartRequestForSlots(model, drawn), chart, chart.axes),
-    zonesPerSlot: isPolygonsChart(chart) ? 2 : declaredZonesOf(model).length,
+    slots: threeSlots(model),
+    draw: (drawn) => dynamicSpec(chartRequestForSlots(model, drawn), chart.axes),
+    zonesPerSlot: declaredZonesOf(model).length,
   };
 }
+
+/** Adaptive's chart, whose two acceptability zones move with the air speed alone. */
+const adaptiveDrawing: Drawing = {
+  name: `${adaptiveAshrae.info.label}, adaptive`,
+  slots: [startingSlot(adaptiveAshrae), enteredSlotFor(adaptiveAshrae, { v: 0.9 }), enteredSlotFor(adaptiveAshrae, { v: 1.2 })],
+  draw: (drawn) => adaptiveSpec(chartRequestForSlots(adaptiveAshrae, drawn)),
+  zonesPerSlot: 2,
+};
 
 const drawings: readonly Drawing[] = [
   psychrometricDrawing(pmvPpdIso),
   psychrometricDrawing(pmvPpdAshrae),
-  dynamicDrawing(pmvPpdIso, threeSlots(pmvPpdIso)),
-  dynamicDrawing(pmvPpdAshrae, threeSlots(pmvPpdAshrae)),
-  dynamicDrawing(adaptiveAshrae, adaptiveSlots),
+  dynamicDrawing(pmvPpdIso),
+  dynamicDrawing(pmvPpdAshrae),
+  adaptiveDrawing,
 ];
 
 describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerSlot }) => {
@@ -198,7 +203,7 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
     const slots = threeSlots(pmvPpdIso);
     const dynamic = dynamicOf(pmvPpdIso);
     expect(zonesOf(psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots)))).toHaveLength(9);
-    expect(zonesOf(dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), dynamic, dynamic.axes))).toHaveLength(9);
+    expect(zonesOf(dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), dynamic.axes))).toHaveLength(9);
   });
 
   it("names each zone by its slot and by the zone", () => {
@@ -211,7 +216,7 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
 describe("the scanned dynamic chart drawn of more than one slot", () => {
   const chart = dynamicOf(pmvPpdIso);
   const slots = threeSlots(pmvPpdIso);
-  const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), chart, chart.axes);
+  const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), chart.axes);
 
   function contourZonesOf(drawn: ChartSpec): ContourZoneTrace[] {
     return zonesOf(drawn).filter((zone): zone is ContourZoneTrace => zone.kind === "contourZone");
@@ -232,14 +237,14 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
   it("cuts each slot's zones from the field the slot alone is scanned on", () => {
     const zones = contourZonesOf(spec);
     slots.forEach((slot, position) => {
-      const alone = contourZonesOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes));
+      const alone = contourZonesOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes));
       expect(zones[position * 3].z).toEqual(alone[0].z);
     });
   });
 
   it("reads both axis values and each slot's number, named by the slot, in its one hover grid", () => {
     const grid = hoverGridOf(spec);
-    const alone = slots.map((slot) => hoverGridOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes)));
+    const alone = slots.map((slot) => hoverGridOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes)));
     expect(grid.hoverText[2][26]).toEqual([
       ...alone[0].hoverText[2][26].slice(0, 2),
       ...alone.map((field, position) => copy.slotEntry(slotBadges[position].name, field.hoverText[2][26][2])),
@@ -278,12 +283,10 @@ describe("a slot in another temperature entry mode than the session's", () => {
     const chart = dynamicOf(pmvPpdIso);
     const spec = dynamicSpec(
       chartRequestForSlots(pmvPpdIso, [operative, startingSlot(pmvPpdIso)], unitSystem.si, entryModesWithTemperature(temperatureMode.separate)),
-      chart,
       chart.axes,
     );
     const alone = dynamicSpec(
       chartRequestFor(pmvPpdIso, withTemperatureMode(operative, temperatureMode.separate, pmvPpdIso)),
-      chart,
       chart.axes,
     );
     expect(spec.layout.x.title).toContain(q.tdb.label);
@@ -298,8 +301,8 @@ describe("a slot in another air-speed entry mode than the session's", () => {
 
   it("is marked on the session's air-speed axis, at the value the entry-mode change converts it to", () => {
     const chart = dynamicOf(pmvPpdIso);
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart, chart.axes);
-    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart, chart.axes);
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
     expect(markersOf(spec)[1].y).toBe(relativeAirSpeedOf(entered));
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
@@ -313,8 +316,8 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     const kept = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
     const back = withAirSpeedMode(kept, airSpeedMode.uncorrected);
     const uncorrected = entryModesWithAirSpeed(airSpeedMode.uncorrected);
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), chart, chart.axes);
-    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, back), chart, chart.axes);
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, back), chart.axes);
     expect(spec.layout.y.title).toContain(q.v.label);
     expect(spec.traces).toEqual(alone.traces);
     expect(markersOf(spec)[0].y).toBe(0.4);
@@ -341,9 +344,8 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
   const clothingAxes = { x: q.tdb, y: q.clo };
 
   it("is marked on the session's clothing axis, at the dynamic clothing insulation the model was given", () => {
-    const chart = dynamicOf(model);
-    const spec = dynamicSpec(chartRequestForSlots(model, [startingSlot(model), entered], unitSystem.si, corrected), chart, clothingAxes);
-    const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), chart, clothingAxes);
+    const spec = dynamicSpec(chartRequestForSlots(model, [startingSlot(model), entered], unitSystem.si, corrected), clothingAxes);
+    const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
     expect(markersOf(spec)[1].y).toBe(dynamicClothingOf(entered, model));
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
@@ -368,10 +370,9 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     const kept = withClothingMode(entered, clothingMode.corrected, model);
     const back = withClothingMode(kept, clothingMode.uncorrected, model);
     const uncorrected = entryModesWithClothing(clothingMode.uncorrected);
-    const chart = dynamicOf(model);
-    const spec = dynamicSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), chart, clothingAxes);
+    const spec = dynamicSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo.label);
-    expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), chart, clothingAxes).traces);
+    expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), clothingAxes).traces);
     expect(markersOf(spec)[0].y).toBe(1);
     expect(dynamicClothingOf(back, model)).toBe(dynamicClothingOf(kept, model));
 

@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { classifyFromBins } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { dynamicChartOf, isPolygonsChart, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
@@ -21,23 +21,23 @@ import { dynamicSpec } from "./dynamicChart";
 
 const q = quantities;
 
-/** `model`'s scanned dynamic chart. */
-function scannedChartOf(model: RegisteredModel): DeclaredDynamicChart {
+/** `model`'s dynamic chart. */
+function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
-  if (!chart || isPolygonsChart(chart)) {
-    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
+  if (!chart) {
+    throw new Error(`${model.info.label} no longer declares a dynamic chart`);
   }
   return chart;
 }
 
-const isoChart = scannedChartOf(pmvPpdIso);
+const isoChart = dynamicOf(pmvPpdIso);
 const isoBands = bandListOf(pmvPpdIso.scan.classifier);
 const isoRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
 /** `model`'s dynamic chart of its starting slot, painting `bands`. */
 function bandedSpec(bands: BandList, model: RegisteredModel = pmvPpdIso): ChartSpec {
-  const chart = scannedChartOf(model);
-  return dynamicSpec({ ...chartRequestFor(model, startingSlot(model)), bands }, chart, chart.axes);
+  const chart = dynamicOf(model);
+  return dynamicSpec({ ...chartRequestFor(model, startingSlot(model)), bands }, chart.axes);
 }
 
 function bandTraceOf(spec: ChartSpec): BandTrace {
@@ -129,7 +129,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   });
 
   it("paints Comfort zones and no band when given nothing", () => {
-    const drawn = dynamicSpec(isoRequest, isoChart, isoChart.axes);
+    const drawn = dynamicSpec(isoRequest, isoChart.axes);
     expect(drawn.traces.some((trace) => trace.kind === "bands")).toBe(false);
     expect(drawn.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
   });
@@ -149,7 +149,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
   /** The spec of a model whose PMV is `value` at every point of the field, painting `bands`. */
   function flat(value: number, bands: BandList = uneven, system = unitSystem.si): ChartSpec {
     const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
-    return dynamicSpec({ ...isoRequest, model, unitSystem: system, bands }, isoChart, isoChart.axes);
+    return dynamicSpec({ ...isoRequest, model, unitSystem: system, bands }, isoChart.axes);
   }
 
   const readAt = (value: number, bands: BandList = uneven) => bandRead(hoverGridOf(flat(value, bands)).hoverText[0][0]);
@@ -190,7 +190,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
       run: () => ({ operative_tmp: 30 }),
     } satisfies RegisteredModel;
     const trace = bandTraceOf(
-      dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart, isoChart.axes),
+      dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart.axes),
     );
     // 30 °C reads as 86 °F on an axis; here it stays 30.
     expect(trace.z[0][0]).toBe(30);
@@ -205,7 +205,6 @@ describe("a Band list over several slots", () => {
     const one = bandedSpec(isoBands);
     const two = dynamicSpec(
       { ...request, slots: [...request.slots, { ...slotBadges[1], slot: warm }], bands: isoBands },
-      isoChart,
       isoChart.axes,
     );
     expect(bandTraceOf(two).z).toEqual(bandTraceOf(one).z);
