@@ -1,14 +1,15 @@
 /**
  * The psychrometric chart handed a Band list, as Explore asks for it
  * (ADR-0002 decision 58): a scan of the model's output over the temperature
- * axis and the humidity ratio, every cell run, cut by the list, under the
- * cover above saturation (decision 61), with the isolines and the marker as on
- * Standard and no Comfort zone. Handed none it paints Comfort zones as
+ * axis and the humidity ratio, every cell run, cut by the list, each Edge
+ * stroked over the isolines (decision 62), under the cover above saturation
+ * (decision 61), with the isolines and the marker as on Standard and no
+ * Comfort zone. Handed none it paints Comfort zones as
  * contours of the same scan (`psychrometricChart.test.ts`).
  */
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
-import { bandListOf, moveEdge, type BandList } from "$lib/core/bands";
+import { bandListOf, moveEdge, setColor, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -110,8 +111,30 @@ describe("the psychrometric chart given a Band list", () => {
     expect(fillsOf(spec).map((fill) => [fill.label, fill.color, fill.lower, fill.upper])).toEqual(
       isoBands.labels.map((label, index) => [label, isoBands.colors[index], isoBands.edges[index - 1], lastEdge]),
     );
-    expect(spec.traces.some((entry) => entry.kind === "contourLine")).toBe(false);
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(slotBadges[0].hue.zoneLine);
     expect(spec.traces.some((entry) => entry.kind === "path" && entry.fill !== undefined && entry.fill !== chartInk.ground)).toBe(false);
+  });
+
+  it("strokes every band's own upper Edge once, in the band line at 1 px, read by nothing", () => {
+    expect(linesOf(spec).map(({ label, color, width, lower, upper, hover }) => ({ label, color, width, lower, upper, hover }))).toEqual(
+      isoBands.labels.map((label, index) => ({
+        label,
+        color: chartInk.bandLine,
+        width: chartInk.bandLineWidth,
+        lower: undefined,
+        upper: isoBands.edges[index],
+        hover: "off",
+      })),
+    );
+    expect(linesOf(spec).map((line) => line.z)).toEqual(isoBands.labels.map(() => trace.z));
+  });
+
+  it("strokes an unpainted band's Edge, and the fill below it stops at its lower Edge", () => {
+    const hidden = setColor(isoBands, 3, undefined);
+    const drawn = bandedSpec(hidden);
+    expect(linesOf(drawn).map((line) => [line.label, line.upper])).toEqual(hidden.labels.map((label, index) => [label, hidden.edges[index]]));
+    expect(fillsOf(drawn).map((fill) => fill.label)).not.toContain(hidden.labels[3]);
+    expect(fillsOf(drawn)[2].upper).toBe(hidden.edges[2]);
   });
 
   it.each([1, 3])(
@@ -123,6 +146,7 @@ describe("the psychrometric chart given a Band list", () => {
       const saturationLine = isolines[isolines.length - 1];
       const markers = drawn.traces.filter((trace) => trace.kind === "point");
       expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartInk.isoline), chartInk.saturationLine]);
+      expect(linesOf(drawn)).toHaveLength(isoBands.edges.length);
       expect(markers).toHaveLength(count);
       expect(drawn.traces).toEqual([
         ...fillsOf(drawn),
@@ -250,6 +274,7 @@ describe("the psychrometric chart given a Band list", () => {
   it("follows an edited list", () => {
     const edited = moveEdge(isoBands, 2, -0.1);
     expect(fillsOf(bandedSpec(edited)).map((fill) => fill.lower)).toEqual([undefined, ...edited.edges.slice(0, -1)]);
+    expect(linesOf(bandedSpec(edited)).map((line) => line.upper)).toEqual(edited.edges);
   });
 
   it("paints PMV (ASHRAE 55)'s list over its own scan", () => {
@@ -269,7 +294,8 @@ describe("the psychrometric chart given a Band list", () => {
     const zoneLabels = [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone));
     const zones = fillsOf(drawn);
     expect(zones.map((zone) => zone.label)).toEqual(zoneLabels);
-    expect(drawn.traces.filter((entry): entry is ContourLineTrace => entry.kind === "contourLine").map((line) => line.label)).toEqual(zoneLabels);
+    expect(linesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
+    expect(linesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
     expect(zones[0].z).toEqual(trace.z);
     expect(coverOf(drawn)).toEqual(coverOf(spec));
   });

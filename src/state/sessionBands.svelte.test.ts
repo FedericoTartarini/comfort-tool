@@ -3,12 +3,13 @@
  * other session tests use: a session on Explore, edited through its chart
  * settings as the panel edits it, its Band list and its chart spec out, with
  * no component and no router. The expected lists are the Band list module's
- * own operations on the default list.
+ * own operations on the default list, and a list's lines are its own Edges.
  */
 import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
-import type { ContourFillTrace } from "$lib/core/charts/chartSpec";
-import { chartType } from "$lib/core/chartType";
+import { chartInk } from "$lib/core/bandPalette";
+import type { ContourFillTrace, ContourLineTrace } from "$lib/core/charts/chartSpec";
+import { chartType, type ChartType } from "$lib/core/chartType";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -20,12 +21,24 @@ const sensation = pmvPpdIso.scan.classifier;
 // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10; band 3 is Neutral.
 const defaultList = bandListOf(sensation);
 
-/** A session on Explore on PMV (ISO 7730)'s dynamic chart, and its outputs. */
-function exploreSession(): { session: Session; outputs: Outputs } {
+/** A session on Explore on PMV (ISO 7730)'s `type` chart, the dynamic one unless named, and its outputs. */
+function exploreSession(type: ChartType = chartType.dynamic): { session: Session; outputs: Outputs } {
   const session = new Session(pmvPpdIso);
   session.setAddress({ page: page.explore, model: pmvPpdIso });
-  session.chart.type = chartType.dynamic;
+  session.chart.type = type;
   return { session, outputs: new Outputs(session) };
+}
+
+/** Where the chart strokes an Edge: each band line's label and value. */
+function strokedEdges(outputs: Outputs) {
+  return (outputs.chart?.traces ?? [])
+    .filter((trace): trace is ContourLineTrace => trace.kind === "contourLine" && trace.color === chartInk.bandLine)
+    .map(({ label, upper }) => ({ label, upper }));
+}
+
+/** The Edges `list` strokes: every band's own upper Edge, painted or not. */
+function edgesOf(list: BandList) {
+  return list.labels.map((label, index) => ({ label, upper: list.edges[index] }));
 }
 
 /** The fills the chart paints: each one's label, colour and interval. */
@@ -67,19 +80,24 @@ const edits: readonly { name: string; edit: (chart: ChartState) => void; expecte
 ];
 
 describe("The Bands panel's edits through the session", () => {
-  for (const { name, edit, expected } of edits) {
-    it(`${name} in the current model's Band list and the chart spec at once`, () => {
-      const { session, outputs } = exploreSession();
-      expect(paintedFills(outputs)).toEqual(fillsOf(defaultList));
-      const result = outputs.slots[0].result;
+  for (const type of [chartType.dynamic, chartType.psychrometric]) {
+    for (const { name, edit, expected } of edits) {
+      it(`${name} in the current model's Band list and the ${type.title} chart's spec at once, rescanning nothing`, () => {
+        const { session, outputs } = exploreSession(type);
+        expect(paintedFills(outputs)).toEqual(fillsOf(defaultList));
+        expect(strokedEdges(outputs)).toEqual(edgesOf(defaultList));
+        const { result, scan } = outputs.slots[0];
 
-      edit(session.chart);
+        edit(session.chart);
 
-      expect(session.chart.bands).toEqual(expected);
-      expect(paintedFills(outputs)).toEqual(fillsOf(expected));
-      // The result table reads the kernel's own category, never the list.
-      expect(outputs.slots[0].result).toEqual(result);
-    });
+        expect(session.chart.bands).toEqual(expected);
+        expect(paintedFills(outputs)).toEqual(fillsOf(expected));
+        expect(strokedEdges(outputs)).toEqual(edgesOf(expected));
+        expect(outputs.slots[0].scan).toBe(scan);
+        // The result table reads the kernel's own category, never the list.
+        expect(outputs.slots[0].result).toEqual(result);
+      });
+    }
   }
 
   it("leaves the Standard page's dynamic chart to its Comfort zones, whatever the list holds", () => {
@@ -94,6 +112,7 @@ describe("The Bands panel's edits through the session", () => {
       [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone)),
     );
     expect(traces.filter((trace) => trace.kind === "contourLine")).toHaveLength(3);
+    expect(strokedEdges(outputs)).toEqual([]);
   });
 
   it("refuses an Edge at or beyond a neighbour, leaving the list and the spec as they were", () => {

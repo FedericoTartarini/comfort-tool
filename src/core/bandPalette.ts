@@ -116,10 +116,14 @@ export function colorForBand(bins: ClassifierBins, category: string | number): s
 
 /**
  * Chart ink. Not bands — the Comfort zones and the markers are in their
- * slot's hue (`core/slotBadge.ts`), the isolines are neutral chrome.
+ * slot's hue (`core/slotBadge.ts`), the isolines are neutral chrome, and a
+ * Band's Edge is one neutral line whatever the band's own colour.
  */
 export const chartInk = {
   zoneLineWidth: 1.5,
+  /** A Band's Edge (ADR-0002 decision 62): darker than the isolines, so it reads over them, and thinner than a zone's outline. */
+  bandLine: "#64748b",
+  bandLineWidth: 1,
   /**
    * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost:
    * the slot's hue, its opacity rising inwards to 0.4, so a lone zone keeps

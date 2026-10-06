@@ -97,7 +97,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
 export interface FieldPaint {
   /** Every region's fill: the slots in the request's order, each slot's zones largest first; or the bands in the list's. */
   readonly fills: readonly ContourFillTrace[];
-  /** Every region's outline, in the fills' order. */
+  /** Every region's line, in the fills' order: each zone's outline, or every band's Edge, an unpainted band's too. */
   readonly outlines: readonly ContourLineTrace[];
   /** The one grid that reads every slot's number for the fills. */
   readonly hoverGrid: HoverGridTrace;
@@ -116,11 +116,11 @@ export interface FieldPaint {
  *
  * Given a Band list ({@link ChartRequest.bands}), its bands over the first
  * slot's scan, each over its interval of the number in its own colour, a
- * band without one nowhere. Given none, each slot's Comfort zones as
- * contours of its own scan, largest first, in the slot's hue with the
- * opacity rising inwards, a lone slot exactly as each of several (ADR-0002
- * decisions 50 and 58). Never the thermal-sensation palette for a zone: it is
- * diverging, and nested zones are levels of one thing.
+ * band without one nowhere, and every Edge stroked. Given none, each slot's
+ * Comfort zones as contours of its own scan, largest first, in the slot's
+ * hue with the opacity rising inwards, a lone slot exactly as each of
+ * several (ADR-0002 decisions 50 and 58). Never the thermal-sensation palette
+ * for a zone: it is diverging, and nested zones are levels of one thing.
  *
  * Either way one hover grid reads both swept values and every slot's number,
  * labelled by its slot while there are several, and with a list the band the
@@ -143,26 +143,28 @@ export function fieldPaintFor(
   const outlines: ContourLineTrace[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
+  const lay = ({ line, fill }: PaintedRegion, legend: LegendEntry[]) => {
+    if (fill) {
+      fills.push(fill.trace);
+      legend.push(fill.legendEntry);
+    }
+    outlines.push(line);
+  };
 
   if (bands) {
-    const painted = bandsFor(bands, { ...drawn, z: surfaces[0] });
-    fills.push(...painted.fills);
-    bandLegend.push(...painted.legendEntries);
+    bandsFor(bands, { ...drawn, z: surfaces[0] }).forEach((region) => lay(region, bandLegend));
   } else {
     const zones = contouredZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
         const interval = { lower: -zone.limit, upper: zone.limit };
         const region = paintedRegionFor(labelFor(request, charted, copy.zoneLegend(zone)), { ...drawn, z: surfaces[position] }, {
-          fill: interval,
+          fill: { interval, color: chartInk.zoneFill(charted.hue, index, zones.length) },
           line: interval,
-          fillColor: chartInk.zoneFill(charted.hue, index, zones.length),
           lineColor: charted.hue.zoneLine,
           lineWidth: chartInk.zoneLineWidth,
         });
-        fills.push(region.fill);
-        outlines.push(region.line);
-        zoneLegendOfSlot[position].push(region.legendEntry);
+        lay(region, zoneLegendOfSlot[position]);
       });
     });
   }
@@ -283,41 +285,50 @@ type FieldInterval = Pick<ContourFillTrace, "upper" | "lower">;
 
 /**
  * How a {@link paintedRegionFor} region is painted: the interval it fills and
- * its colour, the interval it strokes and the line's colour and width.
+ * the fill's colour, if it is filled at all, and the interval it strokes and
+ * the line's colour and width.
  */
 interface RegionPaint {
-  readonly fill: FieldInterval;
+  readonly fill?: { readonly interval: FieldInterval; readonly color: string };
   readonly line: FieldInterval;
-  readonly fillColor: string;
   readonly lineColor: string;
   readonly lineWidth: number;
 }
 
+/** A region's line, and where it is filled its fill and the fill's legend entry. */
+interface PaintedRegion {
+  readonly line: ContourLineTrace;
+  readonly fill?: { readonly trace: ContourFillTrace; readonly legendEntry: LegendEntry };
+}
+
 /**
  * A region of the scanned `field` named `label`, painted as `paint` says: a
- * fill over one interval, a line over another, and a legend entry with a fill
- * swatch (ADR-0002 decision 62). A Comfort zone fills and strokes the same
- * interval. Neither trace can say where the pointer is, so neither captures
- * it.
+ * line over one interval and, where `paint` fills it, a fill over another and
+ * a legend entry with a fill swatch (ADR-0002 decision 62). A Comfort zone
+ * fills and strokes the same interval; a Band strokes its own upper Edge, and
+ * one left unpainted is that line alone. Neither trace can say where the
+ * pointer is, so neither captures it.
  */
-function paintedRegionFor(
-  label: string,
-  field: ContourField,
-  paint: RegionPaint,
-): { readonly fill: ContourFillTrace; readonly line: ContourLineTrace; readonly legendEntry: LegendEntry } {
+function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint): PaintedRegion {
+  const line: ContourLineTrace = { kind: "contourLine", ...field, ...paint.line, color: paint.lineColor, width: paint.lineWidth, hover: "off", label };
+  if (!paint.fill) {
+    return { line };
+  }
+  const { interval, color } = paint.fill;
   return {
-    fill: { kind: "contourFill", ...field, ...paint.fill, color: paint.fillColor, hover: "off", label },
-    line: { kind: "contourLine", ...field, ...paint.line, color: paint.lineColor, width: paint.lineWidth, hover: "off", label },
-    legendEntry: { label, swatch: "fill", color: paint.fillColor },
+    line,
+    fill: { trace: { kind: "contourFill", ...field, ...interval, color, hover: "off", label }, legendEntry: { label, swatch: "fill", color } },
   };
 }
 
 /**
- * `list` painted over the scanned `field`: one fill per band with a colour,
- * in the list's order, and its legend entry; a band without one is painted
- * nowhere. The first band is open below, as every library classifier is; the
- * last Edge is where the list stops answering, and a number past it falls in
- * no band, so that Edge is drawn by interpolation like any other boundary.
+ * `list` painted over the scanned `field`, one region per band in the list's
+ * order: a fill and its legend entry for a band with a colour, and a line at
+ * its own upper Edge for every band, painted or not, so n bands stroke the n
+ * Edges once each (ADR-0002 decision 62). The first band is open below, as
+ * every library classifier is; the last Edge is where the list stops
+ * answering, and a number past it falls in no band, so that Edge is drawn by
+ * interpolation like any other boundary.
  *
  * A band fills from its lower Edge, or from below for the first, up to the
  * top of the painted bands contiguous above it ({@link contiguousTopOf}), and
@@ -327,25 +338,18 @@ function paintedRegionFor(
  * unpainted ends the run, so its interval stays unpainted rather than showing
  * the fill below it.
  */
-function bandsFor(
-  list: BandList,
-  field: ContourField,
-): { readonly fills: readonly ContourFillTrace[]; readonly legendEntries: readonly LegendEntry[] } {
-  const fills = list.labels.flatMap((label, index): ContourFillTrace[] => {
+function bandsFor(list: BandList, field: ContourField): readonly PaintedRegion[] {
+  return list.labels.map((label, index) => {
     const color = list.colors[index];
-    return color === undefined
-      ? []
-      : [{
-          kind: "contourFill",
-          ...field,
-          lower: index === 0 ? undefined : list.edges[index - 1],
-          upper: contiguousTopOf(list, index),
-          color,
-          hover: "off",
-          label,
-        }];
+    return paintedRegionFor(label, field, {
+      fill: color === undefined
+        ? undefined
+        : { interval: { lower: index === 0 ? undefined : list.edges[index - 1], upper: contiguousTopOf(list, index) }, color },
+      line: { upper: list.edges[index] },
+      lineColor: chartInk.bandLine,
+      lineWidth: chartInk.bandLineWidth,
+    });
   });
-  return { fills, legendEntries: fills.map((fill) => ({ label: fill.label, swatch: "fill", color: fill.color })) };
 }
 
 /** The upper Edge of the last band from band `index` up that is painted with every band between. */

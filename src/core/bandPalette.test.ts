@@ -7,7 +7,7 @@ import {
   type ClassifierBins,
 } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { bandColors, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
+import { bandColors, chartInk, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
 
 // The fills the CBE tool has published for Cold … Hot.
 const cbeFills = ["#0571b0", "#4c78a8", "#92c5de", "#f2f2f2", "#f4a582", "#e15759", "#cc79a7"];
@@ -81,5 +81,21 @@ describe("colorForBand", () => {
     expect(colorForBand(PMV_CATEGORY_BINS_ISO, "none")).toBeUndefined();
     expect(colorForBand(PMV_CATEGORY_BINS_ISO, Number.NaN)).toBeUndefined();
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Freezing")).toBeUndefined();
+  });
+});
+
+describe("chartInk", () => {
+  /** A hex colour's lightness, the sum of its three channels. */
+  const lightnessOf = (color: string) => [1, 3, 5].reduce((sum, start) => sum + Number.parseInt(color.slice(start, start + 2), 16), 0);
+
+  it("draws a band's Edge in a neutral colour darker than the isolines, told from them and from the saturation line", () => {
+    expect(chartInk.bandLine).not.toBe(chartInk.isoline);
+    expect(chartInk.bandLine).not.toBe(chartInk.saturationLine);
+    expect(lightnessOf(chartInk.bandLine)).toBeLessThan(lightnessOf(chartInk.isoline));
+  });
+
+  it("draws a band's Edge at 1 px, thinner than a Comfort zone's outline", () => {
+    expect(chartInk.bandLineWidth).toBe(1);
+    expect(chartInk.bandLineWidth).toBeLessThan(chartInk.zoneLineWidth);
   });
 });

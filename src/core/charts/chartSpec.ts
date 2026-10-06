@@ -11,8 +11,8 @@
 
 /**
  * What the pointer reads on a trace (ADR §4.4). `"off"` never captures the
- * pointer: chrome — the relative-humidity isolines, the zone outlines, the
- * slot markers — and the zones themselves, whose fills cannot say where the
+ * pointer: chrome — the relative-humidity isolines, the zone outlines, a
+ * Band's Edges, the slot markers — and the zones themselves, whose fills cannot say where the
  * pointer is, so a {@link HoverGridTrace} reads for them. `"field"` reports
  * whatever is under the cursor without snapping to a drawn datum. Snapping is
  * reserved for the line charts added later, where the drawn point *is* the
@@ -102,7 +102,8 @@ export interface ContourFillTrace extends ContourRegion {
 /**
  * The boundary of a {@link ContourRegion} stroked in one colour at one width,
  * with no fill: where the field crosses `lower` and `upper`, or `upper` alone
- * where there is no `lower`. A Comfort zone's outline (ADR-0002 decision 62).
+ * where there is no `lower`. A Comfort zone's outline, or a Band's Edge
+ * (ADR-0002 decision 62).
  */
 export interface ContourLineTrace extends ContourRegion {
   readonly kind: "contourLine";

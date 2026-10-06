@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
-import type { ChartSpec, ContourFillTrace, PointTrace, Trace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, PointTrace, Trace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
@@ -33,6 +33,11 @@ function markedPositions(chart: ChartSpec | null): SlotPosition[] {
 /** The fills among `traces`, a Comfort zone's or a Band's, in drawing order. */
 function fillsOf(traces: readonly Trace[]): ContourFillTrace[] {
   return traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+/** The lines among `traces`, a Comfort zone's outline or a Band's Edge, in drawing order. */
+function linesOf(traces: readonly Trace[]): ContourLineTrace[] {
+  return traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
 }
 
 /**
@@ -121,10 +126,10 @@ describe("The page in the session", () => {
     expect(markedPositions(outputs.chart)).toEqual([0, 1, 2]);
 
     openAt(session, page.explore);
-    // A band strokes no Edge yet, so there is no outline between the isolines and the hover grid.
     expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
       "contourFill",
       "isoline",
+      "contourLine",
       "hoverGrid",
       "cover",
       "saturationLine",
@@ -148,7 +153,9 @@ describe("The page in the session", () => {
         expect(list).toEqual(bandListOf(pmvPpdIso.scan.classifier));
         expect(bands.map((band) => [band.label, band.color])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
         expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan));
-        expect(traces.some((trace) => trace.kind === "contourLine")).toBe(false);
+        expect(linesOf(traces).map((line) => [line.color, line.upper, line.z])).toEqual(
+          list?.edges.map((edge) => [chartInk.bandLine, edge, outputs.slots[0].scan]),
+        );
         expect(markedPositions(outputs.chart)).toEqual([0]);
       }
     });
@@ -157,8 +164,8 @@ describe("The page in the session", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
-      // A zone strokes its outline; a band, so far, does not.
-      const zones = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "contourLine");
+      // A zone strokes its outline in its slot's zone line, a band its Edge in the band line.
+      const zones = () => linesOf(outputs.chart?.traces ?? []).filter((line) => line.color !== chartInk.bandLine);
       const covers = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
       expect(zones()).toHaveLength(9);
       expect(covers()).toHaveLength(1);
@@ -170,12 +177,13 @@ describe("The page in the session", () => {
       expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan));
       expect(bands[0].z.flat()).not.toContain(null);
       expect(zones()).toHaveLength(0);
+      expect(linesOf(outputs.chart?.traces ?? []).map((line) => line.upper)).toEqual(list?.edges);
       const traces = outputs.chart?.traces ?? [];
       expect(traces.indexOf(covers()[0])).toBeGreaterThan(traces.indexOf(bands[bands.length - 1]));
       expect(markedPositions(outputs.chart)).toEqual([0]);
     });
 
-    it("moves the psychrometric chart's boundary with an Edge, on the same scan", () => {
+    it("moves the psychrometric chart's boundary and its line with an Edge, on the same scan", () => {
       const session = new Session(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
@@ -185,6 +193,7 @@ describe("The page in the session", () => {
       expect(session.chart.moveBandEdge(2, -0.1)).toBe(true);
       const edges = session.chart.bands?.edges ?? [];
       expect(fillsOf(outputs.chart?.traces ?? []).map((band) => band.lower)).toEqual([undefined, ...edges.slice(0, -1)]);
+      expect(linesOf(outputs.chart?.traces ?? []).map((line) => line.upper)).toEqual(edges);
       expect(outputs.slots[0].scan).toBe(scan);
     });
 
