@@ -77,8 +77,12 @@ Showing up to three slots side by side on the Standard page, each with its own r
 _Avoid_: baseline, active slot, scenario
 
 **Session**:
-What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot.
+What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot. A session lasts as long as its tab: it survives a reload and an address typed into the tab, and is replaced only on the person's yes, by a share link opened in the tab or by Reset, which returns it to what a new tab would show.
 _Avoid_: store, app state
+
+**Share link**:
+An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: no value is asked about and none adjusted. In a tab that already holds a session it asks once, before it replaces that session.
+_Avoid_: export link, permalink, state URL
 
 **Atmospheric pressure**:
 The pressure of the air every slot of a session describes: one value per session, entered by the user. It moves only what is converted to or from humidity ratio; no model takes it.

@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes; decision 37 added 2026-09-27 when the dynamic chart split into a scanned and a polygons shape, amending decision 27; decision 38 added the same day when the registry-wide tests were restated for a model with no scanned output and gained the silence test, amending decision 35; decision 24 revised the same day when the temporary library drew Adaptive's bands and its fence stopped barring model functions; decision 38 noted the same day at Phase 4b's close-out (the registry it describes); decisions 1, 9 and 13 noted the same day (`ADAPTIVE_ASHRAE_INFO` shipped without `offsets`); decision 39 added 2026-09-28 when the switch into operative entry took the model's standard (Phase 4b ticket 11); decision 37 amended and decision 39 noted the same day when the operative marker took the library's `t_o` (Phase 4b ticket 12); decisions 32 and 33 amended and decision 40 added the same day from the review after Phase 4b (`.scratch/review-after-4b/decisions.md`, Proposals 1 to 3); decisions 10, 31 and 37 noted, decision 29 amended, decisions 41 and 42 added and one Consequences bullet amended and one noted the same day from the same review (Proposals 12 to 23); decision 6 amended the same day when the ISO 7730 pin moved to 2025 (same review, Proposal 27); decision 43 added the same day when the address reached the session through the router's after-load hook (same review, Proposal 26); decision 24 amended the same day when the temporary library's tests took the library's imports and dropped their module mock (same review, Proposal 34); decision 4 noted the same day when the air-speed warning took the relative air speed's label (same review, Proposal 31); decision 8 noted the same day when PMV (ASHRAE 55)'s table took its `compliance` as Yes or No (same review, Proposal 29); decision 7 noted the same day when a classifier longer than the palette started to throw (same review, Proposal 32); decision 8 noted the same day when the stress category's label became "Thermal stress category" (same review, Proposal 33); decision 37 noted the same day when a polygons chart answered hover through a hover grid (same review, ticket 32); decision 44 added the same day when the zone legend's limit took the number formatter (same review, Proposal 25); decision 45 added the same day when humidity ratio took a display unit that tells its values apart (same review, Proposal 24); decision 46 added and decision 32 amended the same day when relative humidity was bounded 0 to 100 by its quantity kind (same review, Proposal 30); decision 41 amended the same day when its spelling was widened to the names the code has (same review, Proposal 36); decision 48 added and decision 3 revised the same day when whether a model takes the relative air speed was read from its model info (same review, round 16); decision 47 added and decisions 32 and 37 noted the same day when the slot took its own module in core (same review, round 16); decision 47 noted 2026-09-29 when the slot's two entries became read-only outside the class, and its module's reach narrowed to what the code holds (`.scratch/slot-shape/` ticket 08); decisions 23 and 32 noted the same day when `outOfRangeInputs` became `outOfRangeQuantities` (review after Phase 4b, round 17); decision 37 noted the same day when `ChartDeclaration` and its members became `DeclaredChart` and `Declared…Chart` (same review, round 17); decision 49 added the same day from the Phase 4c grilling, when atmospheric pressure became session state held in pascals (`.scratch/atmospheric-pressure/spec.md`), and decision 45 amended with it, when the psychrometric chart's humidity-ratio axis followed the pressure; decision 49 noted the same day at Phase 4c's close-out, where two of its sentences said more than the code (`.scratch/atmospheric-pressure/` ticket 05); decisions 50 to 53 added the same day from Compare's grilling, ahead of the code (Compare without a baseline, the session's entry mode, a gate per slot and one question per switch, no pressure-dependent bound at a pressure out of range), amending decisions 32, 33, 46, 47 and 49; decision 29 amended and decision 50 noted 2026-09-30 when three compared slots' scans were measured and v1 stayed synchronous (`.scratch/compare/` ticket 01); decisions 50 to 53 noted the same day at Compare's close-out, for the sentences written ahead of the code that said more than it, or less (`.scratch/compare/` ticket 09); decision 54 added 2026-09-30 from the grilling of `.scratch/activity-adjusted-inputs/` 01 and 02, ahead of the code (an activity-adjusted input is an entry group with two entry modes; the clothing correction is the standard's rule; the library's two clothing corrections first), with decision 48 revised and decision 51 amended (the link writes the entry modes once) the same day; decision 54 revised again 2026-09-30 from the third grilling of that folder, ahead of its tickets 08 and 09 (the ISO clothing correction at every metabolic rate; one converted-bound rule for both activity-adjusted groups; both groups invert on the switch back), with decisions 32 and 46 noted the same day; decision 55 added 2026-10-01 with the user after that folder's ticket 09, ahead of the code (a slot holds the number its row shows, at most two decimals in the displayed unit), amending ADR-0001 §4.6, with decisions 32, 39, 45, 46 and 54 noted the same day; decision 56 added 2026-10-01 with the user, the same day, withdrawing decision 55 before its tickets 03 to 06 landed (two decimals are the app's one precision: state stays full-precision SI, the gate compares at the formatter's precision in the SI display unit, a test of a shown number asserts at it), restoring ADR-0001 §4.6, with decision 55's five notes marked withdrawn the same day; decision 56 revised the same day (rule 3: a range end steps one shown digit inward where typing it back would be stopped) and noted the same day at its close-out (`.scratch/one-precision/` ticket 06), for the sentences written ahead of the code that said more than it, with its last sentence naming that folder's commits, decision 55's five withdrawn notes pointing at the commits that built them, and the first Consequences bullet amended; decisions 32, 48, 51 and 54 noted 2026-10-01 at the close-out of `.scratch/activity-adjusted-inputs/` (ticket 05), for the sentences written ahead of the code that say more or less than it; decisions 57 to 60 added 2026-10-01 from the grilling of Phase 5 item 3, ahead of the code (pages, the page decides what the charts paint, the Band list, the palette table), with decisions 8, 27, 31, 37, 51, 52 and 53 noted, revised or amended the same day; decision 61 added 2026-10-02 from the grilling of `.scratch/explore/` ticket 08's open point 1, ahead of the code (every chart not declared polygons is one scan, contoured; the scanned output is the model's), revised in place the same day before its first ticket landed, with decisions 24, 27, 29, 37, 58 and 59 amended, revised or noted the same day; decisions 7, 31, 53 and 57 to 61 noted and one Consequences bullet amended 2026-10-02 at the close-out of `.scratch/explore/` and `.scratch/one-scan/` (`.scratch/explore/` ticket 09), for the sentences written ahead of the code that say more or other than it; decision 62 added 2026-10-02 from the grilling of three chart changes, ahead of the code (the adaptive chart its own type and builder, the declaration hands limit lines, one drawing order from shared fills and outlines), with decisions 27, 37 and 61 amended the same day; decisions 27, 37, 38, 58, 61 and 62 noted 2026-10-06 at the close-out of `.scratch/three-chart-types/` (ticket 06), for the sentences written ahead of the code that say more or other than it
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes; decision 37 added 2026-09-27 when the dynamic chart split into a scanned and a polygons shape, amending decision 27; decision 38 added the same day when the registry-wide tests were restated for a model with no scanned output and gained the silence test, amending decision 35; decision 24 revised the same day when the temporary library drew Adaptive's bands and its fence stopped barring model functions; decision 38 noted the same day at Phase 4b's close-out (the registry it describes); decisions 1, 9 and 13 noted the same day (`ADAPTIVE_ASHRAE_INFO` shipped without `offsets`); decision 39 added 2026-09-28 when the switch into operative entry took the model's standard (Phase 4b ticket 11); decision 37 amended and decision 39 noted the same day when the operative marker took the library's `t_o` (Phase 4b ticket 12); decisions 32 and 33 amended and decision 40 added the same day from the review after Phase 4b (`.scratch/review-after-4b/decisions.md`, Proposals 1 to 3); decisions 10, 31 and 37 noted, decision 29 amended, decisions 41 and 42 added and one Consequences bullet amended and one noted the same day from the same review (Proposals 12 to 23); decision 6 amended the same day when the ISO 7730 pin moved to 2025 (same review, Proposal 27); decision 43 added the same day when the address reached the session through the router's after-load hook (same review, Proposal 26); decision 24 amended the same day when the temporary library's tests took the library's imports and dropped their module mock (same review, Proposal 34); decision 4 noted the same day when the air-speed warning took the relative air speed's label (same review, Proposal 31); decision 8 noted the same day when PMV (ASHRAE 55)'s table took its `compliance` as Yes or No (same review, Proposal 29); decision 7 noted the same day when a classifier longer than the palette started to throw (same review, Proposal 32); decision 8 noted the same day when the stress category's label became "Thermal stress category" (same review, Proposal 33); decision 37 noted the same day when a polygons chart answered hover through a hover grid (same review, ticket 32); decision 44 added the same day when the zone legend's limit took the number formatter (same review, Proposal 25); decision 45 added the same day when humidity ratio took a display unit that tells its values apart (same review, Proposal 24); decision 46 added and decision 32 amended the same day when relative humidity was bounded 0 to 100 by its quantity kind (same review, Proposal 30); decision 41 amended the same day when its spelling was widened to the names the code has (same review, Proposal 36); decision 48 added and decision 3 revised the same day when whether a model takes the relative air speed was read from its model info (same review, round 16); decision 47 added and decisions 32 and 37 noted the same day when the slot took its own module in core (same review, round 16); decision 47 noted 2026-09-29 when the slot's two entries became read-only outside the class, and its module's reach narrowed to what the code holds (`.scratch/slot-shape/` ticket 08); decisions 23 and 32 noted the same day when `outOfRangeInputs` became `outOfRangeQuantities` (review after Phase 4b, round 17); decision 37 noted the same day when `ChartDeclaration` and its members became `DeclaredChart` and `Declared…Chart` (same review, round 17); decision 49 added the same day from the Phase 4c grilling, when atmospheric pressure became session state held in pascals (`.scratch/atmospheric-pressure/spec.md`), and decision 45 amended with it, when the psychrometric chart's humidity-ratio axis followed the pressure; decision 49 noted the same day at Phase 4c's close-out, where two of its sentences said more than the code (`.scratch/atmospheric-pressure/` ticket 05); decisions 50 to 53 added the same day from Compare's grilling, ahead of the code (Compare without a baseline, the session's entry mode, a gate per slot and one question per switch, no pressure-dependent bound at a pressure out of range), amending decisions 32, 33, 46, 47 and 49; decision 29 amended and decision 50 noted 2026-09-30 when three compared slots' scans were measured and v1 stayed synchronous (`.scratch/compare/` ticket 01); decisions 50 to 53 noted the same day at Compare's close-out, for the sentences written ahead of the code that said more than it, or less (`.scratch/compare/` ticket 09); decision 54 added 2026-09-30 from the grilling of `.scratch/activity-adjusted-inputs/` 01 and 02, ahead of the code (an activity-adjusted input is an entry group with two entry modes; the clothing correction is the standard's rule; the library's two clothing corrections first), with decision 48 revised and decision 51 amended (the link writes the entry modes once) the same day; decision 54 revised again 2026-09-30 from the third grilling of that folder, ahead of its tickets 08 and 09 (the ISO clothing correction at every metabolic rate; one converted-bound rule for both activity-adjusted groups; both groups invert on the switch back), with decisions 32 and 46 noted the same day; decision 55 added 2026-10-01 with the user after that folder's ticket 09, ahead of the code (a slot holds the number its row shows, at most two decimals in the displayed unit), amending ADR-0001 §4.6, with decisions 32, 39, 45, 46 and 54 noted the same day; decision 56 added 2026-10-01 with the user, the same day, withdrawing decision 55 before its tickets 03 to 06 landed (two decimals are the app's one precision: state stays full-precision SI, the gate compares at the formatter's precision in the SI display unit, a test of a shown number asserts at it), restoring ADR-0001 §4.6, with decision 55's five notes marked withdrawn the same day; decision 56 revised the same day (rule 3: a range end steps one shown digit inward where typing it back would be stopped) and noted the same day at its close-out (`.scratch/one-precision/` ticket 06), for the sentences written ahead of the code that said more than it, with its last sentence naming that folder's commits, decision 55's five withdrawn notes pointing at the commits that built them, and the first Consequences bullet amended; decisions 32, 48, 51 and 54 noted 2026-10-01 at the close-out of `.scratch/activity-adjusted-inputs/` (ticket 05), for the sentences written ahead of the code that say more or less than it; decisions 57 to 60 added 2026-10-01 from the grilling of Phase 5 item 3, ahead of the code (pages, the page decides what the charts paint, the Band list, the palette table), with decisions 8, 27, 31, 37, 51, 52 and 53 noted, revised or amended the same day; decision 61 added 2026-10-02 from the grilling of `.scratch/explore/` ticket 08's open point 1, ahead of the code (every chart not declared polygons is one scan, contoured; the scanned output is the model's), revised in place the same day before its first ticket landed, with decisions 24, 27, 29, 37, 58 and 59 amended, revised or noted the same day; decisions 7, 31, 53 and 57 to 61 noted and one Consequences bullet amended 2026-10-02 at the close-out of `.scratch/explore/` and `.scratch/one-scan/` (`.scratch/explore/` ticket 09), for the sentences written ahead of the code that say more or other than it; decision 62 added 2026-10-02 from the grilling of three chart changes, ahead of the code (the adaptive chart its own type and builder, the declaration hands limit lines, one drawing order from shared fills and outlines), with decisions 27, 37 and 61 amended the same day; decisions 27, 37, 38, 58, 61 and 62 noted 2026-10-06 at the close-out of `.scratch/three-chart-types/` (ticket 06), for the sentences written ahead of the code that say more or other than it; decision 63 added 2026-10-06 from the grilling of Phase 5 item 4, ahead of the code (the tab keeps its session, a share link carries what one page is computed from, one text for both, Reset), with decisions 32, 49, 50, 57 and 59 amended the same day
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -581,6 +581,13 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     And "the rehearsal takes the temperatures first" (the amendment of 2026-09-28) became a loop: the gate is asked
     again at the slot with the rows so far adjusted until a pass lists what the pass before did (`:52-58`,
     `60f088f`), since an entered air speed's bound reads the metabolic rate and ISO 7730's clothing bound reads both.
+    **Amended 2026-10-06 (decision 63).** "A model reached by URL (typed, the back button, a share link) … gets the
+    conversion and the seeding but no dialog and no adjustment" now holds of a typed address as it does of the back
+    button: the tab keeps its session across a document load, so an address typed into a tab converts and seeds the
+    session that tab holds, where it used to start a new one. A share link's text names the model its session was
+    written under, and a path that names another model is this same arrival, not a broken link. An arrival still
+    asks about no value and adjusts none. It asks one thing: a share link reaching a tab that kept a session asks
+    before it replaces that session, the tab now having a "here" to stay at (decision 63, rules 3 and 8).
 33. **The gate freezes the result, not the screen.** Amends ADR-0001 §4.5's "Outputs are derived entirely from
     Inputs + Chart" and the compute contract decision 29 left unchanged. While an entered value is outside
     Applicability the last valid result stays on screen, as before. What is kept is the last valid *inputs* of the
@@ -1012,6 +1019,11 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     "An entry mode's conversions are `(value, tdb, p_atm)`": in core the third parameter is `atmosphericPressure`, as
     in every function that takes the pressure, and `fromRelativeHumidity`'s first is the relative humidity
     (`core/entryModes.ts:64-66`). `p_atm` is its name only where core hands it to the library.
+    **Amended 2026-10-06 (decision 63).** Of the two rules that waited for their phases: "a share link that carries
+    no pressure means 101 325 Pa" is withdrawn, since the text always writes the pressure and one without it is
+    refused whole (decision 63, rule 6); a pressure out of range still arrives, is shown as out of range and is not
+    replaced. Reset no longer waits for Phase 5c: it is built with the link, as a new session on the defaults
+    (rule 8).
 
 Taken 2026-09-29, in Compare's grilling session (review item 4 between Phase 4b and Phase 5), ahead of the code. Its
 input was the "Phase 5 item 1" rows of `.scratch/review-after-4b/deferred.md` (`S055`, `S074`, `S036`) and the open
@@ -1102,6 +1114,12 @@ the local `../comfort_tool` checkout:
     in 149.0 ms (ticket 05).
     Explore, the share link, Reset and the calculators are not built. Their sentences above are rules for their
     phases, and nothing in the code contradicts them.
+    **Amended 2026-10-06 (decision 63).** "The share link carries whether Compare is on and which slots are enabled,
+    both, so that it restores a session whose Compare is off while slot 2 holds values of its own" was written when
+    the link was the only thing that could carry a session across a load. Restoring the whole session is now the
+    tab's: the text it keeps holds every slot that holds values, Compare and both enabled flags. A share link
+    carries the compared slots alone: a slot that is not compared is `null` in it and not enabled, and a link
+    copied on Explore has Compare off (decision 63, rule 5).
 51. **An entry mode is the session's, and every slot is entered in it.** Amends decision 47, whose `Slot` keeps its
     shape: each slot still holds its humidity and temperature entry, and the session keeps the three in step.
     Changing an entry mode converts every slot, compared or not, each by the rule `core/slot.ts` states and at its
@@ -1607,6 +1625,11 @@ notes under decisions 51 and 53:
     `routes/routeModels.ts:58`), and followed from one that is not the standard's first, it opens the first. And an
     Explore address naming no model (`/explore/<typo>`) opens the Standard page on the default model, as any address
     naming no model does.
+    **Amended 2026-10-06 (decision 63).** Rule 2's "one `Session`, created once in `App.svelte`" is one session per
+    tab at a time: the first address builds it from a share link, from the text the tab kept or from the model's
+    defaults, and Reset, or a share link the person says yes to, replaces it with a new one. The note of 2026-10-02's "a typed address or a new tab is a
+    document load, which starts a new session" holds for a new tab alone: a reload and an address typed into the
+    tab keep the session.
 58. **The page decides what the charts paint: Standard paints Comfort zones on every chart, Explore paints Bands on
     every chart, and a spec builder is told which by being given a Band list or not.** Revises decision 31's split,
     extending it to the psychrometric chart, and amends decisions 27 and 37. Rules. (1) On Standard the dynamic
@@ -1686,6 +1709,10 @@ notes under decisions 51 and 53:
     full-precision refusal (ticket 07's Comments). Rule 4's "a polygons chart has no Band list and no panel" is read
     off the model: a model with a scan has a list (`state/session.svelte.ts:148`) and the panel shows under both its
     charts, and a model without one offers polygons charts only (decision 61, rule 1).
+    **Amended 2026-10-06 (decision 63).** Rule 2's "carried by the share link for the current model" is a link
+    copied on the Explore page: Standard reads no Band list, so its link carries none, and the text the tab keeps
+    holds the list of every model the session has been on. "The page's Reset (Phase 5c) returns it with the rest"
+    is built with the link (decision 63, rule 8); its look and place stay Phase 5c's.
 60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
     classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
     ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
@@ -1905,6 +1932,136 @@ notes under decisions 51 and 53:
     79.9 and 81.7 / 83.8 ms for an edit that rescans slot 1. About 2 to 6 ms in all, no more than the passes' own
     spread (03's second one-slot pass ran 9 ms faster after). Both time the edit to the drawn
     plot, so neither compares with decision 61's 234.2 ms, which timed the scan alone on the dev server.
+63. **The session lasts as long as its tab, a share link carries what one page is computed from, and both are one
+    text.** Taken 2026-10-06 with the user in the grilling of Phase 5 item 4, ahead of the code; amends decisions 32,
+    49, 50, 57 and 59 and ADR-0001 §2, §4.2, §4.5, §4.8 and §7; `CONTEXT.md` gains **Share link**, and Session a
+    sentence on how long it lasts. Facts. Nothing carries a session across a document load: it is created at the
+    first address (`src/App.svelte:23-29`), and a reload, a typed address and a new tab each start a new one
+    (decision 57's note of 2026-10-02). Every closed set has an `id` and none has an `xxxFromId()`; the app has no
+    notification component. The deployed tool (`comfort_tool` at `e809c96`) writes its state as `?<btoa(JSON)>`
+    into a `window.prompt` (`static/js/ASHRAE/ashrae.js:220-229`), reads it on load with no error handling and
+    leaves it in the address (`:238-243`); two buttons save and reload the inputs in `localStorage` (`:215-236`);
+    its Reset writes the default inputs back in place and returns to SI, touching neither the pressure nor the chart
+    nor what was saved (`static/js/global.js:876-893`). The prototype keeps a `state` parameter in the address and
+    remembers the last one it applied (`../comfort-tool-old/src/state/app/createAppNavigation.ts:52, 92-104`), and
+    its Standard and Explore pages have no Reset. sv-router 0.18.1's `navigate` rewrites the query string at every
+    navigation, empty unless one is given (`create-router.svelte.js:286-288`). `sessionStorage` is kept per tab and
+    "survives over page reloads and restores" (MDN, `Window.sessionStorage`); Chromium's back button skips an entry
+    a page added "without ever getting a user activation" (`docs/history_manipulation_intervention.md`);
+    `Clipboard.writeText` is in Chrome 66, Firefox 63 and Safari 13.1 (MDN browser-compat-data), inside the app's
+    floor. The principle, the user's: an address reached by a document load shows what the same address reached
+    inside the app shows; and a choice between designs is weighed by the rules the finished app has, not by the
+    size of the change.
+    Rules. (1) **One text.** `v1.<Base64URL(JSON)>`, the JSON in UTF-8, is a session written out, and one decoder
+    reads it wherever it is kept. Its shape is the whole session's, here one on PMV (ASHRAE 55) that has been on
+    Adaptive (ASHRAE 55), with slot 2 enabled and slot 3 never:
+
+    ```json
+    { "model": "pmv_ppd_ashrae",
+      "unitSystem": "si",
+      "p_atm": 101325,
+      "compare": true,
+      "enabled": [true, false],
+      "entryModes": { "temperature": "separate", "humidity": "relative-humidity",
+                      "airSpeed": "air-speed", "clothing": "clothing-insulation" },
+      "slots": [
+        { "values": { "tdb": 25, "tr": 25, "v": 0.1, "rh": 50, "met": 1.1, "clo": 0.5, "t_running_mean": 20 },
+          "options": { "pmv_ppd_ashrae": { "airspeed_control": false } } },
+        { "values": { "tdb": 28, "tr": 25, "v": 0.1, "rh": 50, "met": 1.1, "clo": 0.5, "t_running_mean": 20 },
+          "options": { "pmv_ppd_ashrae": { "airspeed_control": false } } },
+        null ],
+      "charts": {
+        "pmv_ppd_ashrae": {
+          "type": "psychrometric",
+          "axes": { "x": "tdb", "y": "v" },
+          "bands": { "edges": [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10],
+                     "labels": ["Cold", "Cool", "Slightly Cool", "Neutral", "Slightly Warm", "Warm", "Hot"],
+                     "colors": ["#0571b0", "#4c78a8", "#92c5de", "#f2f2f2", "#f4a582", "#e15759", "#cc79a7"] } },
+        "adaptive_ashrae": { "type": "adaptive" } } }
+    ```
+
+    `model` is the model the session was written under, by its name (decision 30). `unitSystem` is the display's;
+    every number is full-precision SI (decision 56). `p_atm` is the atmospheric pressure in Pa (decision 49).
+    `enabled` is slots 2 and 3; slot 1 has no flag. `entryModes` is written once (decision 51): temperature, air
+    speed and clothing always, humidity while slot 1 holds a humidity; the ids are `core/entryModes.ts`'s. `slots`
+    has three places, `null` for a slot never enabled. A slot's `values` are keyed by `Quantity.key`, the humidity
+    under its mode's quantity, and hold other models' quantities too; its `options` are grouped by model name,
+    since two models may each declare an option under one key. `charts` has an entry for each model the session
+    has been on: its chart type, `axes` for a model that declares a dynamic chart, `bands` for a model that scans
+    (the Edges, the labels, and a colour or `null` per band; `right` is the classifier's and is not written).
+    Never written: the page and the standard, which the path names; a result, a last valid run or anything else
+    derived; a question left standing; what a component alone holds.
+    (2) **The tab keeps the whole session.** The text is written to `sessionStorage` by one `$effect` at every
+    change of the session: external synchronisation, assigning no state. Where the storage refuses, the app runs
+    and keeps nothing.
+    (3) **A document load reads one text**: the address's `share` parameter if it has one, else the text the tab
+    kept, else none, and the session is the model's defaults as today. The session is built under the model the
+    text names and then follows the address as at any arrival (decision 32): converted and seeded, never asked. The
+    parameter is read once and removed by a replace, valid or not, so the address bar holds the path alone
+    (ADR-0001 §2) and an address that has the parameter is an arrival by link. A link reaching a tab that kept a
+    session asks before it replaces it (rule 8); in a tab that kept nothing its session is built with no question.
+    An address that names no model opens the default model as before, and the session follows it there.
+    (4) **The text names its model, the path says where.** They are two facts: the model the slots were converted
+    for, which the conversion on arrival reads (`rehearseSwitch`'s `from`), and where the person is going. A path
+    that names another model than the text is therefore not a broken link. The page is the path's alone.
+    (5) **A share link is the session narrowed to what its page is computed from**: the model's entered quantities
+    under the entry modes, its options, the compared slots, its chart type and axes, and its Band list on Explore
+    alone. A slot that is not compared is `null` and not enabled, so a link copied on Explore has `compare` false;
+    `charts` has the one model. The two tests are the ones the state layer already holds
+    (`state/session.svelte.ts:279-284`, `state/compute.svelte.ts:118`). The link is one more input to the same
+    encoder, and the decoder does not know which it reads.
+    (6) **A text is taken whole or not at all.** Refused: a prefix that is not `v1.`; Base64 or JSON that does not
+    parse; a shape that is not rule 1's; a model name, unit system, entry mode, chart type, quantity key or option
+    key the app does not have; a chart type or an axis the model does not declare; a value that is not a finite
+    number; a quantity the text's model enters under the entry modes that a slot lacks; a key no registered model
+    enters under them; a Band list whose three arrays differ in length, whose Edges do not rise strictly or whose
+    colour is not a hex colour; slot 1 `null`; an enabled slot `null`. An entered value outside its bound and a
+    pressure out of range are not refused: they arrive and are shown as out of range (decisions 32, 33 and 49). A
+    link refused shows one notice, a line at the top of the page that the person closes, its copy in
+    `text/copy.ts` and its state outside the session; the session the tab kept is restored, or else the defaults.
+    A kept text refused gives the defaults and no notice.
+    (7) **Copy link.** A button among the session's controls, on both pages, writes the link (the origin, the path
+    and the parameter) to the clipboard and says so on itself for a moment; a clipboard that refuses is reported in
+    the notice line. Its look and place are Phase 5c's.
+    (8) **The tab's session is replaced only on a yes, by Reset or by a link.** Both ask first, in a dialog as a
+    model switch asks, and both replace it one way: the kept text is cleared and the first address's load is run
+    again for the current address, given nothing for Reset and the link's text for a link. Reset is a button beside
+    Copy link; its load finds no link and no kept text and builds the defaults by rule 3, so Reset has no list of
+    what it resets and no definition of the defaults apart from the first load's. A link is asked about only where
+    the tab kept a session, which is the "here" decision 32 found an arrival to lack: until the answer the page
+    shows the kept session, which has followed the link's path as it follows a typed address, and a no drops the
+    link and leaves the session there. Either yes gives a new session object and the pages built again on it, on
+    the page and the model the address names. Any other way of closing either dialog is a no. Read, not run:
+    re-creating sv-router's `Router` navigates to the current address again (`Router.svelte:17-23`), which calls
+    the app's address handler; if that is not clean, the document is reloaded after the clear, a link's parameter
+    put back in the address first, the same rule done by the browser.
+    (9) **The format is frozen when the app is deployed.** Until then a text an earlier build wrote may be refused,
+    and there is no `migrate()`; `v1z.` waits for Time-series.
+    (10) **Seams.** `core/shareLink.ts` encodes, decodes and narrows, pure, given the registry; it is still the one
+    file where the session's strings are read and written, and it reads declarations and names no model, so a new
+    model is two files. An id is looked up there, privately: no `xxxFromId()` per closed set, which nothing else
+    would call. A Band list's shape is checked in `core/bands.ts` (decision 59). The session is built from a
+    decoded text or from a model's defaults, and reads itself out as one. The few lines that read and write
+    `sessionStorage` are a module of `state/`, since core touches no browser. `routes/navigation.ts` reads and
+    removes the parameter and writes a link's address; `App.svelte` joins them at the first address.
+    Phase 5 item 4 builds all of it; item 5 keeps the image export.
+    Left for the tickets: a document the browser restores without loading it (the back/forward cache) may hold an
+    older session than the kept text, so the text is perhaps written when the page is shown again too.
+    Rejected: the address bar following every edit, which ADR-0001 §2 had rejected; the parameter left in the
+    address, as the deployed tool and the prototype leave it, since after an edit the bar says what the screen no
+    longer shows and telling a reload from an arrival takes a remembered key; the back button reloading the link,
+    which needs a pushed entry Chromium skips, traps the back button elsewhere, and discards edits that were no
+    navigation; `localStorage`, one text for every tab and one that outlives every deployment; the text naming no
+    model, taken first and withdrawn when the kept session needed the model its slots were converted for; the link
+    carrying the whole session, which hands over other models' values nobody was shown; the kept text narrowed as
+    the link is, since a reload would forget a Band list edited on another model, which a switch inside the app
+    keeps; narrowing by model alone, a Band list in a Standard link and a slot Compare hides; a second format for
+    the tab; restoring the kept session only when its model is the address's; tolerance field by field, since half
+    a link reads as the sender's screen; a toast, a dependency for one line; Reset in place, a list of fields
+    beside the first load's defaults, as the deployed tool's Reset leaves the pressure; Reset without asking, one
+    click losing every model's Band list; a link replacing the kept session without asking, taken first with the
+    load order and withdrawn the same day, since it loses what Reset loses; the same with a way back in the notice
+    line and no question, a second kept text and a second path for what one question does.
 
 ## Consequences
 

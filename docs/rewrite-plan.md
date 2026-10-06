@@ -93,6 +93,19 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > 781 tests. What the checklist's human half and `CONTEXT.md` found is in ticket 06's Comments, none changed but `CONTEXT.md`'s Band.
 > **Next: Phase 5 item 4, the share link.**
 
+> **2026-10-06 — position, Phase 5 item 4 grilled**: the share link, ahead of the code (ADR-0002 decision 63;
+> decisions 32, 49, 50, 57 and 59 amended; `CONTEXT.md` gains **Share link**, and Session says how long it lasts).
+> The item grew from one file to three things on one format. **The tab keeps its session**, in `sessionStorage`, so
+> a reload and an address typed into the tab keep everything, by the principle that an address reached by a document
+> load shows what the same address reached inside the app shows. **A share link carries what one page is computed
+> from**, not the session: the model, the compared slots, the chart type and axes, and the Band list on Explore
+> alone; its parameter is removed once read, and it replaces a session the tab already holds only on a yes. Both
+> are one text,
+> `v1.<Base64URL(JSON)>`, read by one decoder that takes it whole or not at all. **Reset** is in the item: it asks,
+> clears the kept text and runs the first load again, so it has no list of its own. The format is frozen when the
+> app is deployed. Withdrawn on the way: the link naming no model, the parameter left in the address, the back
+> button reloading the link, a link replacing the tab's session unasked. **Next: the spec and tickets in `.scratch/share-link/`, then Phase 5 item 5.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1008,9 +1021,27 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    means 101 325 Pa; one whose pressure is out of range shows it as out of range and does not replace it.
    Skipped: `migrate()` (v1 has no source to migrate from; write it in v2) and `v1z.` deflate + `fflate`
    (together with Time-series, see below).
+   **Grilled 2026-10-06** (ADR-0002 decision 63; decisions 32, 49, 50, 57 and 59 carry notes of the same day;
+   `CONTEXT.md` gains Share link). The item is three things on one format. The session is written out as one text,
+   `v1.<Base64URL(JSON)>`, whose schema is decision 63's rule 1 and no longer ADR §4.8's example. The tab keeps the
+   whole session in `sessionStorage`, written at every change, so a reload and an address typed into the tab keep
+   it. A share link is the same text narrowed to what its page is computed from: the model, the compared slots, the
+   chart type and axes, and the Band list on Explore alone. A document load reads the link's parameter, else the
+   kept text, else the defaults, then follows the address; the parameter is removed once read. A text is taken
+   whole or not at all: a link refused shows a notice and restores the kept session, or else the defaults. A link
+   opened in a tab that already holds a session asks before it replaces it, as Reset asks; a no drops the link. **Copy
+   link** (the "Export Link" of item 5 and of ADR §7) and **Reset** are buttons among the session's controls,
+   their look and place Phase 5c's; Reset asks first, then clears the kept text and runs the first address's load
+   again, staying on the page and the model. Withdrawn from the text above: "a link without one means 101 325 Pa"
+   (a text without a pressure is refused), and `xxxFromId()` (one private lookup in the file). The format is
+   frozen when the app is deployed. Suggested order: the session read out and built from a text, with the codec
+   and its registry-wide round trip; the kept session and the load order; the link, narrowed, with Copy link and
+   the notice; Reset; the docs close-out.
 5. Export Link + image export: editable title + input summary + tool name/version/date footer, PNG + SVG. The same
    `ChartSpec.legend` generates Plotly's horizontal bottom legend in the export layout, so screen and file agree — the
    modebar's own PNG button was removed in Phase 3 precisely because it could not do this.
+   **Revised 2026-10-06** (ADR-0002 decision 63): Export Link is item 4's Copy link button; this item is the image
+   export.
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
    **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
    its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,
@@ -1043,8 +1074,13 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    (walked, ticket 05's Comments); and the ISO correction is called at the relative air speed,
    `clo_dynamic_iso_vr` (`core/clothingCorrection.ts:37`). The link's schema is item 4's.
 
-**Done criteria**
-- From any state, Export Link → open in a new tab → the state is identical (three slots, whether Compare is on and which slots are enabled, units, chart type, thresholds, atmospheric pressure, numbers)
+**Done criteria** (the first revised 2026-10-06 and the next three added, ADR-0002 decision 63; the first read "Export
+Link → open in a new tab → the state is identical (three slots, whether Compare is on and which slots are enabled,
+units, chart type, thresholds, atmospheric pressure, numbers)")
+- From any state, Copy link → open in a new tab → the page shows what it showed: the model, the compared slots' numbers, the units, the atmospheric pressure, the chart type and axes and, on Explore, the Band list
+- From any state, a reload, or an address typed into the tab, keeps the whole session: three slots, whether Compare is on and which slots are enabled, every model's chart settings and Band list
+- Reset, confirmed, shows what a new tab at the same address shows, and a reload after it does too
+- A share link opened in a tab that holds a session asks first: a yes shows the link's page, a no keeps the session
 - Opening a share link in an environment with `Proxy` disabled does not crash
 
 ---
@@ -1095,6 +1131,8 @@ all change the layout, so a design drawn before them would be redrawn after them
    Phase 6** on 2026-09-04: they are design work, not wrap-up chores.
    **Added 2026-09-29** (ADR-0002 decision 49): Reset returns the atmospheric pressure to 101 325 Pa, and this phase
    gives the pressure's input, which Phase 4c puts in the input panel outside every slot, its place and look.
+   **Revised 2026-10-06** (ADR-0002 decision 63): Reset is built in Phase 5 item 4, among the session's controls;
+   this phase gives it and Copy link their place and look.
 3. One palette across UI and charts. `core/bandPalette.ts`'s `chartInk` is currently hand-picked hex against the CBE
    fills; it becomes part of the design system rather than a chart-local constant.
 4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.
