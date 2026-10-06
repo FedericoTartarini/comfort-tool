@@ -147,7 +147,6 @@ function contourOf(trace: ContourFillTrace | ContourLineTrace) {
     z: trace.z,
     connectgaps: false,
     showscale: false,
-    name: trace.label,
     hoverinfo: hoverInfo(trace.hover),
     showlegend: false,
   };
