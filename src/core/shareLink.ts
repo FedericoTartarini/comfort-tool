@@ -35,7 +35,7 @@ import {
   type ValueEntryModes,
 } from "./slot";
 import { unitSystem } from "./unitSystem";
-import type { ChartSettings, WrittenSession } from "./writtenSession";
+import { startingChartSettings, type ChartSettings, type WrittenSession } from "./writtenSession";
 
 const PREFIX = "v1.";
 
@@ -56,11 +56,15 @@ export interface DecodedSession {
 
 /**
  * The written session `text` holds, its names looked up in `models`, or
- * `undefined` for a text refused: one that does not parse, lacks a member
- * rule 1 requires, or names a model, unit system, entry mode, chart type or
- * axis the app does not have.
+ * `undefined` for a text refused (rule 6 as amended): one that does not
+ * parse; lacks a member rule 1 requires, or has one of another type; names a
+ * model, unit system, entry mode or chart type the app does not have, or a
+ * chart type or axis its model does not declare; holds a value that is not a
+ * finite number or a Band list not well formed; writes a humidity mode with a
+ * slot that holds no humidity value; or has slot 1, or an enabled slot,
+ * `null`.
  */
-export function toWrittenSession(text: string, models: readonly RegisteredModel[]): DecodedSession | undefined {
+export function toDecodedSession(text: string, models: readonly RegisteredModel[]): DecodedSession | undefined {
   try {
     const json = jsonOf(text);
     const session = sessionFrom(json, models);
@@ -137,7 +141,7 @@ function canonicalOf(json: unknown): string {
   );
 }
 
-/** Why a text is refused: thrown anywhere below and caught in {@link toWrittenSession} alone. */
+/** Why a text is refused: thrown anywhere below and caught in {@link toDecodedSession} alone. */
 class Refused extends Error {}
 
 function refuse(): never {
@@ -180,12 +184,14 @@ function sessionFrom(json: unknown, models: readonly RegisteredModel[]): Written
     compare: booleanOf(written.compare),
     enabled: [second, third],
     slots: [first, slots[1], slots[2]],
-    charts: new Map(
-      Object.entries(recordOf(written.charts)).flatMap(([name, settings]) => {
+    charts: new Map([
+      // A session holds its own model's chart settings, so a text without them has them start at the model's own.
+      [model, startingChartSettings(model)],
+      ...Object.entries(recordOf(written.charts)).flatMap(([name, settings]) => {
         const charted = modelNamed(name, models);
         return charted ? [[charted, chartSettingsFrom(settings, charted, modes)] as const] : [];
       }),
-    ),
+    ]),
   };
 }
 
@@ -236,8 +242,11 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
   const options = new Map<OptionSpec, boolean>();
   for (const [name, declared] of Object.entries(recordOf(written.options))) {
     const owner = modelNamed(name, models);
+    if (!owner) {
+      continue;
+    }
     for (const [key, value] of Object.entries(recordOf(declared))) {
-      const option = owner && memberWithId(owner.options, (candidate) => candidate.key, key);
+      const option = memberWithId(owner.options, (candidate) => candidate.key, key);
       if (option) {
         options.set(option, booleanOf(value));
       }

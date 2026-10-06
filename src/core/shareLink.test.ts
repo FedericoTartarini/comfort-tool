@@ -17,7 +17,7 @@ import { chartType } from "./chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import type { RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { toText, toWrittenSession, type DecodedSession } from "./shareLink";
+import { toText, toDecodedSession, type DecodedSession } from "./shareLink";
 import {
   startingSlot,
   withAirSpeedMode,
@@ -38,7 +38,7 @@ const PRESSURE_OUT_OF_RANGE = 20000;
 
 /** `session` written out and read back, with the registry the app has. */
 function roundTrip(session: WrittenSession): DecodedSession | undefined {
-  return toWrittenSession(toText(session, registeredModels), registeredModels);
+  return toDecodedSession(toText(session, registeredModels), registeredModels);
 }
 
 /** `slot` on `model` in every entry group's other mode: operative, relative air speed, dynamic clothing, dew point. */
@@ -87,7 +87,7 @@ function editedSession(): WrittenSession {
   };
 }
 
-describe("toText and toWrittenSession", () => {
+describe("toText and toDecodedSession", () => {
   it("are the identity on every registered model's defaults", () => {
     for (const model of registeredModels) {
       expect(roundTrip(startingSession(model)), model.info.label).toEqual({ session: startingSession(model), exact: true });
@@ -96,8 +96,9 @@ describe("toText and toWrittenSession", () => {
 
   it("are the identity on an edited session: three slots, every entry group's other mode, an option, values and the pressure out of range, two models' edited Band lists", () => {
     const session = editedSession();
-    const back = roundTrip(session)?.session;
-    expect(roundTrip(session)).toEqual({ session, exact: true });
+    const decoded = roundTrip(session);
+    expect(decoded).toEqual({ session, exact: true });
+    const back = decoded?.session;
     expect(back?.slots[0].values.get(q.met)).toBe(1.2345678901234567);
     expect(back?.charts.get(pmvPpdIso)?.bands?.labels[0]).toBe(FAR_LABEL);
     expect(back?.charts.get(pmvPpdIso)?.bands?.colors[4]).toBeUndefined();
@@ -160,11 +161,11 @@ function changed(text: string, path: Path, value: unknown): string {
   return textOf(JSON.stringify(json));
 }
 
-describe("toWrittenSession", () => {
+describe("toDecodedSession", () => {
   const valid = toText(editedSession(), registeredModels);
   const ashrae = pmvPpdAshrae.info.name;
   const [airSpeedControl] = pmvPpdAshrae.options;
-  const read = (text: string) => toWrittenSession(text, registeredModels);
+  const read = (text: string) => toDecodedSession(text, registeredModels);
   const values = ["slots", 0, "values"];
   /** PMV (ASHRAE 55)'s declared default of `quantity`. */
   const declared = (quantity: Quantity) => pmvPpdAshrae.inputs.find((input) => input.quantity === quantity)?.value;
@@ -262,6 +263,11 @@ describe("toWrittenSession", () => {
       changed(valid, ["charts", adaptiveAshrae.info.name, "axes"], { x: q.tdb.key, y: q.rh.key }),
       changed(valid, ["charts", "pmv_ppd"], { type: chartType.dynamic.id }),
       changed(valid, ["slots", 1, "options", "pmv_ppd"], { airspeed_control: true }),
+      changed(valid, ["slots", 1, "options", "pmv_ppd"], true),
+      changed(valid, ["entryModes", "page"], "explore"),
+      changed(valid, ["slots", 0, "page"], "explore"),
+      // The inclusivity flag is the classifier's, never read from a text.
+      changed(valid, ["charts", ashrae, "bands", "right"], false),
       changed(valid, ["slots", 1, "options", ashrae, "airspeed"], true),
       changed(valid, [...values, "tmp"], 25),
       // No registered model enters these, or none under the text's entry modes.
@@ -296,5 +302,24 @@ describe("toWrittenSession", () => {
       expect(slot?.humidity).toEqual({ mode: humidityMode.rh, value: declared(q.rh) });
     }
     expect(humidity?.exact).toBe(false);
+  });
+
+  it("puts the air-speed and clothing groups the text lacks in their default modes, the values of the other mode dropped", () => {
+    const airSpeed = read(changed(valid, ["entryModes", "airSpeed"], undefined));
+    expect(airSpeed?.session.slots[0].airSpeed.mode).toBe(airSpeedMode.uncorrected);
+    expect(airSpeed?.session.slots[0].values.has(q.vr)).toBe(false);
+    expect(airSpeed?.session.slots[0].values.get(q.v)).toBe(declared(q.v));
+    expect(airSpeed?.exact).toBe(false);
+    const clothing = read(changed(valid, ["entryModes", "clothing"], undefined));
+    expect(clothing?.session.slots[0].clothing.mode).toBe(clothingMode.uncorrected);
+    expect(clothing?.session.slots[0].values.has(q.clo_dynamic)).toBe(false);
+    expect(clothing?.session.slots[0].values.get(q.clo)).toBe(declared(q.clo));
+    expect(clothing?.exact).toBe(false);
+  });
+
+  it("starts the text's model on its starting chart where the text has no chart entry for it, and says the session is not exact", () => {
+    const decoded = read(changed(valid, ["charts", ashrae], undefined));
+    expect(decoded?.session.charts.get(pmvPpdAshrae)).toEqual(startingChartSettings(pmvPpdAshrae));
+    expect(decoded?.exact).toBe(false);
   });
 });
