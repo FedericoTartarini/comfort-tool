@@ -2064,8 +2064,9 @@ notes under decisions 51 and 53:
     line and no question, a second kept text and a second path for what one question does.
     **Amended 2026-10-06 (`.scratch/share-link/` ticket 02, with the user).** Rule 6 is narrowed, so that a model
     changed after deployment does not void every text written before it. A value or option a slot lacks starts at
-    the model's default, by the seeding a switch does (`seedDeclaredDefaults`, decision 32), and an entry group
-    `entryModes` lacks is in its default mode. A key the app does not read is dropped: a value's key that no
+    the model's default, by the seeding a switch does (`seedDeclaredDefaults`, decision 32), an entry group
+    `entryModes` lacks is in its default mode, and the text's model without a `charts` entry is on its starting
+    chart settings. A key the app does not read is dropped: a value's key that no
     registered model enters under the entry modes, a quantity of another mode among them; an option's model name or
     key; a chart entry's model name; a member rule 1 does not have. Whether anything was filled or dropped is found
     by writing the session out again and comparing it with what the text wrote, and the decoder answers it beside
