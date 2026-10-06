@@ -101,7 +101,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > from**, not the session: the model, the compared slots, the chart type and axes, and the Band list on Explore
 > alone; its parameter is removed once read, and it replaces a session the tab already holds only on a yes. Both
 > are one text,
-> `v1.<Base64URL(JSON)>`, read by one decoder that takes it whole or not at all. **Reset** is in the item: it asks,
+> `v1.<Base64URL(JSON)>`, read by one decoder that refuses what it cannot read and starts what a text lacks at its
+> default, saying so (rule 6 as amended the same day). **Reset** is in the item: it asks,
 > clears the kept text and runs the first load again, so it has no list of its own. The format is frozen when the
 > app is deployed. Withdrawn on the way: the link naming no model, the parameter left in the address, the back
 > button reloading the link, a link replacing the tab's session unasked. **Next: the spec and tickets in `.scratch/share-link/`, then Phase 5 item 5.**
@@ -1027,8 +1028,10 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    whole session in `sessionStorage`, written at every change, so a reload and an address typed into the tab keep
    it. A share link is the same text narrowed to what its page is computed from: the model, the compared slots, the
    chart type and axes, and the Band list on Explore alone. A document load reads the link's parameter, else the
-   kept text, else the defaults, then follows the address; the parameter is removed once read. A text is taken
-   whole or not at all: a link refused shows a notice and restores the kept session, or else the defaults. A link
+   kept text, else the defaults, then follows the address; the parameter is removed once read. A text it
+   cannot read is refused: a link refused shows a notice and restores the kept session, or else the defaults.
+   Where it can, what a text lacks starts at its default and a key the app does not read is dropped, and a link
+   read so opens with a notice that says so; a kept text read so, with none (rule 6 as amended the same day). A link
    opened in a tab that already holds a session asks before it replaces it, as Reset asks; a no drops the link. **Copy
    link** (the "Export Link" of item 5 and of ADR §7) and **Reset** are buttons among the session's controls,
    their look and place Phase 5c's; Reset asks first, then clears the kept text and runs the first address's load
