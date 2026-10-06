@@ -1,7 +1,7 @@
 <script lang="ts">
   import { slotBadges } from "$lib/core/slotBadge";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
-  import { getOpenSession } from "$lib/state/openSession";
+  import { getOpenSession, getSessionReset } from "$lib/state/openSession";
   import { slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
@@ -23,6 +23,7 @@
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
+  const reset = getSessionReset();
   const inApp = inAppSwitch(session);
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
@@ -82,7 +83,11 @@
               {copy.compare}
             </Button>
           </Inline>
-          <SessionControls {session} atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange} />
+          <SessionControls
+            {session}
+            atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
+            onreset={reset}
+          />
           <!--
             While Compare is on, a column per slot, a third of the width whether
             its slot is enabled or not, so enabling one moves no other; a

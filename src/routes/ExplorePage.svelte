@@ -7,7 +7,7 @@
   the Bands panel edits the model's Band list the charts paint (decision 59).
 -->
 <script lang="ts">
-  import { getOpenSession } from "$lib/state/openSession";
+  import { getOpenSession, getSessionReset } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
@@ -28,6 +28,7 @@
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
+  const reset = getSessionReset();
   const inApp = inAppSwitch(session);
 </script>
 
@@ -49,7 +50,11 @@
             model={session.model}
             onchoose={(model) => inApp.follow({ page: session.page, model })}
           />
-          <SessionControls {session} atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange} />
+          <SessionControls
+            {session}
+            atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
+            onreset={reset}
+          />
           <InputPanel
             model={session.model}
             inputSlot={session.slots[0]}

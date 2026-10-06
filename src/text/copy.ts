@@ -41,6 +41,11 @@ export const copy = {
   boundaryWarningInputColumn: "Input",
   boundaryWarningCurrentColumn: "Current",
   boundaryWarningAllowedColumn: "Allowed range",
+  // Reset and its question (ADR-0002 decision 63, rules 7 and 8).
+  reset: "Reset",
+  resetQuestion: "This returns every input, every chart setting and the Bands of every model to their defaults. It cannot be undone.",
+  resetAccept: "Yes, reset",
+  resetDecline: "No, keep everything",
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).

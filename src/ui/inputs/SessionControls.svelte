@@ -1,17 +1,32 @@
 <script lang="ts">
   import { kindBounds, quantities } from "$lib/core/quantities";
   import type { Session } from "$lib/state/session.svelte";
+  import { copy } from "$lib/text/copy";
+  import { Button } from "$lib/ui/primitives/button";
   import EntryModeControls from "./EntryModeControls.svelte";
   import QuantityInput from "./QuantityInput.svelte";
+  import ResetDialog from "./ResetDialog.svelte";
 
   interface Props {
     /** Whose atmospheric pressure and entry modes the controls show and change: the session's, on every page. */
     session: Session;
     /** Whether the session's pressure is outside its bound. */
     atmosphericPressureOutOfRange: boolean;
+    /** Replace the tab's session with the defaults, once the person has said yes. */
+    onreset: () => void;
   }
 
-  let { session, atmosphericPressureOutOfRange }: Props = $props();
+  let { session, atmosphericPressureOutOfRange, onreset }: Props = $props();
+
+  /** Whether Reset's question stands: the button's own, as nothing else reads it. */
+  let askingReset = $state(false);
+
+  // The question is closed before the session is replaced, which builds the
+  // page, and these controls with it, again on the new one.
+  function acceptReset() {
+    askingReset = false;
+    onreset();
+  }
 </script>
 
 <!--
@@ -28,3 +43,9 @@
 />
 <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
 <EntryModeControls {session} />
+<!--
+  Reset asks first, and on a yes the tab shows what a new tab at this address
+  shows (ADR-0002 decision 63, rules 7 and 8). Its place and look are Phase 5c's.
+-->
+<Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
+<ResetDialog open={askingReset} onaccept={acceptReset} ondecline={() => (askingReset = false)} />

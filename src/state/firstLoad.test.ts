@@ -5,7 +5,7 @@
  * the app's own: a model's starting session, or the live session the text was
  * written from, moved to the address as the back button moves it.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -17,9 +17,11 @@ import { unitSystem } from "$lib/core/unitSystem";
 import { startingSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { firstLoadAt } from "./firstLoad";
+import { clearKeptText, readKeptText, writeKeptText } from "./keptText";
 import type { Session } from "./session.svelte";
 import { expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots } from "./sessionTestReaders";
 
@@ -68,6 +70,15 @@ function editedSession(): Session {
 function standardAddress(model: RegisteredModel): Address {
   return { page: page.standard, model };
 }
+
+/** The address `session` is on. */
+function addressOf(session: Session): Address {
+  return { page: session.page, model: session.model };
+}
+
+afterEach(() => {
+  sessionStorage.clear();
+});
 
 describe("the first address's load", () => {
   it("with nothing kept is the address's model on its defaults, on the address's page, for every registered model", () => {
@@ -158,5 +169,26 @@ describe("the first address's load", () => {
     kept.setAddress({ page: page.explore, model: pmvPpdIso });
     expect(openedOn(session)).toEqual(openedOn(kept));
     expectEverySlotInSessionEntryModes(session);
+  });
+});
+
+describe("the first address's load run again (Reset, ADR-0002 decision 63, rule 8)", () => {
+  it("with the kept text cleared is the address's model on its defaults, whatever the session before held", () => {
+    const onExplore = editedSession();
+    onExplore.setAddress({ page: page.explore, model: heatIndexRothfusz });
+
+    for (const before of [editedSession(), onExplore]) {
+      writeKeptText(keptTextOf(before));
+      const address = addressOf(before);
+
+      clearKeptText();
+      const { session } = firstLoadAt(address, { kept: readKeptText() }, registeredModels);
+
+      expect(openedOn(session), `${address.model.info.label} on ${address.page.title}`).toEqual({
+        written: startingSession(address.model),
+        page: address.page,
+        pendingSwitch: null,
+      });
+    }
   });
 });
