@@ -1,27 +1,23 @@
 /**
  * How the session tests read a session's state: a slot as plain data, a slot
  * the session is known to hold, a value the result table would show, and what
- * a pending switch lists; and the session comparing all three slots and the
- * bounded model they start from. Shared by the state tests so that all of them
- * compare the same way.
+ * a pending switch lists; the session comparing all three slots and the
+ * bounded model they start from; and the check of the invariant the session's
+ * entry modes rest on. Shared by the state tests so that all of them compare
+ * the same way.
  */
+import { expect } from "vitest";
 import type { Bound, OutOfRangeRow } from "$lib/core/applicability";
 import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
+import { entryModesOf } from "$lib/core/slot";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Session, type InputSlot, type SlotPosition } from "./session.svelte";
 
 /** Everything a slot holds, as plain data a comparison can be made against. */
 export function shapeOf(slot: InputSlot) {
-  return {
-    values: new Map(slot.values),
-    humidity: slot.humidity,
-    temperature: slot.temperature,
-    airSpeed: slot.airSpeed,
-    clothing: slot.clothing,
-    options: new Map(slot.options),
-  };
+  return slot.toSlot();
 }
 
 /** The slot at `position`, or a throw for a slot never enabled, which holds nothing. */
@@ -31,6 +27,17 @@ export function heldSlot(session: Session, position: SlotPosition): InputSlot {
     throw new Error(`Slot ${position + 1} holds nothing`);
   }
   return slot;
+}
+
+/**
+ * Every slot of `session` that holds values is in slot 1's entry modes,
+ * humidity's included: the invariant ADR-0002 decision 51's amendment names,
+ * which the session's readers of the entry modes rest on.
+ */
+export function expectEverySlotInSessionEntryModes(session: Session): void {
+  const held = session.slots.filter((slot) => slot !== null);
+  expect(held.map(entryModesOf)).toEqual(held.map(() => session.entryModes));
+  expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
 }
 
 /** A session on `model` with Compare on and all three slots enabled, each holding what slot 1 started with. */

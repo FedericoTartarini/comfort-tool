@@ -3,15 +3,14 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
-import { dynamicChartOf, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ChartAxes, OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
+import type { Quantity } from "$lib/core/quantities";
 import {
   defaultEntryModes,
   entryModesOf,
-  startingSlot,
   withAirSpeedMode,
   withClothingMode,
   withEnteredValues,
@@ -21,7 +20,8 @@ import {
   type Slot,
   type ValueEntryModes,
 } from "$lib/core/slot";
-import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
+import type { UnitSystem } from "$lib/core/unitSystem";
+import { startingChartSettings, startingSession, type ChartSettings, type WrittenSession } from "$lib/core/writtenSession";
 
 /**
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
@@ -79,6 +79,18 @@ export class InputSlot implements Slot {
     return this.#clothing;
   }
 
+  /** What it holds, as a plain slot no later write reaches. */
+  toSlot(): Slot {
+    return {
+      values: new Map(this.#values),
+      humidity: this.#humidity,
+      temperature: this.#temperature,
+      airSpeed: this.#airSpeed,
+      clothing: this.#clothing,
+      options: new Map(this.#options),
+    };
+  }
+
   /** Enter `value` for `quantity` where core puts it: a humidity quantity sets the humidity entry. */
   setEntered(quantity: Quantity, value: number): void {
     this.replaceWith(withEnteredValues(this, new Map([[quantity, value]])));
@@ -125,7 +137,7 @@ function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>
 
 /**
  * Which chart is on screen and how it is set up (ADR §4.5). The defaults come
- * from the model's declaration.
+ * from the model's declaration ({@link startingChartSettings}).
  */
 export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
@@ -137,11 +149,17 @@ export class ChartState {
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
 
-  constructor(model: RegisteredModel) {
-    this.type = $state.raw(model.charts[0].type);
-    this.axes = $state.raw(dynamicChartOf(model)?.axes ?? null);
+  /** `model`'s chart, set up as `settings` say. */
+  constructor(model: RegisteredModel, settings: ChartSettings) {
+    this.type = $state.raw(settings.type);
+    this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan?.classifier ?? null;
-    this.#bands = $state.raw(this.#classifier && bandListOf(this.#classifier));
+    this.#bands = $state.raw(settings.bands);
+  }
+
+  /** How it is set up, as plain chart settings. */
+  toChartSettings(): ChartSettings {
+    return { type: this.type, axes: this.axes, bands: this.#bands };
   }
 
   /**
@@ -256,21 +274,21 @@ export class Session {
   /** The page the address names. Set with the model, by {@link setAddress}; no page component sets it. */
   page: Page;
   model: RegisteredModel;
-  unitSystem = $state.raw<UnitSystem>(unitSystem.si);
+  unitSystem: UnitSystem;
   /** The chart settings of the current model. */
   chart: ChartState;
   /**
    * The air every slot describes, in Pa: one value for the session, held by
    * no slot and kept by a model switch (ADR-0002 decision 49).
    */
-  atmosphericPressure = $state(DEFAULT_ATMOSPHERIC_PRESSURE);
+  atmosphericPressure: number;
   /** The switch waiting on an answer, or `null`. Held whole, so `$state.raw`. */
   pendingSwitch = $state.raw<PendingSwitch | null>(null);
   // Replaced whole, never mutated, so `$state.raw` like the other identities here.
   #slots: HeldSlots;
-  #compare = $state(false);
+  #compare: boolean;
   /** Slot 1's `true` is the type's as well: it cannot be disabled. */
-  #enabled = $state.raw<readonly [true, boolean, boolean]>([true, false, false]);
+  #enabled: readonly [true, boolean, boolean];
   /**
    * Slot 1 always, and slots 2 and 3 while Compare is on and they are enabled,
    * on the Standard page alone: Compare is the Standard page's, and Explore
@@ -287,11 +305,45 @@ export class Session {
   // would be a write inside a read.
   readonly #chartByModel = new Map<RegisteredModel, ChartState>();
 
-  constructor(model: RegisteredModel) {
+  /**
+   * A session holding what `from` holds, on the Standard page until an
+   * address says otherwise (ADR-0002 decision 63). A model alone is its
+   * {@link startingSession}, so a session comes to hold its state one way;
+   * nothing lays a written session over a session already built.
+   */
+  constructor(from: RegisteredModel | WrittenSession) {
+    const written = "slots" in from ? from : startingSession(from);
+    for (const [model, settings] of written.charts) {
+      this.#chartByModel.set(model, new ChartState(model, settings));
+    }
+    const [first, second, third] = written.slots;
     this.page = $state.raw(page.standard);
-    this.model = $state.raw(model);
-    this.chart = $state.raw(this.#chartFor(model));
-    this.#slots = $state.raw([new InputSlot(startingSlot(model)), null, null]);
+    this.model = $state.raw(written.model);
+    this.unitSystem = $state.raw(written.unitSystem);
+    this.chart = $state.raw(this.#chartFor(written.model));
+    this.atmosphericPressure = $state(written.atmosphericPressure);
+    this.#slots = $state.raw([new InputSlot(first), second && new InputSlot(second), third && new InputSlot(third)]);
+    this.#compare = $state(written.compare);
+    this.#enabled = $state.raw([true, ...written.enabled]);
+  }
+
+  /**
+   * What the session holds, written out whole (ADR-0002 decision 63): every
+   * slot, whether held or not, the flags, and the chart settings of every
+   * model it has been on. A plain value no later write reaches; read inside a
+   * derivation or an effect, it is read again at every change.
+   */
+  toWrittenSession(): WrittenSession {
+    const [first, second, third] = this.#slots;
+    return {
+      model: this.model,
+      unitSystem: this.unitSystem,
+      atmosphericPressure: this.atmosphericPressure,
+      compare: this.#compare,
+      enabled: [this.#enabled[1], this.#enabled[2]],
+      slots: [first.toSlot(), second && second.toSlot(), third && third.toSlot()],
+      charts: new Map([...this.#chartByModel].map(([model, chart]) => [model, chart.toChartSettings()])),
+    };
   }
 
   /**
@@ -352,7 +404,8 @@ export class Session {
    * The session holds no entry mode of its own, so this and the four readers
    * below rest on an invariant: after every operation of the session, every
    * slot that holds values is in slot 1's entry modes, humidity's included.
-   * It holds because the session changes a mode in every held slot at once
+   * It holds because a session is built from a written session that keeps it
+   * (`WrittenSession`); the session changes a mode in every held slot at once
    * ({@link setTemperatureMode}, {@link setAirSpeedMode},
    * {@link setClothingMode}, {@link setHumidityMode}); a slot first
    * enabled copies slot 1 ({@link setSlotEnabled}); a switch puts every held
@@ -559,7 +612,7 @@ export class Session {
   #chartFor(model: RegisteredModel): ChartState {
     let state = this.#chartByModel.get(model);
     if (!state) {
-      state = new ChartState(model);
+      state = new ChartState(model, startingChartSettings(model));
       this.#chartByModel.set(model, state);
     }
     return state;

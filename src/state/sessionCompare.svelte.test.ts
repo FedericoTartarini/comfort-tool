@@ -27,7 +27,13 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
-import { heldSlot, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
+import {
+  expectEverySlotInSessionEntryModes,
+  heldSlot,
+  sessionComparingThreeSlots,
+  shapeOf,
+  withBounds,
+} from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -546,9 +552,7 @@ describe("the session's entry modes", () => {
 
     for (const step of steps) {
       step(session);
-      const held = session.slots.filter((slot) => slot !== null);
-      expect(held.map(entryModesOf)).toEqual(held.map(() => session.entryModes));
-      expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
+      expectEverySlotInSessionEntryModes(session);
     }
     expect(session.slots.every((slot) => slot !== null)).toBe(true);
     // The switch kept the modes the last steps before it set.
