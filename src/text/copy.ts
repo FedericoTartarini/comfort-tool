@@ -43,7 +43,7 @@ export const copy = {
   boundaryWarningAllowedColumn: "Allowed range",
   // Reset and its question (ADR-0002 decision 63, rules 7 and 8).
   reset: "Reset",
-  resetQuestion: "This returns every input, every chart setting and the Bands of every model to their defaults. It cannot be undone.",
+  resetQuestion: "This returns the page to what a new tab at this address shows: every input, the units, the pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
   resetAccept: "Yes, reset",
   resetDecline: "No, keep everything",
   // A share link's question in a tab that kept a session (ADR-0002 decision 63, rule 8).
@@ -55,7 +55,7 @@ export const copy = {
   copyLink: "Copy link",
   linkCopied: "Link copied",
   linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
-  linkFilledNotice: "This link was made by another version of the tool; inputs it did not carry start at their defaults.",
+  linkFilledNotice: "Some of this link could not be used as written; what it lacked starts at its defaults.",
   copyRefusedNotice: "The link could not be copied.",
   closeNotice: "Close",
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
@@ -78,7 +78,7 @@ export const copy = {
     `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
   // The Bands panel on Explore (ADR-0002 decision 59).
   bands: "Bands",
-  bandsReset: "Reset",
+  bandsReset: "Reset bands",
   bandLabelColumn: "Label",
   bandColorColumn: "Colour",
   // `output` is the cut quantity's label with its unit.
