@@ -125,7 +125,7 @@ A file a person downloads of the chart a page shows: the chart and its legend an
 _Avoid_: export (alone), screenshot, figure, download
 
 **Input summary**:
-The text in an Image that says what its chart is computed from: the model and its standard, the atmospheric pressure, the entry modes and the options, and for each slot drawn the values it was last calculated from, which are not the panel's while one of them is Out of range. On the Explore page it gives the Edges too. It never holds a result.
+The text in an Image that says what its chart is computed from: the model and its standard and, for each slot drawn, what it was last calculated from: its values as they were entered, its options and its atmospheric pressure. These are not the panel's while a value is Out of range. On the Explore page it gives the Edges too. It never holds a result.
 _Avoid_: parameters, inputs table, caption
 
 **Temporary library**:

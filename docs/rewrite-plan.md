@@ -1083,6 +1083,9 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    becomes in an SVG, the double column at 600 dpi); the adapter's conversion moved out of `PlotlyChart.svelte`,
    with `.scratch/tidy-later.md`'s T14; the image's description and its figure; the Input summary; the dialog and
    the download; the docs close-out.
+   **Revised 2026-10-07, at the spec** (decision 64's note of the same day; `.scratch/image-export/spec.md`): the
+   Input summary reads the runs alone. Above the slots it gives the model and its standard; each drawn slot's part
+   gives its run's rows, whose labels say the entry mode, its options and the pressure it ran at.
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
    **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
    its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,

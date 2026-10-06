@@ -2243,6 +2243,18 @@ notes under decisions 51 and 53:
     Left for the tickets: the type's and the modules' names; the numbers of the layout, which the measurement
     gives; and the summary's entry-mode lines when an entry mode was changed while a slot's gate was closed, since a
     run's slot keeps the modes it was entered in (`panelQuantities` reads the slot's own, `core/slot.ts:362-367`).
+    **Revised 2026-10-07, at the spec (`.scratch/image-export/spec.md`), with the user.** Rule 3's first sentence
+    read the session beside the runs. The summary reads the runs alone: above the slots it gives the model and its
+    standard, and each drawn slot's part gives that run's rows, its options and the pressure it ran at. No line
+    names an entry mode: each mode lists quantities of its own, and their labels say it ("Air speed" or "Relative
+    air speed", `core/quantities.ts:73-74`); options are a slot's (`ui/inputs/InputPanel.svelte:63`); and a run
+    keeps its own pressure (`state/compute.svelte.ts:30-34`). So an entry mode or a pressure changed while a slot's
+    gate is closed cannot set the summary against its chart, which settles the third point left for the tickets.
+    With three slots the pressure is written three times, accepted. Four things chosen in the spec and agreed the
+    same day: rule 6's "it lasts while the document does" is narrower, the choices being the dialog's own state,
+    kept while its page is shown and started again at a page change; an edited title starts again when the model
+    or the chart type changes; the file's ground is white, where the chart on the page is transparent; and the
+    footer's date is the person's local day.
 
 ## Consequences
 
