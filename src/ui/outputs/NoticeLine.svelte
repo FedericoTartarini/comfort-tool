@@ -20,6 +20,7 @@
     linkRefused: copy.linkRefusedNotice,
     linkFilled: copy.linkFilledNotice,
     copyRefused: copy.copyRefusedNotice,
+    imageFailed: copy.imageFailedNotice,
   };
 </script>
 

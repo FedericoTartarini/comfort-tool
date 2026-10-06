@@ -7,8 +7,8 @@
     // plotly 4 shows the Chart Studio upload button by default (ADR §2.1).
     showSendToCloud: false,
     // `toImage` goes too: Plotly's own PNG would come out without the legend,
-    // which lives below the chart. Image export with a matching legend, a
-    // title and an input summary is Phase 5's.
+    // which lives below the chart. Export image draws a figure of its own,
+    // legend included (`plotlyImage.ts`).
     modeBarButtonsToRemove: [
       "toImage",
       "select2d",

@@ -205,7 +205,7 @@ function hoverInfo(mode: HoverMode): "skip" | "text" {
   return mode === "off" ? "skip" : "text";
 }
 
-function annotation(entry: Annotation): PlotlyAnnotation {
+export function toPlotlyAnnotation(entry: Annotation) {
   return {
     x: entry.x,
     y: entry.y,
@@ -214,7 +214,7 @@ function annotation(entry: Annotation): PlotlyAnnotation {
     xanchor: "right",
     yanchor: "top",
     font: { size: 10, color: "#64748b" },
-  };
+  } satisfies PlotlyAnnotation;
 }
 
 /**
@@ -236,15 +236,15 @@ export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
     // ADR §4.4: the chart's one legend is rendered below it by ChartLegend.
     showlegend: false,
     hovermode: "closest",
-    annotations: source.annotations.map(annotation),
+    annotations: source.annotations.map(toPlotlyAnnotation),
     plot_bgcolor: chartInk.ground,
     paper_bgcolor: TRANSPARENT,
-    xaxis: axis(source.layout.x),
-    yaxis: axis(source.layout.y),
+    xaxis: toPlotlyAxis(source.layout.x),
+    yaxis: toPlotlyAxis(source.layout.y),
   };
 }
 
-function axis(axisSpec: AxisSpec) {
+export function toPlotlyAxis(axisSpec: AxisSpec) {
   return {
     title: { text: axisSpec.title },
     range: [...axisSpec.range],

@@ -13,6 +13,7 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
+  import ExportImageButton from "$lib/ui/inputs/ExportImageButton.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
@@ -81,7 +82,10 @@
         <Stack gap="4">
           <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={false} />
 
-          <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
+          <Inline gap="4" justify="between" align="center">
+            <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
+            <ExportImageButton chart={outputs.chart} onfailed={() => tab.raiseNotice("imageFailed")} />
+          </Inline>
 
           {#if outputs.chart}
             <Stack gap="2">

@@ -58,6 +58,9 @@ export const copy = {
   linkFilledNotice: "Some of this link could not be used as written; what it lacked starts at its defaults.",
   copyRefusedNotice: "The link could not be copied.",
   closeNotice: "Close",
+  // An Image of the chart (ADR-0002 decision 64, rules 6 and 8).
+  exportImage: "Export image",
+  imageFailedNotice: "The image could not be made.",
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).

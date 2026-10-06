@@ -5,9 +5,10 @@ import type { Session } from "./session.svelte";
 /**
  * What the notice line at the top of every page says (ADR-0002 decision 63,
  * rule 6): a link that could not be read, a link that needed something filled
- * or dropped, a clipboard that refused the link. One at a time.
+ * or dropped, a clipboard that refused the link; and an Image that could not
+ * be made (decision 64, rule 8). One at a time.
  */
-export type Notice = "linkRefused" | "linkFilled" | "copyRefused";
+export type Notice = "linkRefused" | "linkFilled" | "copyRefused" | "imageFailed";
 
 /**
  * The app's one session and the outputs derived from it, created once above
