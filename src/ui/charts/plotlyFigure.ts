@@ -169,7 +169,7 @@ function constraintOf({ lower, upper }: ContourFillTrace | ContourLineTrace) {
 }
 
 /**
- * A field's hover readout, written whole by the spec builder: the component
+ * A field's hover readout, written whole by the spec builder: the adapter
  * only breaks its lines, and adds no template of its own.
  */
 function carryHover(trace: HoverGridTrace) {

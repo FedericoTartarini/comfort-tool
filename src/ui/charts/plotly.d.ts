@@ -3,7 +3,7 @@
  * (`@types/plotly.js` is deliberately not installed, ADR §2.1). Declared here
  * is the surface `PlotlyChart.svelte` actually calls; trace, layout and config
  * objects are plain records because the app only ever constructs them, from a
- * `ChartSpec`.
+ * `ChartSpec` (`plotlyFigure.ts`).
  */
 declare module "plotly.js-cartesian-dist-min" {
   export type PlotlyData = Record<string, unknown>;
