@@ -7,11 +7,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
-import type { BandFill, BandTrace } from "$lib/core/charts/chartSpec";
+import type { ContourFillTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { copy } from "$lib/text/copy";
 import { Outputs } from "./compute.svelte";
 import { Session, type ChartState } from "./session.svelte";
 
@@ -27,18 +28,24 @@ function exploreSession(): { session: Session; outputs: Outputs } {
   return { session, outputs: new Outputs(session) };
 }
 
-/** The fills the chart's one band trace paints. */
-function paintedFills(outputs: Outputs): readonly BandFill[] {
-  const traces = (outputs.chart?.traces ?? []).filter((trace): trace is BandTrace => trace.kind === "bands");
-  expect(traces).toHaveLength(1);
-  return traces[0].bands;
+/** The fills the chart paints: each one's label, colour and interval. */
+function paintedFills(outputs: Outputs) {
+  return (outputs.chart?.traces ?? [])
+    .filter((trace): trace is ContourFillTrace => trace.kind === "contourFill")
+    .map(({ label, color, lower, upper }) => ({ label, color, lower, upper }));
 }
 
-/** The fills `list` implies: a coloured band over its Edge and the one below. */
-function fillsOf(list: BandList): BandFill[] {
+/**
+ * The fills `list` implies: a coloured band from the Edge below it up to the
+ * Edge of the last band of the coloured run it starts, which an uncoloured
+ * band or the list's end closes.
+ */
+function fillsOf(list: BandList) {
   return list.labels.flatMap((label, index) => {
     const color = list.colors[index];
-    return color === undefined ? [] : [{ label, color, upper: list.edges[index], lower: list.edges[index - 1] }];
+    const closing = list.colors.findIndex((above, position) => position > index && above === undefined);
+    const top = closing === -1 ? list.edges.length - 1 : closing - 1;
+    return color === undefined ? [] : [{ label, color, lower: list.edges[index - 1], upper: list.edges[top] }];
   });
 }
 
@@ -83,8 +90,10 @@ describe("The Bands panel's edits through the session", () => {
     session.setAddress({ page: page.standard, model: pmvPpdIso });
     const traces = outputs.chart?.traces ?? [];
 
-    expect(traces.some((trace) => trace.kind === "bands")).toBe(false);
-    expect(traces.filter((trace) => trace.kind === "contourZone")).toHaveLength(3);
+    expect(paintedFills(outputs).map((fill) => fill.label)).toEqual(
+      [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone)),
+    );
+    expect(traces.filter((trace) => trace.kind === "contourLine")).toHaveLength(3);
   });
 
   it("refuses an Edge at or beyond a neighbour, leaving the list and the spec as they were", () => {

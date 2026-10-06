@@ -19,7 +19,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import record from "$lib/temporary-library/chart-online.json" with { type: "json" };
-import type { ContourZoneTrace } from "./chartSpec";
+import type { ContourLineTrace } from "./chartSpec";
 import { chartRequestFor } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -83,13 +83,13 @@ const conditions = [...new Map(record.zones.map((zone) => [JSON.stringify(zone.c
 interface Contour {
   readonly temperatures: readonly number[];
   readonly humidityRatios: readonly number[];
-  readonly z: ContourZoneTrace["z"];
+  readonly z: ContourLineTrace["z"];
 }
 
-/** The contour `model`'s chart of `slot` draws for its zone of `limit`, as the Standard page asks for it. */
+/** The contour `model`'s chart of `slot` outlines its zone of `limit` with, as the Standard page asks for it. */
 function contourOf(model: RegisteredModel, slot: Slot, limit: number): Contour {
   const spec = psychrometricSpec(chartRequestFor(model, slot));
-  const trace = spec.traces.find((entry): entry is ContourZoneTrace => entry.kind === "contourZone" && entry.upper === limit);
+  const trace = spec.traces.find((entry): entry is ContourLineTrace => entry.kind === "contourLine" && entry.upper === limit);
   if (!trace) {
     throw new Error(`${model.info.label} draws no zone of limit ${limit}`);
   }

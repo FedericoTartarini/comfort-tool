@@ -1,8 +1,9 @@
 /**
  * The scanned dynamic chart handed a Band list, as Explore asks for it
- * (ADR-0002 decisions 58 and 59): a band per coloured entry over slot 1's
- * scan, a legend entry per coloured band, and a readout naming the list's
- * band. Handed none it paints Comfort zones (`dynamicChart.test.ts`).
+ * (ADR-0002 decisions 58 and 59): a fill per coloured band over slot 1's
+ * scan, up to the top of the coloured bands contiguous above it, a legend
+ * entry per coloured band, and a readout naming the list's band. Handed none
+ * it paints Comfort zones (`dynamicChart.test.ts`).
  */
 import { describe, expect, it } from "vitest";
 import { classifyFromBins } from "jsthermalcomfort";
@@ -13,9 +14,10 @@ import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
+import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { BandTrace, ChartSpec, HoverGridTrace, HoverReadout } from "./chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout } from "./chartSpec";
 import { chartRequestFor } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 
@@ -40,12 +42,26 @@ function bandedSpec(bands: BandList, model: RegisteredModel = pmvPpdIso): ChartS
   return dynamicSpec({ ...chartRequestFor(model, startingSlot(model)), bands }, chart.axes);
 }
 
-function bandTraceOf(spec: ChartSpec): BandTrace {
-  const trace = spec.traces.find((entry): entry is BandTrace => entry.kind === "bands");
-  if (!trace) {
-    throw new Error("spec has no band trace");
+function fillsOf(spec: ChartSpec): ContourFillTrace[] {
+  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+function linesOf(spec: ChartSpec): ContourLineTrace[] {
+  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
+}
+
+/** The first fill, which carries slot 1's scanned field. */
+function surfaceOf(spec: ChartSpec): ContourFillTrace {
+  const [fill] = fillsOf(spec);
+  if (!fill) {
+    throw new Error("spec has no fill");
   }
-  return trace;
+  return fill;
+}
+
+/** `at(-1)`, which this project's ES2020 target does not have. */
+function last<T>(row: readonly T[]): T {
+  return row[row.length - 1];
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
@@ -61,27 +77,32 @@ function bandRead(readout: HoverReadout): string {
   return readout[3] ?? "";
 }
 
-/** Each band's label, colour and interval, as the list puts them, the first open below. */
-function intervalsOf(list: BandList) {
-  return list.labels.map((label, index) => ({
-    label,
-    color: list.colors[index],
-    upper: list.edges[index],
-    lower: index === 0 ? undefined : list.edges[index - 1],
-  }));
+/** Each fill's label, colour and interval. */
+function intervalsOf(spec: ChartSpec) {
+  return fillsOf(spec).map(({ label, color, lower, upper }) => ({ label, color, lower, upper }));
+}
+
+/** Band `index` of `list` as a fill: its label and colour, from its lower Edge, the first open below, up to `top`. */
+function bandFillOf(list: BandList, index: number, top: number) {
+  return { label: list.labels[index], color: list.colors[index], lower: index === 0 ? undefined : list.edges[index - 1], upper: top };
+}
+
+/** Every band of `list`, each coloured, as a fill: all contiguous, so each fills up to the last Edge. */
+function contiguousFillsOf(list: BandList) {
+  return list.labels.map((_, index) => bandFillOf(list, index, last(list.edges)));
 }
 
 describe("the scanned dynamic chart given a Band list", () => {
   const spec = bandedSpec(isoBands);
 
-  it("paints one band per band of the list, with its label, colour and interval, and no Comfort zone", () => {
-    expect(bandTraceOf(spec).bands).toEqual(intervalsOf(isoBands));
-    expect(spec.traces.some((trace) => trace.kind === "contourZone")).toBe(false);
+  it("paints one fill per band of the list, from its lower Edge up to the last, and no Comfort zone", () => {
+    expect(intervalsOf(spec)).toEqual(contiguousFillsOf(isoBands));
+    expect(linesOf(spec)).toEqual([]);
   });
 
   it("paints Heat Index's five bands in its own palette", () => {
     const heatBands = bandListOf(heatIndexRothfusz.scan.classifier);
-    expect(bandTraceOf(bandedSpec(heatBands, heatIndexRothfusz)).bands).toEqual(intervalsOf(heatBands));
+    expect(intervalsOf(bandedSpec(heatBands, heatIndexRothfusz))).toEqual(contiguousFillsOf(heatBands));
     expect(heatBands.labels).toHaveLength(5);
   });
 
@@ -95,7 +116,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("reads both axis values, the number and the list's band in every cell, off the hover grid alone", () => {
     expect(spec.traces.filter((trace) => trace.hover !== "off").map((trace) => trace.kind)).toEqual(["hoverGrid"]);
     const { hoverText } = hoverGridOf(spec);
-    const { z } = bandTraceOf(spec);
+    const { z } = surfaceOf(spec);
     z.forEach((row, yIndex) =>
       row.forEach((value, xIndex) => {
         const band = value === null ? Number.NaN : classifyFromBins(value, isoBands);
@@ -114,24 +135,29 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("follows an edited list: a moved Edge, a new label", () => {
     const edited = setLabel(moveEdge(isoBands, 2, -0.1), 3, "Comfortable");
     const drawn = bandedSpec(edited);
-    expect(bandTraceOf(drawn).bands).toEqual(intervalsOf(edited));
+    expect(intervalsOf(drawn)).toEqual(contiguousFillsOf(edited));
     // -0.22 is below the moved Edge now, so in "Slightly Cool".
     expect(bandRead(hoverGridOf(drawn).hoverText[2][26])).toBe("Slightly Cool");
     expect(bandRead(hoverGridOf(bandedSpec(setLabel(isoBands, 3, "Comfortable"))).hoverText[2][26])).toBe("Comfortable");
   });
 
-  it("paints a band without a colour nowhere, and still names it", () => {
+  it("paints a band without a colour nowhere, the fills below it stopping at its lower Edge, and still names it", () => {
     const hidden = setColor(isoBands, 3, undefined);
     const drawn = bandedSpec(hidden);
-    expect(bandTraceOf(drawn).bands).toEqual(intervalsOf(isoBands).filter((band) => band.label !== "Neutral"));
+    expect(intervalsOf(drawn)).toEqual(
+      hidden.labels.flatMap((_, index) =>
+        index < 3 ? [bandFillOf(hidden, index, hidden.edges[2])] : index > 3 ? [bandFillOf(hidden, index, last(hidden.edges))] : [],
+      ),
+    );
     expect(drawn.legend.map((entry) => entry.label)).not.toContain("Neutral");
     expect(bandRead(hoverGridOf(drawn).hoverText[2][26])).toBe("Neutral");
   });
 
   it("paints Comfort zones and no band when given nothing", () => {
     const drawn = dynamicSpec(isoRequest, isoChart.axes);
-    expect(drawn.traces.some((trace) => trace.kind === "bands")).toBe(false);
-    expect(drawn.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
+    const zoneLabels = [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone));
+    expect(fillsOf(drawn).map((fill) => fill.label)).toEqual(zoneLabels);
+    expect(linesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
   });
 });
 
@@ -155,16 +181,23 @@ describe("a Band list whose Edges are unevenly spaced", () => {
   const readAt = (value: number, bands: BandList = uneven) => bandRead(hoverGridOf(flat(value, bands)).hoverText[0][0]);
 
   it("carries the intervals through unevenly spaced and untouched", () => {
-    expect(bandTraceOf(flat(5)).bands.map((band) => [band.lower, band.upper])).toEqual([
-      [undefined, 0],
+    expect(fillsOf(flat(5)).map((fill) => [fill.lower, fill.upper])).toEqual([
+      [undefined, 100],
+      [0, 100],
+      [10, 100],
+      [40, 100],
+    ]);
+    // An uncoloured band ends the run below it at its own lower Edge.
+    const gapped = setColor(uneven, 2, undefined);
+    expect(fillsOf(flat(5, gapped)).map((fill) => [fill.lower, fill.upper])).toEqual([
+      [undefined, 10],
       [0, 10],
-      [10, 40],
       [40, 100],
     ]);
   });
 
   it("keeps the number past the last Edge, where the fill ends and no band is named", () => {
-    expect(bandTraceOf(flat(250)).z[0][0]).toBe(250);
+    expect(surfaceOf(flat(250)).z[0][0]).toBe(250);
     expect(readAt(100)).toBe("");
     expect(readAt(250)).toBe("");
     expect(readAt(Number.NaN)).toBe("");
@@ -189,12 +222,11 @@ describe("a Band list whose Edges are unevenly spaced", () => {
       scan: { ...pmvPpdIso.scan, output: q.operative_tmp },
       run: () => ({ operative_tmp: 30 }),
     } satisfies RegisteredModel;
-    const trace = bandTraceOf(
-      dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart.axes),
-    );
+    const fills = fillsOf(dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart.axes));
     // 30 °C reads as 86 °F on an axis; here it stays 30.
-    expect(trace.z[0][0]).toBe(30);
-    expect(trace.bands.map((band) => band.upper)).toEqual(uneven.edges);
+    expect(fills[0].z[0][0]).toBe(30);
+    expect(fills.map((fill) => fill.lower)).toEqual([undefined, ...uneven.edges.slice(0, -1)]);
+    expect(fills.map((fill) => fill.upper)).toEqual(uneven.edges.map(() => last(uneven.edges)));
   });
 });
 
@@ -207,7 +239,7 @@ describe("a Band list over several slots", () => {
       { ...request, slots: [...request.slots, { ...slotBadges[1], slot: warm }], bands: isoBands },
       isoChart.axes,
     );
-    expect(bandTraceOf(two).z).toEqual(bandTraceOf(one).z);
+    expect(fillsOf(two).map((fill) => fill.z)).toEqual(fillsOf(one).map((fill) => fill.z));
     expect(hoverGridOf(two).hoverText[2][26]).toHaveLength(6);
   });
 });

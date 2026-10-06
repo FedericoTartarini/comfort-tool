@@ -25,10 +25,9 @@
   import type {
     Annotation,
     AxisSpec,
-    BandFill,
-    BandTrace,
     ChartSpec,
-    ContourZoneTrace,
+    ContourFillTrace,
+    ContourLineTrace,
     HoverGridTrace,
     HoverMode,
     PathTrace,
@@ -92,12 +91,12 @@
           return [pathData(trace)];
         case "point":
           return [pointData(trace)];
-        case "bands":
-          return bandData(trace);
+        case "contourFill":
+          return [contourFillData(trace)];
+        case "contourLine":
+          return [contourLineData(trace)];
         case "hoverGrid":
           return [hoverGridData(trace)];
-        case "contourZone":
-          return [contourZoneData(trace)];
       }
     });
   }
@@ -134,18 +133,57 @@
   }
 
   /**
-   * One trace per band, each filling that band's own interval of the surface.
-   * ADR §4.4 calls for a contour rather than a heatmap, which paints one
-   * rectangle per grid cell and so draws every boundary as a staircase; and
-   * one contour draws levels at a single fixed spacing, while a classifier's
-   * Edges need not be evenly spaced, so each band brings its own.
-   *
-   * Every band fills up to the top of the contiguous bands from it up, those
-   * that meet Edge to Edge, and they are drawn in band order, so each boundary
-   * among them is one fill's edge laid over the next fill's interior. Two
-   * fills meeting edge to edge can show a seam; a fill over an interior
-   * cannot. Contiguity ends where an uncoloured band was left out, so its
-   * interval stays unpainted rather than showing the fill below it.
+   * A region's fill: one constraint contour painting the cells of its
+   * interval, its lines hidden. ADR §4.4 calls for a contour rather than a
+   * heatmap, which paints one rectangle per grid cell and so draws every
+   * boundary as a staircase; and one contour draws levels at a single fixed
+   * spacing, while a classifier's Edges need not be evenly spaced, so each
+   * region brings its own.
+   */
+  function contourFillData(trace: ContourFillTrace): PlotlyData {
+    return {
+      ...contourOf(trace),
+      contours: { ...constraintOf(trace), showlines: false },
+      fillcolor: trace.color,
+      line: { width: 0 },
+    };
+  }
+
+  /**
+   * A region's line: the same constraint contour with a transparent fill and
+   * its lines shown, which strokes where the field crosses the interval's
+   * values and nothing else, no side along the edge of the field or of a
+   * cell with no number. Measured on plotly.js 4.0.0 for an interval and for
+   * a single value; directly over a fill of the same interval it draws, pixel
+   * for pixel, what one contour with that fill and these lines draws.
+   */
+  function contourLineData(trace: ContourLineTrace): PlotlyData {
+    return {
+      ...contourOf(trace),
+      contours: { ...constraintOf(trace), showlines: true },
+      fillcolor: "rgba(0, 0, 0, 0)",
+      line: { color: trace.color, width: trace.width },
+    };
+  }
+
+  /** What a region's fill and line share: the field, never drawn across a cell with no number. */
+  function contourOf(trace: ContourFillTrace | ContourLineTrace) {
+    return {
+      type: "contour",
+      x: trace.x,
+      y: trace.y,
+      z: trace.z,
+      connectgaps: false,
+      showscale: false,
+      name: trace.label,
+      hoverinfo: hoverInfo(trace.hover),
+      showlegend: false,
+    };
+  }
+
+  /**
+   * The constraint of a region's interval: between its two values, or below
+   * the upper where there is no lower.
    *
    * Measured on plotly.js 4.0.0, not read off its documentation: a constraint
    * paints the side that *fails* the operation. So `"]["` paints inside the
@@ -153,61 +191,10 @@
    * renders a chart, which is why the package is pinned to exactly that
    * version — an upgrade has to re-measure this before it ships.
    */
-  function bandData(trace: BandTrace): PlotlyData[] {
-    return trace.bands.map((band, index) => ({
-      type: "contour",
-      x: trace.x,
-      y: trace.y,
-      z: trace.z,
-      contours: { ...constrainFill(band, contiguousTopOf(trace.bands, index)), showlines: false },
-      fillcolor: band.color,
-      line: { width: 0 },
-      connectgaps: false,
-      showscale: false,
-      hoverinfo: hoverInfo(trace.hover),
-      showlegend: false,
-    }));
-  }
-
-  /** The upper Edge of the last of the bands from `bands[index]` up that meet Edge to Edge. */
-  function contiguousTopOf(bands: readonly BandFill[], index: number): number {
-    let top = bands[index].upper;
-    for (const band of bands.slice(index + 1)) {
-      if (band.lower !== top) {
-        break;
-      }
-      top = band.upper;
-    }
-    return top;
-  }
-
-  /** From the band's lower Edge, or from below for the band that is open below, up to `top`. */
-  function constrainFill(band: BandFill, top: number) {
-    return band.lower === undefined
-      ? { type: "constraint", operation: ">", value: top }
-      : { type: "constraint", operation: "][", value: [band.lower, top] };
-  }
-
-  /**
-   * A Comfort zone cut from a scanned field: one contour filling the surface
-   * between the zone's two limits, `"]["` painting inside the interval as
-   * {@link bandData} measured, and outlined where the surface crosses them.
-   */
-  function contourZoneData(trace: ContourZoneTrace): PlotlyData {
-    return {
-      type: "contour",
-      x: trace.x,
-      y: trace.y,
-      z: trace.z,
-      contours: { type: "constraint", operation: "][", value: [trace.lower, trace.upper], showlines: true },
-      fillcolor: trace.fill,
-      line: { color: trace.color, width: trace.width },
-      connectgaps: false,
-      showscale: false,
-      name: trace.label,
-      hoverinfo: hoverInfo(trace.hover),
-      showlegend: false,
-    };
+  function constraintOf({ lower, upper }: ContourFillTrace | ContourLineTrace) {
+    return lower === undefined
+      ? { type: "constraint", operation: ">", value: upper }
+      : { type: "constraint", operation: "][", value: [lower, upper] };
   }
 
   /**

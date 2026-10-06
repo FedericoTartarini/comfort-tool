@@ -1,6 +1,6 @@
 /**
  * The pieces the spec builders assemble: the scan and its paint with the
- * hover grid over it, the slot marker, a Comfort zone, an axis, the samples
+ * hover grid over it, the slot marker, a painted region, an axis, the samples
  * of a range, what the slots of a request share, a Band list's paint and a
  * readout's lines. Each is written here once, so the psychrometric, the
  * dynamic and the adaptive chart draw them alike.
@@ -12,16 +12,15 @@ import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclara
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
-import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
+import type { SlotBadge } from "$lib/core/slotBadge";
 import { displayUnitFor, labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest, ChartedSlot } from "./chartRequest";
 import type {
   AxisSpec,
-  BandFill,
-  BandTrace,
-  ContourZoneTrace,
+  ContourFillTrace,
+  ContourLineTrace,
   HoverGridTrace,
   HoverReadout,
   LegendEntry,
@@ -142,21 +141,23 @@ export function fieldPaintFor(
 
   if (bands) {
     const painted = bandsFor(bands, { ...drawn, z: surfaces[0] });
-    traces.push(painted.trace);
+    traces.push(...painted.fills);
     bandLegend.push(...painted.legendEntries);
   } else {
     const zones = contouredZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
-        const contoured = contourZoneFor(
-          labelFor(request, charted, copy.zoneLegend(zone)),
-          { ...drawn, z: surfaces[position], lower: -zone.limit, upper: zone.limit },
-          index,
-          zones.length,
-          charted.hue,
-        );
-        traces.push(contoured.trace);
-        zoneLegendOfSlot[position].push(contoured.legendEntry);
+        const interval = { lower: -zone.limit, upper: zone.limit };
+        const region = paintedRegionFor(labelFor(request, charted, copy.zoneLegend(zone)), { ...drawn, z: surfaces[position] }, {
+          fill: interval,
+          line: interval,
+          fillColor: chartInk.zoneFill(charted.hue, index, zones.length),
+          lineColor: charted.hue.zoneLine,
+          lineWidth: chartInk.zoneLineWidth,
+        });
+        // Each zone's line directly over its own fill.
+        traces.push(region.fill, region.line);
+        zoneLegendOfSlot[position].push(region.legendEntry);
       });
     });
   }
@@ -271,57 +272,86 @@ export function samples(range: Range, count: number): readonly number[] {
   return Array.from({ length: count }, (_, index) => range.min + index * step);
 }
 
+/** A scanned field over two axes' samples, already in display units, its number in its own unit. */
+type ContourField = Pick<ContourFillTrace, "x" | "y" | "z">;
+
+/** An interval of a scanned field's number: from `lower` to `upper`, or everything below `upper` without `lower`. */
+type FieldInterval = Pick<ContourFillTrace, "upper" | "lower">;
+
 /**
- * A Comfort zone cut from a scanned field `z` over `x` and `y`, already in
- * display units: the cells between `lower` and `upper`, in `z`'s own unit.
- * Zone `level` of `levels` nested ones, 0 the outermost, is filled in `hue` by
- * that level and outlined in the hue's zone line. Its fill cannot say where
- * the pointer is, so it never captures the pointer.
+ * How a {@link paintedRegionFor} region is painted: the interval it fills and
+ * its colour, the interval it strokes and the line's colour and width.
  */
-export function contourZoneFor(
+interface RegionPaint {
+  readonly fill: FieldInterval;
+  readonly line: FieldInterval;
+  readonly fillColor: string;
+  readonly lineColor: string;
+  readonly lineWidth: number;
+}
+
+/**
+ * A region of the scanned `field` named `label`, painted as `paint` says: a
+ * fill over one interval, a line over another, and a legend entry with a fill
+ * swatch (ADR-0002 decision 62). A Comfort zone fills and strokes the same
+ * interval. Neither trace can say where the pointer is, so neither captures
+ * it.
+ */
+function paintedRegionFor(
   label: string,
-  field: Pick<ContourZoneTrace, "x" | "y" | "z" | "lower" | "upper">,
-  level: number,
-  levels: number,
-  hue: SlotHue,
-): { readonly trace: ContourZoneTrace; readonly legendEntry: LegendEntry } {
-  const fill = chartInk.zoneFill(hue, level, levels);
+  field: ContourField,
+  paint: RegionPaint,
+): { readonly fill: ContourFillTrace; readonly line: ContourLineTrace; readonly legendEntry: LegendEntry } {
   return {
-    trace: { kind: "contourZone", ...field, color: hue.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
-    legendEntry: { label, swatch: "fill", color: fill },
+    fill: { kind: "contourFill", ...field, ...paint.fill, color: paint.fillColor, hover: "off", label },
+    line: { kind: "contourLine", ...field, ...paint.line, color: paint.lineColor, width: paint.lineWidth, hover: "off", label },
+    legendEntry: { label, swatch: "fill", color: paint.fillColor },
   };
 }
 
 /**
- * `list` painted over a scanned field `z` on `x` and `y`, already in display
- * units ({@link BandTrace}), and a legend entry per painted band. Its fills
- * cannot say where the pointer is, so it never captures the pointer.
+ * `list` painted over the scanned `field`: one fill per band with a colour,
+ * in the list's order, and its legend entry; a band without one is painted
+ * nowhere. The first band is open below, as every library classifier is; the
+ * last Edge is where the list stops answering, and a number past it falls in
+ * no band, so that Edge is drawn by interpolation like any other boundary.
+ *
+ * A band fills from its lower Edge, or from below for the first, up to the
+ * top of the painted bands contiguous above it ({@link contiguousTopOf}), and
+ * the fills are laid in band order, so each boundary among them is one
+ * fill's edge laid over the next fill's interior: two fills meeting edge to
+ * edge can show a seam, a fill over an interior cannot. A band left
+ * unpainted ends the run, so its interval stays unpainted rather than showing
+ * the fill below it.
  */
-export function bandsFor(
+function bandsFor(
   list: BandList,
-  field: Pick<BandTrace, "x" | "y" | "z">,
-): { readonly trace: BandTrace; readonly legendEntries: readonly LegendEntry[] } {
-  const fills = bandFillsOf(list);
-  return {
-    trace: { kind: "bands", hover: "off", ...field, bands: fills },
-    legendEntries: fills.map((band) => ({ label: band.label, swatch: "fill", color: band.color })),
-  };
-}
-
-/**
- * The bands a chart fills from `list`, in the list's order: one per band with
- * a colour, over the interval of the scanned number between its own Edge and
- * the one below; a band without one is painted nowhere. The first band is
- * open below, as every library classifier is; the last Edge is where the list
- * stops answering, and it bounds the last band's fill.
- */
-function bandFillsOf(list: BandList): readonly BandFill[] {
-  return list.labels.flatMap((label, index) => {
+  field: ContourField,
+): { readonly fills: readonly ContourFillTrace[]; readonly legendEntries: readonly LegendEntry[] } {
+  const fills = list.labels.flatMap((label, index): ContourFillTrace[] => {
     const color = list.colors[index];
     return color === undefined
       ? []
-      : [{ label, color, upper: list.edges[index], lower: index === 0 ? undefined : list.edges[index - 1] }];
+      : [{
+          kind: "contourFill",
+          ...field,
+          lower: index === 0 ? undefined : list.edges[index - 1],
+          upper: contiguousTopOf(list, index),
+          color,
+          hover: "off",
+          label,
+        }];
   });
+  return { fills, legendEntries: fills.map((fill) => ({ label: fill.label, swatch: "fill", color: fill.color })) };
+}
+
+/** The upper Edge of the last band from band `index` up that is painted with every band between. */
+function contiguousTopOf(list: BandList, index: number): number {
+  let top = index;
+  while (list.colors[top + 1] !== undefined) {
+    top += 1;
+  }
+  return list.edges[top];
 }
 
 /**

@@ -12,7 +12,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { adaptive_ashrae_zone, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 import { adaptiveSpec } from "./adaptiveChart";
-import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -56,8 +56,14 @@ function linesOf(spec: ChartSpec): PathTrace[] {
   return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined);
 }
 
-function contourZonesOf(spec: ChartSpec): ContourZoneTrace[] {
-  return spec.traces.filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+/** A scanned chart's zone fills. */
+function contourFillsOf(spec: ChartSpec): ContourFillTrace[] {
+  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+/** A scanned chart's zone lines. */
+function contourLinesOf(spec: ChartSpec): ContourLineTrace[] {
+  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
 }
 
 function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
@@ -96,7 +102,7 @@ describe("a declared limits source", () => {
 
   it("fills between the lines it is handed and strokes them, with no grid scan", () => {
     const spec = adaptiveSpec(request);
-    expect(spec.traces.find((trace) => trace.kind === "bands" || trace.kind === "contourZone")).toBeUndefined();
+    expect(spec.traces.find((trace) => trace.kind === "contourFill" || trace.kind === "contourLine")).toBeUndefined();
     const [fill] = fillsOf(spec);
     const [upper, lower] = linesOf(spec);
     expect(fill?.label).toBe("80% acceptability");
@@ -248,7 +254,9 @@ describe("Adaptive's acceptability zones", () => {
   const spec = adaptiveSpec(adaptiveRequest);
   const fills = fillsOf(spec);
   const lines = linesOf(spec);
-  const psychrometricZones = contourZonesOf(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso))));
+  const psychrometric = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
+  const psychrometricFills = contourFillsOf(psychrometric);
+  const psychrometricLines = contourLinesOf(psychrometric);
   const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
 
   it("gives each zone one fill of no stroke, closed from the upper limit out and the lower limit back", () => {
@@ -290,16 +298,16 @@ describe("Adaptive's acceptability zones", () => {
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     const rgbas = fills.map((fill) => rgbaOf(fill.fill));
-    const hue = rgbaOf(psychrometricZones[0]?.fill).rgb;
+    const hue = rgbaOf(psychrometricFills[0]?.color).rgb;
     expect(rgbas.map((fill) => fill.rgb)).toEqual([hue, hue]);
     expect(rgbas[0]?.alpha).toBeGreaterThan(0);
     expect(rgbas[1]?.alpha).toBeGreaterThan(rgbas[0]?.alpha ?? Infinity);
     // The innermost zone keeps the fill a lone zone has, on either chart.
-    expect(rgbas[1]?.alpha).toBeCloseTo(rgbaOf(psychrometricZones[psychrometricZones.length - 1]?.fill).alpha, 12);
+    expect(rgbas[1]?.alpha).toBeCloseTo(rgbaOf(psychrometricFills[psychrometricFills.length - 1]?.color).alpha, 12);
   });
 
   it("strokes the four limit lines in the psychrometric chart's zone line", () => {
-    const line = { color: psychrometricZones[0]?.color, width: psychrometricZones[0]?.width };
+    const line = { color: psychrometricLines[0]?.color, width: psychrometricLines[0]?.width };
     expect(lines.map((path) => ({ color: path.color, width: path.width }))).toEqual([line, line, line, line]);
     expect(line.width).toBe(chartInk.zoneLineWidth);
   });

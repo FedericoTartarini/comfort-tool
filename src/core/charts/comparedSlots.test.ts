@@ -39,21 +39,24 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { adaptiveSpec } from "./adaptiveChart";
-import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 
-/** A zone of either kind: a fill between two limit lines, or a contour of a scanned field. */
-type ZoneTrace = PathTrace | ContourZoneTrace;
+/** A zone's fill of either kind: a filled path between two limit lines, or a contour fill of a scanned field. */
+type ZoneFill = PathTrace | ContourFillTrace;
 
-/** The zones: the contours and the filled paths but the cover in the plot's ground. */
-function zonesOf(spec: ChartSpec): ZoneTrace[] {
+/** A zone's stroke of either kind: a limit line, or a contour line of a scanned field. */
+type ZoneLine = PathTrace | ContourLineTrace;
+
+/** The zones: the contour fills and the filled paths but the cover in the plot's ground. */
+function zonesOf(spec: ChartSpec): ZoneFill[] {
   return spec.traces.filter(
-    (trace): trace is ZoneTrace =>
-      trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground),
+    (trace): trace is ZoneFill =>
+      trace.kind === "contourFill" || (trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground),
   );
 }
 
@@ -65,12 +68,12 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
   );
 }
 
-/** What strokes a zone: a contour, which strokes its own boundary, or a limit line, a stroked path but an isoline. */
-function outlinesOf(spec: ChartSpec): ZoneTrace[] {
+/** What strokes a zone: a contour line, or a limit line, a stroked path but an isoline. */
+function outlinesOf(spec: ChartSpec): ZoneLine[] {
   const isolines = isolinesOf(spec);
   return spec.traces.filter(
-    (trace): trace is ZoneTrace =>
-      trace.kind === "contourZone" || (trace.kind === "path" && trace.fill === undefined && !isolines.includes(trace)),
+    (trace): trace is ZoneLine =>
+      trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined && !isolines.includes(trace)),
   );
 }
 
@@ -78,8 +81,13 @@ function markersOf(spec: ChartSpec): PointTrace[] {
   return spec.traces.filter((trace): trace is PointTrace => trace.kind === "point");
 }
 
-/** A zone's shape, whichever kind it is: its outline or its field and interval. */
-function shapeOf(zone: ZoneTrace) {
+/** A zone's fill colour, whichever kind it is. */
+function fillColorOf(zone: ZoneFill): string | undefined {
+  return zone.kind === "path" ? zone.fill : zone.color;
+}
+
+/** A zone's shape, whichever kind its fill or line is: its path, or its field and interval. */
+function shapeOf(zone: ZoneFill | ZoneLine) {
   return zone.kind === "path" ? { x: zone.x, y: zone.y } : { x: zone.x, y: zone.y, z: zone.z, lower: zone.lower, upper: zone.upper };
 }
 
@@ -171,7 +179,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
     slotBadges.forEach((badge, position) => {
       for (const zone of zonesOfSlot(position)) {
         expect(zone.label?.startsWith(badge.name)).toBe(true);
-        expect(zone.fill).toContain(badge.hue.zoneFillRgb);
+        expect(fillColorOf(zone)).toContain(badge.hue.zoneFillRgb);
       }
       const outlinesOfSlot = outlines.filter((outline) => outline.label?.startsWith(badge.name));
       expect(outlinesOfSlot.length).toBeGreaterThanOrEqual(zonesPerSlot);
@@ -182,7 +190,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
 
   it("nests each slot's zones, the opacity rising inwards within the slot", () => {
     slotBadges.forEach((_, position) => {
-      const alphas = zonesOfSlot(position).map((zone) => alphaOf(zone.fill));
+      const alphas = zonesOfSlot(position).map((zone) => alphaOf(fillColorOf(zone)));
       expect(alphas).toEqual([...alphas].sort((a, b) => a - b));
       expect(new Set(alphas).size).toBe(zonesPerSlot);
     });
@@ -192,6 +200,10 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
     slots.forEach((slot, position) => {
       const alone = draw([slot]);
       expect(zonesOfSlot(position).map(shapeOf)).toEqual(zonesOf(alone).map(shapeOf));
+      const outlinesPerSlot = outlinesOf(alone).length;
+      expect(outlinesOf(spec).slice(position * outlinesPerSlot, (position + 1) * outlinesPerSlot).map(shapeOf)).toEqual(
+        outlinesOf(alone).map(shapeOf),
+      );
       const [marker] = markersOf(alone);
       expect({ x: markersOf(spec)[position].x, y: markersOf(spec)[position].y }).toEqual({ x: marker.x, y: marker.y });
     });
@@ -210,7 +222,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
   it("has a legend entry per slot per zone, and one marker entry per slot", () => {
     const fills = spec.legend.filter((entry) => entry.swatch === "fill");
     expect(fills.map((entry) => ({ label: entry.label, color: entry.color }))).toEqual(
-      zones.map((zone) => ({ label: zone.label, color: zone.fill })),
+      zones.map((zone) => ({ label: zone.label, color: fillColorOf(zone) })),
     );
     expect(spec.legend.filter((entry) => entry.swatch === "marker").map((entry) => entry.label)).toEqual(
       slotBadges.map((badge) => badge.name),
@@ -238,8 +250,8 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
   const slots = threeSlots(pmvPpdIso);
   const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), chart.axes);
 
-  function contourZonesOf(drawn: ChartSpec): ContourZoneTrace[] {
-    return zonesOf(drawn).filter((zone): zone is ContourZoneTrace => zone.kind === "contourZone");
+  function contourFillsOf(drawn: ChartSpec): ContourFillTrace[] {
+    return zonesOf(drawn).filter((zone): zone is ContourFillTrace => zone.kind === "contourFill");
   }
 
   function hoverGridOf(drawn: ChartSpec): HoverGridTrace {
@@ -250,14 +262,14 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
     return grid;
   }
 
-  it("draws no band field", () => {
-    expect(spec.traces.some((trace) => trace.kind === "bands")).toBe(false);
+  it("fills no band, every fill being a slot's zone", () => {
+    expect(contourFillsOf(spec).every((fill) => slotBadges.some((badge) => fill.label.startsWith(badge.name)))).toBe(true);
   });
 
   it("cuts each slot's zones from the field the slot alone is scanned on", () => {
-    const zones = contourZonesOf(spec);
+    const zones = contourFillsOf(spec);
     slots.forEach((slot, position) => {
-      const alone = contourZonesOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes));
+      const alone = contourFillsOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes));
       expect(zones[position * 3].z).toEqual(alone[0].z);
     });
   });

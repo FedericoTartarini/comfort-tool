@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
+import { chartInk } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
@@ -17,7 +18,7 @@ import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 
@@ -50,17 +51,26 @@ function last<T>(row: readonly T[]): T {
   return row[row.length - 1];
 }
 
-/** The largest Comfort zone a scanned chart cuts from its one slot's field: it carries the field itself. */
-function surfaceOf(spec: ChartSpec): ContourZoneTrace {
-  const trace = spec.traces.find((entry): entry is ContourZoneTrace => entry.kind === "contourZone");
+/** The largest Comfort zone's fill a scanned chart cuts from its one slot's field: it carries the field itself. */
+function surfaceOf(spec: ChartSpec): ContourFillTrace {
+  const trace = spec.traces.find((entry): entry is ContourFillTrace => entry.kind === "contourFill");
   if (!trace) {
-    throw new Error("spec has no contour zone");
+    throw new Error("spec has no contour fill");
   }
   return trace;
 }
 
-function contourZonesOf(spec: ChartSpec): ContourZoneTrace[] {
-  return spec.traces.filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+function fillsOf(spec: ChartSpec): ContourFillTrace[] {
+  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+function linesOf(spec: ChartSpec): ContourLineTrace[] {
+  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
+}
+
+/** The kinds of the traces that paint the field, in drawing order. */
+function contourKindsOf(spec: ChartSpec): string[] {
+  return spec.traces.map((trace) => trace.kind).filter((kind) => kind === "contourFill" || kind === "contourLine");
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
@@ -145,28 +155,41 @@ describe("the scanned dynamic chart of one slot", () => {
   const spec = dynamicSpec(request, isoChart.axes);
 
   it("paints PMV (ISO 7730)'s three Comfort zones, nested, largest first, and one marker", () => {
-    expect(spec.traces.some((trace) => trace.kind === "bands")).toBe(false);
-    expect(contourZonesOf(spec).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
+    expect(fillsOf(spec).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
       declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
     );
-    expect(contourZonesOf(spec)).toHaveLength(3);
+    expect(fillsOf(spec)).toHaveLength(3);
     expect(spec.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
+  });
+
+  it("paints each zone as a fill in the slot's hue by its level, its line directly after over the same interval", () => {
+    const zones = declaredZonesOf(pmvPpdIso);
+    const hue = slotBadges[0].hue;
+    expect(contourKindsOf(spec)).toEqual(zones.flatMap(() => ["contourFill", "contourLine"]));
+    expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
+    expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
+      zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit, hue.zoneLine, chartInk.zoneLineWidth]),
+    );
+    linesOf(spec).forEach((line, index) => {
+      expect(line.z).toBe(fillsOf(spec)[index].z);
+    });
   });
 
   it("paints them as the first of two slots paints its own, named without the slot", () => {
     const two = dynamicSpec(chartRequestForSlots(pmvPpdIso, [slot, slot]), isoChart.axes);
-    const unnamed = ({ label: _label, ...zone }: ContourZoneTrace) => zone;
-    expect(contourZonesOf(spec).map(unnamed)).toEqual(contourZonesOf(two).slice(0, 3).map(unnamed));
+    const unnamed = ({ label: _label, ...zone }: ContourFillTrace | ContourLineTrace) => zone;
+    expect(fillsOf(spec).map(unnamed)).toEqual(fillsOf(two).slice(0, 3).map(unnamed));
+    expect(linesOf(spec).map(unnamed)).toEqual(linesOf(two).slice(0, 3).map(unnamed));
   });
 
   it("paints PMV (ASHRAE 55)'s one Comfort zone and one marker", () => {
     const ashrae = dynamicOf(pmvPpdAshrae);
     const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, startingSlot(pmvPpdAshrae)), ashrae.axes);
-    expect(drawn.traces.some((trace) => trace.kind === "bands")).toBe(false);
-    expect(contourZonesOf(drawn).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
+    expect(contourKindsOf(drawn)).toEqual(["contourFill", "contourLine"]);
+    expect(fillsOf(drawn).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
       declaredZonesOf(pmvPpdAshrae).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
     );
-    expect(contourZonesOf(drawn)).toHaveLength(1);
+    expect(fillsOf(drawn)).toHaveLength(1);
     expect(drawn.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
   });
 

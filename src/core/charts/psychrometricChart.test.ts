@@ -25,7 +25,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -64,9 +64,21 @@ function requestWithZones(zones: readonly [ComfortZone, ...ComfortZone[]]): Char
   return { ...request(temperatureMode.separate), model: { ...pmvPpdIso, scan: { ...pmvPpdIso.scan, comfortZones: zones } } };
 }
 
-/** The Comfort zones, contours of a scan, in drawing order. */
-function zonesOf(spec: ChartSpec): ContourZoneTrace[] {
-  return spec.traces.filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+/** The Comfort zones' fills, contours of a scan, in drawing order. */
+function fillsOf(spec: ChartSpec): ContourFillTrace[] {
+  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+/** The Comfort zones' lines, in drawing order. */
+function linesOf(spec: ChartSpec): ContourLineTrace[] {
+  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
+}
+
+/** The fills and the lines together, in drawing order. */
+function paintOf(spec: ChartSpec): (ContourFillTrace | ContourLineTrace)[] {
+  return spec.traces.filter(
+    (trace): trace is ContourFillTrace | ContourLineTrace => trace.kind === "contourFill" || trace.kind === "contourLine",
+  );
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
@@ -96,7 +108,7 @@ function markersOf(spec: ChartSpec): PointTrace[] {
 }
 
 /** Whether the cell of `zone` at (`xIndex`, `yIndex`) is supersaturated: its relative humidity above 100. */
-function isSupersaturated(zone: ContourZoneTrace, xIndex: number, yIndex: number): boolean {
+function isSupersaturated(zone: ContourFillTrace, xIndex: number, yIndex: number): boolean {
   return hr_to_rh(hrUnit.toSi(zone.y[yIndex]), zone.x[xIndex], p) > 100;
 }
 
@@ -138,9 +150,9 @@ function pmvAt(db: number, rh: number, tr: number): number {
 describe("psychrometricSpec", () => {
   const spec = psychrometricSpec(request(temperatureMode.separate));
 
-  it("paints one contour zone per declared limit, largest first, over the slot's field, each with its limit as its interval", () => {
+  it("paints one fill per declared limit, largest first, over the slot's field, each with its limit as its interval", () => {
     const zones = isoZonesLargestFirst();
-    const drawn = zonesOf(spec);
+    const drawn = fillsOf(spec);
     expect(zones).toHaveLength(3);
     expect(drawn.map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
       zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
@@ -149,21 +161,30 @@ describe("psychrometricSpec", () => {
   });
 
   it("fills them in the slot's hue, the opacity rising inwards, and traces no polygon", () => {
-    const drawn = zonesOf(spec);
-    expect(drawn.every((zone) => zone.color === slotBadges[0].hue.zoneLine)).toBe(true);
-    expect(drawn.map((zone) => zone.fill)).toEqual(drawn.map((_, level) => chartInk.zoneFill(slotBadges[0].hue, level, 3)));
+    const drawn = fillsOf(spec);
+    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(slotBadges[0].hue, level, 3)));
     expect(spec.traces.some((trace) => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground)).toBe(false);
   });
 
+  it("lays each zone's line directly after its fill, over the same interval, in the slot's zone line", () => {
+    const fills = fillsOf(spec);
+    const lines = linesOf(spec);
+    expect(paintOf(spec)).toEqual(fills.flatMap((fill, index) => [fill, lines[index]]));
+    expect(lines.map((line) => [line.label, line.z, line.lower, line.upper])).toEqual(
+      fills.map((fill) => [fill.label, fill.z, fill.lower, fill.upper]),
+    );
+    expect(lines.every((line) => line.color === slotBadges[0].hue.zoneLine && line.width === chartInk.zoneLineWidth)).toBe(true);
+  });
+
   it("scans the drawn axes: the temperature axis and the humidity ratio, in display units", () => {
-    const [zone] = zonesOf(spec);
+    const [zone] = fillsOf(spec);
     expect([zone.x[0], zone.x[zone.x.length - 1]]).toEqual(spec.layout.x.range);
     expect(zone.y[0]).toBe(spec.layout.y.range[0]);
     expect(zone.y[zone.y.length - 1]).toBeCloseTo(spec.layout.y.range[1], 2);
   });
 
   it("numbers a cell with the model's own output at its temperature and the library's relative humidity, the supersaturated ones too", () => {
-    const [zone] = zonesOf(spec);
+    const [zone] = fillsOf(spec);
     // The last cell is supersaturated, run at its true relative humidity above 100.
     expect(isSupersaturated(zone, 0, 50)).toBe(true);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40], [40, 50], [50, 0]]) {
@@ -172,7 +193,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("hands the model the slot's own inputs: tr as entered, vr derived, clothing corrected", () => {
-    const [zone] = zonesOf(spec);
+    const [zone] = fillsOf(spec);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
       const db = zone.x[xIndex];
       expect(zone.z[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(zone.y[yIndex]), db, p), 24), PMV_DIGITS);
@@ -181,9 +202,9 @@ describe("psychrometricSpec", () => {
 
   it("scans the operative temperature under operative entry, with tr following it", () => {
     const drawn = psychrometricSpec(request(temperatureMode.operative));
-    const [zone] = zonesOf(drawn);
+    const [zone] = fillsOf(drawn);
     expect(drawn.layout.x.title).toContain(q.operative_tmp.label);
-    expect(zonesOf(drawn)).toHaveLength(3);
+    expect(fillsOf(drawn)).toHaveLength(3);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
       const db = zone.x[xIndex];
       expect(zone.z[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(zone.y[yIndex]), db, p), db), PMV_DIGITS);
@@ -195,22 +216,22 @@ describe("psychrometricSpec", () => {
       ...pmvPpdIso,
       run: (values) => ({ ...pmvPpdIso.run(values), ...(values.rh < 10 ? { pmv: Number.NaN } : {}) }),
     };
-    const [zone] = zonesOf(psychrometricSpec({ ...request(temperatureMode.separate), model: noNumberWhenDry }));
+    const [zone] = fillsOf(psychrometricSpec({ ...request(temperatureMode.separate), model: noNumberWhenDry }));
     expect(zone.z[0][0]).toBeNull();
     expect(zone.z[20][25]).toBeTypeOf("number");
   });
 
   it("paints the scan it is handed rather than scanning again", () => {
-    const handed = zonesOf(spec)[0].z.map((row) => row.map(() => 0.1));
+    const handed = fillsOf(spec)[0].z.map((row) => row.map(() => 0.1));
     const drawn = psychrometricSpec(request(temperatureMode.separate), [handed]);
-    expect(zonesOf(drawn).map((zone) => zone.z)).toEqual([handed, handed, handed]);
+    expect(fillsOf(drawn).map((zone) => zone.z)).toEqual([handed, handed, handed]);
   });
 
   it("draws the zones, the hover grid, the cover, the isolines with the saturation line last, then the marker", () => {
     const isolines = isolinesOf(spec);
     expect(isolines).toHaveLength(10);
     expect(isolines[isolines.length - 1].color).toBe(chartInk.saturationLine);
-    expect(spec.traces).toEqual([...zonesOf(spec), hoverGridOf(spec), coverOf(spec), ...isolines, ...markersOf(spec)]);
+    expect(spec.traces).toEqual([...paintOf(spec), hoverGridOf(spec), coverOf(spec), ...isolines, ...markersOf(spec)]);
     expect(markersOf(spec)).toHaveLength(1);
   });
 
@@ -222,13 +243,16 @@ describe("psychrometricSpec", () => {
   it("draws the zones of the model it is handed, a one-zone scan as one zone", () => {
     const zone = intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE);
     const drawn = psychrometricSpec(requestWithZones([zone]));
-    expect(zonesOf(drawn).map((trace) => trace.label)).toEqual([copy.zoneLegend(zone)]);
+    expect(paintOf(drawn).map((trace) => [trace.kind, trace.label])).toEqual([
+      ["contourFill", copy.zoneLegend(zone)],
+      ["contourLine", copy.zoneLegend(zone)],
+    ]);
     expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
   });
 
   it("names the zones drawn today by their limit, word for word", () => {
     const zoneLabels = (model: RegisteredModel) =>
-      zonesOf(psychrometricSpec(chartRequestFor(model, startingSlot(model)))).map((zone) => zone.label);
+      fillsOf(psychrometricSpec(chartRequestFor(model, startingSlot(model)))).map((zone) => zone.label);
     expect(zoneLabels(pmvPpdIso)).toEqual([
       "Category C (|PMV| < 0.7)",
       "Category B (|PMV| < 0.5)",
@@ -240,7 +264,7 @@ describe("psychrometricSpec", () => {
   it("writes a zone's limit as every number on screen is written", () => {
     const zone = { label: copy.comfortZone, limit: 1 / 3, inclusive: true };
     const drawn = psychrometricSpec(requestWithZones([zone]));
-    expect(zonesOf(drawn).map((trace) => trace.label)).toEqual(["Comfort zone (|PMV| ≤ 0.33)"]);
+    expect(fillsOf(drawn).map((trace) => trace.label)).toEqual(["Comfort zone (|PMV| ≤ 0.33)"]);
   });
 
   it("labels the x axis with the entry mode's temperature quantity", () => {
@@ -266,9 +290,9 @@ describe("psychrometricSpec", () => {
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBeCloseTo(78.8, 10);
     // The zones over the same scan as in SI, on axes in °F and lb/klb.
-    const [zone] = zonesOf(spec);
+    const [zone] = fillsOf(spec);
     expect(zone.x[0]).toBeCloseTo(50, 2);
-    expect(zone.z).toEqual(zonesOf(psychrometricSpec(request(temperatureMode.separate)))[0].z);
+    expect(zone.z).toEqual(fillsOf(psychrometricSpec(request(temperatureMode.separate)))[0].z);
   });
 
   it("draws humidity ratio per thousand, 0 to 30, with no tick format of its own", () => {
@@ -326,7 +350,7 @@ describe("psychrometricSpec", () => {
 describe("the psychrometric chart's hover readout on the Standard page", () => {
   const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
   const { hoverText } = hoverGridOf(spec);
-  const [zone] = zonesOf(spec);
+  const [zone] = fillsOf(spec);
   const pmvUnit = displayUnitFor(q.pmv, unitSystem.si);
 
   it("is read off the hover grid alone", () => {

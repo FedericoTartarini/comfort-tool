@@ -10,7 +10,7 @@
  * alone gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
-import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, ContourLineTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame } from "$lib/core/charts/specParts";
@@ -232,15 +232,15 @@ describe("the outputs of the compared slots", () => {
   });
 });
 
-/** A zone of either kind: a traced polygon, or a contour of a scanned field. */
-type ZoneTrace = PathTrace | ContourZoneTrace;
+/** A zone's line of either kind: a limit line, or a contour line of a scanned field. */
+type ZoneLine = PathTrace | ContourLineTrace;
 
-/** The zones slot `position`'s hue draws on `chart`, in drawing order, as shapes a comparison can be made against. */
+/** The zones slot `position`'s hue outlines on `chart`, in drawing order, as shapes a comparison can be made against. */
 function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
   return (chart?.traces ?? [])
     .filter(
-      (trace): trace is ZoneTrace =>
-        (trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined)) &&
+      (trace): trace is ZoneLine =>
+        (trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined)) &&
         trace.color === slotBadges[position].hue.zoneLine,
     )
     .map((zone) => (zone.kind === "path" ? { x: zone.x, y: zone.y } : { z: zone.z, lower: zone.lower, upper: zone.upper }));

@@ -240,8 +240,8 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     readEverything(outputs);
     const before = runs();
-    // A contour zone is cut from the scan, so `before` counts a whole scan.
-    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
+    // A zone's fill is cut from the scan, so `before` counts a whole scan.
+    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourFill")).toBe(true);
     expect(before).toBeGreaterThan(0);
 
     session.slots[0].setEntered(q.tdb, 35);

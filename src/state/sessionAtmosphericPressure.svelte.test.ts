@@ -12,7 +12,7 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, ContourFillTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { humidityMode } from "$lib/core/entryModes";
 import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
@@ -303,9 +303,9 @@ function isolinesOf(chart: ChartSpec | null): { rh: number; trace: PathTrace }[]
     .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), trace }));
 }
 
-/** The comfort zones of a chart, contours of its scan, largest first. */
-function zonesOf(chart: ChartSpec | null): ContourZoneTrace[] {
-  return (chart?.traces ?? []).filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+/** The comfort zones' fills of a chart, contours of its scan, largest first. */
+function zonesOf(chart: ChartSpec | null): ContourFillTrace[] {
+  return (chart?.traces ?? []).filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
 }
 
 /** The slot's marker on a chart. */
