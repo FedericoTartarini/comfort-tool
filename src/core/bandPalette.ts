@@ -134,6 +134,8 @@ export const chartInk = {
   /** The plot area's ground, which a band painted nowhere shows. */
   ground: "#ffffff",
   isoline: "#cbd5e1",
+  isolineWidth: 1,
   saturationLine: "#94a3b8",
+  saturationLineWidth: 1.5,
   markerEdge: "#ffffff",
 } as const;

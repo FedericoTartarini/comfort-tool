@@ -125,7 +125,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       x: curve.map((point) => xUnit.fromSi(point.temperature)),
       y: curve.map((point) => hrUnit.fromSi(point.hr)),
       color: saturation ? chartInk.saturationLine : chartInk.isoline,
-      width: saturation ? 1.5 : 1,
+      width: saturation ? chartInk.saturationLineWidth : chartInk.isolineWidth,
       // Chrome: the isolines carry the humidity reading in their label, not on
       // the pointer (ADR §4.4).
       hover: "off",
