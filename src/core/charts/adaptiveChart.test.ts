@@ -344,6 +344,13 @@ describe("the adaptive chart's hover grid", () => {
     expect(grid.hoverText[10][10]).toEqual(["Operative temperature: 16 °C", "Air speed: 0.4 m/s", "Outer"]);
   });
 
+  it("names a zone at a cell on its limit line, the model's limits being inclusive", () => {
+    // Row 15 is 0.6 m/s, the inner rectangle's upper line; row 25 is 1 m/s, the outer one's.
+    const grid = hoverGridOf(adaptiveSpec(request));
+    expect(grid.hoverText[15][25][2]).toBe("Inner");
+    expect(grid.hoverText[25][25][2]).toBe("Outer");
+  });
+
   it("reads only the axis values outside every zone", () => {
     const grid = hoverGridOf(adaptiveSpec(request));
     expect(grid.hoverText[10][5]).toEqual(["Operative temperature: 13 °C", "Air speed: 0.4 m/s"]);
@@ -367,16 +374,24 @@ describe("the adaptive chart's hover grid", () => {
     expect(named).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
   });
 
-  it("names Adaptive's inner zone at a cell level with its unstroked closing side", () => {
-    // Column 0 is the lowest running mean drawn, where the 90 % zone's left
-    // side closes the fill and no line is stroked; the row is the first whose
-    // operative temperature lies between that zone's limits there.
-    const grid = hoverGridOf(adaptiveSpec(adaptiveRequest));
-    const [, inner] = libraryBandsAt(startingAirSpeed);
-    const low = inner?.lower_limit[0]?.operative_tmp ?? NaN;
-    const high = inner?.upper_limit[0]?.operative_tmp ?? NaN;
-    const row = grid.y.findIndex((y) => y > low && y < high);
-    expect(row).toBeGreaterThanOrEqual(0);
-    expect(grid.hoverText[row]?.[0]?.[2]).toBe(q.acceptability_90.label);
-  });
+  it.each(["lowest", "highest"] as const)(
+    "names Adaptive's zones at the %s running mean drawn, whose closing side is no limit",
+    (end) => {
+      // The model's limits are inclusive and the closing side is where the
+      // chart stops, so a cell on it between the limits is in the zone.
+      const grid = hoverGridOf(adaptiveSpec(adaptiveRequest));
+      const column = end === "lowest" ? 0 : grid.x.length - 1;
+      const at = (limit: readonly AdaptivePoint[]) => (end === "lowest" ? limit[0] : limit[limit.length - 1])?.operative_tmp ?? NaN;
+      const labels = [q.acceptability_80.label, q.acceptability_90.label];
+      const bands = libraryBandsAt(startingAirSpeed);
+      const innermost = grid.y.map((y) =>
+        bands
+          .map((band, index) => (at(band.lower_limit) <= y && y <= at(band.upper_limit) ? labels[index] : undefined))
+          .filter((label) => label !== undefined)
+          .slice(-1)[0],
+      );
+      expect(new Set(innermost)).toEqual(new Set([undefined, ...labels]));
+      expect(grid.hoverText.map((row) => row[column]?.[2])).toEqual(innermost);
+    },
+  );
 });
