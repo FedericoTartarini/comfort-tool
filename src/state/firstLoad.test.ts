@@ -1,9 +1,11 @@
 /**
  * The first address's load (ADR-0002 decision 63, rules 3 and 4) at the state
- * seam: a kept text or none and an address in, the session the page opens on
- * out, with no browser, no router and no component. The expected session is
- * the app's own: a model's starting session, or the live session the text was
- * written from, moved to the address as the back button moves it.
+ * seam: a link's text or none, a kept text or none and an address in, the
+ * session the page opens on, the notice and the link left waiting out, with
+ * no browser, no router and no component. The expected session is the app's
+ * own: a model's starting session, the narrowed session a link was written
+ * from, or the live session the text was written from, moved to the address
+ * as the back button moves it.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
@@ -11,10 +13,10 @@ import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
-import { toDecodedSession, toText } from "$lib/core/shareLink";
+import { narrowedToPage, toDecodedSession, toText } from "$lib/core/shareLink";
 import type { Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
-import { startingSession } from "$lib/core/writtenSession";
+import { startingChartSettings, startingSession, type WrittenSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -22,7 +24,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { firstLoadAt } from "./firstLoad";
 import { clearKeptText, readKeptText, writeKeptText } from "./keptText";
-import type { Session } from "./session.svelte";
+import { Session } from "./session.svelte";
 import { expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots } from "./sessionTestReaders";
 
 const q = quantities;
@@ -33,6 +35,16 @@ const [airSpeedControl] = pmvPpdAshrae.options;
 /** What the page would open on: the session written out, the page it is on, and the question it holds. */
 function openedOn(session: Session) {
   return { written: session.toWrittenSession(), page: session.page, pendingSwitch: session.pendingSwitch };
+}
+
+/** The narrowed session a link copied from `session` on its page carries. */
+function linkSessionOf(session: Session): WrittenSession {
+  return narrowedToPage(session.toWrittenSession(), session.page);
+}
+
+/** The text of a link copied from `session` on its page. */
+function linkTextOf(session: Session): string {
+  return toText(linkSessionOf(session), registeredModels);
 }
 
 /** `session` as the tab would keep it. */
@@ -84,7 +96,7 @@ describe("the first address's load", () => {
   it("with nothing kept is the address's model on its defaults, on the address's page, for every registered model", () => {
     for (const model of registeredModels) {
       for (const onPage of [page.standard, page.explore]) {
-        const { session } = firstLoadAt({ page: onPage, model }, { kept: undefined }, registeredModels);
+        const { session } = firstLoadAt({ page: onPage, model }, { link: undefined, kept: undefined }, registeredModels);
 
         expect(openedOn(session), `${model.info.label} on ${onPage.title}`).toEqual({
           written: startingSession(model),
@@ -98,7 +110,7 @@ describe("the first address's load", () => {
   it("with a kept text is that session: its slots, flags, entry modes, and every model's chart settings", () => {
     const kept = editedSession();
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { kept: keptTextOf(kept) }, registeredModels);
+    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual(openedOn(kept));
     expectEverySlotInSessionEntryModes(session);
@@ -107,7 +119,7 @@ describe("the first address's load", () => {
   it("with a kept text on Explore opens on Explore, the session unchanged", () => {
     const kept = editedSession();
 
-    const { session } = firstLoadAt({ page: page.explore, model: pmvPpdAshrae }, { kept: keptTextOf(kept) }, registeredModels);
+    const { session } = firstLoadAt({ page: page.explore, model: pmvPpdAshrae }, { link: undefined, kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual({ ...openedOn(kept), page: page.explore });
   });
@@ -116,7 +128,7 @@ describe("the first address's load", () => {
     for (const text of ["", "not a text", "v1.not-base64-json", "v2.e30"]) {
       expect(toDecodedSession(text, registeredModels), text).toBeUndefined();
 
-      const { session } = firstLoadAt(standardAddress(pmvPpdIso), { kept: text }, registeredModels);
+      const { session } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
 
       expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
     }
@@ -134,7 +146,7 @@ describe("the first address's load", () => {
     const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
     expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { kept: text }, registeredModels);
+    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: text }, registeredModels);
 
     // Slot 1's metabolic rate and option were never edited, so the session filled is the one kept.
     const [starting] = startingSession(pmvPpdAshrae).slots;
@@ -151,7 +163,7 @@ describe("the first address's load", () => {
     kept.requestModel(pmvPpdIso);
     expect(kept.pendingSwitch).not.toBeNull();
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdIso), { kept: text }, registeredModels);
+    const { session } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
 
     kept.setAddress(standardAddress(pmvPpdIso));
     expect(openedOn(session)).toEqual(openedOn(kept));
@@ -164,7 +176,7 @@ describe("the first address's load", () => {
     kept.setAddress(standardAddress(adaptiveAshrae));
     const text = keptTextOf(kept);
 
-    const { session } = firstLoadAt({ page: page.explore, model: pmvPpdIso }, { kept: text }, registeredModels);
+    const { session } = firstLoadAt({ page: page.explore, model: pmvPpdIso }, { link: undefined, kept: text }, registeredModels);
 
     kept.setAddress({ page: page.explore, model: pmvPpdIso });
     expect(openedOn(session)).toEqual(openedOn(kept));
@@ -182,7 +194,7 @@ describe("the first address's load run again (Reset, ADR-0002 decision 63, rule 
       const address = addressOf(before);
 
       clearKeptText();
-      const { session } = firstLoadAt(address, { kept: readKeptText() }, registeredModels);
+      const { session } = firstLoadAt(address, { link: undefined, kept: readKeptText() }, registeredModels);
 
       expect(openedOn(session), `${address.model.info.label} on ${address.page.title}`).toEqual({
         written: startingSession(address.model),
@@ -190,5 +202,116 @@ describe("the first address's load run again (Reset, ADR-0002 decision 63, rule 
         pendingSwitch: null,
       });
     }
+  });
+});
+
+describe("the first address's load with a link", () => {
+  /** A session on Explore, PMV (ASHRAE 55), where a link carries the Band list. */
+  function onExplore(): Session {
+    const session = editedSession();
+    session.setAddress({ page: page.explore, model: pmvPpdAshrae });
+    return session;
+  }
+
+  it("and nothing kept is the link's session, with no notice and nothing waiting", () => {
+    const sender = onExplore();
+
+    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+
+    expect(openedOn(session)).toEqual({ written: linkSessionOf(sender), page: page.explore, pendingSwitch: null });
+    expect(notice).toBeNull();
+    expect(waitingLink).toBeNull();
+  });
+
+  it("copied on the Standard page and nothing kept is the link's session, the model on its classifier's Band list", () => {
+    const sender = editedSession();
+    const link = linkSessionOf(sender);
+    expect(link.charts.get(pmvPpdAshrae)?.bands).toBeNull();
+
+    const { session, notice } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+
+    const chart = link.charts.get(pmvPpdAshrae);
+    const bands = startingChartSettings(pmvPpdAshrae).bands;
+    expect(openedOn(session)).toEqual({
+      written: { ...link, charts: new Map([[pmvPpdAshrae, { ...chart, bands }]]) },
+      page: page.standard,
+      pendingSwitch: null,
+    });
+    expect(heldSlot(session, 1).values.get(q.operative_tmp)).toBe(sender.slots[1]?.values.get(q.operative_tmp));
+    expect(notice).toBeNull();
+  });
+
+  it("that needed something filled and nothing kept is the link's session, filled, and the notice that says so", () => {
+    const sender = onExplore();
+    const written = linkSessionOf(sender);
+    const [first, ...others] = written.slots;
+    const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== q.met)) };
+    const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
+    expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
+
+    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
+
+    const [starting] = startingSession(pmvPpdAshrae).slots;
+    expect(heldSlot(session, 0).values.get(q.met)).toBe(starting.values.get(q.met));
+    expect(notice).toBe("linkFilled");
+    expect(waitingLink).toBeNull();
+  });
+
+  it("refused and nothing kept is the address's model on its defaults, and the notice", () => {
+    for (const text of ["", "v1.not-base64-json", "v2.e30", linkTextOf(onExplore()).slice(0, -12)]) {
+      const { session, notice, waitingLink } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
+
+      expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+      expect(notice, text).toBe("linkRefused");
+      expect(waitingLink, text).toBeNull();
+    }
+  });
+
+  it("refused over a kept session is the kept session, and the notice", () => {
+    const kept = editedSession();
+
+    const { session, notice, waitingLink } = firstLoadAt(addressOf(kept), { link: "v1.not-base64-json", kept: keptTextOf(kept) }, registeredModels);
+
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(notice).toBe("linkRefused");
+    expect(waitingLink).toBeNull();
+  });
+
+  it("over a kept text that is refused is the link's session, with nothing waiting and no notice", () => {
+    const sender = onExplore();
+
+    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: "v1.not-base64-json" }, registeredModels);
+
+    expect(openedOn(session)).toEqual({ written: linkSessionOf(sender), page: page.explore, pendingSwitch: null });
+    expect(notice).toBeNull();
+    expect(waitingLink).toBeNull();
+  });
+
+  it("over a kept session is the kept session, the link waiting and no notice", () => {
+    const kept = editedSession();
+    const link = linkTextOf(onExplore());
+
+    const { session, notice, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
+
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(notice).toBeNull();
+    expect(waitingLink).toBe(link);
+  });
+
+  it("whose text names one model at an address naming another is converted and seeded for the address's model, nothing adjusted, nothing asked", () => {
+    const sender = sessionComparingThreeSlots(pmvPpdAshrae);
+    // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
+    heldSlot(sender, 1).setEntered(q.tdb, 35);
+    const text = linkTextOf(sender);
+
+    const { session, notice } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
+
+    const expected = new Session(linkSessionOf(sender));
+    expected.setAddress(standardAddress(pmvPpdIso));
+    expect(openedOn(session)).toEqual(openedOn(expected));
+    expect(session.model).toBe(pmvPpdIso);
+    expect(session.pendingSwitch).toBeNull();
+    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(35);
+    expect(notice).toBeNull();
   });
 });

@@ -1,18 +1,19 @@
 <!--
-  Root shell: the one session, opened at the first address from what the tab
-  kept and kept for every page after it, until Reset replaces it (ADR-0002
-  decisions 57 and 63); the router renders the page for the current URL.
+  Root shell: the one session, opened at the first address from its share
+  link or what the tab kept, and kept for every page after it, until Reset
+  replaces it (ADR-0002 decisions 57 and 63); beside it what the notice line
+  says, which each page draws; the router renders the page for the current URL.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
   import type { Address } from "$lib/core/page";
-  import { toText } from "$lib/core/shareLink";
+  import { narrowedToPage, toText } from "$lib/core/shareLink";
   import { registeredModels } from "$lib/models";
-  import { followAddress, Router } from "$lib/routes/navigation";
+  import { followAddress, Router, shareLinkTo } from "$lib/routes/navigation";
   import { Outputs } from "$lib/state/compute.svelte";
   import { firstLoadAt } from "$lib/state/firstLoad";
   import { clearKeptText, readKeptText, writeKeptText } from "$lib/state/keptText";
-  import { setOpenSession, setSessionReset, type OpenSession } from "$lib/state/openSession";
+  import { setOpenSession, setTabControls, type Notice, type OpenSession } from "$lib/state/openSession";
 
   /**
    * Set by the first address, and again by each replacement. `$state.raw` so
@@ -26,25 +27,33 @@
    * created again, and the page with it (ADR-0002 decision 63, rule 8).
    */
   let replacements = $state(0);
+  /** What the notice line says: the tab's, beside the session and not in it (ADR-0002 decision 63, rule 6). */
+  let notice = $state<Notice | null>(null);
 
-  /** Run the first address's load at `address`: the session the tab kept, else the model's defaults. */
-  function openAt(address: Address) {
-    const { session } = firstLoadAt(address, { kept: readKeptText() }, registeredModels);
-    opened = { session, outputs: new Outputs(session) };
+  /**
+   * Run the first address's load at `address`, with the share link's text it
+   * carried if any: the link's session, the session the tab kept, or the
+   * model's defaults, and the notice the load raises. Until a link can be
+   * asked about (ticket 06), a link over a kept session is left unopened.
+   */
+  function openAt(address: Address, link: string | undefined) {
+    const load = firstLoadAt(address, { link, kept: readKeptText() }, registeredModels);
+    opened = { session: load.session, outputs: new Outputs(load.session) };
+    notice = load.notice;
   }
 
   /**
    * The URL names the page and the model: the first address opens the
-   * session the tab kept, or the model's defaults, on them, and every one
-   * after it — a typed URL, the back button, a share link — moves the session
-   * there. This is the address's path, and it never asks.
+   * session on them, from its link or what the tab kept, and every one after
+   * it — a typed URL, the back button — moves the session there. This is the
+   * address's path, and it never asks.
    */
-  function onAddress(address: Address) {
+  function onAddress(address: Address, link: string | undefined) {
     if (opened) {
       opened.session.setAddress(address);
       return;
     }
-    openAt(address);
+    openAt(address, link);
   }
 
   /**
@@ -59,8 +68,17 @@
     }
     const { page, model } = opened.session;
     clearKeptText();
-    openAt({ page, model });
+    openAt({ page, model }, undefined);
     replacements += 1;
+  }
+
+  /** The share link to the page the session is on: its address, and the session narrowed to it (ADR-0002 decision 63, rule 5). */
+  function linkToPage(): string {
+    if (!opened) {
+      throw new Error("A link was asked for before the address opened the session");
+    }
+    const { session } = opened;
+    return shareLinkTo(session, toText(narrowedToPage(session.toWrittenSession(), session.page), registeredModels));
   }
 
   onDestroy(followAddress(onAddress));
@@ -79,7 +97,15 @@
     }
     return opened;
   });
-  setSessionReset(replaceSession);
+  setTabControls({
+    reset: replaceSession,
+    link: linkToPage,
+    get notice() {
+      return notice;
+    },
+    raiseNotice: (raised) => (notice = raised),
+    closeNotice: () => (notice = null),
+  });
 </script>
 
 {#key replacements}

@@ -14,7 +14,7 @@ import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/chart
 import { chartType } from "$lib/core/chartType";
 import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
-import { page } from "$lib/core/page";
+import { paintsBandsOn } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
 import { areSameEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
@@ -115,7 +115,7 @@ export class Outputs {
 
   /** The Band list the charts paint: the current model's on Explore, none on Standard (ADR-0002 decision 58). */
   readonly #paintedBands = $derived.by((): BandList | null =>
-    this.#session.page === page.explore ? this.#session.chart.bands : null,
+    paintsBandsOn(this.#session.page) ? this.#session.chart.bands : null,
   );
 
   /**

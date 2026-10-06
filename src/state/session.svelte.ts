@@ -21,7 +21,17 @@ import {
   type ValueEntryModes,
 } from "$lib/core/slot";
 import type { UnitSystem } from "$lib/core/unitSystem";
-import { startingChartSettings, startingSession, type ChartSettings, type WrittenSession } from "$lib/core/writtenSession";
+import {
+  comparedPositionsOf,
+  slotPositions,
+  startingChartSettings,
+  startingSession,
+  type ChartSettings,
+  type SlotPosition,
+  type WrittenSession,
+} from "$lib/core/writtenSession";
+
+export { slotPositions, type SlotPosition };
 
 /**
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
@@ -154,7 +164,8 @@ export class ChartState {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan?.classifier ?? null;
-    this.#bands = $state.raw(settings.bands);
+    // No list written for a model that scans: a link copied on the Standard page (ADR-0002 decision 63, rule 5).
+    this.#bands = $state.raw(settings.bands ?? (this.#classifier && bandListOf(this.#classifier)));
   }
 
   /** How it is set up, as plain chart settings. */
@@ -232,9 +243,6 @@ export class ChartState {
   }
 }
 
-/** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
-export type SlotPosition = 0 | 1 | 2;
-
 /** One slot that holds values, as a switch would leave it (ADR-0002 decision 52). */
 export interface RehearsedSlot {
   readonly position: SlotPosition;
@@ -258,9 +266,6 @@ export interface PendingSwitch {
   readonly model: RegisteredModel;
   readonly slots: readonly RehearsedSlot[];
 }
-
-/** Every position, in slot order. */
-export const slotPositions = [0, 1, 2] as const satisfies readonly SlotPosition[];
 
 /** A slot Compare enables and disables: every slot but slot 1, which cannot be disabled. */
 export type OptionalSlotPosition = Exclude<SlotPosition, 0>;
@@ -289,16 +294,9 @@ export class Session {
   #compare: boolean;
   /** Slot 1's `true` is the type's as well: it cannot be disabled. */
   #enabled: readonly [true, boolean, boolean];
-  /**
-   * Slot 1 always, and slots 2 and 3 while Compare is on and they are enabled,
-   * on the Standard page alone: Compare is the Standard page's, and Explore
-   * compares slot 1 whatever Compare holds (ADR-0002 decision 57).
-   */
+  /** {@link comparedPositionsOf} the session on its page. */
   readonly #comparedPositions = $derived.by((): readonly SlotPosition[] =>
-    slotPositions.filter(
-      (position) =>
-        position === 0 || (this.page === page.standard && this.#compare && this.#enabled[position]),
-    ),
+    comparedPositionsOf({ compare: this.#compare, enabled: [this.#enabled[1], this.#enabled[2]] }, this.page),
   );
   // Each model remembers its own chart settings. A plain Map: only `chart` is
   // read reactively, and lazily filling a reactive map during a derivation

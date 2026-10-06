@@ -18,12 +18,17 @@
  * An entered value outside its bound and a pressure out of range are taken as
  * written; the gate marks them. Until the app is deployed the format may
  * change, and a text an earlier build wrote may be refused (rule 9).
+ *
+ * A share link is a session narrowed to what its page is computed from
+ * (rule 5), written by the same encoder; the decoder does not know which it
+ * reads.
  */
 import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { dynamicChartOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { dynamicChartOf, hasHumidityGroup, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { page, paintsBandsOn, type Page } from "./page";
 import { quantities, type Quantity } from "./quantities";
 import {
   defaultEntryModes,
@@ -35,7 +40,13 @@ import {
   type ValueEntryModes,
 } from "./slot";
 import { unitSystem } from "./unitSystem";
-import { startingChartSettings, type ChartSettings, type WrittenSession } from "./writtenSession";
+import {
+  comparedPositionsOf,
+  startingChartSettings,
+  type ChartSettings,
+  type SlotPosition,
+  type WrittenSession,
+} from "./writtenSession";
 
 const PREFIX = "v1.";
 
@@ -45,6 +56,46 @@ const entryModeFields = Object.keys(defaultEntryModes) as (keyof ValueEntryModes
 /** `session` written out as a text, its options grouped under the model in `models` that declares each. */
 export function toText(session: WrittenSession, models: readonly RegisteredModel[]): string {
   return PREFIX + toBase64Url(JSON.stringify(sessionJson(session, models)));
+}
+
+/**
+ * `session` narrowed to what `onPage` is computed from, as a share link
+ * carries it (ADR-0002 decision 63, rule 5): the compared slots, every other
+ * place `null` and not enabled; Compare as held, which is off on Explore,
+ * where nothing is compared; of each slot, the values its model enters under
+ * the entry modes, the humidity among them where the model enters one, and
+ * the model's own options; and the model's chart settings alone, its Band
+ * list on Explore alone, where the charts paint it (decision 58).
+ */
+export function narrowedToPage(session: WrittenSession, onPage: Page): WrittenSession {
+  const { model } = session;
+  const compared = comparedPositionsOf(session, onPage);
+  const narrowed = (position: SlotPosition) => {
+    const slot = session.slots[position];
+    return slot && compared.includes(position) ? enteredSlot(slot, model) : null;
+  };
+  const chart = session.charts.get(model);
+  if (!chart) {
+    throw new Error(`The session holds no chart settings of its own model, ${model.info.label}`);
+  }
+  return {
+    ...session,
+    compare: onPage === page.standard && session.compare,
+    enabled: [compared.includes(1), compared.includes(2)],
+    slots: [enteredSlot(session.slots[0], model), narrowed(1), narrowed(2)],
+    charts: new Map([[model, paintsBandsOn(onPage) ? chart : { ...chart, bands: null }]]),
+  };
+}
+
+/** What of `slot` `model` is computed from: the values it holds under the slot's entry modes, its humidity, its options. */
+function enteredSlot(slot: Slot, model: RegisteredModel): Slot {
+  const held = heldQuantities(model, slot);
+  return {
+    ...slot,
+    values: new Map([...slot.values].filter(([quantity]) => held.includes(quantity))),
+    humidity: hasHumidityGroup(model) ? slot.humidity : undefined,
+    options: new Map([...slot.options].filter(([option]) => model.options.includes(option))),
+  };
 }
 
 /** What a text reads as. */
@@ -269,11 +320,14 @@ function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantit
 /**
  * `model`'s chart settings: a chart type it declares, axes it offers under
  * `modes` where it declares a dynamic chart, and a well-formed Band list on
- * its scan's classifier where it scans.
+ * its scan's classifier where it scans and the text writes one. A link copied
+ * on the Standard page writes none (rule 5), and the session then starts on
+ * the classifier's.
  */
 function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: WrittenEntryModes): ChartSettings {
   const dynamic = dynamicChartOf(model);
-  const written = membersOf(json, ["type", ...(dynamic ? ["axes"] : []), ...(model.scan ? ["bands"] : [])]);
+  const written = membersOf(json, ["type", ...(dynamic ? ["axes"] : [])]);
+  const { bands } = recordOf(json);
   const type =
     memberWithId(
       model.charts.map((chart) => chart.type),
@@ -283,7 +337,7 @@ function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: Written
   return {
     type,
     axes: dynamic ? axesFrom(written.axes, model, modes.values) : null,
-    bands: model.scan ? bandsFrom(written.bands, model.scan.classifier) : null,
+    bands: model.scan && bands !== undefined ? bandsFrom(bands, model.scan.classifier) : null,
   };
 }
 

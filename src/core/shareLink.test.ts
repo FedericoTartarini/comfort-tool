@@ -12,13 +12,18 @@ import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { addEdge, moveEdge, setColor, setLabel } from "./bands";
 import { chartType } from "./chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import type { RegisteredModel } from "./modelDeclaration";
+import { rehearseSwitch } from "./modelSwitch";
+import { page, pagesOf } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { toText, toDecodedSession, type DecodedSession } from "./shareLink";
+import { narrowedToPage, toText, toDecodedSession, type DecodedSession } from "./shareLink";
 import {
+  enteredQuantities,
+  isHumidityQuantity,
   startingSlot,
   withAirSpeedMode,
   withClothingMode,
@@ -257,6 +262,12 @@ describe("toDecodedSession", () => {
     }
   });
 
+  it("takes a scanning model's chart entry without a Band list as none written, exactly: a link copied on the Standard page (rule 5)", () => {
+    const decoded = read(changed(valid, ["charts", ashrae, "bands"], undefined));
+    expect(decoded?.session.charts.get(pmvPpdAshrae)).toEqual({ ...editedSession().charts.get(pmvPpdAshrae), bands: null });
+    expect(decoded?.exact).toBe(true);
+  });
+
   it("drops a key the app does not read, and says the session is not exact", () => {
     const dropped = [
       changed(valid, ["page"], "explore"),
@@ -323,3 +334,102 @@ describe("toDecodedSession", () => {
     expect(decoded?.exact).toBe(false);
   });
 });
+
+describe("narrowedToPage", () => {
+  const session = editedSession();
+  const [first, second] = session.slots;
+  const [airSpeedControl] = pmvPpdAshrae.options;
+  const ashraeChart = session.charts.get(pmvPpdAshrae);
+  /** `session`'s slots, each holding Adaptive's prevailing mean outdoor temperature, which no PMV model enters. */
+  const holdingAdaptive = (written: WrittenSession): WrittenSession => {
+    const seeded = (slot: Slot) => withEnteredValues(slot, new Map([[q.t_running_mean, 20]]));
+    const [one, two, three] = written.slots;
+    return { ...written, slots: [seeded(one), two && seeded(two), three && seeded(three)] };
+  };
+  /** `session` holding Adaptive's value, moved to `model` as a switch moves it, with `model`'s chart settings. */
+  const switchedTo = (model: RegisteredModel): WrittenSession => {
+    const switched = (slot: Slot) => rehearseSwitch(slot, pmvPpdAshrae, model, session.atmosphericPressure).slot;
+    const [one, two, three] = holdingAdaptive(session).slots;
+    return {
+      ...session,
+      model,
+      slots: [switched(one), two && switched(two), three && switched(three)],
+      charts: new Map([...session.charts, [model, session.charts.get(model) ?? startingChartSettings(model)]]),
+    };
+  };
+
+  it("on Standard keeps the compared slots and no other, each enabled flag following, Compare as held, the one model's chart and no Band list", () => {
+    expect(narrowedToPage(holdingAdaptive(session), page.standard)).toEqual({
+      ...session,
+      enabled: [true, false],
+      slots: [first, second, null],
+      charts: new Map([[pmvPpdAshrae, { ...ashraeChart, bands: null }]]),
+    });
+  });
+
+  it("on Standard with Compare on and slots 2 and 3 both disabled keeps Compare on and slot 1 alone", () => {
+    const narrowed = narrowedToPage({ ...session, enabled: [false, false] }, page.standard);
+    expect(narrowed.compare).toBe(true);
+    expect(narrowed.enabled).toEqual([false, false]);
+    expect(narrowed.slots).toEqual([first, null, null]);
+  });
+
+  it("on Standard with Compare off keeps slot 1 alone and Compare off", () => {
+    const narrowed = narrowedToPage({ ...session, compare: false }, page.standard);
+    expect(narrowed.compare).toBe(false);
+    expect(narrowed.enabled).toEqual([false, false]);
+    expect(narrowed.slots).toEqual([first, null, null]);
+  });
+
+  it("on Explore keeps slot 1 alone, Compare off, and the model's Band list", () => {
+    expect(narrowedToPage(session, page.explore)).toEqual({
+      ...session,
+      compare: false,
+      enabled: [false, false],
+      slots: [first, null, null],
+      charts: new Map([[pmvPpdAshrae, ashraeChart]]),
+    });
+  });
+
+  it("keeps of a slot the quantities the model enters under the entry modes and its own options, and no other", () => {
+    for (const [model, onPage] of [[pmvPpdAshrae, page.standard], [pmvPpdIso, page.explore], [adaptiveAshrae, page.standard]] as const) {
+      const [slot] = narrowedToPage(switchedTo(model), onPage).slots;
+      const entered = enteredQuantities(model, slot);
+      expect([...slot.values.keys()].sort(byKey), model.info.label).toEqual(entered.filter((quantity) => !isHumidityQuantity(quantity)).sort(byKey));
+      expect(slot.humidity !== undefined, model.info.label).toBe(entered.includes(q.rh));
+      expect([...slot.options.keys()], model.info.label).toEqual(model.options);
+    }
+    expect(narrowedToPage(holdingAdaptive(session), page.standard).slots[1]?.options.get(airSpeedControl)).toBe(true);
+  });
+
+  it("writes a humidity mode exactly where a slot holds a humidity value", () => {
+    const humidityOf = (text: string) => {
+      const json = jsonOf(text) as { entryModes: Record<string, string>; slots: ({ values: Record<string, number> } | null)[] };
+      return { mode: json.entryModes.humidity, values: json.slots.map((slot) => slot && slot.values[q.dew_point_tmp.key]) };
+    };
+    const dewPoint = first.humidity?.value;
+    expect(humidityOf(toText(narrowedToPage(session, page.standard), registeredModels))).toEqual({
+      mode: humidityMode.dewPoint.id,
+      values: [dewPoint, second?.humidity?.value, null],
+    });
+    expect(humidityOf(toText(narrowedToPage(switchedTo(adaptiveAshrae), page.standard), registeredModels))).toEqual({
+      mode: undefined,
+      values: [undefined, undefined, null],
+    });
+  });
+
+  it("writes a text that reads back as the narrowed session, exactly, for every registered model on each of its pages", () => {
+    for (const model of registeredModels) {
+      for (const onPage of pagesOf(model).filter((candidate) => candidate !== page.timeSeries)) {
+        const narrowed = narrowedToPage(switchedTo(model), onPage);
+        expect(roundTrip(narrowed), `${model.info.label} on ${onPage.title}`).toEqual({ session: narrowed, exact: true });
+      }
+    }
+    // Heat Index has no Standard page: its link is Explore's alone.
+    expect(pagesOf(heatIndexRothfusz)).not.toContain(page.standard);
+  });
+});
+
+function byKey(a: Quantity, b: Quantity): number {
+  return a.key < b.key ? -1 : 1;
+}

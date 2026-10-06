@@ -46,6 +46,13 @@ export const copy = {
   resetQuestion: "This returns every input, every chart setting and the Bands of every model to their defaults. It cannot be undone.",
   resetAccept: "Yes, reset",
   resetDecline: "No, keep everything",
+  // Copy link and the notice line (ADR-0002 decision 63, rules 6 and 7).
+  copyLink: "Copy link",
+  linkCopied: "Link copied",
+  linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
+  linkFilledNotice: "This link was made by another version of the tool; inputs it did not carry start at their defaults.",
+  copyRefusedNotice: "The link could not be copied.",
+  closeNotice: "Close",
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).

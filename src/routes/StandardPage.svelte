@@ -1,7 +1,7 @@
 <script lang="ts">
   import { slotBadges } from "$lib/core/slotBadge";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
-  import { getOpenSession, getSessionReset } from "$lib/state/openSession";
+  import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
@@ -15,6 +15,7 @@
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import NoticeLine from "$lib/ui/outputs/NoticeLine.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import { inAppSwitch } from "./inAppSwitch";
@@ -23,7 +24,7 @@
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
-  const reset = getSessionReset();
+  const tab = getTabControls();
   const inApp = inAppSwitch(session);
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
@@ -57,6 +58,7 @@
 
 <main>
   <Stack gap="6">
+    <NoticeLine notice={tab.notice} onclose={tab.closeNotice} />
     <Inline justify="between" align="center">
       <h1>{copy.appTitle}</h1>
       <UnitSystemControls {session} />
@@ -86,7 +88,9 @@
           <SessionControls
             {session}
             atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
-            onreset={reset}
+            onreset={tab.reset}
+            link={tab.link}
+            oncopyrefused={() => tab.raiseNotice("copyRefused")}
           />
           <!--
             While Compare is on, a column per slot, a third of the width whether

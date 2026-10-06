@@ -3,6 +3,7 @@
   import type { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import { Button } from "$lib/ui/primitives/button";
+  import CopyLinkButton from "./CopyLinkButton.svelte";
   import EntryModeControls from "./EntryModeControls.svelte";
   import QuantityInput from "./QuantityInput.svelte";
   import ResetDialog from "./ResetDialog.svelte";
@@ -14,9 +15,13 @@
     atmosphericPressureOutOfRange: boolean;
     /** Replace the tab's session with the defaults, once the person has said yes. */
     onreset: () => void;
+    /** The share link to the page as it is now. */
+    link: () => string;
+    /** The clipboard refused the link. */
+    oncopyrefused: () => void;
   }
 
-  let { session, atmosphericPressureOutOfRange, onreset }: Props = $props();
+  let { session, atmosphericPressureOutOfRange, onreset, link, oncopyrefused }: Props = $props();
 
   /** Whether Reset's question stands: the button's own, as nothing else reads it. */
   let askingReset = $state(false);
@@ -44,8 +49,10 @@
 <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
 <EntryModeControls {session} />
 <!--
-  Reset asks first, and on a yes the tab shows what a new tab at this address
-  shows (ADR-0002 decision 63, rules 7 and 8). Its place and look are Phase 5c's.
+  Copy link puts the page as it is on the clipboard; Reset asks first, and on
+  a yes the tab shows what a new tab at this address shows (ADR-0002 decision
+  63, rules 7 and 8). Their place and look are Phase 5c's.
 -->
+<CopyLinkButton {link} onrefused={oncopyrefused} />
 <Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
 <ResetDialog open={askingReset} onaccept={acceptReset} ondecline={() => (askingReset = false)} />

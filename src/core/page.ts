@@ -16,6 +16,15 @@ export const page = {
   timeSeries: { id: "time-series", title: "Time-series" },
 } as const satisfies Record<string, Page>;
 
+/**
+ * Whether the charts on `onPage` paint the model's Band list: on Explore
+ * alone (ADR-0002 decision 58). A share link carries the list where it is
+ * painted (decision 63, rule 5).
+ */
+export function paintsBandsOn(onPage: Page): boolean {
+  return onPage === page.explore;
+}
+
 /** Where the address points: a page, and the model it is open on. */
 export interface Address {
   readonly page: Page;

@@ -7,7 +7,7 @@
   the Bands panel edits the model's Band list the charts paint (decision 59).
 -->
 <script lang="ts">
-  import { getOpenSession, getSessionReset } from "$lib/state/openSession";
+  import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
@@ -21,6 +21,7 @@
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import NoticeLine from "$lib/ui/outputs/NoticeLine.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { inAppSwitch } from "./inAppSwitch";
   import { modelChoicesOn } from "./navigation";
@@ -28,12 +29,13 @@
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
-  const reset = getSessionReset();
+  const tab = getTabControls();
   const inApp = inAppSwitch(session);
 </script>
 
 <main>
   <Stack gap="6">
+    <NoticeLine notice={tab.notice} onclose={tab.closeNotice} />
     <Inline justify="between" align="center">
       <h1>{copy.appTitle}</h1>
       <UnitSystemControls {session} />
@@ -53,7 +55,9 @@
           <SessionControls
             {session}
             atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
-            onreset={reset}
+            onreset={tab.reset}
+            link={tab.link}
+            oncopyrefused={() => tab.raiseNotice("copyRefused")}
           />
           <InputPanel
             model={session.model}

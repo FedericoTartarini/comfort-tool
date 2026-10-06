@@ -8,6 +8,7 @@
 import { bandListOf, type BandList } from "./bands";
 import type { ChartType } from "./chartType";
 import { dynamicChartOf, type ChartAxes, type RegisteredModel } from "./modelDeclaration";
+import { page, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "./quantities";
 import { startingSlot, type Slot } from "./slot";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -17,7 +18,12 @@ export interface ChartSettings {
   readonly type: ChartType;
   /** The dynamic chart's picked axes; `null` for a model that declares no dynamic chart. */
   readonly axes: ChartAxes | null;
-  /** The model's Band list (ADR-0002 decision 59); `null` for a model that scans nothing. */
+  /**
+   * The model's Band list (ADR-0002 decision 59); `null` for a model that
+   * scans nothing, and for one whose list a share link copied on the Standard
+   * page does not carry (decision 63, rule 5), which a session then starts on
+   * its scan's classifier.
+   */
   readonly bands: BandList | null;
 }
 
@@ -42,6 +48,25 @@ export interface WrittenSession {
   readonly slots: readonly [Slot, Slot | null, Slot | null];
   /** The chart settings of every model the session has been on, and of no other. */
   readonly charts: ReadonlyMap<RegisteredModel, ChartSettings>;
+}
+
+/** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
+export type SlotPosition = 0 | 1 | 2;
+
+/** Every position, in slot order. */
+export const slotPositions = [0, 1, 2] as const satisfies readonly SlotPosition[];
+
+/**
+ * The slots compared on `onPage`, in slot order: slot 1 always, and slots 2
+ * and 3 while Compare is on and they are enabled, on the Standard page alone.
+ * Compare is the Standard page's, and Explore compares slot 1 whatever
+ * Compare holds (ADR-0002 decision 57). The session's outputs and a share
+ * link both read it (decision 63, rule 5).
+ */
+export function comparedPositionsOf(session: Pick<WrittenSession, "compare" | "enabled">, onPage: Page): SlotPosition[] {
+  return slotPositions.filter(
+    (position) => position === 0 || (onPage === page.standard && session.compare && session.enabled[position - 1]),
+  );
 }
 
 /** The chart settings `model` starts on, which its declaration gives: its first chart, its declared axes, its scan's classifier. */

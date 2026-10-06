@@ -1,5 +1,4 @@
 import { createRouter, type Routes } from "sv-router";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import {
   defaultModel,
@@ -21,6 +20,8 @@ export { defaultModel, isCurrentLink, modelChoicesOn, standardLinks };
  * never the router itself.
  */
 const STANDARD_ROUTE = "/standard/:standard/:model";
+/** The query parameter a share link carries its text in (ADR-0002 decision 63, rule 3). */
+const SHARE_PARAMETER = "share";
 /** Explore names the model alone: every model has the page, one with no standard included (ADR-0002 decision 57). */
 const EXPLORE_ROUTE = "/explore/:model";
 
@@ -42,7 +43,10 @@ const routes = {
 const { p, navigate, isActive, route } = createRouter(routes);
 export { Router } from "sv-router";
 
-const addressFollowers = new Set<(address: Address) => void>();
+/** Hears an address, and the share link's text it carried, if any. */
+type AddressFollower = (address: Address, link: string | undefined) => void;
+
+const addressFollowers = new Set<AddressFollower>();
 
 /**
  * Hear every address from now on — the one the app opens on, a typed URL,
@@ -52,8 +56,12 @@ const addressFollowers = new Set<(address: Address) => void>();
  * and after an in-app switch the session finds the model already current.
  * The app follows it from before the router loads the first address, so that
  * address is heard too, and heard before any page exists.
+ *
+ * An address that carries a share link's text is heard with it (decision 63,
+ * rule 3). Only a document load carries one: the router's own navigation
+ * writes no query string, and the parameter is removed once heard.
  */
-export function followAddress(onAddress: (address: Address) => void): () => void {
+export function followAddress(onAddress: AddressFollower): () => void {
   addressFollowers.add(onAddress);
   return () => {
     addressFollowers.delete(onAddress);
@@ -68,15 +76,22 @@ export function followAddress(onAddress: (address: Address) => void): () => void
  * correction happens here rather than before it loads, because only now are
  * its params known; it is one more navigation, whose own run of this hook
  * hands the same address on again.
+ *
+ * A share link's text is handed on with the address, read as it stands: the
+ * router's own reader of the query string converts what looks like a number.
+ * It is then removed with the same replace, readable or not, so the address
+ * bar holds the path alone and no history entry keeps it (ADR-0002 decision
+ * 63, rule 3).
  */
 function passAddressOn(): void {
   const address = addressFromRoute();
   const handedOn = address ?? { page: page.standard, model: defaultModel() };
+  const link = new URLSearchParams(window.location.search).get(SHARE_PARAMETER) ?? undefined;
   for (const onAddress of addressFollowers) {
-    onAddress(handedOn);
+    onAddress(handedOn, link);
   }
-  if (!address) {
-    redirectTo(handedOn.model);
+  if (!address || link !== undefined) {
+    moveTo(handedOn, { replace: true });
   }
 }
 
@@ -88,26 +103,37 @@ export function pathTo(address: Address): string {
 }
 
 /**
+ * The share link to `address` carrying `text` (ADR-0002 decision 63, rule 7):
+ * the origin, the address's path and the one parameter.
+ */
+export function shareLinkTo(address: Address, text: string): string {
+  const url = new URL(pathTo(address), window.location.origin);
+  url.searchParams.set(SHARE_PARAMETER, text);
+  return url.href;
+}
+
+/**
  * Put `address` in the URL as a new history entry, which is what following a
  * link has always done: back returns to the page and model the person came
  * from. Every in-app switch goes through here, so how a person switched does
  * not change what back does.
  */
 export function navigateTo(address: Address): void {
-  if (address.page === page.explore) {
-    void navigate(EXPLORE_ROUTE, { params: exploreSegmentsOf(address.model) });
-    return;
-  }
-  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(address.model) });
+  moveTo(address, { replace: false });
 }
 
 /**
- * Correct an address that names no model, replacing the entry rather than
- * pushing one: the address that was never a model is not somewhere back should
- * return to.
+ * Move the URL to `address`, with no query string. `replace` rewrites the
+ * entry rather than pushing one: an address that never named a model, or
+ * that still carries a share link's text, is not somewhere back should return
+ * to.
  */
-function redirectTo(model: RegisteredModel): void {
-  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(model), replace: true });
+function moveTo(address: Address, { replace }: { replace: boolean }): void {
+  if (address.page === page.explore) {
+    void navigate(EXPLORE_ROUTE, { params: exploreSegmentsOf(address.model), replace });
+    return;
+  }
+  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(address.model), replace });
 }
 
 /**
