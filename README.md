@@ -62,6 +62,14 @@ Validation suite:
 npm test && npm run check && npm run lint && npm run build
 ```
 
+Browser tests (Playwright, `tests/browser/`), when a change touches `index.html`, `tests/browser/` or
+`playwright.config.ts`, and at the end of every Phase. They start the dev server themselves; a machine runs
+`npx playwright install chromium` once first.
+
+```bash
+npm run test:browser
+```
+
 ## Tech stack
 
 - **Svelte 5** (runes) + **TypeScript 6** + **Vite 8**

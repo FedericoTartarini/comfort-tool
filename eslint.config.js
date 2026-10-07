@@ -175,6 +175,24 @@ export default [
       "no-restricted-syntax": ["error", ...wireStringSyntax, ...untrackSyntax, ...constantCaseSyntax],
     },
   },
+  {
+    // The browser tests and their config sit outside the app's boundaries.
+    // Playwright neither type-checks them nor waits for a call the test forgot
+    // to await, so the one typed rule here catches the missing `await`.
+    files: ["tests/**/*.ts", "playwright.config.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+    plugins: { "@typescript-eslint": tsPlugin },
+    rules: {
+      ...tsPlugin.configs["flat/recommended"][2].rules,
+      "no-undef": "off",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-floating-promises": "error",
+    },
+  },
   ...svelte.configs["flat/recommended"].map((config) => ({
     ...config,
     files: ["src/**/*.svelte"],

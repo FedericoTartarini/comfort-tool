@@ -10,12 +10,12 @@
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "lint": "eslint src",
+    "lint": "eslint src tests playwright.config.ts",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
-    "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots",
-    "test:visual:headed": "playwright test --headed"
+    "test:browser": "playwright test",
+    "test:browser:update": "playwright test --update-snapshots",
+    "test:browser:headed": "playwright test --headed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

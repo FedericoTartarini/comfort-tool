@@ -1402,7 +1402,7 @@ side, enum classes.
 Run at the end of every Phase:
 
 ```bash
-npm run check && npm run lint && npm run build && npm test
+npm run check && npm run lint && npm run build && npm test && npm run test:browser
 ```
 
 Behaviour comparison (from Phase 3 on):
