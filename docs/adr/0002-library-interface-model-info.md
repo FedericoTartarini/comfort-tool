@@ -172,6 +172,9 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
     **Noted 2026-09-27 (Phase 4b close-out).** Both `_INFO` shipped and both models are registered (`58ba1bb`,
     `c1ef5e1`). Neither carries what the Phase 4b prerequisite once asked for: the ±0.5 interval is the library's
     `PMV_COMPLIANCE_INTERVAL_ASHRAE`, and Adaptive's bands come from calling the model (decision 9's note).
+    **Noted 2026-10-07 (the roadmap revised).** The main repository ships `UTCI_INFO` (`src/models/utci.ts:106`,
+    `standards: []`), so UTCI is in v1 by this rule, and ADR-0001 §7's acceptance 1 runs twice: once when Phase 5
+    closes, finally in Phase 6. `phs` ships no `_INFO` yet; Phase 5d ports it (decision 57's note of the same day).
 14. **Linking.** `file:../jsthermalcomfort` to a local checkout of the main repository during the
     migration (on the branch carrying the decision-10 PR until it merges), then `jsthermalcomfort@next`
     pinned once the lead publishes it. The `.d.ts` bugs of #196 only surface against an installed
@@ -1646,6 +1649,9 @@ notes under decisions 51 and 53:
     (`state/keptText.ts:13-37`). A link opened
     from the app with a modifier key starts a new tab on the defaults (`window.opener` `null`; Chrome alone, ticket
     03).
+    **Noted 2026-10-07 (the roadmap revised).** Rule 6's phase is the plan's Phase 5d, after Phase 5b and before
+    Phase 6, with Phase 5c brought ahead of both; the grilling rule 6 asks for opens Phase 5d, and the library's PHS
+    port (decision 22) follows it. The user, 2026-10-07: the calculators first, Time-series is not urgent.
 58. **The page decides what the charts paint: Standard paints Comfort zones on every chart, Explore paints Bands on
     every chart, and a spec builder is told which by being given a Band list or not.** Revises decision 31's split,
     extending it to the psychrometric chart, and amends decisions 27 and 37. Rules. (1) On Standard the dynamic

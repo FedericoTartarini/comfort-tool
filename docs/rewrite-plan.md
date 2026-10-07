@@ -131,6 +131,28 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > is open for the user, and what the checklist's human half found, is in ticket 07's Comments, none changed.
 > **Next: Phase 5 item 7, the static notice for a browser without `Proxy`, the last of Phase 5's items.**
 
+> **2026-10-07 — position, the roadmap revised**: with Phase 5 at its last item, the order of what remains was read
+> against the documents and the code and changed in four places, each written where it belongs below. Phase 5c, the
+> interface designed, moves ahead of Phase 5b: its reason for waiting (Compare, Explore and the Bands panel change the
+> layout) is spent, and a feature built after the design system lands on tokens and primitives, where one built before
+> it is converted later. The UTCI acceptance runs twice, the first time when Phase 5 closes: the main repository already
+> ships UTCI in TypeScript with `UTCI_INFO` (`../jsthermalcomfort/src/models/utci.ts:106`, `standards: []`), so by
+> decision 13 UTCI is a v1 model today and the probe costs nothing. Time-series with PHS, in v1 by decision 57 and in no
+> phase, is Phase 5d, after 5b and before Phase 6, with its library port (the user, 2026-10-07: the calculators first,
+> Time-series is not urgent). And every step names its process: a grilling only where a decision is missing, a spec
+> only where tickets share a shape, a ticket always. **Next: Phase 5 item 7, then the first UTCI acceptance.**
+>
+> | # | Step | Process | After |
+> |---|---|---|---|
+> | 1 | Phase 5 item 7, the `Proxy`-less notice; Phase 5 closes | one ticket; decided 2026-09-04 | — |
+> | 2 | UTCI acceptance, first run (Phase 6 item 2) | one ticket holding the `git diff --stat`; no planning, as Phase 4's | 1 |
+> | 3 | Phase 5c, the interface designed | grilling (opening with the open points marked ★5c), spec, tickets; the system layer before the layout layer | 2 |
+> | 4 | Phase 5b, the input calculators | a short grilling (★5b), spec, tickets | 3 |
+> | 5 | The Time-series grilling (decision 57 rule 6) | the grilling itself | 4 |
+> | 6 | Library: PHS in TypeScript with `PHS_INFO`; `B12`, `D17`, `T22` | tickets in Phase 5d's folder | 5 |
+> | 7 | Phase 5d, Time-series with PHS | spec, tickets | 5, 6 |
+> | 8 | Phase 6: the UTCI acceptance's final run, gtag, the freeze test, the visual close-out, the merge | tickets as a checklist | 7 |
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1104,6 +1126,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
    its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,
    written by no registered model until PHS lands; nothing else of Time-series is built with Phase 5 item 3.
+   **Landed 2026-10-01** as far as decision 57 lands it: `page.timeSeries` (`core/page.ts:16`) and the optional field
+   (`core/modelDeclaration.ts:232`), written by no registered model. The rest is Phase 5d (added 2026-10-07).
 7. The `Proxy`-less fallback is a static notice in `index.html` naming the required browser versions (ADR §2 / §7.5,
    decided 2026-09-04). No second ES5 code path, no share decoding.
 8. The psychrometric chart answers the pointer (added 2026-09-28) through a hover grid over its axes, as the polygons
@@ -1142,13 +1166,29 @@ units, chart type, thresholds, atmospheric pressure, numbers)")
 - Export image, at either size and in either format, gives a file whose chart and legend are the page's and whose input summary lists the values that chart is drawn from (added 2026-10-07, ADR-0002 decision 64)
 - Opening a share link in an environment with `Proxy` disabled does not crash
 
+**Added 2026-10-07, when Phase 5 closes**: the first run of the UTCI acceptance, Phase 6 item 2, before Phase 5b adds a
+field to the declaration; the second, final run stays in Phase 6, so the two runs bracket every change the declaration's
+shape takes after this phase. The main repository already ships UTCI in TypeScript with `UTCI_INFO`, `UTCI_LIMITS` and
+`UTCI_STRESS_CATEGORY_BINS` (`../jsthermalcomfort/src/models/utci.ts:66-111`, `standards: []`, exported from the root
+and pinned by the lock), so by decision 13 UTCI is in v1 today. No planning: as Phase 4's, the acceptance is executed
+directly and judged by `git diff --stat`, one ticket holding the record.
+
 ---
 
 ## Phase 5b · Input calculators
 
 **Goal**: the calculator buttons of the old tool's input panel, with the semantics ADR §4.1.5 already fixed — a one-shot
 Apply that writes into a target input, never entering the session or the share link.
-**Prerequisites**: Phase 5 (they write into slots, and Compare decides which slot).
+**Prerequisites**: Phase 5 (they write into slots, and Compare decides which slot), and Phase 5c (revised 2026-10-07:
+the calculators' buttons and dialogs are built on the design system, so they are built once; the design reserves their
+place, which the deployed tool fixes).
+**Process (2026-10-07)**: a short grilling, opening with `.scratch/open-points.md`'s rows marked ★5b, then spec and
+tickets. Settled already: the one-shot Apply (ADR §4.1.5), the slot named at Apply (decision 50), and `D1` (a calculator
+writes in the session's clothing mode). Open: the declaration field below, `solar_gain`'s inputs, and the library work.
+A library function the app is about to call is ported to TypeScript first, with what the library's `CONTEXT.md` asks of
+it (`../jsthermalcomfort/CLAUDE.md:3`, "migrating to TypeScript one module at a time"; its JavaScript modules ship no
+`.d.ts`), so `clo_tout`, `solar_gain` and `clo_individual_garments` are ported ahead of their tickets, and `B13`'s two
+ensemble functions are written.
 **Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
 into when it is applied.
 
@@ -1168,6 +1208,8 @@ Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly ou
    the entry in the session's mode, or switches the mode first, is this item's to decide, and item 1's too.
 3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
    the formula is general (ADR §3).
+   **Confirmed 2026-10-07**: the main repository ships it as JavaScript, `src/models/solar_gain.js`, exported from the
+   root (`src/models/index.js:20`); its TypeScript port is the library work above.
 
 The declaration field that says which model offers which calculator is added here, not earlier: Phase 4's acceptance is
 already past, and an optional field with no consumer would be exactly the speculative abstraction the ADR forbids.
@@ -1179,6 +1221,18 @@ already past, and an optional field with no consumer would be exactly the specul
 **Goal**: stop looking like a wireframe. Everything before this phase was correctness; this one is the product.
 **Prerequisites**: Phase 5. That is the point — Compare's three slots, the Explore workspace and the threshold editor
 all change the layout, so a design drawn before them would be redrawn after them.
+**Brought forward 2026-10-07**, ahead of Phase 5b and Phase 5d: the prerequisite is met at Phase 5's close, and the
+argument now runs the other way. Visual change reaches the app through tokens, primitives and the layout components
+(below), so a feature built after the design lands on them, and one built before it is converted later; the
+calculators' buttons and dialogs and the Time-series page are additions under the system, not changes to a drawn
+layout. The design reserves a place for the calculator buttons, which the deployed tool fixes, and for the Time-series
+link in the navigation (decision 57). It also gives a place and a look to what the decisions left to it: Copy link,
+Reset and Export image among the controls (decisions 63 and 64), the pressure input (decision 49), the Bands panel
+(decision 59's note) and item 6's readout.
+**Process (2026-10-07)**: a grilling first, as every phase's, opening with `.scratch/open-points.md`'s rows marked ★5c,
+then spec and tickets. Inside the phase the system layer first (item 3 the palette, item 2 the header and footer, item
+5 the dialog), which Phase 5b and Phase 5d consume, then the layout layer (items 1, 4 and 6), which touches the pages
+that exist. The phase stops at its Done criteria, not at taste.
 
 1. The three columns as designed rather than as stacked: real proportions, real density, a considered
    information hierarchy. The architecture is fixed (ADR §1), the execution is not.
@@ -1209,6 +1263,8 @@ all change the layout, so a design drawn before them would be redrawn after them
 **Why not earlier**: the lint rule that bans Tailwind utilities outside `ui/primitives/` and `ui/layout/` (ADR §2) is
 what makes deferring safe. Visual change reaches the app through tokens, primitives and the three layout components —
 business components never encode appearance, so redesigning them is not a rewrite of them.
+The same rule, read forward on 2026-10-07, is why the phase now comes before Phase 5b and Phase 5d: building on the
+finished system is cheaper than converting to it.
 
 **Done criteria**
 - No hand-written CSS left in business components that a token or a primitive should be carrying.
@@ -1216,23 +1272,59 @@ business components never encode appearance, so redesigning them is not a rewrit
 
 ---
 
+## Phase 5d · Time-series with PHS (added 2026-10-07)
+
+**Goal**: the Time-series page of ADR-0002 decision 57, with PHS as the first model that writes `timeSeries: true`.
+**Prerequisites**: Phase 5b. The user, 2026-10-07: the calculators come first, Time-series is not urgent. Phase 5c is
+behind it, so the page is built on the design system.
+**Process**: the grilling decision 57 rule 6 asks for (the page, its own session, the PHS declaration, what the share
+link's text carries for it, and whether `v1z.` deflate is needed, measured first on a link that holds a time series);
+then the library; then spec and tickets.
+
+1. Library side, first (decision 22): `phs` is 719 lines of JavaScript in the main repository (`src/models/phs.js`)
+   with no `_INFO`; it is ported to TypeScript with `PHS_INFO` and what the grilling finds the page needs of it. With
+   it the library's open rows, so the library is visited once: `B12` (`t_dp` / `t_wb` rounded, a parity gap), `D17`
+   (the `ClassifierBins` sentinel edge, `rh_from_dew_point`, `pmv_ppd_iso`'s JSDoc) and `T22` (`docs/` regenerated,
+   old prose, three spellings of 58.15). Tickets live in this phase's folder, as the activity-adjusted inputs' ticket
+   01 did.
+2. App side: the page, its session and the PHS declaration as the grilling decides them. The one rule holds: PHS
+   enters as one declaration file and one registry line, and a third file changed is an architecture fault to fix,
+   not to work around.
+3. The share link: what a Time-series page is computed from (decision 63 rule 1 extended), and `v1z.` only if the
+   measured link needs it (decision 63's note: `v1z.` waits for Time-series).
+
+**Done criteria**
+- PHS enters as one declaration file + one registry line, judged by `git diff --stat`.
+- A share link from a Time-series page opens it as it was shown, and a reload keeps it (Phase 5's criteria, on this page).
+- The four scripts pass.
+
+---
+
 ## Phase 6 · UTCI acceptance + v1 wrap-up
 
 **Goal**: ADR §7 acceptance #1, then close out.
-**Prerequisites**: Phase 5.
+**Prerequisites**: Phase 5d (revised 2026-10-07; it read "Phase 5". The order after Phase 5 is the position note of
+2026-10-07 at the top).
 
-1. Library side: port `utci` from the JS on the `main` branch into the TS on `typescript`
-   (a polynomial, stateless, the cheapest one outside the 8 already-ported models), add `io.utci`, attach
-   `label` / `description` / `limits` / classification scale, and add the missing quantities to `quantities`.
+1. Library side: nothing (noted 2026-10-07; it read "port `utci` from the JS on the `main` branch into the TS on
+   `typescript`, add `io.utci`, attach `label` / `description` / `limits` / classification scale, and add the missing
+   quantities to `quantities`"). The main repository ships `utci` in TypeScript with `UTCI_INFO`, `UTCI_LIMITS` and
+   `UTCI_STRESS_CATEGORY_BINS` (`src/models/utci.ts:66-111`), exported from the root and pinned by the lock.
 2. App side: **add only `src/models/utci.ts` + one registry line**, zero other files change, and it appears only in the
    Explore navigation (no `standard` attached in the library). `table` is required, so UTCI declares it too.
+   **Runs twice (2026-10-07)**: first when Phase 5 closes, on the declaration as it is then; finally here, after
+   Phases 5c, 5b and 5d changed what they changed. Both runs are judged by `git diff --stat`.
 3. Run all nine ADR §7 acceptance items (item 3 compares vertex geometry).
 4. One line of gtag; send `page_view` manually on route change, with the query string stripped from `page_location`
    (do not send the share payload to Google).
 5. Freeze the share format (ADR-0002 decision 63, rule 9; added 2026-10-06, `.scratch/share-link/` ticket 07): a test
    decodes a text the deployed build wrote, kept as a fixture, so a renamed key or member fails it. Until then no
    expected text is written as a literal.
+   **Order (2026-10-07)**: the fixture needs a deployed build's text and the merge is item 6, so a preview is deployed
+   before the freeze; the exact order is this phase's to settle.
 6. Merge back into `main`, remove the `git worktree`.
+7. Visual close-out (added 2026-10-07), before item 6: every page and dialog built after Phase 5c (the calculators,
+   Time-series) is read against Phase 5c's Done criteria. Not a second design: the criteria are the stop.
 
 The site shell (header, footer, Reset) was briefly assigned here on 2026-09-04 and moved to Phase 5c the same day:
 it is design work, and doing it apart from the design would mean doing it twice. `Save` / `Reload` are not built at
@@ -1246,9 +1338,12 @@ all — Export Link covers them.
 
 > **Amended 2026-10-01** (ADR-0002 decision 57): Time-series with PHS is in v1 and will be given a phase of its own; the
 > line below keeps it as written, and the rest of the line stays after v1.
+> **Scheduled 2026-10-07** as Phase 5d; the line below is rewritten without Time-series and PHS, and `v1z.` goes to
+> Phase 5d's grilling (it read "the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en, …) →
+> Time-series + PHS + `v1z.` compression → ES5 summary page …").
 
-**After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en,
-each = library port + one declaration file + one registry line) → Time-series + PHS + `v1z.` compression
+**After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining models (heat_index / humidex / wind_chill / adaptive_en,
+each = library port + one declaration file + one registry line)
 → ES5 summary page (depends on the share schema being frozen, hence last) → UI/e2e/visual tests.
 
 ---
@@ -1309,5 +1404,6 @@ the library rounds it to two decimals, as pythermalcomfort does, and so does the
 fixture's four ASHRAE 55 zones the worst vertex is 0.0143 °C off, and the worst is 0.0093 °C with only that rounding
 removed (measured 2026-09-28; Proposal 35, `P031`).
 
-Phase 4's architecture acceptance is judged by `git diff --stat`, and so is Phase 6's UTCI acceptance.
+Phase 4's architecture acceptance is judged by `git diff --stat`, and so are the UTCI acceptance's two runs, at
+Phase 5's close and in Phase 6, and Phase 5d's PHS entry (2026-10-07).
 If either fails, stop and fix the architecture; do not work around it.
