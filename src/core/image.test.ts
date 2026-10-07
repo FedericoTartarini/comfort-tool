@@ -32,20 +32,26 @@ describe("defaultImageTitle", () => {
 describe("imageDescription", () => {
   it("holds the chart's description by identity and the size it was given", () => {
     for (const size of Object.values(imageSize)) {
-      const image = imageDescription({ chart, size, title: "" });
+      const image = imageDescription({ chart, size, title: "", summary: null });
       expect(image.chart).toBe(chart);
       expect(image.size).toBe(size);
     }
   });
 
   it("holds the title it was given", () => {
-    const image = imageDescription({ chart, size: imageSize.doubleColumn, title: "Office in summer" });
+    const image = imageDescription({ chart, size: imageSize.doubleColumn, title: "Office in summer", summary: null });
     expect(image.title).toBe("Office in summer");
   });
 
+  it("holds the Input summary it was given, and none given none", () => {
+    const summary = [["PMV / PPD (ISO 7730) · ISO 7730:2005"], ["Metabolic rate (met): 1.2"]];
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary }).summary).toBe(summary);
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary: null }).summary).toBeNull();
+  });
+
   it("holds no title for an empty title or one of spaces alone", () => {
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "" }).title).toBeNull();
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "   " }).title).toBeNull();
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary: null }).title).toBeNull();
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "   ", summary: null }).title).toBeNull();
   });
 });
 

@@ -1,4 +1,5 @@
 import { Standard } from "jsthermalcomfort";
+import { copy } from "$lib/text/copy";
 
 /**
  * Display name, edition year and route segment for a library `Standard`,
@@ -30,9 +31,19 @@ export const standards: readonly StandardEntry[] = (Object.keys(Standard) as (ke
 });
 
 export function routeSegmentFor(standard: Standard): string {
+  return entryFor(standard).routeSegment;
+}
+
+/** `standard` as the result table's caption and the Input summary write it: `ASHRAE 55:2023`. */
+export function standardCaptionFor(standard: Standard): string {
+  const { displayName, year } = entryFor(standard);
+  return copy.standardCaption(displayName, year);
+}
+
+function entryFor(standard: Standard): StandardEntry {
   const row = standards.find((entry) => entry.id === standard);
   if (!row) {
-    throw new Error(`No route segment declared for standard "${standard}"`);
+    throw new Error(`No entry declared for standard "${standard}"`);
   }
-  return row.routeSegment;
+  return row;
 }

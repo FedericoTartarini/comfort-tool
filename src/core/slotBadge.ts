@@ -26,6 +26,16 @@ export interface SlotBadge {
   readonly hue: SlotHue;
 }
 
+/**
+ * Whether a chart of `drawn` slots names each by its slot: while it draws
+ * more than one, so three zones of one kind can be told apart, and not while
+ * it draws one, so a session whose Compare is off reads as it did (ADR-0002
+ * decision 50). The legend and the Input summary both ask it.
+ */
+export function namesSlots(drawn: number): boolean {
+  return drawn > 1;
+}
+
 /** One badge per slot of the session, by position. */
 export const slotBadges = [
   { name: copy.slotName(0), hue: { marker: "#111827", zoneLine: "#4c78a8", zoneFillRgb: "146, 197, 222" } },

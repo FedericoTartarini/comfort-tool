@@ -1,5 +1,6 @@
 import type { ChartSpec } from "./charts/chartSpec";
 import type { ChartType } from "./chartType";
+import type { InputSummary } from "./inputSummary";
 import type { RegisteredModel } from "./modelDeclaration";
 
 /**
@@ -39,12 +40,19 @@ export interface ImageDescription {
   readonly chart: ChartSpec;
   /** Above the plot, or `null` for no title line at all. */
   readonly title: string | null;
+  /** Under the legend, or `null` where the person left it out (decision 64, rule 2). */
+  readonly summary: InputSummary | null;
   readonly size: ImageSize;
 }
 
 /** `title` as the person left it: one that is empty or spaces alone is none (decision 64, rule 2). */
-export function imageDescription(parts: { chart: ChartSpec; title: string; size: ImageSize }): ImageDescription {
-  return { chart: parts.chart, title: parts.title.trim() === "" ? null : parts.title, size: parts.size };
+export function imageDescription(parts: {
+  chart: ChartSpec;
+  title: string;
+  summary: InputSummary | null;
+  size: ImageSize;
+}): ImageDescription {
+  return { chart: parts.chart, title: parts.title.trim() === "" ? null : parts.title, summary: parts.summary, size: parts.size };
 }
 
 /**

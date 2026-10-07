@@ -12,6 +12,7 @@ import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes }
 import { psychrometricScanFrameFor, psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/specParts";
 import { chartType } from "$lib/core/chartType";
+import type { DrawnRun } from "$lib/core/inputSummary";
 import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { paintsBandsOn } from "$lib/core/page";
@@ -176,6 +177,19 @@ export class Outputs {
    */
   get chart(): ChartSpec | null {
     return this.#chart;
+  }
+
+  /**
+   * The runs {@link chart} is drawn of, in slot order, each with its slot's
+   * name: what an Image's Input summary lists (ADR-0002 decision 64, rule 3).
+   * Read at the click, so nothing is kept of it.
+   */
+  get drawnRuns(): readonly DrawnRun[] {
+    return this.#charted.map(({ outputs, last }) => ({
+      name: outputs.badge.name,
+      slot: last.slot,
+      atmosphericPressure: last.atmosphericPressure,
+    }));
   }
 
   /**

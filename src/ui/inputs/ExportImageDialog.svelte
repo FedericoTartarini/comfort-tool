@@ -1,9 +1,10 @@
 <!--
-  Export image (ADR-0002 decision 64, rules 2, 5, 6 and 8): a button that
-  opens a dialog asking for a title, a size and a format, and Download, which
-  builds the Image of the chart the page shows at that moment and closes the
-  dialog. The button is disabled while the page shows no chart. An image that
-  cannot be made is the caller's to report.
+  Export image (ADR-0002 decision 64, rules 2, 3, 5, 6 and 8): a button that
+  opens a dialog asking for a title, a size, a format and whether the Input
+  summary is included, and Download, which builds the summary and the Image of
+  the chart the page shows at that moment and closes the dialog. The button is
+  disabled while the page shows no chart. An image that cannot be made is the
+  caller's to report.
 
   The choices are the dialog's own state, in no session and no link: kept
   while the page is shown, at their defaults again once it is mounted anew.
@@ -14,6 +15,7 @@
 -->
 <script lang="ts">
   import type { ChartSpec } from "$lib/core/charts/chartSpec";
+  import type { BandList } from "$lib/core/bands";
   import type { ChartType } from "$lib/core/chartType";
   import {
     defaultImageTitle,
@@ -24,12 +26,15 @@
     type ImageFormat,
     type ImageSize,
   } from "$lib/core/image";
+  import { inputSummary, type DrawnRun } from "$lib/core/inputSummary";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
   import { downloadImage } from "$lib/ui/charts/plotlyImage";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
+  import { Checkbox } from "$lib/ui/primitives/checkbox";
   import * as Dialog from "$lib/ui/primitives/dialog";
   import { Input } from "$lib/ui/primitives/input";
   import { Label } from "$lib/ui/primitives/label";
@@ -40,11 +45,16 @@
     /** The session's model and chart type, which name the default title. */
     model: RegisteredModel;
     chartType: ChartType;
+    /** What the Input summary lists: the runs {@link chart} is drawn of, read at Download. */
+    runs: readonly DrawnRun[];
+    unitSystem: UnitSystem;
+    /** The Band list the page paints on {@link chart}, or `null` where it paints the Comfort zones. */
+    bands?: BandList | null;
     /** The image could not be made. */
     onfailed: () => void;
   }
 
-  let { chart, model, chartType, onfailed }: Props = $props();
+  let { chart, model, chartType, runs, unitSystem, bands = null, onfailed }: Props = $props();
 
   const id = $props.id();
   let open = $state(false);
@@ -54,11 +64,13 @@
   // Raw: a size or a format is compared by identity, which a proxy would break.
   let size: ImageSize = $state.raw(imageSize.doubleColumn);
   let format: ImageFormat = $state.raw(imageFormat.png);
+  let includesSummary = $state(true);
 
   async function download(shown: ChartSpec) {
     open = false;
+    const summary = includesSummary ? inputSummary({ model, runs, unitSystem, bands }) : null;
     try {
-      await downloadImage(imageDescription({ chart: shown, title, size }), format, imageFileName(title, size, format));
+      await downloadImage(imageDescription({ chart: shown, title, summary, size }), format, imageFileName(title, size, format));
     } catch {
       onfailed();
     }
@@ -82,6 +94,10 @@
       </Stack>
       {@render choice(copy.imageSize, Object.values(imageSize), size, (chosen) => (size = chosen))}
       {@render choice(copy.imageFormat, Object.values(imageFormat), format, (chosen) => (format = chosen))}
+      <Inline gap="2" align="center">
+        <Checkbox id="{id}-summary" bind:checked={includesSummary} />
+        <Label for="{id}-summary">{copy.imageIncludesSummary}</Label>
+      </Inline>
     </Stack>
     <Dialog.Footer>
       <Button disabled={chart === null} onclick={() => chart && download(chart)}>{copy.imageDownload}</Button>

@@ -65,6 +65,12 @@ export const copy = {
   imageFormat: "Format",
   imageDownload: "Download",
   imageFailedNotice: "The image could not be made.",
+  imageIncludesSummary: "Input summary",
+  // The Input summary's lines (decision 64, rule 3): `label` is a quantity's with its unit, or an option's.
+  summaryModel: (model: string, standard: string) => `${model} · ${standard}`,
+  summaryValue: (label: string, value: string) => `${label}: ${value}`,
+  // `output` is the cut quantity's label with its unit, `edges` the Edges in order.
+  summaryEdges: (output: string, edges: string) => `Band edges, ${output}: ${edges}`,
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).

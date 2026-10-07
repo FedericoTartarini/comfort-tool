@@ -2,7 +2,7 @@
   import { splitViolations, warningFor } from "$lib/core/applicability";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
-  import { standards } from "$lib/core/standard";
+  import { standardCaptionFor } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
@@ -31,7 +31,7 @@
   );
   const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
   const uncalculatedRows = $derived(rows.filter((row) => row.notCalculated));
-  const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);
+  const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 
   function notCalculatedNote(row: SlotOutputs): string {
     const note = row.result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult;
@@ -86,11 +86,11 @@
         </Table.Row>
       {/each}
     </Table.Body>
-    {#if uncalculatedRows.length > 0 || standardEntry}
+    {#if uncalculatedRows.length > 0 || standardCaption}
       <Table.Caption>
         {#each uncalculatedRows as row (row)}<span class="note">{notCalculatedNote(row)}</span>{/each}
-        {#if standardEntry}
-          <span class="standard">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
+        {#if standardCaption}
+          <span class="standard">{standardCaption}</span>
         {/if}
       </Table.Caption>
     {/if}

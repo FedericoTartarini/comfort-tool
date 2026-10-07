@@ -88,6 +88,9 @@
               chart={outputs.chart}
               model={session.model}
               chartType={session.chart.type}
+              runs={outputs.drawnRuns}
+              unitSystem={session.unitSystem}
+              bands={session.chart.bands}
               onfailed={() => tab.raiseNotice("imageFailed")}
             />
           </Inline>

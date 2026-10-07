@@ -12,7 +12,7 @@ import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclara
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
-import type { SlotBadge } from "$lib/core/slotBadge";
+import { namesSlots, type SlotBadge } from "$lib/core/slotBadge";
 import { displayUnitFor, labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
@@ -240,13 +240,11 @@ function displayedSamplesOf(x: Sweep, y: Sweep, unitSystem: UnitSystem): { reado
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for
- * `charted`: prefixed with the slot's name while the request draws more than
- * one slot, so three zones of one kind can be told apart (ADR-0002 decision
- * 50), and as it is while it draws one, so a session whose Compare is off
- * reads as it did.
+ * `charted`: prefixed with the slot's name where {@link namesSlots} says
+ * the request's slots are named, and as it is otherwise.
  */
 export function labelFor(request: ChartRequest, charted: ChartedSlot, label: string): string {
-  return request.slots.length > 1 ? copy.slotEntry(charted.name, label) : label;
+  return namesSlots(request.slots.length) ? copy.slotEntry(charted.name, label) : label;
 }
 
 /**
