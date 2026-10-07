@@ -7,6 +7,23 @@
     <title>CBE Thermal Comfort Tool</title>
   </head>
   <body>
+    <!--
+      A browser without Proxy cannot run the app and skips its module script
+      (ADR-0001 §2, §7 criterion 5). The check is ES5 and inline because it is
+      all such a browser runs; the styles are inline because no rule of the
+      app's stylesheet reaches the notice there: such a browser drops its
+      cascade layers, and outside them it sets only fonts, custom properties
+      and animations.
+    -->
+    <div id="browser-notice" hidden style="max-width: 36em; margin: 4em auto; padding: 0 1em; font-family: sans-serif; line-height: 1.5">
+      <h1 style="font-size: 1.25em">This browser is too old for the CBE Thermal Comfort Tool</h1>
+      <p>The tool needs Chrome 87, Firefox 83 or Safari 14, or a newer version of one of them.</p>
+    </div>
+    <script>
+      if (typeof Proxy === "undefined") {
+        document.getElementById("browser-notice").removeAttribute("hidden");
+      }
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
