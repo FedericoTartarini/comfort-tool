@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as jsthermalcomfort from "jsthermalcomfort";
-import { ADAPTIVE_ASHRAE_INFO, HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
+import { ADAPTIVE_ASHRAE_INFO, HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, UTCI_INFO } from "jsthermalcomfort";
 import type { ModelInfo } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
@@ -47,6 +47,12 @@ describe("quantities table drift", () => {
 
   it("hi and stress_category are named by HEAT_INDEX_ROTHFUSZ_INFO", () => {
     expect(variableKeys(HEAT_INDEX_ROTHFUSZ_INFO)).toEqual(expect.arrayContaining(["hi", "stress_category"]));
+  });
+
+  it("utci is named by UTCI_INFO, a temperature", () => {
+    expect(variableKeys(UTCI_INFO)).toContain("utci");
+    expect(quantities.utci.key).toBe("utci");
+    expect(quantities.utci.kind).toBe("temperature");
   });
 
   it("Adaptive's eight keys are named by ADAPTIVE_ASHRAE_INFO", () => {
