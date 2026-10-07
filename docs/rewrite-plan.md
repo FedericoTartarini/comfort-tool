@@ -1148,7 +1148,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    Safari 16.4, which `vite.config.js` names as `build.target` and the notice names in its text. Chrome 87–109, Firefox 83–114
    and Safari 14–15 have `Proxy` and got a blank page: sv-router calls `Array.prototype.toSorted` on every route match, Vite 8's default target
    was already that baseline with Firefox 114, and the build carries class fields and private methods. The check also
-   shows the notice when `toSorted` is missing, and the browser test removes it in two more cases. ADR-0001 §2's
+   shows the notice when `toSorted` is missing, and the browser test, renamed `tests/browser/browserNotice.behaviour.ts`,
+   removes it in two more cases. ADR-0001 §2's
    Browsers row, §7 criterion 5 and the risk table carry notes of the same day.
 8. The psychrometric chart answers the pointer (added 2026-09-28) through a hover grid over its axes, as the polygons
    chart has since `88f179d`. This is the probe layer ADR-0001 §4.4 deferred here on 2026-09-05. What the readout
