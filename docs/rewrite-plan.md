@@ -160,6 +160,15 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > rest is Phase 5d), so **Phase 5 is closed. Next: step 2 of the
 > table above, the first run of the UTCI acceptance (Phase 6 item 2).**
 
+> **2026-10-07 — position, the first UTCI run done**: `.scratch/utci-acceptance/` ticket 01. Three preconditions
+> landed ahead, each its own commit with a pinning test: `7b7c55e` the `utci` quantity; `63a3b7b` `tr_minus_tdb`,
+> `UTCI_INFO`'s `derived` key, of a new kind `temperatureDifference` (°F without the 32 °F offset), which the ticket
+> had not foreseen; `5b2f152` UTCI's stress categories in the band palette, RdBu's ten, by decision 60 rule 4, which
+> the ticket had not foreseen either. Then `src/models/utci.ts` and one registry line, 2 files changed, 40 insertions,
+> 1 deletion, at 887 tests as at HEAD, and reverted. One `axisRanges` row restates a bound, so the run passes on its
+> two files but not on "no number of its own"; the details are under Phase 5's paragraph below. **Next: step 3 of
+> the table above, Phase 5c's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1190,9 +1199,29 @@ units, chart type, thresholds, atmospheric pressure, numbers)")
 **Added 2026-10-07, when Phase 5 closes**: the first run of the UTCI acceptance, Phase 6 item 2, before Phase 5b adds a
 field to the declaration; the second, final run stays in Phase 6, so the two runs bracket every change the declaration's
 shape takes after this phase. The main repository already ships UTCI in TypeScript with `UTCI_INFO`, `UTCI_LIMITS` and
-`UTCI_STRESS_CATEGORY_BINS` (`../jsthermalcomfort/src/models/utci.ts:66-111`, `standards: []`, exported from the root
-and pinned by the lock), so by decision 13 UTCI is in v1 today. No planning: as Phase 4's, the acceptance is executed
-directly and judged by `git diff --stat`, one ticket holding the record.
+`UTCI_STRESS_CATEGORY_BINS` (`../jsthermalcomfort/src/models/utci.ts:66-111`, `standards: []`; `utci`, `UTCI_INFO` and
+`UTCI_STRESS_CATEGORY_BINS` exported from the root and pinned by the lock, `UTCI_LIMITS` deliberately not, as
+`HEAT_INDEX_ROTHFUSZ_LIMITS` is not; corrected 2026-10-07, it read "exported from the root"), so by decision 13 UTCI is
+in v1 today. No planning: as Phase 4's, the acceptance is executed directly and judged by `git diff --stat`, one ticket
+holding the record.
+**First run done 2026-10-07** (`.scratch/utci-acceptance/` ticket 01, whose Comments keep the declaration's text).
+Preconditions, each its own commit with a pinning test: `7b7c55e` the `utci` quantity; `63a3b7b` `tr_minus_tdb`, the
+`derived` key the drift test reads too, of a new kind `temperatureDifference`, so its violation row reads −54 – 126 °F
+in IP; `5b2f152` UTCI's stress categories in the band palette, which decision 60 rule 4 lands ahead as it lands a
+quantity. Then, after `git add -N`:
+
+```
+ src/models/index.ts |  3 ++-
+ src/models/utci.ts  | 38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+), 1 deletion(-)
+```
+
+887 tests as at HEAD, the four scripts green, UTCI in Explore's model select alone. Three findings, none fixed:
+the declaration writes `{ quantity: q.operative_tmp, min: -50, max: 50 }`, `tdb`'s bound restated, because
+`axisRangeFor`'s fallback reads `info.inputs` alone and under operative entry the `tdb` axis is `operative_tmp`; a
+follow-up lets the fallback answer it, so the final run drops the row. The declaration's constant `utci` collides with
+the library function's name and imports it as `utciFunction`. Its `inputs` defaults are numbers, as every
+declaration's are; `UTCI_INFO` publishes none.
 
 ---
 
@@ -1330,11 +1359,15 @@ then the library; then spec and tickets.
 1. Library side: nothing (noted 2026-10-07; it read "port `utci` from the JS on the `main` branch into the TS on
    `typescript`, add `io.utci`, attach `label` / `description` / `limits` / classification scale, and add the missing
    quantities to `quantities`"). The main repository ships `utci` in TypeScript with `UTCI_INFO`, `UTCI_LIMITS` and
-   `UTCI_STRESS_CATEGORY_BINS` (`src/models/utci.ts:66-111`), exported from the root and pinned by the lock.
+   `UTCI_STRESS_CATEGORY_BINS` (`src/models/utci.ts:66-111`), pinned by the lock; the root exports all but
+   `UTCI_LIMITS`, which the declaration does not need (corrected 2026-10-07, it read "exported from the root").
 2. App side: **add only `src/models/utci.ts` + one registry line**, zero other files change, and it appears only in the
    Explore navigation (no `standard` attached in the library). `table` is required, so UTCI declares it too.
    **Runs twice (2026-10-07)**: first when Phase 5 closes, on the declaration as it is then; finally here, after
    Phases 5c, 5b and 5d changed what they changed. Both runs are judged by `git diff --stat`.
+   **First run done 2026-10-07**: `src/models/index.ts | 3 ++-`, `src/models/utci.ts | 38 +++…`, 2 files changed, 40
+   insertions, 1 deletion, after three preconditions (Phase 5's paragraph). The final run starts from the declaration
+   in `.scratch/utci-acceptance/` ticket 01's Comments.
 3. Run all nine ADR §7 acceptance items (item 3 compares vertex geometry).
 4. One line of gtag; send `page_view` manually on route change, with the query string stripped from `page_location`
    (do not send the share payload to Google).
