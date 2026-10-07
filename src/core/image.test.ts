@@ -1,9 +1,12 @@
+import libraryPackage from "jsthermalcomfort/package.json";
 import { describe, expect, it } from "vitest";
+import appPackage from "../../package.json";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
+import { copy } from "$lib/text/copy";
 import type { ChartSpec } from "./charts/chartSpec";
 import { chartType } from "./chartType";
-import { defaultImageTitle, imageDescription, imageFileName, imageFormat, imageSize } from "./image";
+import { defaultImageTitle, imageDescription, imageFileName, imageFooter, imageFormat, imageSize } from "./image";
 
 const chart: ChartSpec = {
   traces: [],
@@ -32,26 +35,47 @@ describe("defaultImageTitle", () => {
 describe("imageDescription", () => {
   it("holds the chart's description by identity and the size it was given", () => {
     for (const size of Object.values(imageSize)) {
-      const image = imageDescription({ chart, size, title: "", summary: null });
+      const image = imageDescription({ chart, size, title: "", summaryAndFooter: null });
       expect(image.chart).toBe(chart);
       expect(image.size).toBe(size);
     }
   });
 
   it("holds the title it was given", () => {
-    const image = imageDescription({ chart, size: imageSize.doubleColumn, title: "Office in summer", summary: null });
+    const image = imageDescription({ chart, size: imageSize.doubleColumn, title: "Office in summer", summaryAndFooter: null });
     expect(image.title).toBe("Office in summer");
   });
 
-  it("holds the Input summary it was given, and none given none", () => {
+  it("holds both the Input summary and the footer it was given, and with them left out neither", () => {
     const summary = [["PMV / PPD (ISO 7730) · ISO 7730:2005"], ["Metabolic rate (met): 1.2"]];
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary }).summary).toBe(summary);
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary: null }).summary).toBeNull();
+    const footer = imageFooter(new Date(2026, 9, 7));
+    const included = imageDescription({ chart, size: imageSize.doubleColumn, title: "", summaryAndFooter: { summary, footer } });
+    expect(included.summaryAndFooter?.summary).toBe(summary);
+    expect(included.summaryAndFooter?.footer).toBe(footer);
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summaryAndFooter: null }).summaryAndFooter).toBeNull();
   });
 
   it("holds no title for an empty title or one of spaces alone", () => {
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summary: null }).title).toBeNull();
-    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "   ", summary: null }).title).toBeNull();
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "", summaryAndFooter: null }).title).toBeNull();
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "   ", summaryAndFooter: null }).title).toBeNull();
+  });
+});
+
+describe("imageFooter", () => {
+  it("names the tool and its version, then the library, its version and the day, in that order", () => {
+    expect(imageFooter(new Date(2026, 9, 7, 12))).toEqual([
+      `${copy.appTitle} ${appPackage.version}`,
+      `jsthermalcomfort ${libraryPackage.version} · 2026-10-07`,
+    ]);
+  });
+
+  it("writes the day in the machine's time zone, from its first minute to its last", () => {
+    expect(imageFooter(new Date(2026, 9, 7, 0, 30))[1]).toMatch(/ · 2026-10-07$/);
+    expect(imageFooter(new Date(2026, 9, 7, 23, 30))[1]).toMatch(/ · 2026-10-07$/);
+  });
+
+  it("writes a month and a day of one digit with two", () => {
+    expect(imageFooter(new Date(2027, 0, 5, 12))[1]).toMatch(/ · 2027-01-05$/);
   });
 });
 

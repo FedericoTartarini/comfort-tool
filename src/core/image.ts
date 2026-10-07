@@ -1,3 +1,4 @@
+import { copy } from "$lib/text/copy";
 import type { ChartSpec } from "./charts/chartSpec";
 import type { ChartType } from "./chartType";
 import type { InputSummary } from "./inputSummary";
@@ -40,19 +41,45 @@ export interface ImageDescription {
   readonly chart: ChartSpec;
   /** Above the plot, or `null` for no title line at all. */
   readonly title: string | null;
-  /** Under the legend, or `null` where the person left it out (decision 64, rule 2). */
-  readonly summary: InputSummary | null;
+  /** Under the legend, both or neither: `null` where the person left them out (decision 64, rule 2). */
+  readonly summaryAndFooter: ImageSummaryAndFooter | null;
   readonly size: ImageSize;
+}
+
+/** The Input summary and, under it, the footer's lines of {@link imageFooter}. */
+export interface ImageSummaryAndFooter {
+  readonly summary: InputSummary;
+  readonly footer: readonly string[];
 }
 
 /** `title` as the person left it: one that is empty or spaces alone is none (decision 64, rule 2). */
 export function imageDescription(parts: {
   chart: ChartSpec;
   title: string;
-  summary: InputSummary | null;
+  summaryAndFooter: ImageSummaryAndFooter | null;
   size: ImageSize;
 }): ImageDescription {
-  return { chart: parts.chart, title: parts.title.trim() === "" ? null : parts.title, summary: parts.summary, size: parts.size };
+  return {
+    chart: parts.chart,
+    title: parts.title.trim() === "" ? null : parts.title,
+    summaryAndFooter: parts.summaryAndFooter,
+    size: parts.size,
+  };
+}
+
+/**
+ * An Image's footer (decision 64, rule 4): the tool's name and version, then
+ * the library's version and the day `madeAt` falls on in the machine's time
+ * zone, as `CBE Thermal Comfort Tool 0.1.0` over
+ * `jsthermalcomfort 1.4.0 · 2026-10-07`. Two lines at both sizes: as one, it
+ * is wider than a single column's file. The versions are the package files'
+ * at the build (`vite.config.js`).
+ */
+export function imageFooter(madeAt: Date): readonly string[] {
+  const day = [madeAt.getFullYear(), madeAt.getMonth() + 1, madeAt.getDate()]
+    .map((part) => String(part).padStart(2, "0"))
+    .join("-");
+  return [copy.footerTool(copy.appTitle, __APP_VERSION__), copy.footerLibrary(__LIBRARY_VERSION__, day)];
 }
 
 /**

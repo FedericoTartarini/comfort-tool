@@ -1,10 +1,10 @@
 <!--
-  Export image (ADR-0002 decision 64, rules 2, 3, 5, 6 and 8): a button that
+  Export image (ADR-0002 decision 64, rules 2 to 6 and 8): a button that
   opens a dialog asking for a title, a size, a format and whether the Input
-  summary is included, and Download, which builds the summary and the Image of
-  the chart the page shows at that moment and closes the dialog. The button is
-  disabled while the page shows no chart. An image that cannot be made is the
-  caller's to report.
+  summary and the footer are included, and Download, which builds the summary,
+  the footer and the Image of the chart the page shows at that moment and
+  closes the dialog. The button is disabled while the page shows no chart. An
+  image that cannot be made is the caller's to report.
 
   The choices are the dialog's own state, in no session and no link: kept
   while the page is shown, at their defaults again once it is mounted anew.
@@ -21,6 +21,7 @@
     defaultImageTitle,
     imageDescription,
     imageFileName,
+    imageFooter,
     imageFormat,
     imageSize,
     type ImageFormat,
@@ -64,13 +65,16 @@
   // Raw: a size or a format is compared by identity, which a proxy would break.
   let size: ImageSize = $state.raw(imageSize.doubleColumn);
   let format: ImageFormat = $state.raw(imageFormat.png);
-  let includesSummary = $state(true);
+  let includesSummaryAndFooter = $state(true);
 
   async function download(shown: ChartSpec) {
     open = false;
-    const summary = includesSummary ? inputSummary({ model, runs, unitSystem, bands }) : null;
+    const summaryAndFooter = includesSummaryAndFooter
+      ? { summary: inputSummary({ model, runs, unitSystem, bands }), footer: imageFooter(new Date()) }
+      : null;
     try {
-      await downloadImage(imageDescription({ chart: shown, title, summary, size }), format, imageFileName(title, size, format));
+      const image = imageDescription({ chart: shown, title, summaryAndFooter, size });
+      await downloadImage(image, format, imageFileName(title, size, format));
     } catch {
       onfailed();
     }
@@ -95,8 +99,8 @@
       {@render choice(copy.imageSize, Object.values(imageSize), size, (chosen) => (size = chosen))}
       {@render choice(copy.imageFormat, Object.values(imageFormat), format, (chosen) => (format = chosen))}
       <Inline gap="2" align="center">
-        <Checkbox id="{id}-summary" bind:checked={includesSummary} />
-        <Label for="{id}-summary">{copy.imageIncludesSummary}</Label>
+        <Checkbox id="{id}-summary-and-footer" bind:checked={includesSummaryAndFooter} />
+        <Label for="{id}-summary-and-footer">{copy.imageIncludesSummaryAndFooter}</Label>
       </Inline>
     </Stack>
     <Dialog.Footer>

@@ -39,10 +39,12 @@ const PLOTLY_LINE_SPACING = 1.3;
 const PLOTLY_ANNOTATION_PADDING = 1;
 /** From the axis line to its title, in px, so the title stays inside {@link MARGIN}. */
 const AXIS_TITLE_STANDOFF = 4;
-/** Under what the file ends with, the legend or the summary, to its bottom edge, in px. */
+/** Under what the file ends with, the legend or the footer, to its bottom edge, in px. */
 const BOTTOM_GAP = 6;
 /** From the legend's bottom to the summary's top, in px. */
 const SUMMARY_GAP = 6;
+/** From the summary's bottom to the footer's top, in px. */
+const FOOTER_GAP = 6;
 /** One line of text at {@link LETTERING}, in px: n lines take a little less than n of them. */
 const LINE_HEIGHT = LETTERING.size * PLOTLY_LINE_SPACING;
 /** The plot area's height over its width. */
@@ -82,19 +84,23 @@ export async function downloadImage(image: ImageDescription, format: ImageFormat
 /**
  * The figure of `image`, its legend `legendHeight` px high: the title, if
  * any, then the plot at its declared ranges, the legend under it, the Input
- * summary, if any, under that, the file as tall as they need.
+ * summary and the footer, if any, under that, the file as tall as they need.
  */
 function figureOf(image: ImageDescription, legendHeight: number) {
-  const { chart, title } = image;
+  const { chart, title, summaryAndFooter } = image;
   // The summary's groups stand one under another, a slot's heading opening its own.
-  const summary = image.summary?.flat() ?? [];
+  const summary = summaryAndFooter?.summary.flat() ?? [];
+  const footer = summaryAndFooter?.footer ?? [];
   const width = image.size.widthMm * PX_PER_MM;
   const plotTop = MARGIN.top + (title === null ? 0 : TITLE_BLOCK);
   const plotHeight = (width - MARGIN.left - MARGIN.right) * PLOT_ASPECT;
   const plotBottom = plotTop + plotHeight;
   const legendTop = plotBottom + MARGIN.legend;
-  const summaryTop = legendTop + legendHeight + (summary.length === 0 ? 0 : SUMMARY_GAP);
-  const height = summaryTop + summary.length * LINE_HEIGHT + BOTTOM_GAP;
+  const legendBottom = legendTop + legendHeight;
+  const summaryTop = legendBottom + SUMMARY_GAP;
+  const footerTop = summaryTop + summary.length * LINE_HEIGHT + FOOTER_GAP;
+  const footerBottom = footerTop + footer.length * LINE_HEIGHT;
+  const height = (summaryAndFooter === null ? legendBottom : footerBottom) + BOTTOM_GAP;
   // The hover grid is left out: nobody points at a file, and an SVG would
   // carry it as a bitmap.
   const drawn = toPlotlyData({ ...chart, traces: chart.traces.filter((trace) => trace.kind !== "hoverGrid") });
@@ -124,7 +130,9 @@ function figureOf(image: ImageDescription, legendHeight: number) {
         return { ...annotation, font: { ...annotation.font, size: LETTERING.size } };
       }),
       ...(title === null ? [] : [titleAnnotationOf(title)]),
-      ...(summary.length === 0 ? [] : [textBlockOf(summary, summaryTop - plotBottom)]),
+      ...(summaryAndFooter === null
+        ? []
+        : [textBlockOf(summary, summaryTop - plotBottom), textBlockOf(footer, footerTop - plotBottom)]),
     ],
     xaxis: fileAxisOf(chart.layout.x),
     yaxis: fileAxisOf(chart.layout.y),
