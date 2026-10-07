@@ -1145,8 +1145,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    `*.visual.ts`. ADR-0001's four sentences on the summary page (§2's Links rationale, §4.8, §5's tree, §7's risk
    table) carry notes of the same day.
    **Revised 2026-10-07** (`.scratch/proxy-notice/` ticket 02, `c08739f`): the floor rose to Chrome 111, Firefox 115 and
-   Safari 16.4, which `vite.config.js` names as `build.target` and the notice names in its text. Below it a browser with
-   `Proxy` got a blank page: sv-router calls `Array.prototype.toSorted` on every route match, Vite 8's default target
+   Safari 16.4, which `vite.config.js` names as `build.target` and the notice names in its text. Chrome 87–109, Firefox 83–114
+   and Safari 14–15 have `Proxy` and got a blank page: sv-router calls `Array.prototype.toSorted` on every route match, Vite 8's default target
    was already that baseline with Firefox 114, and the build carries class fields and private methods. The check also
    shows the notice when `toSorted` is missing, and the browser test removes it in two more cases. ADR-0001 §2's
    Browsers row, §7 criterion 5 and the risk table carry notes of the same day.
