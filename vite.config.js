@@ -25,6 +25,10 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
   },
   build: {
+    // The tool's floor (ADR-0001 §2): Vite 8's default baseline with Firefox
+    // raised to 115 for sv-router's Array toSorted. index.html's notice names
+    // the same versions.
+    target: ["chrome111", "edge111", "firefox115", "safari16.4", "ios16.4"],
     rollupOptions: {
       output: {
         manualChunks(id) {
