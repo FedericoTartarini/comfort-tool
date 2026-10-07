@@ -153,6 +153,13 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > | 7 | Phase 5d, Time-series with PHS | spec, tickets | 5, 6 |
 > | 8 | Phase 6: the UTCI acceptance's final run, gtag, the freeze test, the visual close-out, the merge | tickets as a checklist | 7 |
 
+> **2026-10-07 — position, Phase 5 closed**: item 7 landed on `rewrite/v1` as `.scratch/proxy-notice/` ticket 01
+> (`224ba0b`): a browser without `Proxy` sees a static notice in `index.html` naming Chrome 87, Firefox 83 and Safari 14,
+> and nothing in `src/` changed. Its verification is the repository's first Playwright test, three cases in Chromium.
+> The four scripts are green at 883 tests. Every item of Phase 5 is done, item 6 as far as decision 57 lands it (its
+> rest is Phase 5d), so **Phase 5 is closed. Next: step 2 of the
+> table above, the first run of the UTCI acceptance (Phase 6 item 2).**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1130,6 +1137,13 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    (`core/modelDeclaration.ts:232`), written by no registered model. The rest is Phase 5d (added 2026-10-07).
 7. The `Proxy`-less fallback is a static notice in `index.html` naming the required browser versions (ADR §2 / §7.5,
    decided 2026-09-04). No second ES5 code path, no share decoding.
+   **Done 2026-10-07** (`.scratch/proxy-notice/` ticket 01, `224ba0b`): `index.html` holds the notice, hidden, and an
+   inline ES5 script that shows it when `typeof Proxy` is `"undefined"`; it names Chrome 87, Firefox 83 and Safari 14,
+   and `src/` is untouched. The repository's first Playwright test, `tests/browser/proxyNotice.behaviour.ts`, removes
+   `Proxy` before any page script runs and finds the notice shown and `#app` empty, with and without a share link, and
+   with `Proxy` finds the notice hidden and the app drawn; `playwright.config.ts` matches `*.behaviour.ts` beside
+   `*.visual.ts`. ADR-0001's four sentences on the summary page (§2's Links rationale, §4.8, §5's tree, §7's risk
+   table) carry notes of the same day.
 8. The psychrometric chart answers the pointer (added 2026-09-28) through a hover grid over its axes, as the polygons
    chart has since `88f179d`. This is the probe layer ADR-0001 §4.4 deferred here on 2026-09-05. What the readout
    reports is settled in this phase's grilling; the deployed tool's reports t, rh and hr. Where it sits is Phase 5c
