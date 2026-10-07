@@ -20,6 +20,7 @@ import type { Bound } from "jsthermalcomfort";
 
 export type QuantityKind =
   | "temperature"
+  | "temperatureDifference"
   | "airSpeed"
   | "percentage"
   | "metabolicRate"
@@ -97,6 +98,8 @@ export const quantities = {
   category: { key: "category", kind: "category", label: "ISO 7730 category" },
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
   utci: { key: "utci", kind: "temperature", label: "Universal Thermal Climate Index" },
+  // UTCI's `derived` key: the library bounds `tr` by its difference from `tdb`.
+  tr_minus_tdb: { key: "tr_minus_tdb", kind: "temperatureDifference", label: "Mean radiant minus dry-bulb air temperature" },
   stress_category: { key: "stress_category", kind: "category", label: "Thermal stress category" },
   t_running_mean: { key: "t_running_mean", kind: "temperature", label: "Prevailing mean outdoor temperature" },
   tmp_cmf: { key: "tmp_cmf", kind: "temperature", label: "Comfort temperature" },

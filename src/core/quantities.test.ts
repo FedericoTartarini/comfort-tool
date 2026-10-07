@@ -55,6 +55,12 @@ describe("quantities table drift", () => {
     expect(quantities.utci.kind).toBe("temperature");
   });
 
+  it("tr_minus_tdb is named by UTCI_INFO's derived rows, a temperature difference", () => {
+    expect(Object.keys(UTCI_INFO.derived ?? {})).toContain("tr_minus_tdb");
+    expect(quantities.tr_minus_tdb.key).toBe("tr_minus_tdb");
+    expect(quantities.tr_minus_tdb.kind).toBe("temperatureDifference");
+  });
+
   it("Adaptive's eight keys are named by ADAPTIVE_ASHRAE_INFO", () => {
     const adaptiveKeys = [
       "t_running_mean",
