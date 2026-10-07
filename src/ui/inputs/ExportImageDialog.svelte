@@ -1,0 +1,106 @@
+<!--
+  Export image (ADR-0002 decision 64, rules 2, 5, 6 and 8): a button that
+  opens a dialog asking for a title, a size and a format, and Download, which
+  builds the Image of the chart the page shows at that moment and closes the
+  dialog. The button is disabled while the page shows no chart. An image that
+  cannot be made is the caller's to report.
+
+  The choices are the dialog's own state, in no session and no link: kept
+  while the page is shown, at their defaults again once it is mounted anew.
+  An edited title stands while the default it replaced is still the default.
+
+  Its look is provisional — the designed version is Phase 5c's — so it composes
+  the generated dialog primitive and adds no styling of its own.
+-->
+<script lang="ts">
+  import type { ChartSpec } from "$lib/core/charts/chartSpec";
+  import type { ChartType } from "$lib/core/chartType";
+  import {
+    defaultImageTitle,
+    imageDescription,
+    imageFileName,
+    imageFormat,
+    imageSize,
+    type ImageFormat,
+    type ImageSize,
+  } from "$lib/core/image";
+  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import { copy } from "$lib/text/copy";
+  import { downloadImage } from "$lib/ui/charts/plotlyImage";
+  import Inline from "$lib/ui/layout/Inline.svelte";
+  import Stack from "$lib/ui/layout/Stack.svelte";
+  import { Button } from "$lib/ui/primitives/button";
+  import * as Dialog from "$lib/ui/primitives/dialog";
+  import { Input } from "$lib/ui/primitives/input";
+  import { Label } from "$lib/ui/primitives/label";
+
+  interface Props {
+    /** The chart the page shows, or `null` while it shows none. */
+    chart: ChartSpec | null;
+    /** The session's model and chart type, which name the default title. */
+    model: RegisteredModel;
+    chartType: ChartType;
+    /** The image could not be made. */
+    onfailed: () => void;
+  }
+
+  let { chart, model, chartType, onfailed }: Props = $props();
+
+  const id = $props.id();
+  let open = $state(false);
+  // Typing overrides the derived value until the default changes, with the
+  // model or the chart type: then the title starts again from the new one.
+  let title = $derived(defaultImageTitle(model, chartType));
+  // Raw: a size or a format is compared by identity, which a proxy would break.
+  let size: ImageSize = $state.raw(imageSize.doubleColumn);
+  let format: ImageFormat = $state.raw(imageFormat.png);
+
+  async function download(shown: ChartSpec) {
+    open = false;
+    try {
+      await downloadImage(imageDescription({ chart: shown, title, size }), format, imageFileName(title, size, format));
+    } catch {
+      onfailed();
+    }
+  }
+</script>
+
+<Dialog.Root bind:open>
+  <Dialog.Trigger disabled={chart === null}>
+    {#snippet child({ props })}
+      <Button {...props} size="sm" variant="outline">{copy.exportImage}</Button>
+    {/snippet}
+  </Dialog.Trigger>
+  <Dialog.Content>
+    <Dialog.Header>
+      <Dialog.Title>{copy.exportImage}</Dialog.Title>
+    </Dialog.Header>
+    <Stack gap="4">
+      <Stack gap="2">
+        <Label for="{id}-title">{copy.imageTitle}</Label>
+        <Input id="{id}-title" bind:value={title} />
+      </Stack>
+      {@render choice(copy.imageSize, Object.values(imageSize), size, (chosen) => (size = chosen))}
+      {@render choice(copy.imageFormat, Object.values(imageFormat), format, (chosen) => (format = chosen))}
+    </Stack>
+    <Dialog.Footer>
+      <Button disabled={chart === null} onclick={() => chart && download(chart)}>{copy.imageDownload}</Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+{#snippet choice<T extends { title: string }>(label: string, members: readonly T[], chosen: T, onchoose: (member: T) => void)}
+  <Inline gap="2" align="center">
+    <span>{label}</span>
+    {#each members as member (member)}
+      <Button
+        size="sm"
+        variant={member === chosen ? "default" : "outline"}
+        aria-pressed={member === chosen}
+        onclick={() => onchoose(member)}
+      >
+        {member.title}
+      </Button>
+    {/each}
+  </Inline>
+{/snippet}

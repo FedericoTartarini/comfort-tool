@@ -21,8 +21,10 @@ const PX_PER_PT = 96 / 72;
 /** A PNG's pixels per CSS px: 600 dpi over the CSS px's 96. */
 const PNG_PIXELS_PER_PX = 600 / 96;
 
-/** Every text of the figure: 8 pt at the printed width, at both sizes. */
+/** Every text of the figure but the title: 8 pt at the printed width, at both sizes. */
 const LETTERING = { family: "Arial, Helvetica, sans-serif", size: 8 * PX_PER_PT };
+/** The title's: 10 pt. */
+const TITLE_LETTERING = { ...LETTERING, size: 10 * PX_PER_PT };
 
 /**
  * Around the plot, in px: the y axis's widest ticks and its title on the left,
@@ -30,6 +32,11 @@ const LETTERING = { family: "Arial, Helvetica, sans-serif", size: 8 * PX_PER_PT 
  * to the legend's top, the x axis's ticks and title.
  */
 const MARGIN = { left: 52, right: 12, top: 8, legend: 40 };
+/** The title's line, in px, between the top margin and the plot; none without a title. */
+const TITLE_BLOCK = 22;
+/** Plotly's line height over its lettering, and an annotation's padding inside its box, in px: its defaults. */
+const PLOTLY_LINE_SPACING = 1.3;
+const PLOTLY_ANNOTATION_PADDING = 1;
 /** From the axis line to its title, in px, so the title stays inside {@link MARGIN}. */
 const AXIS_TITLE_STANDOFF = 4;
 /** Under the legend, to the file's bottom edge, in px. */
@@ -69,14 +76,16 @@ export async function downloadImage(image: ImageDescription, format: ImageFormat
 }
 
 /**
- * The figure of `image`, its legend `legendHeight` px high: the plot at its
- * declared ranges, the legend under it, the file as tall as the two need.
+ * The figure of `image`, its legend `legendHeight` px high: the title, if
+ * any, then the plot at its declared ranges, the legend under it, the file as
+ * tall as they need.
  */
 function figureOf(image: ImageDescription, legendHeight: number) {
-  const { chart } = image;
+  const { chart, title } = image;
   const width = image.size.widthMm * PX_PER_MM;
+  const plotTop = MARGIN.top + (title === null ? 0 : TITLE_BLOCK);
   const plotHeight = (width - MARGIN.left - MARGIN.right) * PLOT_ASPECT;
-  const legendTop = MARGIN.top + plotHeight + MARGIN.legend;
+  const legendTop = plotTop + plotHeight + MARGIN.legend;
   const height = legendTop + legendHeight + BOTTOM_GAP;
   // The hover grid is left out: nobody points at a file, and an SVG would
   // carry it as a bitmap.
@@ -85,7 +94,7 @@ function figureOf(image: ImageDescription, legendHeight: number) {
   const layout = {
     width,
     height,
-    margin: { l: MARGIN.left, r: MARGIN.right, t: MARGIN.top, b: height - MARGIN.top - plotHeight, pad: 0, autoexpand: false },
+    margin: { l: MARGIN.left, r: MARGIN.right, t: plotTop, b: height - plotTop - plotHeight, pad: 0, autoexpand: false },
     font: LETTERING,
     paper_bgcolor: PAPER,
     plot_bgcolor: chartInk.ground,
@@ -101,14 +110,34 @@ function figureOf(image: ImageDescription, legendHeight: number) {
       yanchor: "top",
       maxheight: LEGEND_MAX_HEIGHT,
     },
-    annotations: chart.annotations.map((entry) => {
-      const annotation = toPlotlyAnnotation(entry);
-      return { ...annotation, font: { ...annotation.font, size: LETTERING.size } };
-    }),
+    annotations: [
+      ...chart.annotations.map((entry) => {
+        const annotation = toPlotlyAnnotation(entry);
+        return { ...annotation, font: { ...annotation.font, size: LETTERING.size } };
+      }),
+      ...(title === null ? [] : [titleAnnotationOf(title)]),
+    ],
     xaxis: fileAxisOf(chart.layout.x),
     yaxis: fileAxisOf(chart.layout.y),
   } satisfies PlotlyLayout;
   return { data, layout };
+}
+
+/** The title, on the plot's left edge, its box's top at the top margin. */
+function titleAnnotationOf(title: string) {
+  return {
+    text: title,
+    xref: "paper",
+    yref: "paper",
+    x: 0,
+    y: 1,
+    xanchor: "left",
+    yanchor: "bottom",
+    yshift: TITLE_BLOCK - TITLE_LETTERING.size * PLOTLY_LINE_SPACING - PLOTLY_ANNOTATION_PADDING,
+    showarrow: false,
+    align: "left",
+    font: TITLE_LETTERING,
+  } as const;
 }
 
 /**

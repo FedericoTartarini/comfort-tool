@@ -60,6 +60,10 @@ export const copy = {
   closeNotice: "Close",
   // An Image of the chart (ADR-0002 decision 64, rules 6 and 8).
   exportImage: "Export image",
+  imageTitle: "Title",
+  imageSize: "Size",
+  imageFormat: "Format",
+  imageDownload: "Download",
   imageFailedNotice: "The image could not be made.",
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",

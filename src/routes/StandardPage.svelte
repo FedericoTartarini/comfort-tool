@@ -7,7 +7,7 @@
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
-  import ExportImageButton from "$lib/ui/inputs/ExportImageButton.svelte";
+  import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
@@ -137,7 +137,12 @@
 
           <Inline gap="4" justify="between" align="center">
             <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
-            <ExportImageButton chart={outputs.chart} onfailed={() => tab.raiseNotice("imageFailed")} />
+            <ExportImageDialog
+              chart={outputs.chart}
+              model={session.model}
+              chartType={session.chart.type}
+              onfailed={() => tab.raiseNotice("imageFailed")}
+            />
           </Inline>
 
           {#if outputs.chart}

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { registeredModels } from "$lib/models";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import type { ChartSpec } from "./charts/chartSpec";
-import { imageDescription, imageFileName, imageFormat, imageSize } from "./image";
+import { chartType } from "./chartType";
+import { defaultImageTitle, imageDescription, imageFileName, imageFormat, imageSize } from "./image";
 
 const chart: ChartSpec = {
   traces: [],
@@ -16,13 +19,33 @@ describe("imageSize", () => {
   });
 });
 
+describe("defaultImageTitle", () => {
+  it("is the model's name as the model select shows it and the chart type's title, for every registered model and each chart it declares", () => {
+    for (const model of registeredModels) {
+      for (const declared of model.charts) {
+        expect(defaultImageTitle(model, declared.type)).toBe(`${model.info.label} · ${declared.type.title}`);
+      }
+    }
+  });
+});
+
 describe("imageDescription", () => {
   it("holds the chart's description by identity and the size it was given", () => {
     for (const size of Object.values(imageSize)) {
-      const image = imageDescription({ chart, size });
+      const image = imageDescription({ chart, size, title: "" });
       expect(image.chart).toBe(chart);
       expect(image.size).toBe(size);
     }
+  });
+
+  it("holds the title it was given", () => {
+    const image = imageDescription({ chart, size: imageSize.doubleColumn, title: "Office in summer" });
+    expect(image.title).toBe("Office in summer");
+  });
+
+  it("holds no title for an empty title or one of spaces alone", () => {
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "" }).title).toBeNull();
+    expect(imageDescription({ chart, size: imageSize.doubleColumn, title: "   " }).title).toBeNull();
   });
 });
 
@@ -38,6 +61,14 @@ describe("imageFileName", () => {
     expect(imageFileName("PMV (ASHRAE 55) · Psychrometric", imageSize.singleColumn, imageFormat.svg)).toBe(
       "pmv-ashrae-55-psychrometric-single-column.svg",
     );
+  });
+
+  it("names a file from a registered model's default title, at each size and format", () => {
+    const title = defaultImageTitle(pmvPpdAshrae, chartType.psychrometric);
+    expect(imageFileName(title, imageSize.singleColumn, imageFormat.png)).toBe("pmv-ppd-ashrae-55-psychrometric-single-column.png");
+    expect(imageFileName(title, imageSize.singleColumn, imageFormat.svg)).toBe("pmv-ppd-ashrae-55-psychrometric-single-column.svg");
+    expect(imageFileName(title, imageSize.doubleColumn, imageFormat.png)).toBe("pmv-ppd-ashrae-55-psychrometric-double-column.png");
+    expect(imageFileName(title, imageSize.doubleColumn, imageFormat.svg)).toBe("pmv-ppd-ashrae-55-psychrometric-double-column.svg");
   });
 
   it("leaves no leading, trailing or doubled hyphen in a title of punctuation and capitals", () => {
