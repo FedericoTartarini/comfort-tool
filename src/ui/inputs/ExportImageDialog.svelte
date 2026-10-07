@@ -69,10 +69,10 @@
 
   async function download(shown: ChartSpec) {
     open = false;
-    const summaryAndFooter = includesSummaryAndFooter
-      ? { summary: inputSummary({ model, runs, unitSystem, bands }), footer: imageFooter(new Date()) }
-      : null;
     try {
+      const summaryAndFooter = includesSummaryAndFooter
+        ? { summary: inputSummary({ model, runs, unitSystem, bands }), footer: imageFooter(new Date()) }
+        : null;
       const image = imageDescription({ chart: shown, title, summaryAndFooter, size });
       await downloadImage(image, format, imageFileName(title, size, format));
     } catch {
