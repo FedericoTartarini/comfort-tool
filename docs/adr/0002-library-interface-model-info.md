@@ -2311,7 +2311,8 @@ notes under decisions 51 and 53:
     footer". Rule 7: the adapter imports `core/image.ts` beside the chart's description and the palette, and
     nothing of a model, the state or the library (ticket 02 probed the lint rule); the summary and the footer are
     built in the dialog at Download. Rule 8: the notice is raised when the adapter's download rejects; the summary
-    and the footer are built before it and outside that catch (`ui/inputs/ExportImageDialog.svelte:72-80`).
+    and the footer are built before it and outside that catch (`ui/inputs/ExportImageDialog.svelte:72-80`), and
+    `5655343` moved them inside it the same day, so a summary that cannot be made raises the notice too.
     Seen and left, in tickets 01 to 06's Comments: at 90 mm the relative-humidity isolines' labels at the top right
     run into each other; a long title does not wrap; a typed `<`, `&` or `<br>` in a title may be read as Plotly's
     markup, as a typed Band label already is in the legend.
