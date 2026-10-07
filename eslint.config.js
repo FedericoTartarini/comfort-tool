@@ -70,7 +70,7 @@ const declarationSubdirectoryBoundary = {
 // slot, so it is the builders' and not the component's (ADR-0002 decision 50).
 const chartBoundary = {
   group: ["**/models/**", "**/state/**", "jsthermalcomfort", "**/charts/chartRequest"],
-  message: "Chart components consume a ChartSpec and nothing else.",
+  message: "The chart adapter consumes a ChartSpec, or an ImageDescription that holds one, and nothing else.",
 };
 
 // ADR §6: Svelte 4 syntax an LLM reaches for by habit. The autofixer catches

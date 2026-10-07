@@ -84,7 +84,7 @@ export function imageFooter(madeAt: Date): readonly string[] {
 
 /**
  * The title an Image starts with (decision 64, rule 2): the model's name as
- * the model select shows it and the chart's, as `PMV (ASHRAE 55) · Psychrometric`.
+ * the model select shows it and the chart's, as `PMV / PPD (ASHRAE 55) · Psychrometric`.
  */
 export function defaultImageTitle(model: RegisteredModel, type: ChartType): string {
   return `${model.info.label} · ${type.title}`;
