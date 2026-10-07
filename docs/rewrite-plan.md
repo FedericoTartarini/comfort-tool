@@ -121,6 +121,16 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > What is open for the user, and what the checklist's human half and `CONTEXT.md` found, is in ticket 07's
 > Comments, none changed. **Next: Phase 5 item 5, the image export.**
 
+> **2026-10-07 — position, the image export done**: Phase 5 item 5 landed on `rewrite/v1` as `.scratch/image-export/`
+> tickets 01 to 06: 01 measured on plotly.js 4.0.0 and committed nothing; 02 `6e4f350` moved the conversion into
+> `ui/charts/plotlyFigure.ts`, with T14 as `3155c02`, `6be8ae4` and `6204915`; 03 `3e1623e` Export image downloads
+> the chart and its legend; 04 `e6cfb63` the dialog, the title, the two sizes and the two formats; 05 `b2143f9` the
+> Input summary; 06 `84d3ca3` the footer. Ticket 07 read the documents against the code: decision 64 carries a note
+> of 2026-10-07, ADR-0001 §2.1, §4.4, §5 and §7 carry notes, and Phase 5c item 2 a sentence on EPS and PDF. The four
+> scripts are green at 883 tests. Tickets 01 to 06 were walked in Chrome alone, with the console clean. What
+> is open for the user, and what the checklist's human half found, is in ticket 07's Comments, none changed.
+> **Next: Phase 5 item 7, the static notice for a browser without `Proxy`, the last of Phase 5's items.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1086,6 +1096,10 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    **Revised 2026-10-07, at the spec** (decision 64's note of the same day; `.scratch/image-export/spec.md`): the
    Input summary reads the runs alone. Above the slots it gives the model and its standard; each drawn slot's part
    gives its run's rows, whose labels say the entry mode, its options and the pressure it ran at.
+   **Done 2026-10-07** (`.scratch/image-export/` tickets 02 to 06: `6e4f350` + `3155c02` + `6be8ae4` + `6204915`,
+   `3e1623e`, `e6cfb63`, `b2143f9`, `84d3ca3`). As built it differs from the text above where decision 64 carries
+   ticket 07's note of 2026-10-07: the title is lettered at 10 pt and the rest at 8 pt; the footer is two lines,
+   since as one it is cut off in a single column.
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
    **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
    its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,
@@ -1178,6 +1192,10 @@ all change the layout, so a design drawn before them would be redrawn after them
    gives the pressure's input, which Phase 4c puts in the input panel outside every slot, its place and look.
    **Revised 2026-10-06** (ADR-0002 decision 63): Reset is built in Phase 5 item 4, among the session's controls;
    this phase gives it and Copy link their place and look.
+   **Added 2026-10-07** (ADR-0002 decision 64, rule 5; `.scratch/image-export/` ticket 07): the documentation the
+   link leads to says that Export image writes PNG and SVG alone, so a person asked for EPS or PDF converts the SVG
+   once, and that the SVG names Arial but does not embed it, which that conversion does. The app has no other place
+   a person would read it.
 3. One palette across UI and charts. `core/bandPalette.ts`'s `chartInk` is currently hand-picked hex against the CBE
    fills; it becomes part of the design system rather than a chart-local constant.
 4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.

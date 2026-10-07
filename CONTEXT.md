@@ -121,7 +121,7 @@ A model's output computed over a grid of two quantities, from which a chart cont
 _Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
 **Image**:
-A file a person downloads of the chart a page shows: the chart and its legend and, unless left out, a title, an Input summary and a footer naming the tool, its version and the date. It comes at the printed width of a single or a double column. It shows the chart as the session gives it, not as the person has zoomed it.
+A file a person downloads of the chart a page shows: the chart and its legend and, unless left out, a title, an Input summary and a footer naming the tool, its version, the version of the library it calculates with and the date. It comes at the printed width of a single or a double column. It shows the chart as the session gives it, not as the person has zoomed it.
 _Avoid_: export (alone), screenshot, figure, download
 
 **Input summary**:
