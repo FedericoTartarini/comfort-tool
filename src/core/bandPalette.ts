@@ -3,6 +3,7 @@ import {
   PMV_CATEGORY_BINS_ISO,
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+  UTCI_STRESS_CATEGORY_BINS,
   type ClassifierBins,
 } from "jsthermalcomfort";
 import type { SlotHue } from "./slotBadge";
@@ -54,7 +55,7 @@ export interface PaletteEntry {
 export const palettes = {
   /** The thermal-sensation scale's CBE fills, for now (decision 60). */
   cbeSensation: { family: cbeSensation },
-  /** A scale around neutral, cold blue to hot red, as UTCI's will be. */
+  /** A scale around neutral, cold blue to hot red, as UTCI's is. */
   diverging: { family: rdBu, reversed: true },
   /** A one-sided scale, safe to dangerous. */
   sequential: { family: ylOrRd },
@@ -72,6 +73,7 @@ const classifierPalettes: ReadonlyMap<ClassifierBins, PaletteEntry> = new Map<Cl
   [PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE, palettes.cbeSensation],
   [HEAT_INDEX_STRESS_CATEGORY_BINS, palettes.sequential],
   [PMV_CATEGORY_BINS_ISO, palettes.sequentialCategories],
+  [UTCI_STRESS_CATEGORY_BINS, palettes.diverging],
 ]);
 
 /**

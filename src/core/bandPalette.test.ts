@@ -4,6 +4,7 @@ import {
   PMV_CATEGORY_BINS_ISO,
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+  UTCI_STRESS_CATEGORY_BINS,
   type ClassifierBins,
 } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
@@ -37,6 +38,21 @@ describe("bandColors", () => {
   it("gives ISO 7730's A, B and C three colours of one sequential family and \"none\" no colour", () => {
     // Read, as every classifier is, at its band count: YlOrRd's four, the fourth left unpainted.
     expect(bandColors(PMV_CATEGORY_BINS_ISO)).toEqual(["#ffffb2", "#fecc5c", "#fd8d3c", undefined]);
+  });
+
+  it("gives UTCI's ten stress categories ColorBrewer RdBu's ten, extreme cold stress blue to extreme heat stress red", () => {
+    expect(bandColors(UTCI_STRESS_CATEGORY_BINS)).toEqual([
+      "#053061",
+      "#2166ac",
+      "#4393c3",
+      "#92c5de",
+      "#d1e5f0",
+      "#fddbc7",
+      "#f4a582",
+      "#d6604d",
+      "#b2182b",
+      "#67001f",
+    ]);
   });
 
   it("gives a ten-label classifier with an entry in the table ten colours", () => {
