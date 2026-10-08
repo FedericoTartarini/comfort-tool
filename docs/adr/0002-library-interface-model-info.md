@@ -1205,6 +1205,8 @@ the local `../comfort_tool` checkout:
     **Amended 2026-10-08 (decision 68).** "What appears once is the pair of entry-mode controls,
     `ui/inputs/EntryModeControls.svelte`" no longer holds: the one control of each group is the select that is its
     row's label, and the component goes. The mode is still the session's and still converts every slot.
+    **Amended 2026-10-08 (decision 72).** That one control is the menu button beside the row's label, not the label
+    itself; the rest of the note holds.
 52. **Each slot has its own gate, and a switch asks once for every compared slot.** Amends decisions 32 and 33, which
     were written for slot 1 alone.
     The gate is asked per slot. A slot with an entry out of range keeps its own last valid run, and its row, its
@@ -2483,6 +2485,9 @@ notes under decisions 51 and 53:
     gains one reader, the entry group a quantity's row belongs to with its modes; `state/` is unchanged.
     Rejected: the block above the rows, for its distance from what it changes; the deployed tool's control beside the
     box, three shapes for one kind of choice and three copies on Compare.
+    **Amended 2026-10-08 (decision 72).** Rules 1, 3 and 4 are replaced, after ticket 07 landed (`edb0282`): the
+    label is plain and names its box, and the group is changed by a menu button beside it, named for the group, which
+    lists every mode with a description; the placement, rule 2 and the reader stand.
 69. **Comfort zones of several slots are drawn as outlines; one slot's are nested fills.** *Withdrawn 2026-10-08 by
     decision 71, after its ticket 05 landed (`96eb9f8`); kept as written for the record.* Taken 2026-10-08 in the
     same grilling; amends decision 50's "nested, in the slot's hue with the opacity rising inwards" and decision 62's
@@ -2539,6 +2544,43 @@ notes under decisions 51 and 53:
     Rejected: a revert of `96eb9f8`; filling only the outermost zone of each of several slots, which makes the
     painting a function of the count again; a blend mode, which a Plotly trace cannot carry, so it would live in the
     adapter where the Image could not inherit it (decision 64).
+72. **An entry group is changed by a menu button beside its row's label, named for the group.** Taken 2026-10-08
+    with the user, after decision 68's ticket 07 landed (`edb0282`); amends decision 68's rules 1, 3 and 4 and keeps
+    its placement, the row the mode changes, moving the control toward the prototype's row
+    (`../comfort-tool-old/src/ui/components/input-panel/InputFieldRow.svelte:61-110`). Facts. Under rule 1 the
+    select's trigger is the row's only visible text, the entered quantity's label, and its accessible name is the
+    group's ("Humidity input"), so the name does not contain the visible text, which WCAG 2.5.3 (Label in Name) asks
+    (ticket 07, open point 3); the box is then named by `aria-label` instead of a `<label>`
+    (`ui/inputs/QuantityInput.svelte`, `labelControl`). The cause: the label and the value are one thing here, since
+    a mode is named by the quantity it enters, so a select shows the quantity twice. The prototype's row is a plain
+    label with a "More ⌄" button beside it; its menu is titled with the group's name and lists every mode, the
+    current one in bold, each with a one-line description (`src/catalog/controlMenuMeta.ts`), under short names
+    ("Air temperature", "Dew point") that ADR-0001 §6 excludes. Every mode has an `id` (`core/entryModes.ts:35-135`);
+    the four "… input" strings have the select as their one reader; UI copy lives in `text/` (ADR-0001 §2's
+    Engineering row), and `Quantity.label` is core's one exception, by the library's naming; `ui/primitives/` has no
+    `dropdown-menu`.
+    Rules. (1) A quantity row that belongs to an entry group has a plain label, the entered quantity's label with its
+    unit, which names its box as a `<label>` does; and beside it a menu button whose visible text is the entry group's
+    name, "Temperature", "Humidity", "Air speed" or "Clothing", with a chevron. The button's accessible name is its
+    visible text and nothing more, so WCAG 2.5.3 holds by construction; its target is at least 24 px (WCAG 2.5.8).
+    The group's name is the one copy string the control reads; `copy.temperatureInput` and the other three go. (2)
+    Opened, the menu lists every mode of the group, the current one marked as a `menuitemradio` is, each named by its
+    quantities' `Quantity.label` without unit, two joined as `copy.entryModeChoice` joins them, with a one-line
+    description under the name; the menu has no title. (3) A description says what is held and what is derived when
+    another input changes, CONTEXT.md's "the entered quantity is the truth" said for that mode, and never restates
+    the name. The descriptions are a table in `text/copy.ts` keyed by the mode's `id`, typed so that a mode without
+    one is a type error. (4) The control is the `dropdown-menu` primitive generated by the CLI, its radio group
+    carrying the modes (decision 65); `EntryModeSelect.svelte` becomes the menu button; the box's `aria-label` goes
+    as the `<label>` returns. (5) Unchanged: the mode is the session's and one button converts every slot (decision
+    51); on Compare the label row, button included, spans the three columns (decision 68, rule 2); the group is
+    offered on the first row of the current mode, the operative row offering the way back, and a row of no group has
+    a plain label; `rowEntryGroupOf` and the session's four setters are as they are. Ticket 07's open point 3 is
+    closed.
+    Rejected: the select as the label (decision 68, rule 1), for the name and the doubled quantity; "More" as the
+    button's text, four identical names to a screen reader and no word for what changes; a chevron alone, less
+    legible than the group's name at no saving; a menu title, redundant once the button names the group; listing the
+    other modes alone, since a radio menu shows its set; the prototype's short names (ADR-0001 §6); descriptions on
+    the mode objects in `core/`, which has no copy but the library's names.
 
 ## Consequences
 

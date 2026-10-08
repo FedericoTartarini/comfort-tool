@@ -53,7 +53,7 @@ A set of quantities the user may enter in more than one entry mode: temperature,
 _Avoid_: input mode, representation group
 
 **Entry mode**:
-One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five, air speed two (air speed, relative air speed) and clothing two (clothing insulation, dynamic clothing insulation). The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot. It is chosen on the row it changes: the row's label is the select.
+One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five, air speed two (air speed, relative air speed) and clothing two (clothing insulation, dynamic clothing insulation). The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot. It is chosen on the row it changes, by a menu button beside the row's label that carries the entry group's name.
 _Avoid_: input mode, representation, humidity type, toggle
 
 **Activity-adjusted input**:
