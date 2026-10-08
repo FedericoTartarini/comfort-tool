@@ -3,7 +3,7 @@
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { presetsFor } from "$lib/core/presets";
   import type { Quantity } from "$lib/core/quantities";
-  import { enteredValue, panelQuantities } from "$lib/core/slot";
+  import { enteredValue, panelQuantities, rowEntryGroupOf } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -11,6 +11,7 @@
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Checkbox } from "$lib/ui/primitives/checkbox";
   import { Label } from "$lib/ui/primitives/label";
+  import EntryModeSelect, { type EntryModeSetters } from "./EntryModeSelect.svelte";
   import PresetInput from "./PresetInput.svelte";
   import QuantityInput from "./QuantityInput.svelte";
 
@@ -22,9 +23,11 @@
     atmosphericPressure: number;
     outOfRangeQuantities: readonly Quantity[];
     violations: readonly ViolationRow[];
+    /** The session's: a row's entry-mode select converts every slot (ADR-0002 decision 51). */
+    entryModeSetters: EntryModeSetters;
   }
 
-  let { model, inputSlot, unitSystem, atmosphericPressure, outOfRangeQuantities, violations }: Props = $props();
+  let { model, inputSlot, unitSystem, atmosphericPressure, outOfRangeQuantities, violations, entryModeSetters }: Props = $props();
 
   const id = $props.id();
 
@@ -42,12 +45,20 @@
 
 <Stack gap="4">
   {#each rows as quantity (quantity)}
+    {@const group = rowEntryGroupOf(model, inputSlot, quantity)}
+    <!-- A row that offers an entry group's modes has their select for its label (ADR-0002 decision 68). -->
+    {#snippet entryModeLabel(labelText: string)}
+      {#if group}
+        <EntryModeSelect {group} {labelText} setters={entryModeSetters} />
+      {/if}
+    {/snippet}
     {@const rowProps = {
       quantity,
       value: shownValueFor(quantity),
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outOfRangeQuantities.includes(quantity),
+      labelControl: group ? entryModeLabel : undefined,
       oncommit: (si: number) => inputSlot.setEntered(quantity, si),
     }}
     {@const presets = presetsFor(quantity)}

@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import type { Snippet } from "svelte";
   import type { Bound } from "$lib/core/applicability";
   import type { Quantity } from "$lib/core/quantities";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -11,6 +12,12 @@
     /** Allowed bound in SI; shown converted, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
+    /**
+     * Drawn in the label's place, given the label text: a row that can be
+     * entered in another mode has its entry-mode select there (ADR-0002
+     * decision 68). The box is then named by the label text.
+     */
+    labelControl?: Snippet<[labelText: string]>;
     oncommit: (si: number) => void;
   }
 </script>
@@ -23,7 +30,7 @@
   import { Label } from "$lib/ui/primitives/label";
   import NumberInput from "./NumberInput.svelte";
 
-  let { quantity, value, unitSystem, bound, outOfRange = false, oncommit }: Props = $props();
+  let { quantity, value, unitSystem, bound, outOfRange = false, labelControl, oncommit }: Props = $props();
 
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
@@ -33,12 +40,16 @@
 
 <Stack gap="1">
   <Inline justify="between" align="baseline">
-    <Label for={id}>{labelText}</Label>
+    {#if labelControl}
+      {@render labelControl(labelText)}
+    {:else}
+      <Label for={id}>{labelText}</Label>
+    {/if}
     {#if boundText}
       <span class="bound">{boundText}</span>
     {/if}
   </Inline>
-  <NumberInput {id} {value} {unit} invalid={outOfRange} {oncommit} />
+  <NumberInput {id} {value} {unit} invalid={outOfRange} ariaLabel={labelControl ? labelText : undefined} {oncommit} />
 </Stack>
 
 <style>

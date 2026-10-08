@@ -4,10 +4,11 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
+import { registeredModels } from "$lib/models";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
-import type { RegisteredModel } from "./modelDeclaration";
+import { hasHumidityGroup, type RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import {
   areSameEntryModes,
@@ -20,6 +21,7 @@ import {
   panelQuantities,
   relativeAirSpeedOf,
   relativeHumidityOf,
+  rowEntryGroupOf,
   startingSlot,
   underEntryModes,
   valueEntryGroups,
@@ -582,5 +584,97 @@ describe("the entry groups held among the values", () => {
   it("tell the same entry modes from different ones, whatever object holds them", () => {
     expect(areSameEntryModes(entryModesOf(separate), defaultEntryModes)).toBe(true);
     expect(areSameEntryModes(entryModesOf(separate), operative)).toBe(false);
+  });
+});
+
+describe("the entry group a row offers (ADR-0002 decision 68)", () => {
+  /** Every combination of entry modes a slot of `model` can be in, humidity included where the model has its group. */
+  function slotsInEveryMode(model: RegisteredModel): Slot[] {
+    const slots: Slot[] = [];
+    for (const temperature of Object.values(temperatureMode)) {
+      for (const airSpeed of Object.values(airSpeedMode)) {
+        for (const clothing of Object.values(clothingMode)) {
+          for (const humidity of hasHumidityGroup(model) ? Object.values(humidityMode) : [undefined]) {
+            slots.push({
+              ...startingSlot(model),
+              temperature: { mode: temperature },
+              airSpeed: { mode: airSpeed },
+              clothing: { mode: clothing },
+              humidity: humidity && { mode: humidity, value: 0 },
+            });
+          }
+        }
+      }
+    }
+    return slots;
+  }
+
+  /** Every quantity a group's modes put on the panel, the humidity group's included. */
+  const groupQuantities = [
+    ...valueEntryGroups.map((group) => group.modes.flatMap((mode) => mode.panel)),
+    Object.values(humidityMode).map((mode) => mode.quantity),
+  ];
+
+  for (const model of registeredModels) {
+    it(`lists no row of ${model.info.label} among two groups' quantities, in any entry modes`, () => {
+      for (const slot of slotsInEveryMode(model)) {
+        for (const row of panelQuantities(model, slot)) {
+          expect(groupQuantities.filter((quantities) => quantities.includes(row)).length).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+
+    it(`offers each group ${model.info.label} has on exactly one row, in any entry modes`, () => {
+      for (const slot of slotsInEveryMode(model)) {
+        const offered = panelQuantities(model, slot).flatMap((row) => rowEntryGroupOf(model, slot, row)?.field ?? []);
+        const fields = [
+          ...valueEntryGroups.filter((group) => group.appliesTo(model)).map((group) => group.field),
+          ...(hasHumidityGroup(model) ? ["humidity"] : []),
+        ];
+        expect([...offered].sort()).toEqual([...fields].sort());
+      }
+    });
+  }
+
+  it("returns the temperature, air speed, clothing and humidity groups on their rows, with the modes in the table's order", () => {
+    const slot = startingSlot(pmvPpdIso);
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.tdb)).toEqual({
+      field: "temperature",
+      modes: Object.values(temperatureMode),
+      mode: temperatureMode.separate,
+    });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.v)).toEqual({ field: "airSpeed", modes: Object.values(airSpeedMode), mode: airSpeedMode.uncorrected });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.clo)).toEqual({
+      field: "clothing",
+      modes: Object.values(clothingMode),
+      mode: clothingMode.uncorrected,
+    });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toEqual({ field: "humidity", modes: Object.values(humidityMode), mode: humidityMode.rh });
+  });
+
+  it("returns none for the metabolic rate, the pressure and the mean radiant temperature, which the temperature row folds", () => {
+    const slot = startingSlot(pmvPpdIso);
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.met)).toBeUndefined();
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.p_atm)).toBeUndefined();
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.tr)).toBeUndefined();
+  });
+
+  it("returns the temperature group on the operative row under operative entry, so the way back is offered", () => {
+    const slot = enteredSlotFor(pmvPpdIso, { operative_tmp: 24 });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.operative_tmp)).toEqual({
+      field: "temperature",
+      modes: Object.values(temperatureMode),
+      mode: temperatureMode.operative,
+    });
+  });
+
+  it("returns the humidity group on the row of the mode entered", () => {
+    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.dew_point_tmp)?.mode).toBe(humidityMode.dewPoint);
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toBeUndefined();
+  });
+
+  it("returns none on a row of a group the model does not have", () => {
+    expect(rowEntryGroupOf(adaptiveAshrae, startingSlot(adaptiveAshrae), q.v)).toBeUndefined();
   });
 });

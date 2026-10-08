@@ -13,7 +13,6 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
-  import EntryModeControls from "$lib/ui/inputs/EntryModeControls.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
@@ -56,8 +55,6 @@
         model={session.model}
         onchoose={(model) => inApp.follow({ page: session.page, model })}
       />
-      <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
-      <EntryModeControls {session} />
       <InputPanel
         model={session.model}
         inputSlot={session.slots[0]}
@@ -65,6 +62,7 @@
         atmosphericPressure={session.atmosphericPressure}
         outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
         violations={outputs.slots[0].violations}
+        entryModeSetters={session}
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}

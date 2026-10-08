@@ -8,7 +8,6 @@
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
-  import EntryModeControls from "$lib/ui/inputs/EntryModeControls.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
@@ -55,6 +54,7 @@
     atmosphericPressure={session.atmosphericPressure}
     outOfRangeQuantities={slotOutputs.outOfRangeQuantities}
     violations={slotOutputs.violations}
+    entryModeSetters={session}
   />
 {/snippet}
 
@@ -91,8 +91,6 @@
           {copy.compare}
         </Button>
       </Inline>
-      <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
-      <EntryModeControls {session} />
       <!--
         While Compare is on, a column per slot, a third of the width whether
         its slot is enabled or not, so enabling one moves no other; a

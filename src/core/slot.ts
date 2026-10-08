@@ -24,6 +24,7 @@ import {
 import {
   clothingCorrectionOf,
   hasClothingGroup,
+  hasHumidityGroup,
   hasTemperatureGroup,
   takesRelativeAirSpeed,
   type OptionSpec,
@@ -91,11 +92,13 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * axis is the library's `rh` in every mode ({@link panelQuantities}).
  */
 export interface ValueEntryGroup {
+  /** The slot's field that holds the group's mode: how the input panel tells the groups apart. */
+  readonly field: keyof ValueEntryModes;
   /** Every mode of the group, the one in {@link defaultEntryModes} among them. */
   readonly modes: readonly ValueEntryMode[];
   /** Whether `model` has the group: read from the model, not declared (ADR §4.2). */
   readonly appliesTo: (model: RegisteredModel) => boolean;
-  /** The group's mode among `modes`. */
+  /** The group's mode among `modes`, read from its {@link field}. */
   readonly modeOf: (modes: ValueEntryModes) => ValueEntryMode;
   /**
    * `slot` re-expressed under `mode`, one of the group's, for `model`: the
@@ -131,28 +134,31 @@ export interface EntryCorrection {
   readonly entryGiving: (taken: number, slot: Slot, model: RegisteredModel) => number;
 }
 
-export const valueEntryGroups: readonly ValueEntryGroup[] = [
-  {
-    modes: Object.values(temperatureMode),
-    appliesTo: hasTemperatureGroup,
-    modeOf: (modes) => modes.temperature.mode,
-    convert: withTemperatureMode,
-  },
-  {
-    modes: Object.values(airSpeedMode),
-    appliesTo: takesRelativeAirSpeed,
-    modeOf: (modes) => modes.airSpeed.mode,
-    convert: withAirSpeedMode,
-    correction: { taken: q.vr, corrected: airSpeedMode.corrected, entryGiving: airSpeedGiving },
-  },
-  {
-    modes: Object.values(clothingMode),
-    appliesTo: hasClothingGroup,
-    modeOf: (modes) => modes.clothing.mode,
-    convert: withClothingMode,
-    correction: { taken: q.clo, corrected: clothingMode.corrected, entryGiving: clothingGiving },
-  },
-];
+// Each group's mode is read from its field, so the table names the field once.
+export const valueEntryGroups: readonly ValueEntryGroup[] = (
+  [
+    {
+      field: "temperature",
+      modes: Object.values(temperatureMode),
+      appliesTo: hasTemperatureGroup,
+      convert: withTemperatureMode,
+    },
+    {
+      field: "airSpeed",
+      modes: Object.values(airSpeedMode),
+      appliesTo: takesRelativeAirSpeed,
+      convert: withAirSpeedMode,
+      correction: { taken: q.vr, corrected: airSpeedMode.corrected, entryGiving: airSpeedGiving },
+    },
+    {
+      field: "clothing",
+      modes: Object.values(clothingMode),
+      appliesTo: hasClothingGroup,
+      convert: withClothingMode,
+      correction: { taken: q.clo, corrected: clothingMode.corrected, entryGiving: clothingGiving },
+    },
+  ] satisfies Omit<ValueEntryGroup, "modeOf">[]
+).map((group) => ({ ...group, modeOf: (modes: ValueEntryModes) => modes[group.field].mode }));
 
 /**
  * The quantity that stands in for `quantity` under `modes`.
@@ -368,6 +374,32 @@ export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] 
   return enteredQuantities(model, slot).map((quantity) =>
     quantity === q.rh ? (slot.humidity?.mode.quantity ?? quantity) : quantity,
   );
+}
+
+/**
+ * An entry group as the row that offers its modes reads it: the slot's field
+ * that holds the group's mode, the group's modes in its table's order, and the
+ * mode the slot is in. The humidity group is told apart by its field, since
+ * its modes are another shape.
+ */
+export type RowEntryGroup =
+  | { readonly field: keyof ValueEntryModes; readonly modes: readonly ValueEntryMode[]; readonly mode: ValueEntryMode }
+  | { readonly field: "humidity"; readonly modes: readonly HumidityMode[]; readonly mode: HumidityMode };
+
+/**
+ * The entry group whose modes the row of `quantity` offers, among the rows
+ * {@link panelQuantities} lists for `slot` under `model`, or `undefined` for a
+ * row that offers none (ADR-0002 decision 68). A group of `model`'s is offered
+ * on the first row of the mode the slot is in, so the temperature group on the
+ * dry-bulb row, which folds the mean radiant row with it, or on the operative
+ * row; the humidity group on the row of the humidity entered.
+ */
+export function rowEntryGroupOf(model: RegisteredModel, slot: Slot, quantity: Quantity): RowEntryGroup | undefined {
+  if (hasHumidityGroup(model) && quantity === slot.humidity?.mode.quantity) {
+    return { field: "humidity", modes: Object.values(humidityMode), mode: slot.humidity.mode };
+  }
+  const group = valueEntryGroups.find((candidate) => candidate.appliesTo(model) && candidate.modeOf(slot).panel[0] === quantity);
+  return group && { field: group.field, modes: group.modes, mode: group.modeOf(slot) };
 }
 
 /**

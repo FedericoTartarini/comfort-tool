@@ -30,11 +30,12 @@ export const copy = {
   model: "Model",
   units: "Units",
   temperatureInput: "Temperature input",
-  separateTemperatures: "Separate",
-  operativeTemperature: "Operative",
   humidityInput: "Humidity input",
   airSpeedInput: "Air speed input",
   clothingInput: "Clothing input",
+  // An entry mode in its row's select, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
+  entryModeChoice: (labels: readonly string[]) =>
+    labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
   presetTrigger: "Presets",
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
