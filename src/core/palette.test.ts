@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { palettes } from "./bandPalette";
+import { colorFamilies } from "./bandPalette";
 import { palette } from "./palette";
 
 describe("the palette", () => {
@@ -14,10 +14,7 @@ describe("the palette", () => {
 
   it("gives the three slots three hues, none of them a colour of any band family", () => {
     expect(new Set(palette.slots).size).toBe(3);
-    // The CBE fills end in Okabe–Ito's reddish purple and go with decision 66's rule 5
-    // (.scratch/interface-design ticket 02), which deletes this exception with the entry.
-    const families = Object.values(palettes).filter((entry) => entry !== palettes.cbeSensation);
-    const bandColors = families.flatMap((entry) => Object.values(entry.family).flat());
+    const bandColors = Object.values(colorFamilies).flatMap((family) => Object.values(family).flat());
     for (const hue of palette.slots) {
       expect(bandColors, hue).not.toContain(hue);
     }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
+import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { bandColors } from "./bandPalette";
 import { addEdge, bandListFrom, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
 
@@ -41,6 +43,20 @@ describe("bandListOf", () => {
       expect(list.right).toBe(bins.right);
       expect(list.colors).toEqual(bandColors(bins));
       expectWellFormed(list);
+    }
+  });
+
+  it("gives each PMV model's default list RdBu-7, Cold blue to Hot red", () => {
+    for (const model of [pmvPpdIso, pmvPpdAshrae]) {
+      expect(bandListOf(model.scan.classifier).colors, model.info.label).toEqual([
+        "#2166ac",
+        "#67a9cf",
+        "#d1e5f0",
+        "#f7f7f7",
+        "#fddbc7",
+        "#ef8a62",
+        "#b2182b",
+      ]);
     }
   });
 

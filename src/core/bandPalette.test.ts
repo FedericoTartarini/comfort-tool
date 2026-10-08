@@ -10,43 +10,54 @@ import {
 import { registeredModels } from "$lib/models";
 import { bandColors, chartInk, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
 
-// The fills the CBE tool has published for Cold … Hot.
-const cbeFills = ["#0571b0", "#4c78a8", "#92c5de", "#f2f2f2", "#f4a582", "#e15759", "#cc79a7"];
+// ColorBrewer's RdBu-7, read cold to hot: the thermal-sensation scale's Cold … Hot.
+const rdBu7 = ["#2166ac", "#67a9cf", "#d1e5f0", "#f7f7f7", "#fddbc7", "#ef8a62", "#b2182b"];
 
 const binsOfLength = (count: number): ClassifierBins => {
   const labels = Array.from({ length: count }, (_, index) => `band ${index + 1}`);
   return { labels, edges: labels.map((_, index) => index), right: true };
 };
 
-const isHex = (color: string | undefined) => /^#[0-9a-f]{6}$/.test(color ?? "");
-
 describe("bandColors", () => {
-  it("gives the thermal-sensation bins of either standard the seven CBE fills", () => {
-    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO)).toEqual(cbeFills);
-    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE)).toEqual(cbeFills);
+  it("gives the thermal-sensation bins of either standard RdBu-7, Neutral its grey at the fourth position", () => {
+    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO)).toEqual(rdBu7);
+    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE)).toEqual(rdBu7);
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe("#f7f7f7");
   });
 
-  it("gives Heat Index's five stress categories five colours of one sequential family, safe to dangerous", () => {
-    const colors = bandColors(HEAT_INDEX_STRESS_CATEGORY_BINS);
-    expect(colors).toHaveLength(5);
-    expect(colors.every(isHex)).toBe(true);
-    expect(new Set(colors).size).toBe(5);
-    // YlOrRd darkens towards its last colour: "extreme danger" is the darkest.
-    expect(colors[4]).toBe("#bd0026");
+  it("gives Heat Index's five stress categories YlOrRd-6 without its lightest, so \"no risk\" is not near white", () => {
+    expect(bandColors(HEAT_INDEX_STRESS_CATEGORY_BINS)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"]);
   });
 
-  it("gives ISO 7730's A, B and C three colours of one sequential family and \"none\" no colour", () => {
-    // Read, as every classifier is, at its band count: YlOrRd's four, the fourth left unpainted.
-    expect(bandColors(PMV_CATEGORY_BINS_ISO)).toEqual(["#ffffb2", "#fecc5c", "#fd8d3c", undefined]);
+  it("gives ISO 7730's four bands YlOrRd-5 without its lightest, \"none\" unpainted", () => {
+    expect(bandColors(PMV_CATEGORY_BINS_ISO)).toEqual(["#fecc5c", "#fd8d3c", "#f03b20", undefined]);
   });
 
-  it("gives UTCI's ten stress categories ColorBrewer RdBu's ten, extreme cold stress blue to extreme heat stress red", () => {
+  it("gives UTCI's ten stress categories five blues, RdBu-11's grey at the sixth position and four reds", () => {
+    // RdBu-11 centred on "no thermal stress": the warm side's surplus, the red next to the grey, dropped.
     expect(bandColors(UTCI_STRESS_CATEGORY_BINS)).toEqual([
       "#053061",
       "#2166ac",
       "#4393c3",
       "#92c5de",
       "#d1e5f0",
+      "#f7f7f7",
+      "#f4a582",
+      "#d6604d",
+      "#b2182b",
+      "#67001f",
+    ]);
+  });
+
+  it("drops a shorter cold side's surplus from the neutral outward, as the warm side's", () => {
+    const neutralFifth = binsOfLength(10);
+    const table = new Map<ClassifierBins, PaletteEntry>([[neutralFifth, palettes.diverging(4)]]);
+    expect(bandColors(neutralFifth, table)).toEqual([
+      "#053061",
+      "#2166ac",
+      "#4393c3",
+      "#92c5de",
+      "#f7f7f7",
       "#fddbc7",
       "#f4a582",
       "#d6604d",
@@ -55,13 +66,24 @@ describe("bandColors", () => {
     ]);
   });
 
-  it("gives a ten-label classifier with an entry in the table ten colours", () => {
+  it("throws for a diverging entry whose neutral the band count cannot centre, naming the classifier", () => {
     const tenBands = binsOfLength(10);
-    const table = new Map<ClassifierBins, PaletteEntry>([[tenBands, palettes.diverging]]);
-    const colors = bandColors(tenBands, table);
-    expect(colors).toHaveLength(10);
-    expect(colors.every(isHex)).toBe(true);
-    expect(new Set(colors).size).toBe(10);
+    for (const neutral of [-1, 10, 4.5]) {
+      const table = new Map<ClassifierBins, PaletteEntry>([[tenBands, palettes.diverging(neutral)]]);
+      expect(() => bandColors(tenBands, table), String(neutral)).toThrow('"band 1" … "band 10"');
+    }
+  });
+
+  it("throws for a count its family lacks, naming the classifier", () => {
+    // Nine bands centred on the fifth read RdBu-9, ten sequential ones YlOrRd-11; neither is copied.
+    const nineBands = binsOfLength(9);
+    const tenBands = binsOfLength(10);
+    const table = new Map<ClassifierBins, PaletteEntry>([
+      [nineBands, palettes.diverging(4)],
+      [tenBands, palettes.sequential],
+    ]);
+    expect(() => bandColors(nineBands, table)).toThrow('"band 1" … "band 9"');
+    expect(() => bandColors(tenBands, table)).toThrow('"band 1" … "band 10"');
   });
 
   it("throws for a classifier not in the table, naming it by its first and last labels", () => {
@@ -87,10 +109,10 @@ describe("bandColors", () => {
 
 describe("colorForBand", () => {
   it("colours a category as the table colours its band", () => {
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Cold")).toBe(cbeFills[0]);
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe(cbeFills[3]);
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Hot")).toBe(cbeFills[6]);
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "B")).toBe("#fecc5c");
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Cold")).toBe(rdBu7[0]);
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe(rdBu7[3]);
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Hot")).toBe(rdBu7[6]);
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "B")).toBe("#fd8d3c");
   });
 
   it("returns nothing for \"none\" and for a category past the last Edge or not named", () => {
