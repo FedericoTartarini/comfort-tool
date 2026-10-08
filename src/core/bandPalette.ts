@@ -170,11 +170,12 @@ export const chartInk = {
   bandLineWidth: 1,
   /**
    * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost:
-   * the slot's hue, its opacity rising inwards to 0.4, so a lone zone keeps
-   * the fill it always had.
+   * the slot's hue, its opacity rising evenly from 0.2 at the outermost, so
+   * every zone shows on the paper, to 0.4 at the innermost; a lone zone is
+   * 0.4 (ADR-0002 decision 71).
    */
   zoneFill: (hue: SlotHue, level: number, levels: number): string =>
-    `rgba(${channelsOf(hue)}, ${(0.4 * (level + 1)) / levels})`,
+    `rgba(${channelsOf(hue)}, ${0.2 + 0.2 * (levels === 1 ? 1 : level / (levels - 1))})`,
   /** The plot area's ground, which a band painted nowhere shows: the page's paper. */
   ground: palette.paper,
   isoline: palette.lineStrong,

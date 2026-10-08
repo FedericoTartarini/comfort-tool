@@ -21,11 +21,17 @@ describe("a slot's inks", () => {
     expect(chartInk.zoneLine(hue)).toBe(hue);
   });
 
-  it("fills zone `level` of `levels` in the hue, its opacity rising inwards to 0.4", () => {
-    const fills = [0, 1, 2].map((level) => /^rgba\((\d+, \d+, \d+), ([\d.]+)\)$/.exec(chartInk.zoneFill(hue, level, 3)));
+  it("fills zone `level` of `levels` in the hue, its opacity rising evenly from 0.2 outermost to 0.4 innermost", () => {
+    const fillsOf = (levels: number) =>
+      Array.from({ length: levels }, (_, level) => {
+        const [, channels, alpha] = /^rgba\((\d+, \d+, \d+), ([\d.]+)\)$/.exec(chartInk.zoneFill(hue, level, levels)) ?? [];
+        return { channels, alpha: Number(alpha) };
+      });
     // #0072b2 is 0, 114, 178.
-    expect(fills.map((fill) => fill?.[1])).toEqual(["0, 114, 178", "0, 114, 178", "0, 114, 178"]);
-    [0.4 / 3, 0.8 / 3, 0.4].forEach((alpha, level) => expect(Number(fills[level]?.[2])).toBeCloseTo(alpha, 12));
-    expect(chartInk.zoneFill(hue, 0, 1)).toBe("rgba(0, 114, 178, 0.4)");
+    for (const [levels, alphas] of [[1, [0.4]], [2, [0.2, 0.4]], [3, [0.2, 0.3, 0.4]]] as const) {
+      const fills = fillsOf(levels);
+      expect(fills.map((fill) => fill.channels)).toEqual(Array(levels).fill("0, 114, 178"));
+      alphas.forEach((alpha, level) => expect(fills[level].alpha).toBeCloseTo(alpha, 2));
+    }
   });
 });
