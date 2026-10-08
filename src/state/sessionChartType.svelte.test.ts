@@ -72,7 +72,7 @@ describe("a session on Adaptive", () => {
         expect(outputs.drawnAxes).toBeNull();
       });
 
-      it(`draws each Comfort zone as two lines in its slot's hue, filled while one slot is drawn, on ${target.title}, Compare ${compare ? "on" : "off"}`, () => {
+      it(`draws each Comfort zone as a fill and two lines in its slot's hue on ${target.title}, Compare ${compare ? "on" : "off"}`, () => {
         const session = sessionComparingThreeSlots(adaptiveAshrae);
         heldSlot(session, 1).setEntered(q.v, 0.9);
         session.setCompare(compare);
@@ -86,8 +86,7 @@ describe("a session on Adaptive", () => {
           const zoneFills: readonly string[] = [0, 1].map((level) => chartInk.zoneFill(badge.hue, level, 2));
           const fills = paths.filter((path) => path.fill !== undefined && zoneFills.includes(path.fill));
           const lines = paths.filter((path) => path.fill === undefined && path.color === chartInk.zoneLine(badge.hue));
-          // Several slots' zones are outlined with no fill (ADR-0002 decision 69).
-          expect(fills).toHaveLength(outputs.slots.length > 1 ? 0 : 2);
+          expect(fills).toHaveLength(2);
           expect(fills.map((fill) => fill.width)).toEqual(fills.map(() => 0));
           expect(lines).toHaveLength(4);
           drawn += fills.length + lines.length;

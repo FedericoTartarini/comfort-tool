@@ -15,11 +15,11 @@ import { axisFor, hoverGridFor, labelFor, markerFor, zoneInkFor } from "./specPa
  * is marked at the slot's operative temperature in either mode (ADR-0002
  * decision 37). The zones are nested, largest first, so they are painted as
  * the psychrometric chart paints its own ({@link zoneInkFor}), never in the
- * thermal-sensation palette: for a lone slot each is a fill with no stroke
- * over the region its two lines close, and for several no fill (ADR-0002
- * decision 69); either way the two lines are stroked in the hue's zone line,
- * so the sides that close the region at the ends of the x range, where the
- * chart stops and the model sets no limit, are not drawn.
+ * thermal-sensation palette: each is a fill with no stroke over the region its
+ * two lines close, however many slots are drawn (ADR-0002 decision 71), and
+ * the two lines stroked in the hue's zone line, so the sides that close the
+ * region at the ends of the x range, where the chart stops and the model sets
+ * no limit, are not drawn.
  * Neither reads the pointer, so a hover grid over the same `GRID × GRID`
  * field reads for them: both axis values, and the innermost zone of each slot
  * the cell is in. Laid in the one drawing order: every slot's fills, every
@@ -60,9 +60,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
       const ink = zoneInkFor(request, charted, zone.label, index, zones.length);
       const { label } = ink.legendEntry;
       // Neither the fill nor a line captures the pointer, so the hover grid below reads for them.
-      if (ink.fill !== undefined) {
-        fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
-      }
+      fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
       for (const limit of [zone.upper, zone.lower]) {
         lines.push({ kind: "path", ...displayed(coordinatesOf(limit)), color: ink.line, width: ink.lineWidth, hover: "off", label });
       }

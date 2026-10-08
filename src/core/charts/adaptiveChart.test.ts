@@ -319,12 +319,11 @@ describe("Adaptive's acceptability zones", () => {
     ]);
   });
 
-  // Several slots' zones are outlined with no fill (ADR-0002 decision 69).
-  it.each([[1, 2], [3, 0]])("lays every fill, then every outline, then the hover grid, then the markers, for %s slot(s), %s fill(s)", (count, fillCount) => {
+  it.each([1, 3])("lays every fill, then every outline, then the hover grid, then the markers, for %s slot(s)", (count) => {
     const slots = [startingSlot(adaptiveAshrae), adaptiveAt(0.9), adaptiveAt(1.2)].slice(0, count);
     const layers = adaptiveSpec(chartRequestForSlots(adaptiveAshrae, slots)).traces.map(layerOf);
     expect(layers).toEqual([
-      ...Array(fillCount).fill("fill"),
+      ...Array(2 * count).fill("fill"),
       ...Array(4 * count).fill("outline"),
       "hoverGrid",
       ...Array(count).fill("point"),

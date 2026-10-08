@@ -149,7 +149,7 @@ describe("dynamicSpec", () => {
 /**
  * One slot and no Band list, as the Standard page asks with Compare off
  * (ADR-0002 decision 58): the slot's Comfort zones as contours of its scan,
- * on the lines each of two slots outlines its own on, and no band.
+ * exactly as each of two slots paints its own, and no band.
  */
 describe("the scanned dynamic chart of one slot", () => {
   const spec = dynamicSpec(request, isoChart.axes);
@@ -175,10 +175,10 @@ describe("the scanned dynamic chart of one slot", () => {
     });
   });
 
-  it("strokes them as the first of two slots strokes its own, named without the slot, where two slots fill none", () => {
+  it("paints them as the first of two slots paints its own, named without the slot", () => {
     const two = dynamicSpec(chartRequestForSlots(pmvPpdIso, [slot, slot]), isoChart.axes);
-    const unnamed = ({ label: _label, ...zone }: ContourLineTrace) => zone;
-    expect(fillsOf(two)).toEqual([]);
+    const unnamed = ({ label: _label, ...zone }: ContourFillTrace | ContourLineTrace) => zone;
+    expect(fillsOf(spec).map(unnamed)).toEqual(fillsOf(two).slice(0, 3).map(unnamed));
     expect(linesOf(spec).map(unnamed)).toEqual(linesOf(two).slice(0, 3).map(unnamed));
   });
 
