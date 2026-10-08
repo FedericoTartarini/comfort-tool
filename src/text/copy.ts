@@ -47,20 +47,20 @@ export const copy = {
   // An entry mode in its group's menu, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
   entryModeChoice: (labels: readonly string[]) =>
     labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
-  // The line under an entry mode in its menu: what stays as entered and what is derived when another input
-  // changes, never the mode's name again (decision 72, rule 3).
+  // The line under an entry mode in its menu: what follows when another input changes, the entry being held,
+  // never the mode's name again (decision 72, rule 3).
   entryModeDescriptions: {
-    separate: "Both stay as entered, and the model takes each as it is.",
-    operative: "Stays as entered and is given to the model as both the air and the mean radiant temperature.",
-    "relative-humidity": "Stays as entered when the temperature changes, so the moisture in the air changes with it.",
-    "humidity-ratio": "Stays as entered; the relative humidity is derived from it at the temperature and the pressure.",
-    "dew-point": "Stays as entered; the relative humidity is derived from it at the temperature.",
-    "wet-bulb": "Stays as entered; the relative humidity is derived from it at the temperature.",
-    "vapour-pressure": "Stays as entered; the relative humidity is derived from it at the temperature.",
-    "air-speed": "Stays as entered; the relative air speed the model takes is derived from it and the metabolic rate.",
-    "relative-air-speed": "Stays as entered, and the model takes it whatever the metabolic rate.",
-    "clothing-insulation": "Stays as entered; the dynamic insulation the model takes is derived from it and the metabolic rate, and under ISO 7730 the air speed too.",
-    "dynamic-clothing-insulation": "Stays as entered, and the model takes it whatever the metabolic rate and the air speed.",
+    separate: "Neither is derived from the other.",
+    operative: "Used as both the air and the mean radiant temperature.",
+    "relative-humidity": "Held as the temperature changes; the moisture content follows.",
+    "humidity-ratio": "Held as the temperature or the pressure changes; the relative humidity follows.",
+    "dew-point": "Held as the temperature changes; the relative humidity follows.",
+    "wet-bulb": "Held as the temperature changes; the relative humidity follows.",
+    "vapour-pressure": "Held as the temperature changes; the relative humidity follows.",
+    "air-speed": "The relative air speed follows the metabolic rate.",
+    "relative-air-speed": "Held as the metabolic rate changes.",
+    "clothing-insulation": "The dynamic insulation follows the metabolic rate, and under ISO 7730 the air speed.",
+    "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
   presetTrigger: "Presets",
   presetSearchPlaceholder: "Search…",
