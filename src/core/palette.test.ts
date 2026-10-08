@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { colorFamilies } from "./bandPalette";
-import { palette } from "./palette";
+import { lettering, palette } from "./palette";
 
 describe("the palette", () => {
   it("names every colour as a six-digit hex", () => {
@@ -46,6 +46,11 @@ describe("the stylesheet", () => {
   it("draws the primary button and the focus ring in the brand colour", () => {
     expect(declared("--primary")).toBe("var(--brand)");
     expect(declared("--ring")).toBe("var(--brand)");
+  });
+
+  it("declares the family and the caption's size the charts letter in", () => {
+    expect(declared("--font-sans")).toBe(lettering.family);
+    expect(declared("--font-size-caption")).toBe(`${lettering.captionSize / 16}rem`);
   });
 
   it("declares no colour the palette does not name", () => {

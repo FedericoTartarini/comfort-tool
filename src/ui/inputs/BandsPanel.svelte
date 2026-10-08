@@ -50,7 +50,7 @@
         <h3>{copy.bands}</h3>
         <Button size="sm" variant="outline" onclick={() => chart.resetBands()}>{copy.bandsReset}</Button>
       </Inline>
-      <Table.Root>
+      <Table.Root class="bands-table">
         <Table.Header>
           <Table.Row>
             <Table.Head>{copy.bandLabelColumn}</Table.Head>

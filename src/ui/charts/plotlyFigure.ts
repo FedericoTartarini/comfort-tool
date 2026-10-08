@@ -176,10 +176,6 @@ function carryHover(trace: HoverGridTrace) {
   return {
     text: trace.hoverText.map((row) => row.map((lines) => lines.join("<br>"))),
     hoverinfo: hoverInfo(trace.hover),
-    // Plotly tints a hover label with the trace's own colour, a heatmap's
-    // from its colour scale; the chart reads one grey label over every band
-    // and zone.
-    hoverlabel: { bgcolor: "#444444" },
   };
 }
 
@@ -228,6 +224,18 @@ function viewportRevision(source: ChartSpec): string {
   return [x.title, x.range, y.title, y.range].join("|");
 }
 
+/**
+ * The hover readout on the pointer, one look over every trace (ADR-0002
+ * decision 67, rule 5). Plotly would otherwise tint a label with its trace's
+ * own colour, a heatmap's from its colour scale; a trace's label settings
+ * default to these.
+ */
+const READOUT_LABEL = {
+  font: chartInk.readoutFont,
+  bgcolor: chartInk.readoutGround,
+  bordercolor: chartInk.readoutEdge,
+};
+
 export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
   return {
     autosize: true,
@@ -236,6 +244,7 @@ export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
     // ADR §4.4: the chart's one legend is rendered below it by ChartLegend.
     showlegend: false,
     hovermode: "closest",
+    hoverlabel: READOUT_LABEL,
     annotations: source.annotations.map(toPlotlyAnnotation),
     plot_bgcolor: chartInk.ground,
     paper_bgcolor: TRANSPARENT,

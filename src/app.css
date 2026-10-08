@@ -77,12 +77,14 @@
 	html {
 		@apply font-sans;
 	}
-	/* The title, the page frame's `h1`, and a column's heading (the Phase 5c spec's type roles). */
+	/* The title, the page frame's `h1`, and a heading: a column's, or the Bands panel's inside the result column (the
+	   Phase 5c spec's type roles). */
 	h1 {
 		font-size: var(--font-size-title);
 		font-weight: 600;
 	}
-	h2 {
+	h2,
+	h3 {
 		font-size: var(--font-size-heading);
 		font-weight: 600;
 	}
@@ -150,6 +152,21 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4em;
+	}
+
+	/* The chart's one legend, under it (decision 67, rule 4): its entries in a wrapping row, each kept on one line. */
+	.chart-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
+		font-size: var(--font-size-caption);
+		color: var(--muted-foreground);
+		white-space: nowrap;
+	}
+	/* The node Plotly draws the chart on, at the chart's height. */
+	.chart-plot {
+		width: 100%;
+		height: var(--chart-height);
 	}
 
 	.caption,
@@ -226,4 +243,19 @@
 .result-table .value {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
+}
+/* The Bands panel is a compact table (decision 67, rule 4): a row as tall as its small buttons, and a colour box
+   narrow enough that No colour stands beside it. */
+.bands-table [data-slot="table-head"] {
+	height: 2rem;
+}
+.bands-table [data-slot="table-cell"] {
+	padding-block: 0.125rem;
+}
+.bands-table [data-slot="input"] {
+	height: 1.75rem;
+}
+.bands-table [data-slot="input"][type="color"] {
+	width: 2.5rem;
+	padding: 0.125rem;
 }

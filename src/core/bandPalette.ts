@@ -6,7 +6,7 @@ import {
   UTCI_STRESS_CATEGORY_BINS,
   type ClassifierBins,
 } from "jsthermalcomfort";
-import { palette } from "./palette";
+import { lettering, palette } from "./palette";
 import type { SlotHue } from "./slotBadge";
 
 /**
@@ -183,4 +183,8 @@ export const chartInk = {
   saturationLine: palette.lineHeavy,
   saturationLineWidth: 1.5,
   markerEdge: palette.paper,
+  /** The hover readout on the pointer (ADR-0002 decision 67, rule 5): the page's text in its caption's size, on its paper, edged with a rule. */
+  readoutFont: { family: lettering.family, size: lettering.captionSize, color: palette.ink },
+  readoutGround: palette.paper,
+  readoutEdge: palette.line,
 } as const;

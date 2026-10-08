@@ -75,11 +75,4 @@
   });
 </script>
 
-<div class="plot" {@attach mount}></div>
-
-<style>
-  .plot {
-    width: 100%;
-    height: 26rem;
-  }
-</style>
+<div class="chart-plot" {@attach mount}></div>

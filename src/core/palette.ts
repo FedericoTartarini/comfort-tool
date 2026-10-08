@@ -30,3 +30,13 @@ export const palette = {
    */
   slots: ["#0072b2", "#009e73", "#cc79a7"],
 } as const;
+
+/**
+ * The design's one family and its caption's size in px (the Phase 5c spec's
+ * Type), which the charts letter in; the stylesheet writes them as
+ * `--font-sans` and `--font-size-caption`, and the same test holds the two.
+ */
+export const lettering = {
+  family: '"Geist Variable", ui-sans-serif, system-ui, sans-serif',
+  captionSize: 12,
+} as const;

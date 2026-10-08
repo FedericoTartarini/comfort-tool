@@ -94,7 +94,7 @@
               aria-pressed={session.isSlotEnabled(position)}
               onclick={() => toggleSlot(position)}
             >
-              <span class="swatch" style:background-color={chartInk.zoneLine(slotBadges[position].hue)}></span>
+              <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(slotBadges[position].hue)}></span>
               {slotBadges[position].name}
             </Button>
           {/each}
@@ -149,12 +149,3 @@
     </Stack>
   {/snippet}
 </PageFrame>
-
-<style>
-  .swatch {
-    display: inline-block;
-    width: 0.75em;
-    height: 0.75em;
-    border-radius: 50%;
-  }
-</style>
