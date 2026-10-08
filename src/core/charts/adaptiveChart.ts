@@ -65,7 +65,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
         lines.push({
           kind: "path",
           ...displayed(coordinatesOf(limit)),
-          color: charted.hue.zoneLine,
+          color: chartInk.zoneLine(charted.hue),
           width: chartInk.zoneLineWidth,
           hover: "off",
           label,

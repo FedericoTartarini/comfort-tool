@@ -111,7 +111,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(fillsOf(spec).map((fill) => [fill.label, fill.color, fill.lower, fill.upper])).toEqual(
       isoBands.labels.map((label, index) => [label, isoBands.colors[index], isoBands.edges[index - 1], lastEdge]),
     );
-    expect(linesOf(spec).map((line) => line.color)).not.toContain(slotBadges[0].hue.zoneLine);
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(slotBadges[0].hue));
     expect(spec.traces.some((entry) => entry.kind === "path" && entry.fill !== undefined && entry.fill !== chartInk.ground)).toBe(false);
   });
 
@@ -195,7 +195,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(spec.legend).toEqual([
       { label: q.rh.label, swatch: "line", color: chartInk.isoline },
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: slotBadges[0].name, swatch: "marker", color: slotBadges[0].hue.marker },
+      { label: slotBadges[0].name, swatch: "marker", color: chartInk.marker(slotBadges[0].hue) },
     ]);
   });
 

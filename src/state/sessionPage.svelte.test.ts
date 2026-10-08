@@ -27,7 +27,7 @@ const q = quantities;
 /** The positions of the slots whose markers `chart` draws, in slot order. */
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   const markers = (chart?.traces ?? []).filter((trace): trace is PointTrace => trace.kind === "point");
-  return slotPositions.filter((position) => markers.some((marker) => marker.color === slotBadges[position].hue.marker));
+  return slotPositions.filter((position) => markers.some((marker) => marker.color === chartInk.marker(slotBadges[position].hue)));
 }
 
 /** The fills among `traces`, a Comfort zone's or a Band's, in drawing order. */

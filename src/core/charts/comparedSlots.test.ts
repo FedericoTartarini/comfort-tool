@@ -172,18 +172,18 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
 
   it("draws three markers and three times the declaration's zones, each named and coloured by its slot", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual(
-      slotBadges.map((badge) => ({ label: badge.name, color: badge.hue.marker })),
+      slotBadges.map((badge) => ({ label: badge.name, color: chartInk.marker(badge.hue) })),
     );
     expect(zones).toHaveLength(3 * zonesPerSlot);
     const outlines = outlinesOf(spec);
     slotBadges.forEach((badge, position) => {
       for (const zone of zonesOfSlot(position)) {
         expect(zone.label?.startsWith(badge.name)).toBe(true);
-        expect(fillColorOf(zone)).toContain(badge.hue.zoneFillRgb);
+        expect(Array.from({ length: zonesPerSlot }, (_, level) => chartInk.zoneFill(badge.hue, level, zonesPerSlot))).toContain(fillColorOf(zone));
       }
       const outlinesOfSlot = outlines.filter((outline) => outline.label?.startsWith(badge.name));
       expect(outlinesOfSlot.length).toBeGreaterThanOrEqual(zonesPerSlot);
-      expect(outlinesOfSlot.map((outline) => outline.color)).toEqual(outlinesOfSlot.map(() => badge.hue.zoneLine));
+      expect(outlinesOfSlot.map((outline) => outline.color)).toEqual(outlinesOfSlot.map(() => chartInk.zoneLine(badge.hue)));
     });
     expect(outlines.every((outline) => slotBadges.some((badge) => outline.label?.startsWith(badge.name)))).toBe(true);
   });

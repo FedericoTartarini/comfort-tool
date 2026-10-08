@@ -1,5 +1,6 @@
 <script lang="ts">
   import { splitViolations, warningFor } from "$lib/core/applicability";
+  import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
   import { standardCaptionFor } from "$lib/core/standard";
@@ -58,7 +59,7 @@
           <Table.Cell>
             {#if compare}
               <span class="band">
-                <span class="swatch" style:background-color={row.badge.hue.zoneLine}></span>
+                <span class="swatch" style:background-color={chartInk.zoneLine(row.badge.hue)}></span>
                 {row.badge.name}
               </span>
             {:else}

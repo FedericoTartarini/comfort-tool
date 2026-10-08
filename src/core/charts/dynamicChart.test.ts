@@ -168,7 +168,7 @@ describe("the scanned dynamic chart of one slot", () => {
     expect(contourKindsOf(spec)).toEqual([...zones.map(() => "contourFill"), ...zones.map(() => "contourLine")]);
     expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
     expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
-      zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit, hue.zoneLine, chartInk.zoneLineWidth]),
+      zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit, chartInk.zoneLine(hue), chartInk.zoneLineWidth]),
     );
     linesOf(spec).forEach((line, index) => {
       expect(line.z).toBe(fillsOf(spec)[index].z);

@@ -10,6 +10,7 @@
  * alone gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
+import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, ContourLineTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
@@ -247,7 +248,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
     .filter(
       (trace): trace is ZoneLine =>
         (trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined)) &&
-        trace.color === slotBadges[position].hue.zoneLine,
+        trace.color === chartInk.zoneLine(slotBadges[position].hue),
     )
     .map((zone) => (zone.kind === "path" ? { x: zone.x, y: zone.y } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
 }
@@ -255,7 +256,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
 /** Where slot `position`'s marker is on `chart`, or `undefined` for none. */
 function markerAt(chart: ChartSpec | null, position: SlotPosition) {
   const marker = chart?.traces.find(
-    (trace): trace is PointTrace => trace.kind === "point" && trace.color === slotBadges[position].hue.marker,
+    (trace): trace is PointTrace => trace.kind === "point" && trace.color === chartInk.marker(slotBadges[position].hue),
   );
   return marker && { x: marker.x, y: marker.y };
 }

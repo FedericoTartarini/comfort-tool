@@ -173,7 +173,7 @@ describe("psychrometricSpec", () => {
     expect(lines.map((line) => [line.label, line.z, line.lower, line.upper])).toEqual(
       fills.map((fill) => [fill.label, fill.z, fill.lower, fill.upper]),
     );
-    expect(lines.every((line) => line.color === slotBadges[0].hue.zoneLine && line.width === chartInk.zoneLineWidth)).toBe(true);
+    expect(lines.every((line) => line.color === chartInk.zoneLine(slotBadges[0].hue) && line.width === chartInk.zoneLineWidth)).toBe(true);
   });
 
   it("scans the drawn axes: the temperature axis and the humidity ratio, in display units", () => {

@@ -6,6 +6,7 @@ import {
   UTCI_STRESS_CATEGORY_BINS,
   type ClassifierBins,
 } from "jsthermalcomfort";
+import { palette } from "./palette";
 import type { SlotHue } from "./slotBadge";
 
 /**
@@ -116,15 +117,25 @@ export function colorForBand(bins: ClassifierBins, category: string | number): s
   return index === -1 ? undefined : bandColors(bins)[index];
 }
 
+/** A `#rrggbb` hex as the `r, g, b` an `rgba()` takes. */
+function channelsOf(hex: string): string {
+  return [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16)).join(", ");
+}
+
 /**
  * Chart ink. Not bands — the Comfort zones and the markers are in their
  * slot's hue (`core/slotBadge.ts`), the isolines are neutral chrome, and a
- * Band's Edge is one neutral line whatever the band's own colour.
+ * Band's Edge is one neutral line whatever the band's own colour. The chrome
+ * is the interface's slate (`core/palette.ts`), so the page is one palette.
  */
 export const chartInk = {
+  /** A slot's marker: its hue. */
+  marker: (hue: SlotHue): string => hue,
+  /** A Comfort zone's outline: its slot's hue. */
+  zoneLine: (hue: SlotHue): string => hue,
   zoneLineWidth: 1.5,
   /** A Band's Edge (ADR-0002 decision 62): darker than the isolines, so it reads over them, and thinner than a zone's outline. */
-  bandLine: "#64748b",
+  bandLine: palette.inkMuted,
   bandLineWidth: 1,
   /**
    * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost:
@@ -132,12 +143,12 @@ export const chartInk = {
    * the fill it always had.
    */
   zoneFill: (hue: SlotHue, level: number, levels: number): string =>
-    `rgba(${hue.zoneFillRgb}, ${(0.4 * (level + 1)) / levels})`,
-  /** The plot area's ground, which a band painted nowhere shows. */
-  ground: "#ffffff",
-  isoline: "#cbd5e1",
+    `rgba(${channelsOf(hue)}, ${(0.4 * (level + 1)) / levels})`,
+  /** The plot area's ground, which a band painted nowhere shows: the page's paper. */
+  ground: palette.paper,
+  isoline: palette.lineStrong,
   isolineWidth: 1,
-  saturationLine: "#94a3b8",
+  saturationLine: palette.lineHeavy,
   saturationLineWidth: 1.5,
-  markerEdge: "#ffffff",
+  markerEdge: palette.paper,
 } as const;

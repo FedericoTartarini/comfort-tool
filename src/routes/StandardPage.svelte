@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { chartInk } from "$lib/core/bandPalette";
   import { slotBadges } from "$lib/core/slotBadge";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
@@ -109,7 +110,7 @@
                     aria-pressed={session.isSlotEnabled(position)}
                     onclick={() => toggleSlot(position)}
                   >
-                    <span class="swatch" style:background-color={slotBadges[position].hue.zoneLine}></span>
+                    <span class="swatch" style:background-color={chartInk.zoneLine(slotBadges[position].hue)}></span>
                     {slotBadges[position].name}
                   </Button>
                   {#if compared}

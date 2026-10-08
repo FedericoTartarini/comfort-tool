@@ -161,7 +161,7 @@ export function fieldPaintFor(
         const region = paintedRegionFor(labelFor(request, charted, copy.zoneLegend(zone)), { ...drawn, z: surfaces[position] }, {
           fill: { interval, color: chartInk.zoneFill(charted.hue, index, zones.length) },
           line: interval,
-          lineColor: charted.hue.zoneLine,
+          lineColor: chartInk.zoneLine(charted.hue),
           lineWidth: chartInk.zoneLineWidth,
         });
         lay(region, zoneLegendOfSlot[position]);
@@ -257,7 +257,7 @@ export function markerFor(
   x: number,
   y: number,
 ): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
-  const color = badge.hue.marker;
+  const color = chartInk.marker(badge.hue);
   return {
     trace: { kind: "point", x, y, color, hover: "off", label: badge.name },
     legendEntry: { label: badge.name, swatch: "marker", color },

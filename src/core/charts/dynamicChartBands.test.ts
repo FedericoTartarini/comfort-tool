@@ -121,7 +121,7 @@ describe("the scanned dynamic chart given a Band list", () => {
 
   it("paints one fill per band of the list, from its lower Edge up to the last, and no Comfort zone", () => {
     expect(intervalsOf(spec)).toEqual(contiguousFillsOf(isoBands));
-    expect(linesOf(spec).map((line) => line.color)).not.toContain(slotBadges[0].hue.zoneLine);
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(slotBadges[0].hue));
   });
 
   it("strokes every band's own upper Edge once, in the band line, read by nothing", () => {
@@ -142,7 +142,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("carries one legend: every band, then the slot", () => {
     expect(spec.legend).toEqual([
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: slotBadges[0].name, swatch: "marker", color: slotBadges[0].hue.marker },
+      { label: slotBadges[0].name, swatch: "marker", color: chartInk.marker(slotBadges[0].hue) },
     ]);
   });
 
