@@ -1,8 +1,8 @@
 <!--
   The menu button beside the label of a row that can be entered in another
   mode: named for the entry group, it lists every mode of the group, the
-  current one checked, each by its quantities with a line on what it holds
-  (ADR-0002 decision 72). A choice is the session's and converts every slot
+  current one checked, each by its quantities with a line on what is held or
+  follows when another input changes (ADR-0002 decision 72). A choice is the session's and converts every slot
   (decision 51); the menu shows the mode it is given.
 -->
 <script module lang="ts">

@@ -47,19 +47,19 @@ export const copy = {
   // An entry mode in its group's menu, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
   entryModeChoice: (labels: readonly string[]) =>
     labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
-  // The line under an entry mode in its menu: what follows when another input changes, the entry being held,
-  // never the mode's name again (decision 72, rule 3).
+  // The line under an entry mode in its menu: what is held or what follows when another input changes, never
+  // the mode's name again (decision 72, rule 3).
   entryModeDescriptions: {
-    separate: "Neither is derived from the other.",
-    operative: "Used as both the air and the mean radiant temperature.",
-    "relative-humidity": "Held as the temperature changes; the moisture content follows.",
+    separate: "The operative temperature follows the air speed.",
+    operative: "Held as the air speed changes; used as both the air and the mean radiant temperature.",
+    "relative-humidity": "Held as the temperature or the pressure changes; the humidity ratio follows.",
     "humidity-ratio": "Held as the temperature or the pressure changes; the relative humidity follows.",
     "dew-point": "Held as the temperature changes; the relative humidity follows.",
     "wet-bulb": "Held as the temperature changes; the relative humidity follows.",
     "vapour-pressure": "Held as the temperature changes; the relative humidity follows.",
     "air-speed": "The relative air speed follows the metabolic rate.",
     "relative-air-speed": "Held as the metabolic rate changes.",
-    "clothing-insulation": "The dynamic insulation follows the metabolic rate, and under ISO 7730 the air speed.",
+    "clothing-insulation": "The dynamic clothing insulation follows the metabolic rate, and under ISO 7730 the air speed.",
     "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
   presetTrigger: "Presets",
