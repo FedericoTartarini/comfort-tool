@@ -1,4 +1,3 @@
-import { chartInk } from "$lib/core/bandPalette";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
 import { adaptiveChartOf, requireAxisRange, type ZoneLimits } from "$lib/core/modelDeclaration";
 import { enteredValue, withEntryModes } from "$lib/core/slot";
@@ -6,7 +5,7 @@ import { displayUnitFor } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
 import { containsPoint, type Polygon } from "./polygon";
-import { axisFor, hoverGridFor, labelFor, markerFor } from "./specParts";
+import { axisFor, hoverGridFor, labelFor, markerFor, zoneInkFor } from "./specParts";
 
 /**
  * The adaptive chart of every slot of the request (ADR-0002 decisions 50 and
@@ -15,11 +14,12 @@ import { axisFor, hoverGridFor, labelFor, markerFor } from "./specParts";
  * every entry mode: nothing is mapped to an entry mode, and an operative axis
  * is marked at the slot's operative temperature in either mode (ADR-0002
  * decision 37). The zones are nested, largest first, so they are painted as
- * the psychrometric chart paints its own: the slot's hue with the opacity
- * rising inwards, never the thermal-sensation palette. Each is a fill with no
- * stroke over the region its two lines close, and the two lines stroked in
- * the hue's zone line, so the sides that close the region at the ends of the
- * x range, where the chart stops and the model sets no limit, are not drawn.
+ * the psychrometric chart paints its own ({@link zoneInkFor}), never in the
+ * thermal-sensation palette: for a lone slot each is a fill with no stroke
+ * over the region its two lines close, and for several no fill (ADR-0002
+ * decision 69); either way the two lines are stroked in the hue's zone line,
+ * so the sides that close the region at the ends of the x range, where the
+ * chart stops and the model sets no limit, are not drawn.
  * Neither reads the pointer, so a hover grid over the same `GRID × GRID`
  * field reads for them: both axis values, and the innermost zone of each slot
  * the cell is in. Laid in the one drawing order: every slot's fills, every
@@ -57,21 +57,16 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   request.slots.forEach((charted, position) => {
     const zones = zonesOfSlot[position];
     for (const [index, zone] of zones.entries()) {
-      const label = labelFor(request, charted, zone.label);
-      const fill = chartInk.zoneFill(charted.hue, index, zones.length);
+      const ink = zoneInkFor(request, charted, zone.label, index, zones.length);
+      const { label } = ink.legendEntry;
       // Neither the fill nor a line captures the pointer, so the hover grid below reads for them.
-      fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: fill, width: 0, fill, hover: "off", label });
-      for (const limit of [zone.upper, zone.lower]) {
-        lines.push({
-          kind: "path",
-          ...displayed(coordinatesOf(limit)),
-          color: chartInk.zoneLine(charted.hue),
-          width: chartInk.zoneLineWidth,
-          hover: "off",
-          label,
-        });
+      if (ink.fill !== undefined) {
+        fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
       }
-      legendOfSlot[position].push({ label, swatch: "fill", color: fill });
+      for (const limit of [zone.upper, zone.lower]) {
+        lines.push({ kind: "path", ...displayed(coordinatesOf(limit)), color: ink.line, width: ink.lineWidth, hover: "off", label });
+      }
+      legendOfSlot[position].push(ink.legendEntry);
     }
   });
   const traces: Trace[] = [...fills, ...lines];

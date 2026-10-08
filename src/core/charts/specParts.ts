@@ -95,11 +95,11 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
  * drawing order, its chrome between the fills and the outlines (decision 62).
  */
 export interface FieldPaint {
-  /** Every region's fill: the slots in the request's order, each slot's zones largest first; or the bands in the list's. */
+  /** Every region's fill: a lone slot's zones largest first, none of several slots' (decision 69); or the bands in the list's. */
   readonly fills: readonly ContourFillTrace[];
-  /** Every region's line, in the fills' order: each zone's outline, or every band's Edge, an unpainted band's too. */
+  /** Every region's line, in the regions' order: each zone's outline, or every band's Edge, an unpainted band's too. */
   readonly outlines: readonly ContourLineTrace[];
-  /** The one grid that reads every slot's number for the fills. */
+  /** The one grid that reads every slot's number for the regions, whose traces cannot. */
   readonly hoverGrid: HoverGridTrace;
   /** The Band list's legend entries, one per painted band; none without a list. */
   readonly bandLegend: readonly LegendEntry[];
@@ -117,10 +117,11 @@ export interface FieldPaint {
  * Given a Band list ({@link ChartRequest.bands}), its bands over the first
  * slot's scan, each over its interval of the number in its own colour, a
  * band without one nowhere, and every Edge stroked. Given none, each slot's
- * Comfort zones as contours of its own scan, largest first, in the slot's
- * hue with the opacity rising inwards, a lone slot exactly as each of
- * several (ADR-0002 decisions 50 and 58). Never the thermal-sensation palette
- * for a zone: it is diverging, and nested zones are levels of one thing.
+ * Comfort zones as contours of its own scan, largest first, painted as
+ * {@link zoneInkFor} says: a lone slot's filled in its hue with the opacity
+ * rising inwards, several slots' outlined alone (ADR-0002 decisions 50, 58
+ * and 69). Never the thermal-sensation palette for a zone: it is diverging,
+ * and nested zones are levels of one thing.
  *
  * Either way one hover grid reads both swept values and every slot's number,
  * labelled by its slot while there are several, and with a list the band the
@@ -143,28 +144,33 @@ export function fieldPaintFor(
   const outlines: ContourLineTrace[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
-  const lay = ({ line, fill }: PaintedRegion, legend: LegendEntry[]) => {
+  const lay = ({ line, fill }: PaintedRegion) => {
     if (fill) {
-      fills.push(fill.trace);
-      legend.push(fill.legendEntry);
+      fills.push(fill);
     }
     outlines.push(line);
   };
 
   if (bands) {
-    bandsFor(bands, { ...drawn, z: surfaces[0] }).forEach((region) => lay(region, bandLegend));
+    for (const region of bandsFor(bands, { ...drawn, z: surfaces[0] })) {
+      lay(region);
+      if (region.fill) {
+        bandLegend.push({ label: region.fill.label, swatch: "fill", color: region.fill.color });
+      }
+    }
   } else {
     const zones = contouredZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
         const interval = { lower: -zone.limit, upper: zone.limit };
-        const region = paintedRegionFor(labelFor(request, charted, copy.zoneLegend(zone)), { ...drawn, z: surfaces[position] }, {
-          fill: { interval, color: chartInk.zoneFill(charted.hue, index, zones.length) },
+        const ink = zoneInkFor(request, charted, copy.zoneLegend(zone), index, zones.length);
+        lay(paintedRegionFor(ink.legendEntry.label, { ...drawn, z: surfaces[position] }, {
+          fill: ink.fill === undefined ? undefined : { interval, color: ink.fill },
           line: interval,
-          lineColor: chartInk.zoneLine(charted.hue),
-          lineWidth: chartInk.zoneLineWidth,
-        });
-        lay(region, zoneLegendOfSlot[position]);
+          lineColor: ink.line,
+          lineWidth: ink.lineWidth,
+        }));
+        zoneLegendOfSlot[position].push(ink.legendEntry);
       });
     });
   }
@@ -247,6 +253,37 @@ export function labelFor(request: ChartRequest, charted: ChartedSlot, label: str
   return namesSlots(request.slots.length) ? copy.slotEntry(charted.name, label) : label;
 }
 
+/** A Comfort zone's paint: its fill's colour if it is filled, its line's colour and width, and its legend entry. */
+export interface ZoneInk {
+  /** The fill's colour, for a chart drawing one slot; none for one drawing several. */
+  readonly fill?: string;
+  readonly line: string;
+  readonly lineWidth: number;
+  readonly legendEntry: LegendEntry;
+}
+
+/**
+ * How a chart of `request` paints a Comfort zone of `charted` whose own
+ * label is `zoneLabel`, level `level` of `levels` nested zones, 0 the
+ * outermost (ADR-0002 decision 69); the legend names it as {@link labelFor}
+ * does. A chart drawing one slot fills it in the slot's hue, the opacity
+ * rising inwards, and names it with a fill swatch; one drawing several fills
+ * none, since overlapping fills of several hues mix into colours the legend
+ * does not name, and names it with a line swatch: a category is then read by
+ * nesting. Either way the zone is outlined in the slot's hue at the zone
+ * line width.
+ */
+export function zoneInkFor(request: ChartRequest, charted: ChartedSlot, zoneLabel: string, level: number, levels: number): ZoneInk {
+  const label = labelFor(request, charted, zoneLabel);
+  const line = chartInk.zoneLine(charted.hue);
+  const lineWidth = chartInk.zoneLineWidth;
+  if (request.slots.length > 1) {
+    return { line, lineWidth, legendEntry: { label, swatch: "line", color: line } };
+  }
+  const fill = chartInk.zoneFill(charted.hue, level, levels);
+  return { fill, line, lineWidth, legendEntry: { label, swatch: "fill", color: fill } };
+}
+
 /**
  * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
  * and the legend entry that names it by the slot. Chrome, so it never
@@ -293,19 +330,19 @@ interface RegionPaint {
   readonly lineWidth: number;
 }
 
-/** A region's line, and where it is filled its fill and the fill's legend entry. */
+/** A region's line, and its fill where it is filled. */
 interface PaintedRegion {
   readonly line: ContourLineTrace;
-  readonly fill?: { readonly trace: ContourFillTrace; readonly legendEntry: LegendEntry };
+  readonly fill?: ContourFillTrace;
 }
 
 /**
  * A region of the scanned `field` named `label`, painted as `paint` says: a
- * line over one interval and, where `paint` fills it, a fill over another and
- * a legend entry with a fill swatch (ADR-0002 decision 62). A Comfort zone
- * fills and strokes the same interval; a Band strokes its own upper Edge, and
- * one left unpainted is that line alone. Neither trace can say where the
- * pointer is, so neither captures it.
+ * line over one interval and, where `paint` fills it, a fill over another
+ * (ADR-0002 decision 62). A Comfort zone fills and strokes the same interval,
+ * or strokes it alone where several slots are drawn; a Band strokes its own
+ * upper Edge, and one left unpainted is that line alone. Neither trace can say
+ * where the pointer is, so neither captures it.
  */
 function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint): PaintedRegion {
   const line: ContourLineTrace = { kind: "contourLine", ...field, ...paint.line, color: paint.lineColor, width: paint.lineWidth, hover: "off", label };
@@ -313,17 +350,14 @@ function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint
     return { line };
   }
   const { interval, color } = paint.fill;
-  return {
-    line,
-    fill: { trace: { kind: "contourFill", ...field, ...interval, color, hover: "off", label }, legendEntry: { label, swatch: "fill", color } },
-  };
+  return { line, fill: { kind: "contourFill", ...field, ...interval, color, hover: "off", label } };
 }
 
 /**
  * `list` painted over the scanned `field`, one region per band in the list's
- * order: a fill and its legend entry for a band with a colour, and a line at
- * its own upper Edge for every band, painted or not, so n bands stroke the n
- * Edges once each (ADR-0002 decision 62). The first band is open below, as
+ * order: a fill for a band with a colour, and a line at its own upper Edge
+ * for every band, painted or not, so n bands stroke the n Edges once each
+ * (ADR-0002 decision 62). The first band is open below, as
  * every library classifier is; the last Edge is where the list stops
  * answering, and a number past it falls in no band, so that Edge is drawn by
  * interpolation like any other boundary.

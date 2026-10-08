@@ -98,9 +98,10 @@ describe("The page in the session", () => {
     for (const compare of [false, true]) {
       session.setCompare(compare);
       const traces = outputs.chart?.traces ?? [];
-      const zones = fillsOf(traces);
+      // One slot's zones are filled and outlined, several slots' outlined alone (ADR-0002 decision 69).
+      expect(fillsOf(traces)).toHaveLength(compare ? 0 : 3);
+      const zones = linesOf(traces);
       expect(zones).toHaveLength(3 * outputs.slots.length);
-      expect(traces.filter((trace) => trace.kind === "contourLine")).toHaveLength(3 * outputs.slots.length);
       outputs.slots.forEach((slot, position) => {
         expect(zones.slice(3 * position, 3 * position + 3).map((zone) => zone.z)).toEqual([slot.scan, slot.scan, slot.scan]);
       });
@@ -114,8 +115,8 @@ describe("The page in the session", () => {
     session.chart.type = chartType.psychrometric;
     const outputs = new Outputs(session);
 
+    // Three slots' zones are outlined with no fill (ADR-0002 decision 69).
     expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
-      "contourFill",
       "isoline",
       "contourLine",
       "hoverGrid",
