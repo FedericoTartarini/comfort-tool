@@ -53,7 +53,7 @@ A set of quantities the user may enter in more than one entry mode: temperature,
 _Avoid_: input mode, representation group
 
 **Entry mode**:
-One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five, air speed two (air speed, relative air speed) and clothing two (clothing insulation, dynamic clothing insulation). The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot.
+One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five, air speed two (air speed, relative air speed) and clothing two (clothing insulation, dynamic clothing insulation). The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot. It is chosen on the row it changes: the row's label is the select.
 _Avoid_: input mode, representation, humidity type, toggle
 
 **Activity-adjusted input**:
@@ -105,7 +105,7 @@ The library's bins that cut one output into categories: its Edges, its labels an
 _Avoid_: scale, interval scale, bins (in prose)
 
 **Palette**:
-The colours a Classifier's Bands start with: one colour family per Classifier, diverging for a scale around neutral and sequential for a one-sided one, taken by band position, never by label.
+The colours a Classifier's Bands start with: one colour family per Classifier, diverging for a scale around neutral and sequential for a one-sided one, taken by band position, never by label; a sequential family is read without its lightest colour, a diverging one centred on its neutral band.
 _Avoid_: colour scheme (that is the source family's word), theme
 
 **Edge**:
@@ -127,6 +127,14 @@ _Avoid_: export (alone), screenshot, figure, download
 **Input summary**:
 The text in an Image that says what its chart is computed from: the model and its standard and, for each slot drawn, what it was last calculated from: its values as they were entered, its options and its atmospheric pressure. These are not the panel's while a value is Out of range. On the Explore page it gives the Edges too. It never holds a result.
 _Avoid_: parameters, inputs table, caption
+
+**Swatch**:
+The small colour sample that stands for one thing on the page: a slot, a band or a category, drawn as a filled square, a line or a dot to match how the chart draws that thing. The same swatch appears in the legend, the result table, the slot buttons and the not-calculated line.
+_Avoid_: dot, chip, colour key (a key is a quantity's library name), marker (that is the slot's point on the chart)
+
+**Session controls**:
+The settings that apply to every slot and every page: the unit system, the atmospheric pressure, Copy link and Reset. They stand together in the left column, under the navigation.
+_Avoid_: global settings, toolbar, header controls
 
 **Temporary library**:
 A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. Adaptive's zone geometry and the inverses of the two activity corrections live there.

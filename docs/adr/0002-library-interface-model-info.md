@@ -1033,6 +1033,8 @@ input was the "Phase 5 item 1" rows of `.scratch/review-after-4b/deferred.md` (`
 question in the Comments of `.scratch/atmospheric-pressure/issues/04`. The deployed tool is read at `e809c96`, from
 the local `../comfort_tool` checkout:
 
+    **Noted 2026-10-08 (decision 67).** The pressure's input stands among the session controls in the left column
+    (decision 67, rule 2).
 50. **Compare shows up to three slots, and no slot is a baseline.** Revises ADR-0001 §4.3's "Baseline decides which
     row the difference highlighting is relative to", §4.4's "marker points for the three slots", §4.5's
     `compare: { enabled, activeSlot, baselineSlot }` and §4.8's `"compare"` object.
@@ -1131,6 +1133,10 @@ the local `../comfort_tool` checkout:
     (`core/charts/specParts.ts:249`). Accepted as they are, the same day: the chart drawing the other slots when
     slot 1 has no run, and the not-calculated note as a caption line rather than in the slot's row (decision 52's
     note), which the image export does not carry.
+    **Amended 2026-10-08 (decisions 66, 67 and 69; Phase 5c's grilling).** Slots 2 and 3's hues are no longer
+    placeholders: one hex per slot from `core/palette.ts` (decision 66, rule 2). "Nested, in the slot's hue with the
+    opacity rising inwards" holds for a chart drawing one slot; a chart drawing two or more paints each slot's zones as
+    outlines (decision 69). "How it looks is Phase 5c's" is decision 67, rule 3.
 51. **An entry mode is the session's, and every slot is entered in it.** Amends decision 47, whose `Slot` keeps its
     shape: each slot still holds its humidity and temperature entry, and the session keeps the three in step.
     Changing an entry mode converts every slot, compared or not, each by the rule `core/slot.ts` states and at its
@@ -1195,6 +1201,9 @@ the local `../comfort_tool` checkout:
     an axis range per humidity quantity in every declaration, a conversion to `rh` at each cell's dry-bulb temperature
     and a rule for the cells above saturation, for a view nobody asked for. Left out of v1; the "Unscheduled" row of
     `.scratch/review-after-4b/deferred.md` is closed by this note.
+    **Amended 2026-10-08 (decision 68).** "What appears once is the pair of entry-mode controls,
+    `ui/inputs/EntryModeControls.svelte`" no longer holds: the one control of each group is the select that is its
+    row's label, and the component goes. The mode is still the session's and still converts every slot.
 52. **Each slot has its own gate, and a switch asks once for every compared slot.** Amends decisions 32 and 33, which
     were written for slot 1 alone.
     The gate is asked per slot. A slot with an entry out of range keeps its own last valid run, and its row, its
@@ -1735,6 +1744,8 @@ notes under decisions 51 and 53:
     copied on the Explore page: Standard reads no Band list, so its link carries none, and the text the tab keeps
     holds the list of every model the session has been on. "The page's Reset (Phase 5c) returns it with the rest"
     is built with the link (decision 63, rule 8); its look and place stay Phase 5c's.
+    **Noted 2026-10-08 (decision 67).** Rule 3's "inline beside the chart": the panel stays under the legend as a compact
+    table, and its heading row is where B6's dialog will be opened from (decision 67, rule 4).
 60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
     classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
     ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
@@ -1776,6 +1787,10 @@ notes under decisions 51 and 53:
     non-finite one (`core/shareLink.ts:360`) and JSON cannot write it. This closes `.scratch/compliance-column/` 02's
     text half; the code is not yet written.
 
+    **Amended 2026-10-08 (decision 66).** Rule 3's "for now" is closed: thermal sensation reads RdBu-7. Rule 1's
+    reading at `labels.length` is refined by decision 66's rule 4, a sequential family read at one more than the count
+    without its lightest colour, a diverging family centred on the band its table entry names as neutral; that is
+    `.scratch/open-points.md` D15's answer.
 61. **Every chart that is not declared polygons is one scan, contoured: the psychrometric chart's Comfort zones are
     contours of the same scan its Bands are, the zone solver and the root finders are deleted, and the scanned
     output is declared once, on the model.** Taken 2026-10-02 (`.scratch/explore/` ticket 08's open point 1;
@@ -1962,6 +1977,8 @@ notes under decisions 51 and 53:
     79.9 and 81.7 / 83.8 ms for an edit that rescans slot 1. About 2 to 6 ms in all, no more than the passes' own
     spread (03's second one-slot pass ran 9 ms faster after). Both time the edit to the drawn
     plot, so neither compares with decision 61's 234.2 ms, which timed the scan alone on the dev server.
+    **Amended 2026-10-08 (decision 69).** The kind of a Comfort zone's painted region is chosen by how many slots the
+    chart draws: `contourFill` for one, `contourLine` for two or more.
 63. **The session lasts as long as its tab, a share link carries what one page is computed from, and both are one
     text.** Taken 2026-10-06 with the user in the grilling of Phase 5 item 4, ahead of the code; amends decisions 32,
     49, 50, 57 and 59 and ADR-0001 §2, §4.2, §4.5, §4.8 and §7; `CONTEXT.md` gains **Share link**, and Session a
@@ -2162,6 +2179,8 @@ notes under decisions 51 and 53:
     is 1139. The amendments of 2026-10-06 under decisions 32, 49, 50 and 59 hold of the code, "a tab that kept a
     session" read as above, and decision 32's typed address converting "the session that tab holds" where the
     browser allows storage; decision 57's carries a note, which says what a refused storage does.
+    **Noted 2026-10-08 (decision 67).** Rule 7's "its look and place are Phase 5c's" and rule 8's "a button beside Copy
+    link": both stand among the session controls in the left column (decision 67, rule 2).
 64. **An image is a figure built for the file from the page's `ChartSpec`, in two printed sizes, and it says what
     its chart is computed from.** Taken 2026-10-07 with the user in the grilling of Phase 5 item 5, ahead of the
     code; notes ADR-0001 §4.4 and §7; `CONTEXT.md` gains **Image** and **Input summary**. Facts. `src/` has no
@@ -2322,6 +2341,172 @@ notes under decisions 51 and 53:
     Seen and left, in tickets 01 to 06's Comments: at 90 mm the relative-humidity isolines' labels at the top right
     run into each other; a long title does not wrap; a typed `<`, `&` or `<br>` in a title may be read as Plotly's
     markup, as a typed Band label already is in the legend.
+    **Noted 2026-10-08 (decision 67).** Rule 5's paragraph goes into `docs/user-guide.md`, which the header's
+    Documentation link opens on GitHub (decision 67, rule 7).
+65. **Appearance lives in tokens, primitives and layout components; a business component carries no `<style>`.**
+    Taken 2026-10-08 with the user in the grilling of Phase 5c, ahead of the code; narrows ADR-0001 §2's UI row and
+    §5's `app.css` line. Facts. Seven business components carry a `<style>` block (`routes/StandardPage`,
+    `ui/charts/ChartLegend`, `ui/charts/PlotlyChart`, `ui/inputs/InputPanel`, `ui/inputs/PresetInput`,
+    `ui/inputs/QuantityInput`, `ui/outputs/ResultTable`), holding four things in all: a swatch written three ways, a
+    caption's size and colour written four times, the chart's height and the result table's upper-case headings.
+    Every mutually exclusive choice is a row of `Button`s whose variant marks the chosen one
+    (`ui/inputs/UnitSystemControls.svelte:23`, `EntryModeControls.svelte:50`, `ChartControls.svelte:36`). A dialog's
+    width is the generated primitive's `sm:max-w-sm` (`ui/primitives/dialog/dialog-content.svelte:33`); a utility
+    class passed from a business component is a lint error, and a primitive is never hand-edited (ADR-0001 §2).
+    Tailwind 4 emits its utilities in `@layer utilities`, which an unlayered rule in `app.css` beats, and every
+    generated primitive carries a `data-slot` attribute for exactly that. The principle, the rewrite plan's "why not
+    earlier": visual change reaches the app through tokens, primitives and layout components alone, so the design is
+    a change to those three and to markup, never to a business component's logic.
+    Rules. (1) A component outside `ui/primitives/` and `ui/layout/` has no `<style>` block. Its appearance is a
+    primitive's, a layout component's, or a semantic class `app.css` defines in `@layer components` (`.caption`,
+    `.swatch` and its shape classes, `.table-scroll`, …); a semantic class name is not a utility, so ADR-0001 §2's
+    lint rule passes it. (2) A global adjustment to a generated primitive is written in one unlayered block of
+    `app.css`, selected by `data-slot`, and sets size properties alone; colour goes through the tokens, so the block
+    cannot become a second theme. (3) Rule 1 is a lint rule, `no-restricted-syntax` on `SvelteStyleElement` for
+    every `.svelte` file outside those two directories, landed as Phase 5c's last ticket, so the phase's first Done
+    criterion is machine-checked (the code-quality checklist's rule: what can be mechanised is a lint rule). (4)
+    `ui/layout/` gains `PageFrame.svelte`: the header, the three columns and the footer, with the responsive rules of
+    decision 67, which both pages compose. (5) A Swatch is a set of classes in `app.css`, not a component: the legend,
+    the Compliance column, the slot buttons and the not-calculated line draw one; `CONTEXT.md` gains **Swatch**. (6)
+    A choice among two or three exclusive options is a `toggle-group`, generated by the CLI; the slot buttons and
+    Compare stay independent toggles. The design plan — principles, the named palette, the type roles, the
+    wireframes — is the Phase 5c spec's, and this ADR records the rules alone.
+    Rejected: a third directory where utilities are allowed (ADR-0001 §2's rule stands); hand-editing a primitive;
+    a class passed per dialog.
+66. **One palette: `core/palette.ts` holds the design's named colours, and the interface and the charts both read
+    it.** Taken 2026-10-08 in the same grilling; closes decision 60's rule 3 ("for now") and `.scratch/open-points.md`
+    D15; amends decision 50's "placeholders for Phase 5c". Facts. Plotly and the Image need colours as strings, and
+    `core/` reads no DOM, so every colour the charts draw must be a value in TypeScript; the interface already draws
+    the slot hues and the band fills from those values through inline styles (`routes/StandardPage.svelte:112`,
+    `ui/outputs/ResultTable.svelte:61`). The deployed tool's only colour of its own is `#2a4583`
+    (`static/css/layout.css`, four uses; the rest is Bootstrap 4's defaults). ISO 7730's category A is YlOrRd-4's
+    first colour, `#ffffb2`, near white on white; UTCI's "no thermal stress" is the sixth of ten bands and takes
+    `#fddbc7` from the reversed RdBu-10, a pale warm, since an even count has no neutral colour; the CBE sensation
+    fills' Neutral is `#f2f2f2`. Three of the seven CBE fills are RdBu's already (decision 60).
+    Rules. (1) `core/palette.ts` holds the named colours as hex: `brand` `#2a4583`, `ink` `#0f172a`, `inkMuted`
+    `#64748b`, `line` `#e2e8f0`, `lineStrong` `#cbd5e1`, `lineHeavy` `#94a3b8`, `paper` `#ffffff`, `alert`
+    `#dc2626`, and the three slot hues `#0072b2`, `#009e73`, `#cc79a7` (Okabe–Ito's blue, bluish green and reddish
+    purple: safe for colour-blind readers, and apart from RdBu's and YlOrRd's). `core/slotBadge.ts`'s hues and
+    `core/bandPalette.ts`'s `chartInk` read from it; the ColorBrewer families stay in `bandPalette.ts`, since they are
+    copied, not designed. (2) `SlotHue` is one hex per slot; the marker, the zone line and the zone fill are derived
+    from it in `chartInk`. (3) `app.css`'s tokens are written as the same hex values, replacing shadcn-svelte's oklch
+    defaults, so the interface's greys and the charts' chrome are one slate scale; a test reads `app.css` as text and
+    pins `--brand` and the shared greys to `palette`'s values, so the two files cannot drift. (4) The band palette's
+    reading rules: a sequential family is read at one more than the band count and its lightest colour dropped, so
+    no first category is near white (ISO 7730's A, B, C are YlOrRd-5's last three, "none" unpainted; Heat Index reads
+    YlOrRd-6 without its first); a diverging family is read centred on the neutral band, which the classifier's table
+    entry names by position, taking the odd count that covers the longer side and dropping the shorter side's surplus
+    from the neutral outward (UTCI: RdBu-11's five blues, `#f7f7f7`, four reds). A near-white neutral is right, the
+    zero of a diverging scale; a near-white first category is not. (5) Thermal sensation moves from the CBE fills to
+    RdBu-7, one diverging family for both diverging classifiers; `palettes.cbeSensation` goes. (6) No dark mode in v1
+    (ADR-0001 §1): one `:root`, nothing reserved for a second.
+    Rejected: CSS as the source with the adapter reading `getComputedStyle`, which the Image's figure and `core`'s
+    tests cannot share and which a Band's own hex colour mixes with; colours picked by hand per classifier, which
+    writes appearance back into the table.
+67. **The page: a header of identity and exits, a left column of navigation and session controls, an input column of
+    model and rows, a result column from table to chart; and no control changes the layout.** Taken 2026-10-08 in the
+    same grilling, and revised the same day with the user (rule 10, and rules 3 and 8 with it); gives a place and a
+    look to what decisions 49, 50, 57, 59, 63 and 64 left to Phase 5c, and closes `.scratch/open-points.md` B4 and
+    B10. Facts. ADR-0001 §1 fixes the three-column information architecture (left navigation, centre inputs, right
+    results and chart) and allows the rest to be redesigned. The deployed tool is two columns under a horizontal tab
+    row, its buttons centred below the inputs, its readout a fixed box in the chart's corner, its footer a citation,
+    a contact and two logos, its version a link to a changelog, with no date and no licence on the page. The left
+    column today holds three links and nothing else (`routes/PageNavigation.svelte`); the session's controls stand at
+    the top of the input column (`ui/inputs/SessionControls.svelte`); the hover readout is Plotly's label on the
+    pointer, several lines (`core/charts/specParts.ts:224-226`); the switch dialog's slot column clips "Allowed range"
+    at the primitive's width (B4); a standard's link carries `aria-current="page"` on any of its models (B10,
+    `routes/routeModels.ts:58`). Compare widens the input column from `24rem` to `40rem` and the chart narrows and
+    redraws (`routes/StandardPage.svelte:54`); the notice line is in the flow at the top of `main` and pushes the page
+    down when it appears; the not-calculated line is a span of the table's caption beside the standard's. The
+    usability rule behind rule 10: a person's gaze anchor must not move because of their own click (layout stability;
+    the shift Google's CLS metric measures, Nielsen Norman Group's "avoid layout shifts").
+    Rules. (1) The header is the title, an `h1`, and the Documentation link, with the notice line between them (rule
+    10); nothing else. Focus after Reset or a link's yes (D11, Phase 6) lands on the `h1`. (2) The left column is the
+    navigation — Standard's heading, one link per standard, Explore as a group of its own, and a place under Explore
+    reserved for Time-series (decision 57) — and below it the **session controls**: the unit system as a
+    `toggle-group`, the atmospheric pressure's input, Copy link and Reset: what applies to every slot and every page
+    stands in one place; `CONTEXT.md` gains **Session controls**. `aria-current="page"` marks the one link whose
+    address is the session's; a standard's link on another of its models is drawn as current and carries
+    `aria-current="true"`. (3) The input column is the model select, Compare, and the quantity rows (decision 68). A
+    row's Presets are a menu button at the right end of its box, inside it (the generated `input-group` primitive),
+    one per slot, and Phase 5b's calculators are entries of the same menu, so a box carries one attached control
+    whether the column shows one slot or three. A row's bound text stands under its box, in the caption line a
+    preset row already has, one per slot, since the bounds of two slots can differ under a corrected entry mode. (4)
+    The result column, from the top: the result table (decision 70); the standard's caption and the not-calculated
+    line, muted, with its slot's swatch; the chart controls, the chart type as a `toggle-group`, the axis selects and
+    Export image at the right (decision 64, rule 6); the chart; the legend; on Explore the Bands panel as a compact
+    table, whose heading row, "Bands" with Reset bands, is where B6's dialog will be opened from. (5) The readout
+    stays on the pointer: Plotly's hover label, its font, ground and border from the tokens through
+    `layout.hoverlabel`; there is no readout box. (6) The footer is two lines: the tool's name and
+    `__APP_VERSION__`, `jsthermalcomfort` and `__LIBRARY_VERSION__`, the licence and a Code link, through the same
+    `copy` functions the Image's footer uses (decision 64, rule 4); then the citation the deployed tool asks for
+    (Tartarini, Schiavon, Cheung, Hoyt, 2020, SoftwareX 12, 100563, doi 10.1016/j.softx.2020.100563). No date: the
+    page is live, where the file stands alone. (7) Documentation is `docs/user-guide.md` in the repository, linked
+    on GitHub; no route, so the page set of decision 57 is unchanged. Decision 64 rule 5's paragraph is written
+    there. (8) Breakpoints are Tailwind's `lg` and `xl`: at 1280 px and above three columns, `13rem`, `24rem` and
+    the rest, with Compare on or off; Compare's three slot columns divide the `24rem`, about `7.3rem` each, the label
+    row spanning them (decision 68); from 1024 px the navigation and the session controls become one row under the
+    header and the page is two columns; below it one column, navigation row, inputs, results. The three slot columns
+    stay side by side at every width (decision 50: a third each, so enabling one moves no other). The chart's height
+    is a token, `26rem` in three columns and a ratio of the width in one. (9) Every dialog is one width, `40rem`, set
+    on `[data-slot="dialog-content"]` (decision 65, rule 2), with and without the slot column, so B4 is closed. (10)
+    **Layout stability.** At one viewport no control changes the width of any region, and a control changes content
+    only inside its own region and below itself; it moves nothing in another region. Three things are not this
+    rule's: a change of model or page changes content; a change of viewport goes through rule 8's breakpoints; a row
+    folding away below the control that folded it (Operative temperature, decision 68) is allowed. Hence Compare
+    reflows inside the input column and the chart keeps its size; the notice line (decision 63, rule 6) is drawn in
+    the header between the title and the Documentation link, where it pushes nothing; and the not-calculated line
+    joins the standard's caption, already there for a model with a standard — the one line Heat Index gains is
+    accepted.
+    Rejected: the deployed tool's horizontal tabs and centred buttons; the unit switch left in the header, apart from
+    the other session controls; a documentation route; a readout box, a second surface and a second style for lines
+    the label already shows; arrows as the only scroll affordance; the input column widening for Compare (the first
+    draft of rule 8), which resized the chart, the page's anchor; a `30rem` column, which leaves a lone slot's box too
+    wide and the chart at 1280 px too narrow; hiding Presets on Compare; a bound text shown only where slots differ,
+    a layout that jumps while typing.
+68. **An entry mode is chosen on the row it changes.** Taken 2026-10-08 in the same grilling; amends decision 51's
+    "what appears once is the pair of entry-mode controls, `ui/inputs/EntryModeControls.svelte`". Facts. The entry
+    modes are a block of four labelled rows above the quantity rows, so the control and the rows it changes are apart,
+    and the block takes four lines (`ui/inputs/EntryModeControls.svelte`). The deployed tool sets each mode beside the
+    box it changes, a select for humidity and for air speed, a checkbox for operative temperature, repeated per
+    column on Compare. `core/slot.ts`'s `valueEntryGroups` (`:134-155`) gives each group's modes and each mode's
+    panel quantities, and a humidity mode names its quantity (`core/entryModes.ts:96`), so a row can find the group it
+    belongs to and the alternatives it has.
+    Rules. (1) A quantity row that belongs to an entry group has a select for its label: it shows the entered
+    quantity's label with its unit, and opened lists the group's other modes by their quantities; the temperature row
+    lists Operative temperature, which folds the mean radiant row away; a row of no entry group has a plain label.
+    (2) The mode is still the session's, and one select converts every slot (decision 51): on Compare the label row
+    spans the three columns. (3) The select's accessible name is the group's (`copy.temperatureInput` and the
+    others); the number box is named by the label text. (4) `EntryModeControls.svelte` is removed; `core/slot.ts`
+    gains one reader, the entry group a quantity's row belongs to with its modes; `state/` is unchanged.
+    Rejected: the block above the rows, for its distance from what it changes; the deployed tool's control beside the
+    box, three shapes for one kind of choice and three copies on Compare.
+69. **Comfort zones of several slots are drawn as outlines; one slot's are nested fills.** Taken 2026-10-08 in the
+    same grilling; amends decision 50's "nested, in the slot's hue with the opacity rising inwards" and decision 62's
+    choice of kind. Facts. Three slots on ISO 7730 paint nine translucent regions of three hues; where they overlap
+    the colours mix into ones the legend does not name, which is why comparing several region sets with filled areas
+    is avoided in the visualisation literature; outlines are the usual answer, small multiples the other. Decision 62
+    already has two kinds, `contourFill` and `contourLine`, chosen per painted region.
+    Rules. (1) A chart drawing one slot paints that slot's zones as today, nested fills whose opacity rises inwards.
+    (2) A chart drawing two or more paints each slot's zones as `contourLine` in the slot's hue, solid, at
+    `chartInk.zoneLineWidth`; a category is read by nesting, as it was by opacity; the markers stay filled; the legend
+    entry's swatch is a line. (3) This is Phase 5c's one change to `core/charts`, the first ticket of its layout
+    layer, named in the ticket as the exception to the phase's second Done criterion; the three-column ticket's
+    screenshot of ISO 7730 with three slots judges the result.
+    Rejected: small multiples, since Compare's purpose is one chart; filled zones at a lower opacity, which still mix.
+70. **The result table avoids overflow first and, where it overflows, scrolls inside its region, by keyboard, with
+    its first column fixed and its clipped edge faded.** Taken 2026-10-08 in the same grilling. Facts. The headings are
+    `Quantity.label` in full and `white-space: nowrap` (`ui/outputs/ResultTable.svelte:105`), so "Predicted Percentage
+    of Dissatisfied" alone is over 300 px and the table scrolls sideways at every width; macOS's overlay scrollbar is
+    invisible until the table moves. The data-table guidance that agrees across sources (Nielsen Norman Group's,
+    GOV.UK's Table component, Roselli's responsive accessible table): wrap before scrolling, right-align numbers, never
+    collapse a comparison table into cards, scroll the container and not the page, make the scroll region focusable
+    and named, keep the row's identity in view, show that there is more.
+    Rules. (1) Headings wrap; numbers are right-aligned in tabular figures. (2) The table's wrapper is a scroll
+    region, `role="region"`, `tabindex="0"`, `aria-labelledby` the Results heading. (3) The first column, the slot's
+    name, is sticky. (4) The clipped edge fades, in CSS alone, and the native scrollbar is left as it is. (5) All of
+    it is classes in `app.css` and three attributes on the wrapper; no logic.
+    Rejected: arrow buttons, a mechanism for a fallback case; collapsing rows into cards.
 
 ## Consequences
 
