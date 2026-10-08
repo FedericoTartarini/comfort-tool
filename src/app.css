@@ -10,7 +10,13 @@
    primary button, the current navigation item and the focus ring are navy. */
 :root {
 	--brand: #2a4583;
+
+	/* The design plan's type sizes and the chart's height (Phase 5c spec). */
+	--font-size-title: 1.125rem;
+	--font-size-heading: 0.875rem;
+	--font-size-body: 0.875rem;
 	--font-size-caption: 0.75rem;
+	--chart-height: 26rem;
 
 	--background: #ffffff;
 	--foreground: #0f172a;
@@ -104,4 +110,40 @@
 	nav .nav-item {
 		padding-left: 0.75rem;
 	}
+}
+
+/* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
+@layer components {
+	/* A Swatch (CONTEXT.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */
+	.swatch {
+		display: inline-block;
+		flex-shrink: 0;
+		width: 0.75em;
+		height: 0.75em;
+	}
+	/* A fill: bordered, so a near-white colour shows on the paper. */
+	.swatch-fill {
+		border: 1px solid var(--border);
+		background-color: var(--swatch-color);
+	}
+	.swatch-line {
+		height: 0;
+		border-top: 2px solid var(--swatch-color);
+	}
+	.swatch-marker {
+		border-radius: 50%;
+		background-color: var(--swatch-color);
+	}
+
+	.caption {
+		font-size: var(--font-size-caption);
+		color: var(--muted-foreground);
+	}
+}
+
+/* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2). Sizes alone:
+   a colour goes through the tokens. Unlayered, so it wins over the primitives' utilities. */
+[data-slot="dialog-content"] {
+	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
+	max-width: min(40rem, calc(100% - 2rem));
 }

@@ -1,13 +1,14 @@
 <script lang="ts">
+  import type { ChartType } from "$lib/core/chartType";
   import type { ChartAxes, RegisteredModel } from "$lib/core/modelDeclaration";
   import type { Quantity } from "$lib/core/quantities";
   import type { DrawnAxes } from "$lib/state/compute.svelte";
   import type { ChartState } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
-  import { Button } from "$lib/ui/primitives/button";
   import { Label } from "$lib/ui/primitives/label";
   import * as Select from "$lib/ui/primitives/select";
+  import * as ToggleGroup from "$lib/ui/primitives/toggle-group";
 
   interface Props {
     model: RegisteredModel;
@@ -20,7 +21,9 @@
 
   const id = $props.id();
   // Options are addressed by position in these lists rather than by any string
-  // id: a <select> value is text, and a Quantity is compared by identity.
+  // id: a select's or a toggle group's value is text, and a chart type or a
+  // Quantity is compared by identity.
+  const types: readonly ChartType[] = $derived(model.charts.map((declaredChart) => declaredChart.type));
   // ADR §4.4: each axis excludes the quantity the other one holds — x === y is
   // not a chart.
   const xChoices = $derived(drawnAxes?.choices.filter((quantity) => quantity !== drawnAxes.selected.y) ?? []);
@@ -29,16 +32,26 @@
 
 <Inline gap="4" align="baseline">
   <Inline gap="2" align="center">
-    <span>{copy.chart}</span>
-    {#each model.charts as declaredChart (declaredChart.type)}
-      <Button
-        size="sm"
-        variant={chart.type === declaredChart.type ? "default" : "outline"}
-        onclick={() => (chart.type = declaredChart.type)}
-      >
-        {declaredChart.type.title}
-      </Button>
-    {/each}
+    <span id="{id}-type">{copy.chart}</span>
+    <!-- A click on the chosen type asks for none (an empty value), which the setter ignores. -->
+    <ToggleGroup.Root
+      type="single"
+      variant="outline"
+      size="sm"
+      aria-labelledby="{id}-type"
+      bind:value={
+        () => String(types.indexOf(chart.type)),
+        (value) => {
+          if (value !== "") {
+            chart.type = types[Number(value)];
+          }
+        }
+      }
+    >
+      {#each types as type, index (type)}
+        <ToggleGroup.Item value={String(index)}>{type.title}</ToggleGroup.Item>
+      {/each}
+    </ToggleGroup.Root>
   </Inline>
 
   {#if drawnAxes}
