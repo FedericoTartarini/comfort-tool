@@ -37,8 +37,8 @@
 
 <!--
   The session controls (ADR-0002 decision 67, rule 2; CONTEXT.md): what applies
-  to every slot and every page, in the left column under the navigation, the
-  same on both pages. Copy link and Reset stand one under the other, so Copy
+  to every slot and every page, after the navigation in the left column or in
+  the row the page frame makes of it, the same on both pages. Copy link and Reset stand one under the other, so Copy
   link saying the link was copied moves nothing.
 -->
 <Stack gap="4">

@@ -7,7 +7,7 @@
   link whose address is the session's (decision 67, rule 2). Explore is a group
   of its own, so its link reads as Standard's heading does, one level above the
   standards' links, and under it one link's height is kept for Time-series, so
-  its arrival moves nothing below.
+  in the left column its arrival moves nothing below.
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
