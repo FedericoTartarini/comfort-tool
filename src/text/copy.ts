@@ -1,5 +1,15 @@
+import type { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { ComfortZone } from "$lib/core/modelDeclaration";
 import { formatNumber } from "$lib/core/numberFormat";
+
+type IdOf<Modes extends Record<string, { readonly id: string }>> = Modes[keyof Modes]["id"];
+
+/** Every entry mode's id, as core's mode tables carry them, so a mode without a description is a type error. */
+export type EntryModeId =
+  | IdOf<typeof temperatureMode>
+  | IdOf<typeof humidityMode>
+  | IdOf<typeof airSpeedMode>
+  | IdOf<typeof clothingMode>;
 
 /** The repository's address, a placeholder target for the footer's links (the Phase 5c spec, Out of Scope). */
 const REPOSITORY = "https://github.com/FedericoTartarini/comfort-tool";
@@ -29,13 +39,29 @@ export const copy = {
   inputs: "Inputs",
   model: "Model",
   units: "Units",
-  temperatureInput: "Temperature input",
-  humidityInput: "Humidity input",
-  airSpeedInput: "Air speed input",
-  clothingInput: "Clothing input",
-  // An entry mode in its row's select, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
+  // The entry groups' names, each its menu button's whole text (ADR-0002 decision 72, rule 1).
+  temperatureGroup: "Temperature",
+  humidityGroup: "Humidity",
+  airSpeedGroup: "Air speed",
+  clothingGroup: "Clothing",
+  // An entry mode in its group's menu, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
   entryModeChoice: (labels: readonly string[]) =>
     labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
+  // The line under an entry mode in its menu: what stays as entered and what is derived when another input
+  // changes, never the mode's name again (decision 72, rule 3).
+  entryModeDescriptions: {
+    separate: "Both stay as entered, and the model takes each as it is.",
+    operative: "Stays as entered and is given to the model as both the air and the mean radiant temperature.",
+    "relative-humidity": "Stays as entered when the temperature changes, so the moisture in the air changes with it.",
+    "humidity-ratio": "Stays as entered; the relative humidity is derived from it at the temperature and the pressure.",
+    "dew-point": "Stays as entered; the relative humidity is derived from it at the temperature.",
+    "wet-bulb": "Stays as entered; the relative humidity is derived from it at the temperature.",
+    "vapour-pressure": "Stays as entered; the relative humidity is derived from it at the temperature.",
+    "air-speed": "Stays as entered; the relative air speed the model takes is derived from it and the metabolic rate.",
+    "relative-air-speed": "Stays as entered, and the model takes it whatever the metabolic rate.",
+    "clothing-insulation": "Stays as entered; the dynamic insulation the model takes is derived from it and the metabolic rate, and under ISO 7730 the air speed too.",
+    "dynamic-clothing-insulation": "Stays as entered, and the model takes it whatever the metabolic rate and the air speed.",
+  } satisfies Record<EntryModeId, string>,
   presetTrigger: "Presets",
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",

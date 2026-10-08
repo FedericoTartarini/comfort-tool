@@ -14,7 +14,7 @@
     presets: readonly Preset[];
   }
 
-  let { quantity, value, unitSystem, bound, outOfRange = false, labelControl, oncommit, presets }: Props = $props();
+  let { quantity, value, unitSystem, bound, outOfRange = false, besideLabel, oncommit, presets }: Props = $props();
 
   let open = $state(false);
 
@@ -29,7 +29,7 @@
 
 <Stack gap="1">
   <Inline gap="2" align="baseline">
-    <QuantityInput {quantity} {value} {unitSystem} {bound} {outOfRange} {labelControl} {oncommit} />
+    <QuantityInput {quantity} {value} {unitSystem} {bound} {outOfRange} {besideLabel} {oncommit} />
     <Popover.Root bind:open>
       <Popover.Trigger>
         {#snippet child({ props })}

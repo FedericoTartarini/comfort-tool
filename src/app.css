@@ -157,3 +157,9 @@
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
 }
+/* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
+   (decision 72, rule 2), which wrap at 24rem. */
+[data-slot="dropdown-menu-content"] {
+	width: max-content;
+	max-width: min(24rem, calc(100vw - 2rem));
+}

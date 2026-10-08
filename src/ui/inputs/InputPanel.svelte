@@ -11,7 +11,7 @@
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Checkbox } from "$lib/ui/primitives/checkbox";
   import { Label } from "$lib/ui/primitives/label";
-  import EntryModeSelect, { type EntryModeSetters } from "./EntryModeSelect.svelte";
+  import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
   import PresetInput from "./PresetInput.svelte";
   import QuantityInput from "./QuantityInput.svelte";
 
@@ -23,7 +23,7 @@
     atmosphericPressure: number;
     outOfRangeQuantities: readonly Quantity[];
     violations: readonly ViolationRow[];
-    /** The session's: a row's entry-mode select converts every slot (ADR-0002 decision 51). */
+    /** The session's: a row's entry group menu button converts every slot (ADR-0002 decision 51). */
     entryModeSetters: EntryModeSetters;
   }
 
@@ -46,10 +46,10 @@
 <Stack gap="4">
   {#each rows as quantity (quantity)}
     {@const group = rowEntryGroupOf(model, inputSlot, quantity)}
-    <!-- A row that offers an entry group's modes has their select for its label (ADR-0002 decision 68). -->
-    {#snippet entryModeLabel(labelText: string)}
+    <!-- A row that offers an entry group's modes has the group's menu button beside its label (ADR-0002 decision 72). -->
+    {#snippet entryGroupMenuButton()}
       {#if group}
-        <EntryModeSelect {group} {labelText} setters={entryModeSetters} />
+        <EntryGroupMenuButton {group} setters={entryModeSetters} />
       {/if}
     {/snippet}
     {@const rowProps = {
@@ -58,7 +58,7 @@
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outOfRangeQuantities.includes(quantity),
-      labelControl: group ? entryModeLabel : undefined,
+      besideLabel: group ? entryGroupMenuButton : undefined,
       oncommit: (si: number) => inputSlot.setEntered(quantity, si),
     }}
     {@const presets = presetsFor(quantity)}
