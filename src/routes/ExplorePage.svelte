@@ -30,6 +30,7 @@
   const { session, outputs } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
+  const id = $props.id();
 </script>
 
 <PageFrame notice={tab.notice} onclosenotice={tab.closeNotice}>
@@ -74,7 +75,14 @@
 
   {#snippet results()}
     <Stack gap="4">
-      <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={false} />
+      <h2 id="{id}-results">{copy.results}</h2>
+      <ResultTable
+        model={session.model}
+        rows={outputs.slots}
+        unitSystem={session.unitSystem}
+        compare={false}
+        labelledby="{id}-results"
+      />
 
       <Inline gap="4" justify="between" align="center">
         <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />

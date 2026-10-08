@@ -7,6 +7,8 @@
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
+  import Inline from "$lib/ui/layout/Inline.svelte";
+  import Stack from "$lib/ui/layout/Stack.svelte";
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
@@ -16,9 +18,11 @@
     unitSystem: UnitSystem;
     /** While Compare is on, a row wears its slot's hue and a caption line names the row it is about. */
     compare: boolean;
+    /** The id of the Results heading, which names the table's scroll region (ADR-0002 decision 70, rule 2). */
+    labelledby: string;
   }
 
-  let { model, rows, unitSystem, compare }: Props = $props();
+  let { model, rows, unitSystem, compare, labelledby }: Props = $props();
 
   // ADR §4.3: the Compliance column appears only when the model has a
   // classified output or a broken output row. An output-role violation also
@@ -40,96 +44,82 @@
   }
 </script>
 
-<div class="result-table">
-  <Table.Root>
-    <Table.Header>
-      <Table.Row>
-        <Table.Head>{copy.inputColumn}</Table.Head>
-        {#if hasCompliance}
-          <Table.Head>{copy.complianceColumn}</Table.Head>
-        {/if}
-        {#each model.table as quantity (quantity)}
-          <Table.Head>{quantity.label}</Table.Head>
-        {/each}
-      </Table.Row>
-    </Table.Header>
-    <Table.Body>
-      {#each tableRows as { row, classified, caveats } (row)}
+<!-- A slot's swatch is its chart marker's. -->
+{#snippet slotSwatch(row: SlotOutputs)}
+  <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(row.badge.hue)}></span>
+{/snippet}
+
+<Stack gap="2">
+  <!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region
+       is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div class="table-scroll" role="region" tabindex="0" aria-labelledby={labelledby}>
+    <Table.Root class="result-table">
+      <Table.Header>
         <Table.Row>
-          <Table.Cell>
-            {#if compare}
-              <span class="band">
-                <span class="swatch" style:background-color={chartInk.zoneLine(row.badge.hue)}></span>
-                {row.badge.name}
-              </span>
-            {:else}
-              {row.badge.name}
-            {/if}
-          </Table.Cell>
+          <Table.Head>{copy.inputColumn}</Table.Head>
           {#if hasCompliance}
-            <Table.Cell>
-              {#each classified as entry (entry.quantity)}
-                <span class="band">
-                  {#if entry.color}
-                    <span class="swatch" style:background-color={entry.color}></span>
-                  {/if}
-                  {entry.quantity.label}: {entry.category}
-                </span>
-              {/each}
-              {#each caveats as violation (violation)}
-                <span class="band caveat">{warningFor(violation, unitSystem)}</span>
-              {/each}
-            </Table.Cell>
+            <Table.Head>{copy.complianceColumn}</Table.Head>
           {/if}
           {#each model.table as quantity (quantity)}
-            <Table.Cell>{formatResultCell(row.result, quantity, unitSystem)}</Table.Cell>
+            <Table.Head class="value">{quantity.label}</Table.Head>
           {/each}
         </Table.Row>
-      {/each}
-    </Table.Body>
-    {#if uncalculatedRows.length > 0 || standardCaption}
-      <Table.Caption>
-        {#each uncalculatedRows as row (row)}<span class="note">{notCalculatedNote(row)}</span>{/each}
+      </Table.Header>
+      <Table.Body>
+        {#each tableRows as { row, classified, caveats } (row)}
+          <Table.Row>
+            <Table.Cell>
+              {#if compare}
+                <span class="swatch-label">
+                  {@render slotSwatch(row)}
+                  {row.badge.name}
+                </span>
+              {:else}
+                {row.badge.name}
+              {/if}
+            </Table.Cell>
+            {#if hasCompliance}
+              <Table.Cell>
+                <Inline gap="2">
+                  {#each classified as entry (entry.quantity)}
+                    <span class="swatch-label">
+                      {#if entry.color}
+                        <span class="swatch swatch-fill" style:--swatch-color={entry.color}></span>
+                      {/if}
+                      {entry.quantity.label}: {entry.category}
+                    </span>
+                  {/each}
+                  {#each caveats as violation (violation)}
+                    <span class="caption caveat">{warningFor(violation, unitSystem)}</span>
+                  {/each}
+                </Inline>
+              </Table.Cell>
+            {/if}
+            {#each model.table as quantity (quantity)}
+              <Table.Cell class="value">{formatResultCell(row.result, quantity, unitSystem)}</Table.Cell>
+            {/each}
+          </Table.Row>
+        {/each}
+      </Table.Body>
+    </Table.Root>
+  </div>
+
+  {#if uncalculatedRows.length > 0 || standardCaption}
+    <div class="caption">
+      <Inline gap="4">
+        {#each uncalculatedRows as row (row)}
+          <span class="swatch-label">
+            {#if compare}
+              {@render slotSwatch(row)}
+            {/if}
+            {notCalculatedNote(row)}
+          </span>
+        {/each}
         {#if standardCaption}
-          <span class="standard">{standardCaption}</span>
+          <span>{standardCaption}</span>
         {/if}
-      </Table.Caption>
-    {/if}
-  </Table.Root>
-</div>
-
-<style>
-  .result-table :global(th) {
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .band {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4em;
-    margin-right: 0.75em;
-    white-space: nowrap;
-  }
-
-  .swatch {
-    display: inline-block;
-    width: 0.75em;
-    height: 0.75em;
-    border: 1px solid var(--border);
-    border-radius: 50%;
-  }
-
-  .caveat {
-    color: var(--muted-foreground);
-    font-size: var(--font-size-caption);
-    white-space: normal;
-  }
-
-  .note:not(:first-child),
-  .standard:not(:first-child) {
-    margin-left: 0.75em;
-  }
-</style>
+      </Inline>
+    </div>
+  {/if}
+</Stack>

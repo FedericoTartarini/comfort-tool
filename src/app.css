@@ -144,6 +144,13 @@
 		border-radius: 50%;
 		background-color: var(--swatch-color);
 	}
+	/* A Swatch beside its label: the two never part. A long label wraps beside the swatch where its container lets
+	   text wrap (the not-calculated line), not in a table cell, which keeps its text on one line. */
+	.swatch-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4em;
+	}
 
 	.caption,
 	.caption-line {
@@ -160,10 +167,36 @@
 		margin-left: auto;
 		color: var(--muted-foreground);
 	}
+
+	/* A table's scroll region (decision 70): the table scrolls here, not the page, and the clipped right edge is
+	   shaded while there is more. The shade stays at the region's edge (`scroll`); a cover in the paper's colour sits
+	   at the content's end (`local`) and hides it once scrolled there, or when nothing overflows. */
+	.table-scroll {
+		overflow-x: auto;
+		background:
+			linear-gradient(to left, var(--background) 50%, transparent) right / 3rem 100% no-repeat local,
+			linear-gradient(to left, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) right / 1.5rem
+				100% no-repeat scroll;
+	}
+	/* A caveat in the Compliance column wraps, so a long warning does not widen the table (decision 70, rule 1). */
+	.result-table .caveat {
+		white-space: normal;
+	}
+	/* The first column, the slot's name, stays in view while the region scrolls (decision 70, rule 3), opaque so the
+	   columns under it do not show through: on the paper, or on the colour the row primitive's `hover:bg-muted/50`
+	   gives a hovered row. */
+	.result-table tr > :first-child {
+		position: sticky;
+		left: 0;
+		background-color: var(--background);
+	}
+	.result-table tr:hover > :first-child {
+		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
+	}
 }
 
-/* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2). Sizes alone:
-   a colour goes through the tokens. Unlayered, so it wins over the primitives' utilities. */
+/* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2). Sizes and
+   layout alone: a colour goes through the tokens. Unlayered, so it wins over the primitives' utilities. */
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
@@ -177,4 +210,20 @@
 [data-slot="dropdown-menu-content"] {
 	width: max-content;
 	max-width: min(24rem, calc(100vw - 2rem));
+}
+/* A table's scroll region is the wrapper that carries its attributes (decision 70, rule 2), so the primitive's
+   container lets the table overflow into it. */
+.table-scroll > [data-slot="table-container"] {
+	overflow-x: visible;
+}
+/* The result table's headings wrap, standing at the foot of their cell over the column they name; a result's
+   value, a number, Yes or No, or a dash, is right-aligned in tabular figures under its heading, so decimals line
+   up (decision 70, rule 1). Unlayered, as the heading's `text-left` and `whitespace-nowrap` are the primitive's. */
+.result-table [data-slot="table-head"] {
+	white-space: normal;
+	vertical-align: bottom;
+}
+.result-table .value {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }

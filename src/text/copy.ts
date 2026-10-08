@@ -37,6 +37,7 @@ export const copy = {
     "CBE Thermal Comfort Tool: online tool for thermal comfort calculations and visualizations. SoftwareX 12, 100563.",
   citationAddress: "https://doi.org/10.1016/j.softx.2020.100563",
   inputs: "Inputs",
+  results: "Results",
   model: "Model",
   units: "Units",
   // The entry groups' names, each its menu button's whole text (ADR-0002 decision 72, rule 1).

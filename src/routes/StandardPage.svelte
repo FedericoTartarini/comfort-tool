@@ -26,6 +26,7 @@
   const { session, outputs } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
+  const id = $props.id();
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
   function toggleSlot(position: SlotPosition) {
@@ -118,7 +119,14 @@
 
   {#snippet results()}
     <Stack gap="4">
-      <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={session.compare} />
+      <h2 id="{id}-results">{copy.results}</h2>
+      <ResultTable
+        model={session.model}
+        rows={outputs.slots}
+        unitSystem={session.unitSystem}
+        compare={session.compare}
+        labelledby="{id}-results"
+      />
 
       <Inline gap="4" justify="between" align="center">
         <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
