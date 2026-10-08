@@ -71,28 +71,35 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		font-size: var(--font-size-body);
+		line-height: 1.5;
 	}
 	html {
 		@apply font-sans;
 	}
-	/* Every page's frame, headings and navigation (ADR-0002 decision 57). How they look is Phase 5c's. */
-	main {
-		padding: 1.5rem;
-	}
+	/* The title, the page frame's `h1`, and a column's heading (the Phase 5c spec's type roles). */
 	h1 {
-		font-size: 1.25rem;
+		font-size: var(--font-size-title);
 		font-weight: 600;
 	}
 	h2 {
-		font-size: 1rem;
+		font-size: var(--font-size-heading);
 		font-weight: 600;
 	}
+	/* A link is the brand's (the design plan's principle 1). */
+	a {
+		color: var(--brand);
+	}
+	a:hover {
+		text-decoration: underline;
+	}
+}
+
+/* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
+@layer components {
+	/* The navigation (ADR-0002 decision 57): muted links, the current one navy. */
 	nav a {
 		color: var(--muted-foreground);
-		text-decoration: none;
-	}
-	nav a:hover {
-		text-decoration: underline;
 	}
 	nav a[aria-current="page"] {
 		font-weight: 500;
@@ -110,10 +117,7 @@
 	nav .nav-item {
 		padding-left: 0.75rem;
 	}
-}
 
-/* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
-@layer components {
 	/* A Swatch (CONTEXT.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */
 	.swatch {
 		display: inline-block;

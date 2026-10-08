@@ -1,6 +1,10 @@
 import type { ComfortZone } from "$lib/core/modelDeclaration";
 import { formatNumber } from "$lib/core/numberFormat";
 
+/** The repository's address, a placeholder target for the footer's links (the Phase 5c spec, Out of Scope). */
+const REPOSITORY = "https://github.com/FedericoTartarini/comfort-tool";
+const LIBRARY_NAME = "jsthermalcomfort";
+
 /**
  * UI copy, English only in v1 (ADR §2). Quantity names never appear here:
  * they come from `Quantity.label`. The one exception is `zoneLegend`'s |PMV|
@@ -8,6 +12,20 @@ import { formatNumber } from "$lib/core/numberFormat";
  */
 export const copy = {
   appTitle: "CBE Thermal Comfort Tool",
+  // The page's header and footer (ADR-0002 decision 67, rules 6 and 7). The licence's
+  // name and target, the Code link's target and the citation's text are placeholders
+  // until the user decides them (the Phase 5c spec, Out of Scope).
+  documentation: "Documentation",
+  documentationAddress: `${REPOSITORY}/blob/main/docs/user-guide.md`,
+  libraryName: LIBRARY_NAME,
+  licence: "Licence",
+  licenceAddress: REPOSITORY,
+  code: "Code",
+  codeAddress: REPOSITORY,
+  citation:
+    "Please cite us if you use this software: Tartarini, F., Schiavon, S., Cheung, T., Hoyt, T., 2020. " +
+    "CBE Thermal Comfort Tool: online tool for thermal comfort calculations and visualizations. SoftwareX 12, 100563.",
+  citationAddress: "https://doi.org/10.1016/j.softx.2020.100563",
   inputs: "Inputs",
   model: "Model",
   units: "Units",
@@ -73,7 +91,7 @@ export const copy = {
   summaryEdges: (output: string, edges: string) => `Band edges, ${output}: ${edges}`,
   // The Image's footer, two lines (decision 64, rule 4): `day` as `2026-10-07`.
   footerTool: (name: string, version: string) => `${name} ${version}`,
-  footerLibrary: (version: string, day: string) => `jsthermalcomfort ${version} · ${day}`,
+  footerLibrary: (version: string, day: string) => `${LIBRARY_NAME} ${version} · ${day}`,
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).

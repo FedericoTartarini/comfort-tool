@@ -19,10 +19,9 @@
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
   import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
-  import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
+  import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import NoticeLine from "$lib/ui/outputs/NoticeLine.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { inAppSwitch } from "./inAppSwitch";
   import { modelChoicesOn } from "./navigation";
@@ -34,77 +33,70 @@
   const inApp = inAppSwitch(session);
 </script>
 
-<main>
-  <Stack gap="6">
-    <NoticeLine notice={tab.notice} onclose={tab.closeNotice} />
-    <Inline justify="between" align="center">
-      <h1>{copy.appTitle}</h1>
+<PageFrame notice={tab.notice} onclosenotice={tab.closeNotice}>
+  {#snippet navigation()}
+    <PageNavigation {session} onfollow={inApp.follow} />
+  {/snippet}
+
+  {#snippet inputs()}
+    <Stack gap="4">
+      <h2>{copy.inputs}</h2>
+      <ModelSelect
+        choices={modelChoicesOn(session)}
+        model={session.model}
+        onchoose={(model) => inApp.follow({ page: session.page, model })}
+      />
       <UnitSystemControls {session} />
-    </Inline>
+      <SessionControls
+        {session}
+        atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
+        onreset={tab.reset}
+        link={tab.link}
+        oncopyrefused={() => tab.raiseNotice("copyRefused")}
+      />
+      <InputPanel
+        model={session.model}
+        inputSlot={session.slots[0]}
+        unitSystem={session.unitSystem}
+        atmosphericPressure={session.atmosphericPressure}
+        outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
+        violations={outputs.slots[0].violations}
+      />
+      <ModelSwitchDialog
+        pending={session.pendingSwitch}
+        namesSlots={false}
+        unitSystem={session.unitSystem}
+        onaccept={inApp.accept}
+        ondecline={() => session.declineSwitch()}
+      />
+    </Stack>
+  {/snippet}
 
-    <Grid columns="12rem minmax(0, 24rem) minmax(0, 1fr)" gap="6">
-      <PageNavigation {session} onfollow={inApp.follow} />
+  {#snippet results()}
+    <Stack gap="4">
+      <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={false} />
 
-      <section>
-        <Stack gap="4">
-          <h2>{copy.inputs}</h2>
-          <ModelSelect
-            choices={modelChoicesOn(session)}
-            model={session.model}
-            onchoose={(model) => inApp.follow({ page: session.page, model })}
-          />
-          <SessionControls
-            {session}
-            atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
-            onreset={tab.reset}
-            link={tab.link}
-            oncopyrefused={() => tab.raiseNotice("copyRefused")}
-          />
-          <InputPanel
-            model={session.model}
-            inputSlot={session.slots[0]}
-            unitSystem={session.unitSystem}
-            atmosphericPressure={session.atmosphericPressure}
-            outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
-            violations={outputs.slots[0].violations}
-          />
-          <ModelSwitchDialog
-            pending={session.pendingSwitch}
-            namesSlots={false}
-            unitSystem={session.unitSystem}
-            onaccept={inApp.accept}
-            ondecline={() => session.declineSwitch()}
-          />
+      <Inline gap="4" justify="between" align="center">
+        <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
+        <ExportImageDialog
+          chart={outputs.chart}
+          model={session.model}
+          chartType={session.chart.type}
+          runs={outputs.drawnRuns}
+          unitSystem={session.unitSystem}
+          bands={session.chart.bands}
+          onfailed={() => tab.raiseNotice("imageFailed")}
+        />
+      </Inline>
+
+      {#if outputs.chart}
+        <Stack gap="2">
+          <PlotlyChart spec={outputs.chart} />
+          <ChartLegend entries={outputs.chart.legend} />
         </Stack>
-      </section>
+      {/if}
 
-      <section>
-        <Stack gap="4">
-          <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={false} />
-
-          <Inline gap="4" justify="between" align="center">
-            <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
-            <ExportImageDialog
-              chart={outputs.chart}
-              model={session.model}
-              chartType={session.chart.type}
-              runs={outputs.drawnRuns}
-              unitSystem={session.unitSystem}
-              bands={session.chart.bands}
-              onfailed={() => tab.raiseNotice("imageFailed")}
-            />
-          </Inline>
-
-          {#if outputs.chart}
-            <Stack gap="2">
-              <PlotlyChart spec={outputs.chart} />
-              <ChartLegend entries={outputs.chart.legend} />
-            </Stack>
-          {/if}
-
-          <BandsPanel model={session.model} chart={session.chart} unitSystem={session.unitSystem} />
-        </Stack>
-      </section>
-    </Grid>
-  </Stack>
-</main>
+      <BandsPanel model={session.model} chart={session.chart} unitSystem={session.unitSystem} />
+    </Stack>
+  {/snippet}
+</PageFrame>

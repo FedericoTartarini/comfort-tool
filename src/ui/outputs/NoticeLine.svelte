@@ -1,7 +1,8 @@
 <!--
-  The notice line at the top of every page (ADR-0002 decision 63, rule 6): one
-  notice at a time, with a control to close it. Nothing is drawn while there
-  is none. Its look is Phase 5c's.
+  The notice line (ADR-0002 decision 63, rule 6), drawn by the page frame in
+  the header between the title and the Documentation link (decision 67, rule
+  10): one notice at a time, with a control to close it. Nothing is drawn
+  while there is none.
 -->
 <script lang="ts">
   import type { Notice } from "$lib/state/openSession";

@@ -16,8 +16,8 @@
   import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
+  import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import NoticeLine from "$lib/ui/outputs/NoticeLine.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import { inAppSwitch } from "./inAppSwitch";
@@ -43,8 +43,8 @@
     return inputSlot && slotOutputs ? { inputSlot, slotOutputs } : null;
   }
 
-  // While Compare is on the inputs take three columns, so their section widens.
-  const pageColumns = $derived(`12rem minmax(0, ${session.compare ? "40rem" : "24rem"}) minmax(0, 1fr)`);
+  // While Compare is on the inputs take three columns, so their column widens until it is one width (ticket 08).
+  const inputWidth = $derived(session.compare ? "40rem" : "24rem");
 </script>
 
 {#snippet slotInputs(inputSlot: InputSlot, slotOutputs: SlotOutputs)}
@@ -58,107 +58,100 @@
   />
 {/snippet}
 
-<main>
-  <Stack gap="6">
-    <NoticeLine notice={tab.notice} onclose={tab.closeNotice} />
-    <Inline justify="between" align="center">
-      <h1>{copy.appTitle}</h1>
+<PageFrame notice={tab.notice} onclosenotice={tab.closeNotice} {inputWidth}>
+  {#snippet navigation()}
+    <PageNavigation {session} onfollow={inApp.follow} />
+  {/snippet}
+
+  {#snippet inputs()}
+    <Stack gap="4">
+      <h2>{copy.inputs}</h2>
+      <Inline gap="2" align="center">
+        <ModelSelect
+          choices={modelChoicesOn(session)}
+          model={session.model}
+          onchoose={(model) => inApp.follow({ page: session.page, model })}
+        />
+        <Button
+          size="sm"
+          variant={session.compare ? "default" : "outline"}
+          aria-pressed={session.compare}
+          onclick={() => session.setCompare(!session.compare)}
+        >
+          {copy.compare}
+        </Button>
+      </Inline>
       <UnitSystemControls {session} />
-    </Inline>
-
-    <Grid columns={pageColumns} gap="6">
-      <PageNavigation {session} onfollow={inApp.follow} />
-
-      <section>
-        <Stack gap="4">
-          <h2>{copy.inputs}</h2>
-          <Inline gap="2" align="center">
-            <ModelSelect
-              choices={modelChoicesOn(session)}
-              model={session.model}
-              onchoose={(model) => inApp.follow({ page: session.page, model })}
-            />
-            <Button
-              size="sm"
-              variant={session.compare ? "default" : "outline"}
-              aria-pressed={session.compare}
-              onclick={() => session.setCompare(!session.compare)}
-            >
-              {copy.compare}
-            </Button>
-          </Inline>
-          <SessionControls
-            {session}
-            atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
-            onreset={tab.reset}
-            link={tab.link}
-            oncopyrefused={() => tab.raiseNotice("copyRefused")}
-          />
-          <!--
-            While Compare is on, a column per slot, a third of the width whether
-            its slot is enabled or not, so enabling one moves no other; a
-            disabled column is empty below its button. How it looks is Phase 5c's.
-          -->
-          {#if session.compare}
-            <Grid columns="repeat(3, minmax(0, 1fr))" gap="4">
-              {#each slotPositions as position (position)}
-                {@const compared = comparedAt(position)}
-                <Stack gap="4">
-                  <Button
-                    size="sm"
-                    variant={session.isSlotEnabled(position) ? "default" : "outline"}
-                    aria-pressed={session.isSlotEnabled(position)}
-                    onclick={() => toggleSlot(position)}
-                  >
-                    <span class="swatch" style:background-color={chartInk.zoneLine(slotBadges[position].hue)}></span>
-                    {slotBadges[position].name}
-                  </Button>
-                  {#if compared}
-                    {@render slotInputs(compared.inputSlot, compared.slotOutputs)}
-                  {/if}
-                </Stack>
-              {/each}
-            </Grid>
-          {:else}
-            {@render slotInputs(session.slots[0], outputs.slots[0])}
-          {/if}
-          <ModelSwitchDialog
-            pending={session.pendingSwitch}
-            namesSlots={session.comparedPositions.length > 1}
-            unitSystem={session.unitSystem}
-            onaccept={inApp.accept}
-            ondecline={() => session.declineSwitch()}
-          />
-        </Stack>
-      </section>
-
-      <section>
-        <Stack gap="4">
-          <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={session.compare} />
-
-          <Inline gap="4" justify="between" align="center">
-            <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
-            <ExportImageDialog
-              chart={outputs.chart}
-              model={session.model}
-              chartType={session.chart.type}
-              runs={outputs.drawnRuns}
-              unitSystem={session.unitSystem}
-              onfailed={() => tab.raiseNotice("imageFailed")}
-            />
-          </Inline>
-
-          {#if outputs.chart}
-            <Stack gap="2">
-              <PlotlyChart spec={outputs.chart} />
-              <ChartLegend entries={outputs.chart.legend} />
+      <SessionControls
+        {session}
+        atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
+        onreset={tab.reset}
+        link={tab.link}
+        oncopyrefused={() => tab.raiseNotice("copyRefused")}
+      />
+      <!--
+        While Compare is on, a column per slot, a third of the width whether
+        its slot is enabled or not, so enabling one moves no other; a
+        disabled column is empty below its button. How it looks is Phase 5c's.
+      -->
+      {#if session.compare}
+        <Grid columns="repeat(3, minmax(0, 1fr))" gap="4">
+          {#each slotPositions as position (position)}
+            {@const compared = comparedAt(position)}
+            <Stack gap="4">
+              <Button
+                size="sm"
+                variant={session.isSlotEnabled(position) ? "default" : "outline"}
+                aria-pressed={session.isSlotEnabled(position)}
+                onclick={() => toggleSlot(position)}
+              >
+                <span class="swatch" style:background-color={chartInk.zoneLine(slotBadges[position].hue)}></span>
+                {slotBadges[position].name}
+              </Button>
+              {#if compared}
+                {@render slotInputs(compared.inputSlot, compared.slotOutputs)}
+              {/if}
             </Stack>
-          {/if}
+          {/each}
+        </Grid>
+      {:else}
+        {@render slotInputs(session.slots[0], outputs.slots[0])}
+      {/if}
+      <ModelSwitchDialog
+        pending={session.pendingSwitch}
+        namesSlots={session.comparedPositions.length > 1}
+        unitSystem={session.unitSystem}
+        onaccept={inApp.accept}
+        ondecline={() => session.declineSwitch()}
+      />
+    </Stack>
+  {/snippet}
+
+  {#snippet results()}
+    <Stack gap="4">
+      <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={session.compare} />
+
+      <Inline gap="4" justify="between" align="center">
+        <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
+        <ExportImageDialog
+          chart={outputs.chart}
+          model={session.model}
+          chartType={session.chart.type}
+          runs={outputs.drawnRuns}
+          unitSystem={session.unitSystem}
+          onfailed={() => tab.raiseNotice("imageFailed")}
+        />
+      </Inline>
+
+      {#if outputs.chart}
+        <Stack gap="2">
+          <PlotlyChart spec={outputs.chart} />
+          <ChartLegend entries={outputs.chart.legend} />
         </Stack>
-      </section>
-    </Grid>
-  </Stack>
-</main>
+      {/if}
+    </Stack>
+  {/snippet}
+</PageFrame>
 
 <style>
   .swatch {
