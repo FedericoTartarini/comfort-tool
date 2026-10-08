@@ -31,6 +31,7 @@ checklist line below turns out to be mechanisable, it should move up into the ma
 | Library model functions imported only in `models/` and `temporary-library/` | eslint `libraryModelImports` | ADR §3 |
 | No quantity wire string outside `shareLink.ts` | eslint `wireStringSyntax` | ADR §4.0, DRY |
 | Tailwind utilities only in `ui/primitives/` and `ui/layout/` | eslint `tailwindSyntax` | ADR §2 |
+| No `<style>` block outside `ui/primitives/` and `ui/layout/` | eslint `styleBlockSyntax` | ADR-0002 decision 65 |
 | No `export let` / `$:` / `on:` / `<slot>` / `<svelte:component>` | eslint `legacySvelteSyntax` | Svelte Best practices |
 | No `any` | eslint `no-explicit-any` | TS Do's and Don'ts |
 | No `enum` / `namespace` / parameter properties | `erasableSyntaxOnly` | ADR §6 |

@@ -147,6 +147,16 @@ const tailwindSyntax = [
   },
 ];
 
+// ADR-0002 decision 65: appearance lives in tokens, primitives and layout
+// components, so a business component carries no <style> block.
+const styleBlockSyntax = [
+  {
+    selector: "SvelteStyleElement",
+    message:
+      "No <style> in a business component: use a primitive, a layout component, or a semantic class in app.css (ADR-0002 decision 65).",
+  },
+];
+
 export default [
   {
     ignores: ["dist/**", "node_modules/**", "coverage/**", "playwright-report/**", "test-results/**"],
@@ -212,6 +222,7 @@ export default [
         ...legacySvelteSyntax,
         ...wireStringSyntax,
         ...tailwindSyntax,
+        ...styleBlockSyntax,
         ...untrackSyntax,
       ],
     },
@@ -232,7 +243,8 @@ export default [
     },
   },
   {
-    // Generated primitives and the layout wrappers are where Tailwind lives.
+    // Generated primitives and the layout wrappers are where Tailwind lives,
+    // and the only components that may carry a <style> block.
     files: ["src/ui/primitives/**/*.svelte", "src/ui/layout/**/*.svelte"],
     rules: {
       "no-restricted-syntax": ["error", ...legacySvelteSyntax, ...wireStringSyntax],
@@ -265,6 +277,7 @@ export default [
         ...legacySvelteSyntax,
         ...wireStringSyntax,
         ...tailwindSyntax,
+        ...styleBlockSyntax,
         ...untrackSyntax,
         ...effectPuritySyntax,
       ],
