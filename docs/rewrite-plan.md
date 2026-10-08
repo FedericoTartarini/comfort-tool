@@ -1294,12 +1294,12 @@ that exist. The phase stops at its Done criteria, not at taste.
 business component carries no `<style>` (65); one palette in `core/palette.ts`, with D15's reading rules and the slot hues
 (66); the page's header, left column of navigation and session controls, input column and result column, its footer,
 its breakpoints, one dialog width, the readout on the pointer and, revised the same day, layout stability: no control changes a region's width, Compare reflows inside a constant `24rem` input column, Presets and the calculators are a menu inside the box, the notice sits in the header (67); an entry mode chosen on the row it changes (68);
-several slots' Comfort zones as outlines, the phase's one `core/charts` change (69); the result table's overflow rules
+several slots' Comfort zones as outlines, the phase's one `core/charts` change (69, withdrawn the same day by 71 after its ticket landed: nested fills however many slots, the outermost no fainter than 0.2); the result table's overflow rules
 (70). The design plan — principles, named palette, type roles, wireframes — goes into the spec, not here. Process, as
 agreed: the seven `<style>` blocks each go in the ticket that redesigns their component, not in one sweep; the lint rule
 that bans `<style>` outside `ui/primitives/` and `ui/layout/` is the last ticket, which proves the first Done criterion;
 the second is checked on each ticket's diff — no change under `src/state/`, under `src/core/` only `palette.ts`,
-`bandPalette.ts`, `slotBadge.ts`, decision 68's reader in `slot.ts` and decision 69's kind in `charts/specParts.ts`, and
+`bandPalette.ts`, `slotBadge.ts`, decision 68's reader in `slot.ts` and decision 71's fill in `charts/specParts.ts`, and
 no test lost — and by a Chrome screenshot walk per ticket; no visual snapshot test (ADR-0001's Testing row). Of the ★5c
 rows: B4, B10 and D15 are the phase's; B6 is placed and reserved only, its dialog a ticket of its own after the phase
 (decision 59's note); B7 and B9 are triage tickets, B7 ahead of item 1; D11 is Phase 6's, the focus to land on the `h1`.
