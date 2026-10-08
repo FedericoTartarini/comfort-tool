@@ -39,6 +39,7 @@
   import * as Dialog from "$lib/ui/primitives/dialog";
   import { Input } from "$lib/ui/primitives/input";
   import { Label } from "$lib/ui/primitives/label";
+  import * as ToggleGroup from "$lib/ui/primitives/toggle-group";
 
   interface Props {
     /** The chart the page shows, or `null` while it shows none. */
@@ -96,8 +97,8 @@
         <Label for="{id}-title">{copy.imageTitle}</Label>
         <Input id="{id}-title" bind:value={title} />
       </Stack>
-      {@render choice(copy.imageSize, Object.values(imageSize), size, (chosen) => (size = chosen))}
-      {@render choice(copy.imageFormat, Object.values(imageFormat), format, (chosen) => (format = chosen))}
+      {@render choice("size", copy.imageSize, Object.values(imageSize), size, (chosen) => (size = chosen))}
+      {@render choice("format", copy.imageFormat, Object.values(imageFormat), format, (chosen) => (format = chosen))}
       <Inline gap="2" align="center">
         <Checkbox id="{id}-summary-and-footer" bind:checked={includesSummaryAndFooter} />
         <Label for="{id}-summary-and-footer">{copy.imageIncludesSummaryAndFooter}</Label>
@@ -109,18 +110,38 @@
   </Dialog.Content>
 </Dialog.Root>
 
-{#snippet choice<T extends { title: string }>(label: string, members: readonly T[], chosen: T, onchoose: (member: T) => void)}
+<!--
+  A toggle group (decision 65, rule 6) whose value is the member's position in
+  `members`: a toggle group's value is text, and a size or a format is compared
+  by identity. A click on the chosen item asks for none (an empty value), which
+  the setter ignores, so one member is always chosen.
+-->
+{#snippet choice<T extends { title: string }>(
+  idSuffix: string,
+  label: string,
+  members: readonly T[],
+  chosen: T,
+  onchoose: (member: T) => void,
+)}
   <Inline gap="2" align="center">
-    <span>{label}</span>
-    {#each members as member (member)}
-      <Button
-        size="sm"
-        variant={member === chosen ? "default" : "outline"}
-        aria-pressed={member === chosen}
-        onclick={() => onchoose(member)}
-      >
-        {member.title}
-      </Button>
-    {/each}
+    <span id="{id}-{idSuffix}">{label}</span>
+    <ToggleGroup.Root
+      type="single"
+      variant="outline"
+      size="sm"
+      aria-labelledby="{id}-{idSuffix}"
+      bind:value={
+        () => String(members.indexOf(chosen)),
+        (value) => {
+          if (value !== "") {
+            onchoose(members[Number(value)]);
+          }
+        }
+      }
+    >
+      {#each members as member, index (member)}
+        <ToggleGroup.Item value={String(index)}>{member.title}</ToggleGroup.Item>
+      {/each}
+    </ToggleGroup.Root>
   </Inline>
 {/snippet}
