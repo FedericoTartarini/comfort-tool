@@ -63,6 +63,8 @@ export const copy = {
     "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
   presetTrigger: "Presets",
+  // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.
+  rowCaption: (preset: string, bound: string) => `${preset} · ${bound}`,
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
   inputColumn: "Input",
@@ -125,6 +127,8 @@ export const copy = {
   yes: "Yes",
   no: "No",
   slotName: (index: number) => `Input ${index + 1}`,
+  // The accessible name of one slot's control in a row that stands over several slots, on Compare.
+  slotControl: (control: string, slotName: string) => `${control}, ${slotName}`,
   compare: "Compare",
   // A caption line about one row of the result table, while Compare is on.
   slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,

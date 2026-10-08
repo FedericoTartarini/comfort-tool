@@ -46,11 +46,15 @@
   <!-- The session's pressure, not the slot's: outside the slot's rows and shown on every model (decision 49). -->
   <QuantityInput
     quantity={quantities.p_atm}
-    value={session.atmosphericPressure}
     unitSystem={session.unitSystem}
-    bound={kindBounds[quantities.p_atm.kind]}
-    outOfRange={atmosphericPressureOutOfRange}
-    oncommit={(si) => (session.atmosphericPressure = si)}
+    entries={[
+      {
+        value: session.atmosphericPressure,
+        bound: kindBounds[quantities.p_atm.kind],
+        outOfRange: atmosphericPressureOutOfRange,
+        oncommit: (si) => (session.atmosphericPressure = si),
+      },
+    ]}
   />
   <!--
     Copy link puts the page as it is on the clipboard; Reset asks first, and on

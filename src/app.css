@@ -145,8 +145,19 @@
 		background-color: var(--swatch-color);
 	}
 
-	.caption {
+	.caption,
+	.caption-line {
 		font-size: var(--font-size-caption);
+		color: var(--muted-foreground);
+	}
+	/* A row's caption line under its box (decision 67, rule 3): one line while empty too, so a preset's name
+	   appearing as a value is typed moves no row below. 1.5em for `1lh`, which Firefox 115 lacks. */
+	.caption-line {
+		min-height: 1.5em;
+	}
+	/* A value at the end of a list's item, a preset's in the box's unit. */
+	.item-value {
+		margin-left: auto;
 		color: var(--muted-foreground);
 	}
 }
@@ -156,6 +167,10 @@
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
+}
+/* A popover that holds a searchable list, a row's Presets: the list reaches the popover's edges. */
+[data-slot="popover-content"].list-popover {
+	padding: 0;
 }
 /* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
    (decision 72, rule 2), which wrap at 24rem. */

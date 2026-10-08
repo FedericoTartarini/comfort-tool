@@ -57,11 +57,9 @@
       />
       <InputPanel
         model={session.model}
-        inputSlot={session.slots[0]}
+        columns={[{ inputSlot: session.slots[0], outputs: outputs.slots[0] }]}
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
-        outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
-        violations={outputs.slots[0].violations}
         entryModeSetters={session}
       />
       <ModelSwitchDialog

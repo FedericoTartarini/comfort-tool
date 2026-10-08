@@ -17,15 +17,13 @@
   interface Props {
     notice: Notice | null;
     onclosenotice: () => void;
-    /** The input column's width, a CSS length; it follows Compare until the column is one width (ticket 08). */
-    inputWidth?: string;
     navigation: Snippet;
     sessionControls: Snippet;
     inputs: Snippet;
     results: Snippet;
   }
 
-  let { notice, onclosenotice, inputWidth = "24rem", navigation, sessionControls, inputs, results }: Props = $props();
+  let { notice, onclosenotice, navigation, sessionControls, inputs, results }: Props = $props();
 </script>
 
 <!-- The middle dot the copy separates with (the Image's footer, the legend), hidden from a screen reader. -->
@@ -49,7 +47,7 @@
         {@render sessionControls()}
       </div>
     </div>
-    <main class="grid" style:grid-template-columns="minmax(0, {inputWidth}) minmax(0, 1fr)">
+    <main class="grid grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       <section class="border-r p-6">
         {@render inputs()}
       </section>
