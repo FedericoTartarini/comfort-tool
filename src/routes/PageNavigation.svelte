@@ -2,15 +2,18 @@
   The navigation (ADR-0002 decision 57): two groups of links, each link a
   (page, model) address. Under Standard one link per standard the app's table
   lists, opening that standard's first registered model; then one Explore link,
-  keeping the current model. A standard's link is current on any of its
-  models, the Explore link on Explore. Explore is a group of its own, so its
-  link reads as Standard's heading does, one level above the standards' links.
+  keeping the current model. A standard's link is drawn current on any of its
+  models, the Explore link on Explore; `aria-current` says `page` only on the
+  link whose address is the session's (decision 67, rule 2). Explore is a group
+  of its own, so its link reads as Standard's heading does, one level above the
+  standards' links, and under it one link's height is kept for Time-series, so
+  its arrival moves nothing below.
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
   import type { Session } from "$lib/state/session.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import { interceptLinkClick, isCurrentLink, pathTo, standardLinks } from "./navigation";
+  import { ariaCurrentOf, interceptLinkClick, pathTo, standardLinks } from "./navigation";
 
   interface Props {
     session: Session;
@@ -34,7 +37,7 @@
   <a
     class={levelClass}
     href={pathTo(target)}
-    aria-current={isCurrentLink(target, session) ? "page" : undefined}
+    aria-current={ariaCurrentOf(target, session)}
     onclick={(event) => {
       if (interceptLinkClick(event)) {
         onfollow(target);
@@ -52,5 +55,6 @@
       {@render link(address, standard.displayName, "nav-item")}
     {/each}
     {@render link(exploreLink, page.explore.title, "nav-group")}
+    <span class="nav-reserved" aria-hidden="true"></span>
   </Stack>
 </nav>

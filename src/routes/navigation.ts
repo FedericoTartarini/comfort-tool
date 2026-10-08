@@ -1,9 +1,9 @@
 import { createRouter, type Routes } from "sv-router";
 import { page, type Address } from "$lib/core/page";
 import {
+  ariaCurrentOf,
   defaultModel,
   exploreSegmentsOf,
-  isCurrentLink,
   modelByExploreSegment,
   modelBySegment,
   modelChoicesOn,
@@ -11,7 +11,7 @@ import {
   standardLinks,
 } from "./routeModels";
 
-export { defaultModel, isCurrentLink, modelChoicesOn, standardLinks };
+export { ariaCurrentOf, defaultModel, modelChoicesOn, standardLinks };
 
 /**
  * The only place sv-router is used (ADR §2). The app and its pages import

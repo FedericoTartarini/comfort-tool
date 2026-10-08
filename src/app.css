@@ -101,7 +101,8 @@
 	nav a {
 		color: var(--muted-foreground);
 	}
-	nav a[aria-current="page"] {
+	/* Current is one look whichever value it carries: `page`, or `true` on a standard's link on another of its models. */
+	nav a[aria-current] {
 		font-weight: 500;
 	}
 	/* A group's name — Standard's heading, the Explore link — one level above the links inside a group. */
@@ -111,11 +112,16 @@
 		font-weight: 600;
 	}
 	/* The current link is navy, the Explore link too: after the group's rule. */
-	nav a[aria-current="page"] {
+	nav a[aria-current] {
 		color: var(--brand);
 	}
 	nav .nav-item {
 		padding-left: 0.75rem;
+	}
+	/* The place kept under Explore for Time-series: one link's line, empty. 1.5em is the body's line height, not `1lh`,
+	   which Firefox 115, the browser floor, lacks. */
+	nav .nav-reserved {
+		height: 1.5em;
 	}
 
 	/* A Swatch (CONTEXT.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */

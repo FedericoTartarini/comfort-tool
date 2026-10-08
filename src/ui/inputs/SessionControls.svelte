@@ -2,14 +2,15 @@
   import { kindBounds, quantities } from "$lib/core/quantities";
   import type { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
+  import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import CopyLinkButton from "./CopyLinkButton.svelte";
-  import EntryModeControls from "./EntryModeControls.svelte";
   import QuantityInput from "./QuantityInput.svelte";
   import QuestionDialog from "./QuestionDialog.svelte";
+  import UnitSystemControls from "./UnitSystemControls.svelte";
 
   interface Props {
-    /** Whose atmospheric pressure and entry modes the controls show and change: the session's, on every page. */
+    /** Whose unit system and atmospheric pressure the controls show and change: the session's, on every page. */
     session: Session;
     /** Whether the session's pressure is outside its bound. */
     atmosphericPressureOutOfRange: boolean;
@@ -35,26 +36,32 @@
 </script>
 
 <!--
-  The session's pressure, not the slot's: outside the slot's rows and shown on
-  every model (ADR-0002 decision 49). Its place and look are Phase 5c's.
+  The session controls (ADR-0002 decision 67, rule 2; CONTEXT.md): what applies
+  to every slot and every page, in the left column under the navigation, the
+  same on both pages. Copy link and Reset stand one under the other, so Copy
+  link saying the link was copied moves nothing.
 -->
-<QuantityInput
-  quantity={quantities.p_atm}
-  value={session.atmosphericPressure}
-  unitSystem={session.unitSystem}
-  bound={kindBounds[quantities.p_atm.kind]}
-  outOfRange={atmosphericPressureOutOfRange}
-  oncommit={(si) => (session.atmosphericPressure = si)}
-/>
-<!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
-<EntryModeControls {session} />
-<!--
-  Copy link puts the page as it is on the clipboard; Reset asks first, and on
-  a yes the tab shows what a new tab at this address shows (ADR-0002 decision
-  63, rules 7 and 8). Their place and look are Phase 5c's.
--->
-<CopyLinkButton {link} onrefused={oncopyrefused} />
-<Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
+<Stack gap="4">
+  <UnitSystemControls {session} />
+  <!-- The session's pressure, not the slot's: outside the slot's rows and shown on every model (decision 49). -->
+  <QuantityInput
+    quantity={quantities.p_atm}
+    value={session.atmosphericPressure}
+    unitSystem={session.unitSystem}
+    bound={kindBounds[quantities.p_atm.kind]}
+    outOfRange={atmosphericPressureOutOfRange}
+    oncommit={(si) => (session.atmosphericPressure = si)}
+  />
+  <!--
+    Copy link puts the page as it is on the clipboard; Reset asks first, and on
+    a yes the tab shows what a new tab at this address shows (decision 63,
+    rules 7 and 8).
+  -->
+  <Stack gap="2">
+    <CopyLinkButton {link} onrefused={oncopyrefused} />
+    <Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
+  </Stack>
+</Stack>
 <QuestionDialog
   open={askingReset}
   title={copy.reset}

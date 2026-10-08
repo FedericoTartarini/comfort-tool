@@ -13,12 +13,12 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
+  import EntryModeControls from "$lib/ui/inputs/EntryModeControls.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
-  import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -38,6 +38,16 @@
     <PageNavigation {session} onfollow={inApp.follow} />
   {/snippet}
 
+  {#snippet sessionControls()}
+    <SessionControls
+      {session}
+      atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
+      onreset={tab.reset}
+      link={tab.link}
+      oncopyrefused={() => tab.raiseNotice("copyRefused")}
+    />
+  {/snippet}
+
   {#snippet inputs()}
     <Stack gap="4">
       <h2>{copy.inputs}</h2>
@@ -46,14 +56,8 @@
         model={session.model}
         onchoose={(model) => inApp.follow({ page: session.page, model })}
       />
-      <UnitSystemControls {session} />
-      <SessionControls
-        {session}
-        atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
-        onreset={tab.reset}
-        link={tab.link}
-        oncopyrefused={() => tab.raiseNotice("copyRefused")}
-      />
+      <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
+      <EntryModeControls {session} />
       <InputPanel
         model={session.model}
         inputSlot={session.slots[0]}

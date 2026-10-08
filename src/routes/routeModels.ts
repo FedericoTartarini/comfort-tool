@@ -60,6 +60,18 @@ export function isCurrentLink(link: Address, address: Address): boolean {
 }
 
 /**
+ * The `aria-current` value `link` carries at `address` (ADR-0002 decision 67,
+ * rule 2): `page` on the link whose address is this one, `true` on a link
+ * drawn current though following it opens another model, absent otherwise.
+ */
+export function ariaCurrentOf(link: Address, address: Address): "page" | "true" | undefined {
+  if (!isCurrentLink(link, address)) {
+    return undefined;
+  }
+  return link.model === address.model ? "page" : "true";
+}
+
+/**
  * What the model select offers at `address`, in registry order: the models of
  * the open model's standard on the Standard page, and every registered model
  * on Explore (ADR-0002 decision 57).

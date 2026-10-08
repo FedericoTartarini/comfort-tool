@@ -7,6 +7,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { registeredModels } from "$lib/models";
 import {
+  ariaCurrentOf,
   exploreSegmentsOf,
   isCurrentLink,
   modelByExploreSegment,
@@ -202,5 +203,34 @@ describe("isCurrentLink", () => {
     expect(isCurrentLink({ page: page.explore, model: pmvPpdAshrae }, { page: page.standard, model: pmvPpdAshrae })).toBe(
       false,
     );
+  });
+});
+
+describe("ariaCurrentOf", () => {
+  const [ashraeLink, isoLink] = standardLinks().map(({ address }) => address);
+
+  it("is page for the link at the session's address, on both pages", () => {
+    expect(ariaCurrentOf(ashraeLink, ashraeLink)).toBe("page");
+    for (const model of [pmvPpdAshrae, heatIndexRothfusz]) {
+      const onExplore = { page: page.explore, model };
+      expect(ariaCurrentOf(onExplore, onExplore), model.info.label).toBe("page");
+    }
+  });
+
+  it("is true for a standard's link while on another of its models", () => {
+    expect(ariaCurrentOf(ashraeLink, { page: page.standard, model: adaptiveAshrae })).toBe("true");
+  });
+
+  it("is absent for a link that is not current, on both pages", () => {
+    for (const address of [
+      { page: page.standard, model: adaptiveAshrae },
+      { page: page.explore, model: pmvPpdAshrae },
+    ]) {
+      expect(ariaCurrentOf(isoLink, address)).toBeUndefined();
+    }
+    expect(ariaCurrentOf(ashraeLink, { page: page.explore, model: pmvPpdAshrae })).toBeUndefined();
+    expect(
+      ariaCurrentOf({ page: page.explore, model: pmvPpdAshrae }, { page: page.standard, model: pmvPpdAshrae }),
+    ).toBeUndefined();
   });
 });

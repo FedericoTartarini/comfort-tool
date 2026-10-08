@@ -1,7 +1,8 @@
 <!--
   The page frame every page composes (ADR-0002 decision 65, rule 4; decision
   67): a header of the title and the Documentation link with the notice line
-  between them, three columns with a rule between each, and a footer of the
+  between them, three columns with a rule between each, the left one the
+  navigation and, under a rule, the session controls, and a footer of the
   versions, the licence, the code and the citation. The header's least
   height, `min-h-8`, is above the notice line's, a line of text beside a
   small button, so a notice appearing or closing moves nothing (rule 10)
@@ -19,11 +20,12 @@
     /** The input column's width, a CSS length; it follows Compare until the column is one width (ticket 08). */
     inputWidth?: string;
     navigation: Snippet;
+    sessionControls: Snippet;
     inputs: Snippet;
     results: Snippet;
   }
 
-  let { notice, onclosenotice, inputWidth = "24rem", navigation, inputs, results }: Props = $props();
+  let { notice, onclosenotice, inputWidth = "24rem", navigation, sessionControls, inputs, results }: Props = $props();
 </script>
 
 <!-- The middle dot the copy separates with (the Image's footer, the legend), hidden from a screen reader. -->
@@ -41,8 +43,11 @@
   </header>
 
   <div class="grid flex-1 grid-cols-[13rem_minmax(0,1fr)]">
-    <div class="border-r p-6">
+    <div class="flex flex-col gap-6 border-r p-6">
       {@render navigation()}
+      <div class="border-t pt-6">
+        {@render sessionControls()}
+      </div>
     </div>
     <main class="grid" style:grid-template-columns="minmax(0, {inputWidth}) minmax(0, 1fr)">
       <section class="border-r p-6">

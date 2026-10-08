@@ -2,7 +2,7 @@
   Copy link (ADR-0002 decision 63, rule 7): writes the share link to the
   clipboard inside the click, and says so on itself for a moment; a clipboard
   that refuses is the caller's to report. The page and the address bar are
-  left as they were. Its place and look are Phase 5c's.
+  left as they were. It stands among the session controls (decision 67, rule 2).
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
