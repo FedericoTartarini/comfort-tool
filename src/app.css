@@ -201,11 +201,12 @@
 	}
 	/* The first column, the slot's name, stays in view while the region scrolls (decision 70, rule 3), opaque so the
 	   columns under it do not show through: on the paper, or on the colour the row primitive's `hover:bg-muted/50`
-	   gives a hovered row. */
+	   gives a hovered row, changing with the row's own `transition-colors` so the cell does not lead the row. */
 	.result-table tr > :first-child {
 		position: sticky;
 		left: 0;
 		background-color: var(--background);
+		transition: background-color var(--default-transition-duration) var(--default-transition-timing-function);
 	}
 	.result-table tr:hover > :first-child {
 		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
