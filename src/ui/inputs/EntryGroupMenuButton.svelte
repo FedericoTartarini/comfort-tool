@@ -62,7 +62,7 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
-      <Button {...props} variant="ghost" size="sm">
+      <Button {...props} variant="outline" size="sm">
         {groupNames[group.field]}
         <ChevronDownIcon data-icon="inline-end" />
       </Button>

@@ -18,6 +18,7 @@
   import { Button } from "$lib/ui/primitives/button";
   import { Input } from "$lib/ui/primitives/input";
   import * as Table from "$lib/ui/primitives/table";
+  import { Toggle } from "$lib/ui/primitives/toggle";
   import NumberInput from "./NumberInput.svelte";
 
   interface Props {
@@ -81,15 +82,22 @@
                     aria-label={copy.bandControl(copy.bandColorColumn, index)}
                     oninput={(event) => chart.setBandColor(index, event.currentTarget.value)}
                   />
-                  <Button
+                  <!-- Pressed while the band is painted nowhere; pressed again it stays so, until a colour is picked. -->
+                  <Toggle
                     size="sm"
-                    variant={color === undefined ? "default" : "outline"}
-                    aria-pressed={color === undefined}
+                    variant="outline"
                     aria-label={copy.bandControl(copy.bandNoColor, index)}
-                    onclick={() => chart.setBandColor(index, undefined)}
+                    bind:pressed={
+                      () => color === undefined,
+                      (pressed) => {
+                        if (pressed) {
+                          chart.setBandColor(index, undefined);
+                        }
+                      }
+                    }
                   >
                     {copy.bandNoColor}
-                  </Button>
+                  </Toggle>
                 </Inline>
               </Table.Cell>
               <Table.Cell onfocusout={() => (refused = null)}>

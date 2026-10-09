@@ -2,7 +2,9 @@
   A quantity's row, one shape for every row (ADR-0002 decision 67, rule 3):
   the label row, then per entry a box, with a quantity's Presets inside it,
   and a caption line under it of the matching preset's name and the bound;
-  an entry is a slot's, or the session's pressure.
+  an entry is a slot's, or the session's pressure. The row is the generated
+  field, and each entry's box and caption a field of their own, marked
+  invalid while the entry is out of range (the shell's spec, "The rows").
   On Compare the label row stands over the three slot columns, so it names
   the first slot's box as a label does and each box is named for its slot as
   well.
@@ -33,8 +35,7 @@
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
-  import Stack from "$lib/ui/layout/Stack.svelte";
-  import { Label } from "$lib/ui/primitives/label";
+  import * as Field from "$lib/ui/primitives/field";
   import NumberInput from "./NumberInput.svelte";
   import PresetMenuButton from "./PresetMenuButton.svelte";
 
@@ -70,20 +71,20 @@
   }
 </script>
 
-<Stack gap="1">
+<Field.Field>
   <Inline gap="2" align="center">
-    <Label for="{id}-0">{labelText}</Label>
+    <Field.Label for="{id}-0">{labelText}</Field.Label>
     {@render besideLabel?.()}
   </Inline>
   <SlotColumns count={entries.length}>
     {#each entries as entry, index (index)}
-      <Stack gap="1">
-        {#if entry}
-          {#snippet presetMenu()}
-            {#if presets}
-              <PresetMenuButton {presets} {unit} name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger} oncommit={entry.oncommit} />
-            {/if}
-          {/snippet}
+      {#if entry}
+        {#snippet presetMenu()}
+          {#if presets}
+            <PresetMenuButton {presets} {unit} name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger} oncommit={entry.oncommit} />
+          {/if}
+        {/snippet}
+        <Field.Field data-invalid={entry.outOfRange || undefined}>
           <NumberInput
             id="{id}-{index}"
             value={entry.value}
@@ -93,9 +94,12 @@
             end={presets ? presetMenu : undefined}
             oncommit={entry.oncommit}
           />
-          <span class="caption-line">{captionOf(entry)}</span>
-        {/if}
-      </Stack>
+          <Field.Description class="caption-line">{captionOf(entry)}</Field.Description>
+        </Field.Field>
+      {:else}
+        <!-- A slot not compared keeps its column, empty. -->
+        <div></div>
+      {/if}
     {/each}
   </SlotColumns>
-</Stack>
+</Field.Field>

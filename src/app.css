@@ -170,13 +170,12 @@
 		height: var(--chart-height);
 	}
 
-	.caption,
-	.caption-line {
+	.caption {
 		font-size: var(--font-size-caption);
 		color: var(--muted-foreground);
 	}
-	/* A row's caption line under its box (decision 67, rule 3): one line while empty too, so a preset's name
-	   appearing as a value is typed moves no row below. 1.5em for `1lh`, which Firefox 115 lacks. */
+	/* A row's caption line under its box (decision 67, rule 3), the field's description: one line while empty too, so
+	   a preset's name appearing as a value is typed moves no row below. 1.5em for `1lh`, which Firefox 115 lacks. */
 	.caption-line {
 		min-height: 1.5em;
 	}
@@ -222,6 +221,29 @@
 [data-slot="card"] {
 	--card-spacing: var(--space-page);
 	border-radius: var(--radius);
+}
+/* A quantity's row is the generated field (the shell's spec, "The rows"): its label, box and caption the field's spacing
+   apart, where Nova's are 8 px, and its description, the caption line, at the caption's size. */
+[data-slot="field"] {
+	gap: var(--space-field);
+}
+[data-slot="field-description"] {
+	font-size: var(--font-size-caption);
+}
+/* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
+   trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint
+   shows. */
+[data-slot="input"]:not([type="color"]),
+[data-slot="input-group"] {
+	background-color: var(--ground);
+}
+/* One pressed state (decision 73, rule 3): a chosen toggle-group item and a pressed toggle, Compare, a slot button or
+   a band's No colour, take the primary fill, where the generated toggle's pressed state is the hover's `bg-muted`. */
+[data-slot="toggle-group-item"][data-state="on"],
+[data-slot="toggle"][data-state="on"] {
+	border-color: var(--primary);
+	background-color: var(--primary);
+	color: var(--primary-foreground);
 }
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */

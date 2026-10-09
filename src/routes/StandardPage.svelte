@@ -17,7 +17,7 @@
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
-  import { Button } from "$lib/ui/primitives/button";
+  import { Toggle } from "$lib/ui/primitives/toggle";
   import { inAppSwitch } from "./inAppSwitch";
   import { modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
@@ -28,9 +28,9 @@
   const inApp = inAppSwitch(session);
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
-  function toggleSlot(position: SlotPosition) {
+  function setSlotEnabled(position: SlotPosition, enabled: boolean) {
     if (position !== 0) {
-      session.setSlotEnabled(position, !session.isSlotEnabled(position));
+      session.setSlotEnabled(position, enabled);
     }
   }
 
@@ -69,14 +69,9 @@
           model={session.model}
           onchoose={(model) => inApp.follow({ page: session.page, model })}
         />
-        <Button
-          size="sm"
-          variant={session.compare ? "default" : "outline"}
-          aria-pressed={session.compare}
-          onclick={() => session.setCompare(!session.compare)}
-        >
+        <Toggle size="sm" variant="outline" bind:pressed={() => session.compare, (pressed) => session.setCompare(pressed)}>
           {copy.compare}
-        </Button>
+        </Toggle>
       </Inline>
       <!--
         While Compare is on, a slot button at the head of each slot column; a
@@ -86,15 +81,14 @@
       {#if session.compare}
         <SlotColumns count={slotPositions.length}>
           {#each slotPositions as position (position)}
-            <Button
+            <Toggle
               size="sm"
-              variant={session.isSlotEnabled(position) ? "default" : "outline"}
-              aria-pressed={session.isSlotEnabled(position)}
-              onclick={() => toggleSlot(position)}
+              variant="outline"
+              bind:pressed={() => session.isSlotEnabled(position), (pressed) => setSlotEnabled(position, pressed)}
             >
               <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(slotBadges[position].hue)}></span>
               {slotBadges[position].name}
-            </Button>
+            </Toggle>
           {/each}
         </SlotColumns>
       {/if}
