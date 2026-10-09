@@ -15,9 +15,14 @@
     chart: ChartState;
     /** The axes of the chart on screen, not of the live slot; `null` hides the picker. */
     drawnAxes: DrawnAxes | null;
+    /**
+     * Which part this draws (ADR-0002 decision 73, rule 8): the chart type, on the chart card's heading row, or the
+     * axis selects, on a row of their own under it, nothing where the chart declares no axes.
+     */
+    part: "type" | "axes";
   }
 
-  let { model, chart, drawnAxes }: Props = $props();
+  let { model, chart, drawnAxes, part }: Props = $props();
 
   const id = $props.id();
   // Options are addressed by position in these lists rather than by any string
@@ -30,37 +35,33 @@
   const yChoices = $derived(drawnAxes?.choices.filter((quantity) => quantity !== drawnAxes.selected.x) ?? []);
 </script>
 
-<Inline gap="4" align="baseline">
-  <Inline gap="2" align="center">
-    <span id="{id}-type">{copy.chart}</span>
-    <!-- A click on the chosen type asks for none (an empty value), which the setter ignores. -->
-    <ToggleGroup.Root
-      type="single"
-      variant="outline"
-      size="sm"
-      aria-labelledby="{id}-type"
-      bind:value={
-        () => String(types.indexOf(chart.type)),
-        (value) => {
-          if (value !== "") {
-            chart.type = types[Number(value)];
-          }
+{#if part === "type"}
+  <!-- The card's heading already says "Chart", so the group is named, not labelled a second time. A click on the
+       chosen type asks for none (an empty value), which the setter ignores. -->
+  <ToggleGroup.Root
+    type="single"
+    variant="outline"
+    size="sm"
+    aria-label={copy.chart}
+    bind:value={
+      () => String(types.indexOf(chart.type)),
+      (value) => {
+        if (value !== "") {
+          chart.type = types[Number(value)];
         }
       }
-    >
-      {#each types as type, index (type)}
-        <ToggleGroup.Item value={String(index)}>{type.title}</ToggleGroup.Item>
-      {/each}
-    </ToggleGroup.Root>
+    }
+  >
+    {#each types as type, index (type)}
+      <ToggleGroup.Item value={String(index)}>{type.title}</ToggleGroup.Item>
+    {/each}
+  </ToggleGroup.Root>
+{:else if drawnAxes}
+  <Inline gap="2" align="center">
+    {@render axisPicker("x", copy.xAxis, xChoices, drawnAxes.selected.x)}
+    {@render axisPicker("y", copy.yAxis, yChoices, drawnAxes.selected.y)}
   </Inline>
-
-  {#if drawnAxes}
-    <Inline gap="2" align="center">
-      {@render axisPicker("x", copy.xAxis, xChoices, drawnAxes.selected.x)}
-      {@render axisPicker("y", copy.yAxis, yChoices, drawnAxes.selected.y)}
-    </Inline>
-  {/if}
-</Inline>
+{/if}
 
 {#snippet axisPicker(axis: keyof ChartAxes, label: string, choices: readonly Quantity[], selected: Quantity)}
   <Label for="{id}-{axis}">{label}</Label>

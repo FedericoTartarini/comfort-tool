@@ -241,7 +241,7 @@ export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
     autosize: true,
     uirevision: viewportRevision(source),
     margin: { l: 64, r: 16, t: 12, b: 48 },
-    // ADR §4.4: the chart's one legend is rendered below it by ChartLegend.
+    // ADR §4.4: the chart's one legend is rendered beside or under it by ChartLegend.
     showlegend: false,
     hovermode: "closest",
     hoverlabel: READOUT_LABEL,

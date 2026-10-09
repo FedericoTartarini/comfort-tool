@@ -80,26 +80,29 @@
     />
   {/snippet}
 
+  {#snippet chartActions()}
+    <Inline gap="2" align="center">
+      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="type" />
+      <ExportImageDialog
+        chart={outputs.chart}
+        model={session.model}
+        chartType={session.chart.type}
+        runs={outputs.drawnRuns}
+        unitSystem={session.unitSystem}
+        bands={session.chart.bands}
+        onfailed={() => tab.raiseNotice("imageFailed")}
+      />
+    </Inline>
+  {/snippet}
+
   {#snippet chart()}
     <Stack gap="4">
-      <Inline gap="4" justify="between" align="center">
-        <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
-        <ExportImageDialog
-          chart={outputs.chart}
-          model={session.model}
-          chartType={session.chart.type}
-          runs={outputs.drawnRuns}
-          unitSystem={session.unitSystem}
-          bands={session.chart.bands}
-          onfailed={() => tab.raiseNotice("imageFailed")}
-        />
-      </Inline>
-
+      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="axes" />
       {#if outputs.chart}
-        <Stack gap="2">
+        <div class="chart-area">
           <PlotlyChart spec={outputs.chart} />
           <ChartLegend entries={outputs.chart.legend} />
-        </Stack>
+        </div>
       {/if}
 
       <BandsPanel model={session.model} chart={session.chart} unitSystem={session.unitSystem} />

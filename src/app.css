@@ -19,12 +19,13 @@
 	--space-field: 0.25rem;
 	--header-height: 3.5rem;
 
-	/* The design plan's type sizes and the chart's height (Phase 5c spec). */
+	/* The type sizes (decision 73, rule 2), and the plot's height cap, which its 4:3 shape, the exported image's
+	   plot area, is derived from (rule 8). */
 	--font-size-title: 1.125rem;
 	--font-size-heading: 0.875rem;
 	--font-size-body: 0.875rem;
 	--font-size-caption: 0.75rem;
-	--chart-height: 26rem;
+	--chart-cap: 24rem;
 
 	--background: #ffffff;
 	--foreground: #0f172a;
@@ -155,19 +156,36 @@
 		gap: 0.4em;
 	}
 
-	/* The chart's one legend, under it (decision 67, rule 4): its entries in a wrapping row, each kept on one line. */
-	.chart-legend {
+	/* The chart card's plot and its legend (decision 73, rules 8 and 10). Every Layout's Sidebar: a row that wraps,
+	   the plot first at its full width, the legend in the room left beside it, or under it where that room is narrower
+	   than the legend's basis. The plot's width is its own, so a longer legend never moves it. */
+	.chart-area {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.25rem 1rem;
+		align-items: center;
+		gap: var(--space-page);
+	}
+	/* The node Plotly draws the chart on: the exported image's 4:3 plot area, the cap tall, on the card's leading
+	   edge; it shrinks at 4:3 only where its column is narrower than it. */
+	.chart-plot {
+		flex: none;
+		inline-size: calc(var(--chart-cap) * 4 / 3);
+		max-inline-size: 100%;
+		aspect-ratio: 4 / 3;
+	}
+	/* The chart's one legend, a column beside the plot: `10rem` by preference, growing into a room of at most `18rem`,
+	   that room centred in what is left, and the entries as one column centred in it, each wrapping to lines rather
+	   than widening it. */
+	.chart-legend {
+		flex: 1 1 10rem;
+		max-inline-size: 18rem;
+		margin-inline: auto;
+		display: grid;
+		grid-template-columns: fit-content(100%);
+		justify-content: center;
+		gap: 0.25rem;
 		font-size: var(--font-size-caption);
 		color: var(--muted-foreground);
-		white-space: nowrap;
-	}
-	/* The node Plotly draws the chart on, at the chart's height. */
-	.chart-plot {
-		width: 100%;
-		height: var(--chart-height);
 	}
 
 	.caption {
