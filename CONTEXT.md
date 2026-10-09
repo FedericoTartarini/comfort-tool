@@ -133,7 +133,7 @@ The small colour sample that stands for one thing on the page: a slot, a band or
 _Avoid_: dot, chip, colour key (a key is a quantity's library name), marker (that is the slot's point on the chart)
 
 **Session controls**:
-The settings that apply to every slot and every page: the unit system, the atmospheric pressure, Copy link and Reset. They stand together in the left column, under the navigation.
+The settings that apply to every slot and every page: the unit system, the atmospheric pressure, Copy link and Reset. They stand together under the navigation in the left column, or beside it in the row a narrower page puts under the header.
 _Avoid_: global settings, toolbar, header controls
 
 **Temporary library**:

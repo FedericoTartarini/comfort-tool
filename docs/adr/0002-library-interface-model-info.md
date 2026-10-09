@@ -2377,6 +2377,25 @@ notes under decisions 51 and 53:
     wireframes — is the Phase 5c spec's, and this ADR records the rules alone.
     Rejected: a third directory where utilities are allowed (ADR-0001 §2's rule stands); hand-editing a primitive;
     a class passed per dialog.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built across Phase 5c: `8711739` (the classes,
+    the toggle groups, the dialog's width), `6a4fa23` (Export image's choices, ticket 14) and `a3cc0d1` (`PageFrame`);
+    the seven `<style>` blocks each went in the ticket that redesigned its component, three in `b0db574`
+    (`InputPanel`, `PresetInput`, `QuantityInput`), one in `bcb1733` (`ResultTable`) and three in `fe1a3f2`
+    (`ChartLegend`, `PlotlyChart`, `StandardPage`); rule 3 is `b373ccc`, `styleBlockSyntax` (`eslint.config.js:152`), probed on a business
+    component and on a layout one. `git grep -l "<style" -- src` finds nothing. The tests run went from 887 to 936. Read
+    against the code at `b373ccc`, these sentences say more or other than it. Rule 1: a business component reaches a
+    data colour through one custom property, `style:--swatch-color`, its one inline style. Rule 2: the unlayered block
+    also sets `overflow-x`, `white-space`, `vertical-align`, `text-align` and `padding`, which must beat a primitive's
+    utilities as a size does; it sets no colour, and its header says "sizes and layout alone" (`app.css:215`), so the
+    rule reads "never a colour". Seven of its rules are scoped by a class, `.table-scroll`, `.result-table` or
+    `.bands-table`, confining a primitive's adjustment to one table. One is selected by a class beside `data-slot`,
+    `[data-slot="popover-content"].list-popover`, a row's Presets, since the bare selector would strip every popover's
+    padding: the "class passed per dialog" the rule rejects, kept for one popover. Rule 3: a `<style>` nested in an
+    element, `<svelte:head>` included, parses as a `SvelteElement` and passes; nothing writes one (ticket 12). Rule 4:
+    `ui/layout/` also gains `SlotColumns.svelte`, the one column template of the slot buttons, the boxes, the options
+    and the hints (`b0db574`). Rule 6: Export image's size and format are toggle groups too (ticket 14); a chosen item
+    is a `radio`, checked, the arrow keys moving focus and Space or Enter choosing. The CLI also generated `toggle`
+    and `dropdown-menu` (decision 72).
 66. **One palette: `core/palette.ts` holds the design's named colours, and the interface and the charts both read
     it.** Taken 2026-10-08 in the same grilling; closes decision 60's rule 3 ("for now") and `.scratch/open-points.md`
     D15; amends decision 50's "placeholders for Phase 5c". Facts. Plotly and the Image need colours as strings, and
@@ -2407,6 +2426,20 @@ notes under decisions 51 and 53:
     Rejected: CSS as the source with the adapter reading `getComputedStyle`, which the Image's figure and `core`'s
     tests cannot share and which a Band's own hex colour mixes with; colours picked by hand per classifier, which
     writes appearance back into the table.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built as `04eb13d` (rules 1 to 3) and `826c4e8`
+    (rules 4 and 5). Read against the code at `b373ccc`, these sentences say more or other than it. Rule 1:
+    `core/palette.ts` also exports `lettering`, the family and the caption's size the hover readout is lettered in,
+    held to `--font-sans` and `--font-size-caption` by the same test (`fe1a3f2`). Rule 2: the marker and the zone line
+    are the hue itself; the fill is the hue's channels at decision 71's opacity (`core/bandPalette.ts:163-178`), so
+    slot 1's marker, near black before, is told from its zone by the white edge alone. Rule 3: `--secondary`,
+    `--muted` and `--accent` are `line`, a shade darker than shadcn-svelte's grey; `--primary` and `--ring` are
+    `var(--brand)`; the test also fails on a hex or `oklch(` in `app.css` the palette does not name. Rule 4's example
+    is wrong by its own arithmetic: YlOrRd-5 without its lightest is `#fecc5c`, `#fd8d3c`, `#f03b20`, its middle
+    three, not its last three, and the code reads the rule (the user, ticket 02). YlOrRd-4 and RdBu-10, which no
+    classifier reads now, went. A near-white neutral shows because a fill's Swatch is bordered (`.swatch-fill`).
+    `ui/charts/` still writes four palette values as literals (`plotlyFigure.ts:98, 212, 262`, `plotlyImage.ts:60`)
+    and one grey that is no palette colour, the grid's `#eef1f5` (`plotlyFigure.ts:261`); the palette test reads
+    `app.css` alone, so it catches none of them (`.scratch/tidy-later.md` T25).
 67. **The page: a header of identity and exits, a left column of navigation and session controls, an input column of
     model and rows, a result column from table to chart; and no control changes the layout.** Taken 2026-10-08 in the
     same grilling, and revised the same day with the user (rule 10, and rules 3 and 8 with it); gives a place and a
@@ -2468,6 +2501,30 @@ notes under decisions 51 and 53:
     draft of rule 8), which resized the chart, the page's anchor; a `30rem` column, which leaves a lone slot's box too
     wide and the chart at 1280 px too narrow; hiding Presets on Compare; a bound text shown only where slots differ,
     a layout that jumps while typing.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built as `a3cc0d1` (rules 1, 6 and 7), `bd05cfc`
+    (rule 2), `b0db574` (rule 3), `bcb1733` and `fe1a3f2` (rules 4 and 5), `ee83b47` (rule 8) and `8711739` (rule 9);
+    rule 10 was measured on each. Read against the code at `b373ccc`, these sentences say more or other than it. Rule 1:
+    below `xl` the header is two rows, the title alone over the notice line and Documentation, the notice's cell
+    holding `min-h-8`, so a long notice wraps without growing the header (92 px at 1200 and 900, 57 px at 1440;
+    ticket 11, kept); the Tab order is the visual one, the notice's Close before Documentation (WCAG technique C27,
+    with the user, ticket 04). Rule 2: `ariaCurrentOf` (`routes/routeModels.ts:67`) gives `page` and `true`; the
+    reserved place is an empty `aria-hidden` line of `1.5em`, which keeps a link's height but no width, so below
+    `xl` a Time-series link will push the session controls along the row. Rule 3: the bound and a matching preset's
+    name share the caption line, `preset · bound` (`copy.rowCaption`); on Compare every box and option is named by
+    `aria-label`, the row's label with the slot's name (`copy.slotControl`), since one `<label for>` cannot name three
+    boxes. Rule 4: the result column opens with a Results heading, an `h2` the table's scroll region is labelled by;
+    with one slot the not-calculated line has no swatch. Rule 5: the readout is lettered in Geist at the caption's
+    12 px, where Plotly's default is 13 (`chartInk.readoutFont`). Rule 6: the licence's label is "Licence" and both
+    it and the Code link point at the repository's root, and the citation is the old frontend's, each a placeholder
+    in `text/copy.ts` until the user decides (the rewrite plan's Phase 5c); the citation runs past the design plan's
+    80 characters, kept. Rule 7: the Documentation link points at `blob/main/docs/user-guide.md`, which answers 404
+    until the rewrite reaches `main` (with the user, ticket 04). Rule 8: Compare's slot columns are 106 px, about
+    `6.6rem`, not `7.3rem`, the column's padding and two gaps taken from its `24rem`; from `lg` the two columns are
+    `24rem` and the rest; below it the chart's height is `65cqw` of the result column, the `26rem` chart's proportion
+    at 1280 px (554 px at 900), and the input column takes the whole width. Rule 9: the width is `min(40rem, 100% −
+    2rem)`, and a dropdown menu is as wide as its items, at most `24rem` (decision 72). Rule 10: toggling Compare,
+    choosing an entry mode, raising a notice and opening a dialog moved no region's box at 1440, 1200 and 900 px
+    (tickets 08 and 11; ticket 13's walk for Compare).
 68. **An entry mode is chosen on the row it changes.** Taken 2026-10-08 in the same grilling; amends decision 51's
     "what appears once is the pair of entry-mode controls, `ui/inputs/EntryModeControls.svelte`". Facts. The entry
     modes are a block of four labelled rows above the quantity rows, so the control and the rows it changes are apart,
@@ -2488,6 +2545,10 @@ notes under decisions 51 and 53:
     **Amended 2026-10-08 (decision 72).** Rules 1, 3 and 4 are replaced, after ticket 07 landed (`edb0282`): the
     label is plain and names its box, and the group is changed by a menu button beside it, named for the group, which
     lists every mode with a description; the placement, rule 2 and the reader stand.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Rules 1, 3 and 4 landed as `edb0282` and were
+    replaced by decision 72 (`3448914`); the reader is `rowEntryGroupOf` (`core/slot.ts:386-387` its type), which
+    offers a group on the first row of the current mode, and `ValueEntryGroup.field` names the slot's field. The copy
+    table lost what the removed controls read and gained `entryModeChoice`.
 69. **Comfort zones of several slots are drawn as outlines; one slot's are nested fills.** *Withdrawn 2026-10-08 by
     decision 71, after its ticket 05 landed (`96eb9f8`); kept as written for the record.* Taken 2026-10-08 in the
     same grilling; amends decision 50's "nested, in the slot's hue with the opacity rising inwards" and decision 62's
@@ -2502,6 +2563,9 @@ notes under decisions 51 and 53:
     layer, named in the ticket as the exception to the phase's second Done criterion; the three-column ticket's
     screenshot of ISO 7730 with three slots judges the result.
     Rejected: small multiples, since Compare's purpose is one chart; filled zones at a lower opacity, which still mix.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Its one commit, `96eb9f8`, stands under decision
+    71's `c262c1b`, a forward commit: `zoneInkFor`, its comment fixes and its one-, two- and three-slot test blocks are
+    kept, its several-slots branch gone.
 70. **The result table avoids overflow first and, where it overflows, scrolls inside its region, by keyboard, with
     its first column fixed and its clipped edge faded.** Taken 2026-10-08 in the same grilling. Facts. The headings are
     `Quantity.label` in full and `white-space: nowrap` (`ui/outputs/ResultTable.svelte:105`), so "Predicted Percentage
@@ -2515,6 +2579,15 @@ notes under decisions 51 and 53:
     name, is sticky. (4) The clipped edge fades, in CSS alone, and the native scrollbar is left as it is. (5) All of
     it is classes in `app.css` and three attributes on the wrapper; no logic.
     Rejected: arrow buttons, a mechanism for a fallback case; collapsing rows into cards.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built as `bcb1733`. Read against the code at
+    `b373ccc`, these sentences say more or other than it. Rule 1: the right alignment is of every result column,
+    `.result-table .value`, so ASHRAE 55's Yes or No and a dash are right-aligned too, one alignment a column; a caveat
+    in the Compliance column wraps. Rule 2: the Results heading was written for the label to name, in both pages; the
+    region carries `<!-- svelte-ignore a11y_no_noninteractive_tabindex -->`, since Svelte's rule makes no exception
+    for a scroll region. The notes and the standard's caption stand under the region in a `div.caption`, not a
+    `<caption>`, which the region would clip with the table. Rule 3: the sticky cell's hovered colour restates the row
+    primitive's `hover:bg-muted/50` as an opaque `color-mix` (`app.css:210-212`); a regenerated row would drift from it.
+    Rule 4: the fade is a `local` cover over a `scroll` shade, light enough to judge on a real screen.
 71. **Comfort zones are nested fills however many slots a chart draws, and the outermost fill is never fainter than
     0.2.** Taken 2026-10-08 with the user, the same day as decision 69, withdrawing it after its ticket 05 landed
     (`96eb9f8`) and restoring decision 50's "nested, in the slot's hue with the opacity rising inwards" for every count
@@ -2544,6 +2617,14 @@ notes under decisions 51 and 53:
     Rejected: a revert of `96eb9f8`; filling only the outermost zone of each of several slots, which makes the
     painting a function of the count again; a blend mode, which a Plotly trace cannot carry, so it would live in the
     adapter where the Image could not inherit it (decision 64).
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built as `c262c1b` (rules 1, 2 and 4, ticket 15)
+    and `acebe5c` (rule 3, ticket 16). Read against the code at `b373ccc`, these sentences say more or other than it.
+    Rule 3's pin is in `core/slotBadge.test.ts`, beside the slot's inks, not in the band palette's tests; the middle
+    of three fills prints as `0.30000000000000004`, which the browser reads as 0.3. Rule 5: `adaptiveChart.ts` changed too,
+    its read of the slot's one-hex hue (`04eb13d`) and its zones through `zoneInkFor` (`96eb9f8`), and
+    `psychrometricChart.ts` its comment alone; three state tests changed their read of the hue (`04eb13d`); the builders' tests and two state tests that ticket 05 changed pin fills
+    again; no state source changed. Where six Adaptive fills stack under
+    three slots the colour is a dark slate, which rule 2 accepts.
 72. **An entry group is changed by a menu button beside its row's label, named for the group.** Taken 2026-10-08
     with the user, after decision 68's ticket 07 landed (`edb0282`); amends decision 68's rules 1, 3 and 4 and keeps
     its placement, the row the mode changes, moving the control toward the prototype's row
@@ -2581,6 +2662,15 @@ notes under decisions 51 and 53:
     legible than the group's name at no saving; a menu title, redundant once the button names the group; listing the
     other modes alone, since a radio menu shows its set; the prototype's short names (ADR-0001 §6); descriptions on
     the mode objects in `core/`, which has no copy but the library's names.
+    **Noted 2026-10-09 (`.scratch/interface-design/` ticket 13).** Built as `3448914`, with the descriptions trimmed
+    to what follows when another input changes (`b56fc24`, the user) and corrected (`704bdac`). Read against the code
+    at `b373ccc`, these sentences say more or other than it. Rule 1: the button is a ghost `sm` `Button`, 28 px high.
+    Rule 3: the table is `entryModeDescriptions`, `satisfies Record<EntryModeId, string>`, `EntryModeId` the union of
+    the four mode tables' `id` literals (`text/copy.ts:8, 53-65`); the lookup casts, `choice.id as EntryModeId`
+    (`ui/inputs/EntryGroupMenuButton.svelte:81`), since a mode's `id` is typed `string` in core; narrowing it was tried
+    and reverted by the user. The table is a second reader of the ids beside `core/shareLink.ts`. Rule 4: the
+    component is `EntryGroupMenuButton.svelte`; the box is named by its `<label>` with one slot, by `aria-label` on
+    Compare (decision 67's note above); a dropdown menu is at most `24rem` wide (`app.css:227-230`).
 
 ## Consequences
 

@@ -175,6 +175,22 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > before the footer's ticket: the repository has no `LICENSE` file for the footer's MIT link; the Code link's target
 > (`package.json` has no `repository` field); the citation's text. **Next: the user's `/to-spec` and `/to-tickets` for
 > Phase 5c, the design plan in the spec.**
+>
+> **2026-10-09 — position, Phase 5c done**: the interface landed on `rewrite/v1` as `.scratch/interface-design/`, a
+> commit per ticket: 01 `04eb13d` the palette module and the tokens, 02 `826c4e8` the band families' reading rules, 03
+> `8711739` the semantic classes, the toggle groups and one dialog width, 14 `6a4fa23` Export image's toggle groups, 04
+> `a3cc0d1` the page frame, header and footer, 05 `96eb9f8` several slots' zones as outlines (decision 69, withdrawn
+> by 71), 15 `c262c1b` every slot's zones as nested fills, 16 `acebe5c` the outermost fill at 0.2, 06 `bd05cfc` the
+> left column, 07 `edb0282` the entry mode on its row, 17 `3448914` (with `b56fc24` and `704bdac`) the entry group's
+> menu button, 08 `b0db574` presets in the box and a constant input column, 09 `bcb1733` the result table, 10
+> `fe1a3f2` the chart area, 11 `ee83b47` the breakpoints, 12 `b373ccc` the lint rule. Ticket 13 read the documents
+> against the code: decisions 65 to 72 carry notes of 2026-10-09, ADR-0001 §5 and §7 carry notes, and the Done
+> criteria below are marked. The four scripts are green at 936 tests, and `npm run test:browser` at its five. Both
+> pages were walked at 1440, 1200 and 900 px, Standard with Compare off and on, with the console clean and no region
+> moved by Compare (ticket 13's Comments, screenshots `13-*.png`). Three things still wait on the user, the footer's
+> placeholders in `text/copy.ts`: a `LICENSE` file for the licence link, which points at the repository's root; the
+> Code link's target; the citation's text, the old frontend's. What the checklist's human half found, and what was
+> seen and left, is in ticket 13's Comments. **Next: step 4 of the table above, Phase 5b's short grilling (★5b).**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1303,6 +1319,10 @@ the second is checked on each ticket's diff — no change under `src/state/`, un
 no test lost — and by a Chrome screenshot walk per ticket; no visual snapshot test (ADR-0001's Testing row). Of the ★5c
 rows: B4, B10 and D15 are the phase's; B6 is placed and reserved only, its dialog a ticket of its own after the phase
 (decision 59's note); B7 and B9 are triage tickets, B7 ahead of item 1; D11 is Phase 6's, the focus to land on the `h1`.
+**Noted 2026-10-09** (ticket 13): the second criterion's check is of source; three state tests changed their read of
+the slot's hue (`04eb13d`), and in `src/core/` `adaptiveChart.ts` changed its read of the hue and paints its zones
+through `zoneInkFor` (`96eb9f8`), `psychrometricChart.ts` changed a comment, and `slot.ts` gained
+`ValueEntryGroup.field` beside the reader. The written test cases went from 780 to 805, none lost.
 
 1. The three columns as designed rather than as stacked: real proportions, real density, a considered
    information hierarchy. The architecture is fixed (ADR §1), the execution is not.
@@ -1337,9 +1357,20 @@ business components never encode appearance, so redesigning them is not a rewrit
 The same rule, read forward on 2026-10-07, is why the phase now comes before Phase 5b and Phase 5d: building on the
 finished system is cheaper than converting to it.
 
-**Done criteria**
-- No hand-written CSS left in business components that a token or a primitive should be carrying.
-- The four scripts still pass, and no business component's logic changed to accommodate the design.
+**Done criteria** (met 2026-10-09, ticket 13)
+- [x] No hand-written CSS left in business components that a token or a primitive should be carrying. `b373ccc`
+  makes it a lint rule; a business component's one inline style is a data colour, `style:--swatch-color`.
+- [x] The four scripts still pass, and no business component's logic changed to accommodate the design. Read as the
+  check above, of `src/state/` and `src/core/`: the components themselves were recomposed, `InputPanel` taking a
+  column per slot and `QuantityInput` a row's entries (`b0db574`).
+
+**Landed sizes** (2026-10-09): every size as built, those the design plan named and those it left open; where one
+moved from the plan, the plan's is named beside it. columns `13rem | 24rem | 1fr` from 1280 px, `24rem
+| 1fr` from 1024 px, one column below; Compare's slot columns 106 px each, not the plan's `7.3rem`, the column's padding
+and gaps taken first; the chart `26rem`, and `65cqw` of the result column below 1024 px; every dialog `40rem`, less
+2rem margin on a narrower window; a dropdown menu as wide as its items, at most `24rem`; the header one row of 57 px
+from 1280 px, two rows of 92 px below, so a notice wraps without moving the page; the hover readout 12 px; type at
+the design plan's four sizes, line height 1.5.
 
 ---
 
