@@ -42,7 +42,12 @@
     {/snippet}
   </Popover.Trigger>
   <Popover.Content class="list-popover">
-    <Command.Root>
+    <!--
+      No initial scroll: on mount the list scrolls its first item into view
+      while the popover is still unpositioned far above the page, which
+      scrolled the whole window to the top.
+    -->
+    <Command.Root disableInitialScroll>
       <Command.Input placeholder={copy.presetSearchPlaceholder} />
       <Command.List>
         <Command.Empty>{copy.presetEmpty}</Command.Empty>
