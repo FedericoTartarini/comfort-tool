@@ -151,9 +151,10 @@ export const copy = {
   categoryZone: (category: string) => `Category ${category}`,
   zoneLegend: (zone: ComfortZone) =>
     `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
-  // The Bands panel on Explore (ADR-0002 decision 59).
+  // The Bands panel on Explore (ADR-0002 decision 59), in a dialog the chart's heading row opens (decision 73, rule 8).
   bands: "Bands",
   bandsReset: "Reset bands",
+  bandsClose: "Close",
   bandLabelColumn: "Label",
   bandColorColumn: "Colour",
   // `output` is the cut quantity's label with its unit.

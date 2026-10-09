@@ -303,8 +303,8 @@
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
-/* The Bands panel is a compact table (decision 67, rule 4): a row as tall as its small buttons, and a colour box
-   narrow enough that No colour stands beside it. */
+/* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
+   tall as its small buttons, and a colour box narrow enough that No colour stands beside it. */
 .bands-table [data-slot="table-head"] {
 	height: 2rem;
 }
