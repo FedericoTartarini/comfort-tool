@@ -211,6 +211,11 @@
 	.result-table tr:hover > :first-child {
 		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
 	}
+	/* A row kept from an earlier run (`data-kept`) reads as not current by its numbers' muted ink, without a second
+	   hue; its first cell and the Compliance column keep theirs (decision 73, rule 9). */
+	.result-table tr[data-kept] .value {
+		color: var(--muted-foreground);
+	}
 }
 
 /* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2, as decision 73

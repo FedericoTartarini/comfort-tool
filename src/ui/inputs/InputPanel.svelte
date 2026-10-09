@@ -19,6 +19,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import * as Alert from "$lib/ui/primitives/alert";
   import { Checkbox } from "$lib/ui/primitives/checkbox";
   import { Label } from "$lib/ui/primitives/label";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
@@ -120,17 +121,21 @@
     {/if}
   {/each}
 
+  <!-- A slot's applicability hints are the generated alert (the shell's spec, "The result table"), in its default
+       variant, which leaves red to the kept rows' note: the lead as its title, one hint a line. -->
   {#if hasHints}
     <SlotColumns count={columns.length}>
       {#each hints as slotHints, position (position)}
-        <Stack gap="1">
+        <div>
           {#if slotHints.length > 0}
-            <span class="caption">{copy.applicabilityHint}</span>
-            {#each slotHints as violation (violation)}
-              <span class="caption">{warningFor(violation, unitSystem)}</span>
-            {/each}
+            <Alert.Root>
+              <Alert.Title>{copy.applicabilityHint}</Alert.Title>
+              {#each slotHints as violation (violation)}
+                <Alert.Description>{warningFor(violation, unitSystem)}</Alert.Description>
+              {/each}
+            </Alert.Root>
           {/if}
-        </Stack>
+        </div>
       {/each}
     </SlotColumns>
   {/if}

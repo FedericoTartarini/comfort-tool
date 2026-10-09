@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { splitViolations, warningFor } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -9,6 +10,7 @@
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import * as Alert from "$lib/ui/primitives/alert";
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
@@ -16,7 +18,7 @@
     /** One row per compared slot, in slot order. */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
-    /** While Compare is on, a row wears its slot's hue and a caption line names the row it is about. */
+    /** While Compare is on, a row wears its slot's hue and the kept rows' note names the row it is about. */
     compare: boolean;
     /** The id of the Results heading, which names the table's scroll region (ADR-0002 decision 70, rule 2). */
     labelledby: string;
@@ -68,7 +70,8 @@
       </Table.Header>
       <Table.Body>
         {#each tableRows as { row, classified, caveats } (row)}
-          <Table.Row>
+          <!-- A row kept from an earlier run is marked, so its numbers read as not current (decision 73, rule 9). -->
+          <Table.Row data-kept={row.notCalculated || undefined}>
             <Table.Cell>
               {#if compare}
                 <span class="swatch-label">
@@ -105,21 +108,31 @@
     </Table.Root>
   </div>
 
+  <!-- The standard's caption, then the kept rows' note under it, so the note's coming and going moves the caption
+       nothing. The note is the one place the page asks the person to act: the generated alert in its destructive
+       variant (decision 73, rule 9). -->
   {#if uncalculatedRows.length > 0 || standardCaption}
-    <div class="caption">
-      <Inline gap="4">
-        {#each uncalculatedRows as row (row)}
-          <span class="swatch-label">
-            {#if compare}
-              {@render slotSwatch(row)}
-            {/if}
-            {notCalculatedNote(row)}
-          </span>
-        {/each}
-        {#if standardCaption}
-          <span>{standardCaption}</span>
-        {/if}
-      </Inline>
-    </div>
+    <Stack gap="2">
+      {#if standardCaption}
+        <span class="caption">{standardCaption}</span>
+      {/if}
+      {#if uncalculatedRows.length > 0}
+        <Alert.Root variant="destructive">
+          <TriangleAlertIcon />
+          <Alert.Title>
+            <Inline gap="4">
+              {#each uncalculatedRows as row (row)}
+                <span class="swatch-label">
+                  {#if compare}
+                    {@render slotSwatch(row)}
+                  {/if}
+                  {notCalculatedNote(row)}
+                </span>
+              {/each}
+            </Inline>
+          </Alert.Title>
+        </Alert.Root>
+      {/if}
+    </Stack>
   {/if}
 </Stack>
