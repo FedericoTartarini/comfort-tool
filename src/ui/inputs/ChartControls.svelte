@@ -71,9 +71,11 @@
   >
     <Select.Trigger id="{id}-{axis}">{selected.label}</Select.Trigger>
     <Select.Content>
-      {#each choices as quantity, index (quantity)}
-        <Select.Item value={String(index)} label={quantity.label} />
-      {/each}
+      <Select.Group>
+        {#each choices as quantity, index (quantity)}
+          <Select.Item value={String(index)} label={quantity.label} />
+        {/each}
+      </Select.Group>
     </Select.Content>
   </Select.Root>
 {/snippet}

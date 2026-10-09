@@ -51,12 +51,15 @@
       <Command.Input placeholder={copy.presetSearchPlaceholder} />
       <Command.List>
         <Command.Empty>{copy.presetEmpty}</Command.Empty>
-        {#each presets as preset (preset.label)}
-          <Command.Item value={preset.label} onSelect={() => pick(preset)}>
-            <span>{preset.label}</span>
-            <span class="item-value">{formatNumber(unit.fromSi(preset.value))}</span>
-          </Command.Item>
-        {/each}
+        <!-- The items inside a Group, as every generated example has them: the group's inset parts them from the search box. -->
+        <Command.Group>
+          {#each presets as preset (preset.label)}
+            <Command.Item value={preset.label} onSelect={() => pick(preset)}>
+              <span>{preset.label}</span>
+              <span class="item-value">{formatNumber(unit.fromSi(preset.value))}</span>
+            </Command.Item>
+          {/each}
+        </Command.Group>
       </Command.List>
     </Command.Root>
   </Popover.Content>

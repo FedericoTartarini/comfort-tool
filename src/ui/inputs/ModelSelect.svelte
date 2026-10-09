@@ -38,9 +38,12 @@
   >
     <Select.Trigger id="{id}-model">{model.info.label}</Select.Trigger>
     <Select.Content>
-      {#each choices as choice, index (choice)}
-        <Select.Item value={String(index)} label={choice.info.label} />
-      {/each}
+      <!-- The items inside a Group, as every generated example has them: the group carries the list's inset. -->
+      <Select.Group>
+        {#each choices as choice, index (choice)}
+          <Select.Item value={String(index)} label={choice.info.label} />
+        {/each}
+      </Select.Group>
     </Select.Content>
   </Select.Root>
 </Inline>
