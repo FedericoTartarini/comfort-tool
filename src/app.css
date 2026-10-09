@@ -7,9 +7,11 @@
    `core/palette.ts`'s colours, written here as the same hex values
    (ADR-0002 decision 66), and `src/core/palette.test.ts` holds the two
    files to one another. `--primary` and `--ring` follow `--brand`, so the
-   primary button, the current navigation item and the focus ring are navy. */
+   primary button and the focus ring are the brand's blue; the sidebar primitive's tokens are other tokens' values, so
+   it brings no colour of its own (ADR-0002 decision 73, rule 3). */
 :root {
-	--brand: #2a4583;
+	--brand: #003262;
+	--ground: #f8fafc;
 
 	/* The design plan's type sizes and the chart's height (Phase 5c spec). */
 	--font-size-title: 1.125rem;
@@ -37,6 +39,15 @@
 	--input: #e2e8f0;
 	--ring: var(--brand);
 	--radius: 0.625rem;
+
+	--sidebar: var(--background);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--brand);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--accent);
+	--sidebar-accent-foreground: var(--accent-foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
 }
 
 @theme inline {
@@ -63,6 +74,14 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
@@ -99,7 +118,7 @@
 
 /* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
 @layer components {
-	/* The navigation (ADR-0002 decision 57): muted links, the current one navy. */
+	/* The navigation (ADR-0002 decision 57): muted links, the current one the brand's. */
 	nav a {
 		color: var(--muted-foreground);
 	}
@@ -113,7 +132,7 @@
 		color: var(--foreground);
 		font-weight: 600;
 	}
-	/* The current link is navy, the Explore link too: after the group's rule. */
+	/* The current link is the brand's, the Explore link too: after the group's rule. */
 	nav a[aria-current] {
 		color: var(--brand);
 	}
@@ -213,8 +232,9 @@
 	}
 }
 
-/* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2). Sizes and
-   layout alone: a colour goes through the tokens. Unlayered, so it wins over the primitives' utilities. */
+/* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2, as decision 73
+   revised it). Sizes, layout, and which token a slot reads, such as a chosen toggle's `var(--primary)` or a field's
+   `var(--ground)`; never a literal colour. Unlayered, so it wins over the primitives' utilities. */
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));

@@ -4,11 +4,14 @@
  * (`core/slotBadge.ts`); the interface reads the same hex values as the
  * stylesheet's tokens (`app.css`), and a test holds the two files to one
  * another. Hue is spent on data alone: the slots' hues here, the bands' in
- * the band palette; the interface itself is the brand navy and slate.
+ * the band palette; the interface itself is the brand blue and slate.
  */
 export const palette = {
-  /** The CBE navy: the current navigation item, the primary button, the focus ring, links. */
-  brand: "#2a4583",
+  /**
+   * UC Berkeley's blue, the one blue (decision 73, rule 3): the current navigation item, the primary button, the
+   * focus ring, links.
+   */
+  brand: "#003262",
   /** Text. */
   ink: "#0f172a",
   /** Captions, bound text, legend text, a Band's Edge line. */
@@ -19,7 +22,9 @@ export const palette = {
   lineStrong: "#cbd5e1",
   /** The saturation line. */
   lineHeavy: "#94a3b8",
-  /** The page's ground and the plot's ground, one surface. */
+  /** The page's ground and a field's tint. */
+  ground: "#f8fafc",
+  /** A panel's and the plot's ground. */
   paper: "#ffffff",
   /** An entry out of range, a refused Edge. */
   alert: "#dc2626",

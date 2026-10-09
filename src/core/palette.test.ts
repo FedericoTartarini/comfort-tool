@@ -29,6 +29,7 @@ describe("the stylesheet", () => {
   // The tokens the interface shares with the charts (ADR-0002 decision 66, rule 3).
   const shared = {
     "--brand": palette.brand,
+    "--ground": palette.ground,
     "--background": palette.paper,
     "--foreground": palette.ink,
     "--muted-foreground": palette.inkMuted,
@@ -47,6 +48,25 @@ describe("the stylesheet", () => {
     expect(declared("--primary")).toBe("var(--brand)");
     expect(declared("--ring")).toBe("var(--brand)");
   });
+
+  // The sidebar primitive's tokens, each another token's value, so no colour enters with them (decision 73, rule 3).
+  const sidebar = {
+    "--sidebar": "var(--background)",
+    "--sidebar-foreground": "var(--foreground)",
+    "--sidebar-primary": "var(--brand)",
+    "--sidebar-primary-foreground": "var(--primary-foreground)",
+    "--sidebar-accent": "var(--accent)",
+    "--sidebar-accent-foreground": "var(--accent-foreground)",
+    "--sidebar-border": "var(--border)",
+    "--sidebar-ring": "var(--ring)",
+  };
+
+  for (const [token, source] of Object.entries(sidebar)) {
+    it(`derives ${token} from ${source} and maps it to --color-${token.slice(2)}`, () => {
+      expect(declared(token)).toBe(source);
+      expect(declared(`--color-${token.slice(2)}`)).toBe(`var(${token})`);
+    });
+  }
 
   it("declares the family and the caption's size the charts letter in", () => {
     expect(declared("--font-sans")).toBe(lettering.family);
