@@ -16,7 +16,7 @@ export const palette = {
   ink: "#0f172a",
   /** Captions, bound text, legend text, a Band's Edge line. */
   inkMuted: "#64748b",
-  /** Column rules, input borders, table row lines. */
+  /** Input borders, table row lines, the sidebar's separator. */
   line: "#e2e8f0",
   /** The isolines. */
   lineStrong: "#cbd5e1",

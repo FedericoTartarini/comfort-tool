@@ -8,7 +8,6 @@
 -->
 <script lang="ts">
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
-  import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
@@ -30,7 +29,6 @@
   const { session, outputs } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
-  const id = $props.id();
 </script>
 
 <PageFrame notice={tab.notice} onclosenotice={tab.closeNotice}>
@@ -50,7 +48,6 @@
 
   {#snippet inputs()}
     <Stack gap="4">
-      <h2>{copy.inputs}</h2>
       <ModelSelect
         choices={modelChoicesOn(session)}
         model={session.model}
@@ -73,17 +70,18 @@
     </Stack>
   {/snippet}
 
-  {#snippet results()}
-    <Stack gap="4">
-      <h2 id="{id}-results">{copy.results}</h2>
-      <ResultTable
-        model={session.model}
-        rows={outputs.slots}
-        unitSystem={session.unitSystem}
-        compare={false}
-        labelledby="{id}-results"
-      />
+  {#snippet results(headingId)}
+    <ResultTable
+      model={session.model}
+      rows={outputs.slots}
+      unitSystem={session.unitSystem}
+      compare={false}
+      labelledby={headingId}
+    />
+  {/snippet}
 
+  {#snippet chart()}
+    <Stack gap="4">
       <Inline gap="4" justify="between" align="center">
         <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
         <ExportImageDialog

@@ -5,7 +5,7 @@
   `--header-height`, the vertical `Separator` after the first control.
   Changed: a band of the brand, its text in the paper's white, with no rule
   under it and not sticky, so it scrolls away with the page; the row's inset
-  is the page's 12 px, its gap the same; the sidebar's trigger is gone while
+  and gap are the page's spacing token; the sidebar's trigger is gone while
   the sidebar is fixed, and the CBE mark, a link, stands first; the separator
   is `h-6` in the band's white at 30 %; the breadcrumb is the title, the
   `h1`; the search form is the notice line, centred in the room between the
@@ -29,7 +29,7 @@
 </script>
 
 <header class="flex w-full items-center bg-(--brand) text-background">
-  <div class="flex h-(--header-height) w-full items-center gap-3 px-3">
+  <div class="flex h-(--header-height) w-full items-center gap-(--space-page) px-(--space-page)">
     <a href={copy.cbeAddress} class="flex shrink-0 items-center [--ring:var(--background)]">
       <img src={marks.cbe.src} alt={copy.cbeName} width={marks.cbe.width} height={marks.cbe.height} class="h-8 w-auto" />
     </a>

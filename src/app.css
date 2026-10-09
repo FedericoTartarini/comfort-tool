@@ -13,6 +13,12 @@
 	--brand: #003262;
 	--ground: #f8fafc;
 
+	/* The page's two spacing values and the header's height (ADR-0002 decision 73, rule 2): one between modules and
+	   rows, at the page's edge and inside a card; one within a field, between its label, box and caption. */
+	--space-page: 0.75rem;
+	--space-field: 0.25rem;
+	--header-height: 3.5rem;
+
 	/* The design plan's type sizes and the chart's height (Phase 5c spec). */
 	--font-size-title: 1.125rem;
 	--font-size-heading: 0.875rem;
@@ -38,7 +44,8 @@
 	--border: #e2e8f0;
 	--input: #e2e8f0;
 	--ring: var(--brand);
-	--radius: 0.625rem;
+	/* The one radius (decision 73, rule 2); `@theme` derives Nova's smaller and larger steps from it. */
+	--radius: 0.375rem;
 
 	--sidebar: var(--background);
 	--sidebar-foreground: var(--foreground);
@@ -88,16 +95,18 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	/* The page stands on the ground; the modules, the cards, are the paper (decision 73, rule 4). */
 	body {
-		@apply bg-background text-foreground;
+		@apply text-foreground;
+		background-color: var(--ground);
 		font-size: var(--font-size-body);
 		line-height: 1.5;
 	}
 	html {
 		@apply font-sans;
 	}
-	/* The title, the page frame's `h1`, and a heading: a column's, or the Bands panel's inside the result column (the
-	   Phase 5c spec's type roles). */
+	/* The title, the page frame's `h1`, and a heading: a card's, set over the card title's own size, or the Bands
+	   panel's inside the chart card (the Phase 5c spec's type roles; decision 73, rule 2). */
 	h1 {
 		font-size: var(--font-size-title);
 		font-weight: 600;
@@ -208,6 +217,12 @@
 /* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2, as decision 73
    revised it). Sizes, layout, and which token a slot reads, such as a chosen toggle's `var(--primary)` or a field's
    `var(--ground)`; never a literal colour. Unlayered, so it wins over the primitives' utilities. */
+/* A module, the generated card, has the one radius, where Nova rounds a card at the radius and 4 px, and the page's
+   spacing as its padding and its gap between header and content (decision 73, rules 2 and 4). */
+[data-slot="card"] {
+	--card-spacing: var(--space-page);
+	border-radius: var(--radius);
+}
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
