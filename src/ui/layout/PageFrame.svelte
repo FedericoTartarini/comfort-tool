@@ -8,7 +8,9 @@
   the sidebar is `14rem`, not the primitive's `16rem`; the inset holds the
   three modules, Inputs, Results and Chart, each a generated card titled by
   its heading (decision 73, rule 4), not the block's sample panels; a footer
-  of the brand's band follows the row, hand-made, as no block has one. The header
+  of the brand's band follows the row, hand-made, as no block has one; below
+  `md` the sidebar is the primitive's sheet, out of the row, and the inset
+  takes the gutter its insets gave (decision 73, rule 10). The header
   and the footer run the page's width and scroll with it. The header's row
   is that fixed height, so a notice appearing or closing in it moves nothing
   (decision 67, rule 10).
@@ -59,9 +61,11 @@
       (decision 73, rule 10); one column below, the input card above. The page
       gutter is the spacing token on three sides; on the fourth the sidebar's
       own insets make it, so its fills stand that far from the cards and its
-      first group label's top is level with theirs.
+      first group label's top is level with theirs. Below `md` the sidebar is
+      a sheet out of the row, the inset its first child, and the token makes
+      the fourth side too.
     -->
-    <Sidebar.Inset class="@container min-w-0 bg-transparent">
+    <Sidebar.Inset class="@container min-w-0 bg-transparent first:pl-(--space-page)">
       <div
         class="grid grid-cols-[minmax(0,1fr)] items-start gap-(--space-page) p-(--space-page) pl-0 @min-[70rem]:grid-cols-[24rem_minmax(0,1fr)]"
       >
