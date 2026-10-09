@@ -7,8 +7,9 @@
   slot with the slot's name in a column of its own; otherwise the dialog has no
   such column.
 
-  Its look is provisional — the designed version is Phase 5c's — so it composes
-  the generated dialog and table primitives and adds no styling of its own.
+  Its look is the generated dialog and table primitives', at the one width
+  every dialog has (ADR-0002 decision 67, rule 9); it adds no styling of its
+  own.
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";

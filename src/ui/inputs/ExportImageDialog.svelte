@@ -10,8 +10,9 @@
   while the page is shown, at their defaults again once it is mounted anew.
   An edited title stands while the default it replaced is still the default.
 
-  Its look is provisional — the designed version is Phase 5c's — so it composes
-  the generated dialog primitive and adds no styling of its own.
+  Its look is the generated primitives' it composes, the dialog at the one
+  width every dialog has (ADR-0002 decision 67, rule 9); it adds no styling of
+  its own.
 -->
 <script lang="ts">
   import type { ChartSpec } from "$lib/core/charts/chartSpec";

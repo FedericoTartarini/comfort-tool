@@ -44,7 +44,7 @@
       plotly = module.default;
     });
     // `responsive` follows the window alone, and the chart's column also
-    // narrows with the window unchanged: when Compare widens the inputs.
+    // narrows with the window unchanged: when the page's scrollbar appears.
     // Only a drawn plot is resized.
     const observer = new ResizeObserver(() => {
       if (node.classList.contains("js-plotly-plot")) {

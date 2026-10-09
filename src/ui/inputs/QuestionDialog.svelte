@@ -4,8 +4,8 @@
   one, and so does a share link reaching a tab that kept a session. It decides
   nothing; both answers go straight back to the caller.
 
-  Its look is provisional — the designed version is Phase 5c's — so it composes
-  the generated dialog primitive and adds no styling of its own.
+  Its look is the generated dialog primitive's, at the one width every dialog
+  has (ADR-0002 decision 67, rule 9); it adds no styling of its own.
 -->
 <script lang="ts">
   import { Button } from "$lib/ui/primitives/button";
