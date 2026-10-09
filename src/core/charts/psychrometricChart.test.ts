@@ -13,19 +13,21 @@ import { bandListOf } from "$lib/core/bands";
 import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
+import { imageSize } from "$lib/core/image";
 import { valuesReader } from "$lib/core/libraryInputs";
-import type { ComfortZone, RegisteredModel } from "$lib/core/modelDeclaration";
+import { psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
+import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { Annotation, ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -145,6 +147,70 @@ function pmvAt(db: number, rh: number, tr: number): number {
     limit_inputs: false,
     round_output: false,
   }).pmv;
+}
+
+/** The single-column Image's plot width, in px: the column less the figure's side margins. */
+const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 52 - 12;
+
+/**
+ * Plots the isoline labels must keep apart at, in px, with the lettering's
+ * size: the page's plot, the chart at its cap of 512 × 384 less the adapter's
+ * margins, its labels at 10 px (`ui/charts/plotlyFigure.ts`), and the
+ * narrower of the Image's two, the single column at 4:3, its labels at 8 pt
+ * (`ui/charts/plotlyImage.ts`).
+ */
+const labelFrames = [
+  { name: "the page's plot", width: 512 - 64 - 16, height: 384 - 12 - 48, lettering: 10 },
+  { name: "the single-column Image", width: singleColumnPlotWidth, height: singleColumnPlotWidth * 0.75, lettering: (8 * 96) / 72 },
+] as const;
+
+type LabelFrame = (typeof labelFrames)[number];
+
+/** A point of the plot, in px from its top-left corner. */
+interface PlotPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** A label's box on the plot, in px from its top-left corner. */
+interface LabelBox {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+}
+
+/** The point (`x`, `y`) of `spec`'s axes on a plot `frame` big. */
+function plotPointOf(x: number, y: number, spec: ChartSpec, frame: LabelFrame): PlotPoint {
+  const [xMin, xMax] = spec.layout.x.range;
+  const [yMin, yMax] = spec.layout.y.range;
+  return { x: ((x - xMin) / (xMax - xMin)) * frame.width, y: ((yMax - y) / (yMax - yMin)) * frame.height };
+}
+
+/**
+ * The box `annotation` takes on a plot `frame` big over `spec`'s axes,
+ * anchored as the adapter anchors it: its top-right corner on the point. A
+ * label's characters are taken as 0.7 of the lettering wide on average, more
+ * than a label measures in either face it is drawn in ("100 %" is 3.4 at the
+ * page's 10 px), and a line as Plotly's 1.3; Plotly pads the box by 1 px.
+ */
+function labelBoxOf(annotation: Annotation, spec: ChartSpec, frame: LabelFrame): LabelBox {
+  const corner = plotPointOf(annotation.x, annotation.y, spec, frame);
+  return {
+    left: corner.x - annotation.text.length * 0.7 * frame.lettering - 2,
+    right: corner.x,
+    top: corner.y,
+    bottom: corner.y + 1.3 * frame.lettering + 2,
+  };
+}
+
+function overlaps(a: LabelBox, b: LabelBox): boolean {
+  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+/** Whether `point` lies inside `box`, short of its edges. */
+function covers(box: LabelBox, point: PlotPoint): boolean {
+  return box.left < point.x && point.x < box.right && box.top < point.y && point.y < box.bottom;
 }
 
 describe("psychrometricSpec", () => {
@@ -319,20 +385,9 @@ describe("psychrometricSpec", () => {
     });
   });
 
-  it("labels every relative-humidity isoline where it leaves the viewport", () => {
+  it("labels every other relative-humidity isoline where it leaves the viewport", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
-    expect(spec.annotations.map((entry) => entry.text)).toEqual([
-      "10 %",
-      "20 %",
-      "30 %",
-      "40 %",
-      "50 %",
-      "60 %",
-      "70 %",
-      "80 %",
-      "90 %",
-      "100 %",
-    ]);
+    expect(spec.annotations.map((entry) => entry.text)).toEqual(["20 %", "40 %", "60 %", "80 %", "100 %"]);
     for (const entry of spec.annotations) {
       expect(entry.x).toBeGreaterThanOrEqual(10);
       expect(entry.x).toBeLessThanOrEqual(40);
@@ -412,4 +467,34 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
     ]);
     expect(new Set(alone.map((field) => field[10][25][2])).size).toBe(3);
   });
+});
+
+describe("the relative-humidity labels at the plot's size", () => {
+  const charts = registeredModels
+    .filter((model) => psychrometricChartOf(model) !== undefined)
+    .flatMap((model) => [unitSystem.si, unitSystem.ip].map((system) => ({ model, system })));
+
+  it.each(charts.flatMap((chart) => labelFrames.map((frame) => ({ ...chart, frame }))))(
+    "keeps every label clear of every other and of every other isoline's end: $model.info.label, $system.id, $frame.name",
+    ({ model, system, frame }) => {
+      const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model), system));
+      const boxes = spec.annotations.map((annotation) => labelBoxOf(annotation, spec, frame));
+      const ends = isolinesOf(spec).map((isoline) => ({
+        label: isoline.label,
+        point: plotPointOf(isoline.x[isoline.x.length - 1], isoline.y[isoline.y.length - 1], spec, frame),
+      }));
+      boxes.forEach((box, index) => {
+        const text = spec.annotations[index].text;
+        boxes.forEach((other, otherIndex) => {
+          if (otherIndex !== index) {
+            expect(overlaps(box, other), `${text} on ${spec.annotations[otherIndex].text}`).toBe(false);
+          }
+        });
+        // Its own isoline ends on its corner, every other one clear of it.
+        for (const end of ends.filter((entry) => !entry.label?.endsWith(` ${text}`))) {
+          expect(covers(box, end.point), `${text} on the end of ${end.label}`).toBe(false);
+        }
+      });
+    },
+  );
 });

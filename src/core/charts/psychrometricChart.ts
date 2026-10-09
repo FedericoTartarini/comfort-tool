@@ -14,6 +14,13 @@ const q = quantities;
 /** Relative humidity of each isoline, [%]. The saturation line is the last one. */
 const ISOLINE_STEP = 10;
 /**
+ * Relative humidity of each labelled isoline, [%]: every other one. Where the
+ * isolines leave the top their ends leave room for a label every other
+ * isoline at the plot's cap and at the Image's single column, not for one on
+ * each.
+ */
+const LABEL_STEP = 2 * ISOLINE_STEP;
+/**
  * Samples along each isoline, across the declared temperature range. 121 over
  * 10–40 °C is the resolution the CBE tool draws these curves at.
  */
@@ -97,7 +104,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
   let cover: PathTrace | undefined;
   for (let rh = ISOLINE_STEP; rh <= 100; rh += ISOLINE_STEP) {
     const sampled = temperatures.map((temperature) => ({ temperature, hr: psy_ta_rh(temperature, rh, atmosphericPressure).hr }));
-    // Cut the curve where it leaves the top of the viewport, so the label sits
+    // Cut the curve where it leaves the top of the viewport, so a label sits
     // on the last drawn point rather than off the plot.
     const curve = sampled.filter((point) => point.hr <= hrRange.max);
     const end = curve[curve.length - 1];
@@ -136,11 +143,13 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     } else {
       isolines.push(isoline);
     }
-    annotations.push({
-      x: xUnit.fromSi(end.temperature),
-      y: hrUnit.fromSi(end.hr),
-      text: rhText,
-    });
+    if (rh % LABEL_STEP === 0) {
+      annotations.push({
+        x: xUnit.fromSi(end.temperature),
+        y: hrUnit.fromSi(end.hr),
+        text: rhText,
+      });
+    }
   }
   // The one drawing order (ADR-0002 decision 62); the function's comment says why.
   const traces: Trace[] = [...paint.fills, ...isolines, ...paint.outlines, paint.hoverGrid];
