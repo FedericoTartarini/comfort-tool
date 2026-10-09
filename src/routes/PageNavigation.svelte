@@ -1,18 +1,17 @@
 <!--
-  The navigation (ADR-0002 decision 57): two groups of links, each link a
-  (page, model) address. Under Standard one link per standard the app's table
-  lists, opening that standard's first registered model; then one Explore link,
-  keeping the current model. A standard's link is drawn current on any of its
-  models, the Explore link on Explore; `aria-current` says `page` only on the
-  link whose address is the session's (decision 67, rule 2). Explore is a group
-  of its own, so its link reads as Standard's heading does, one level above the
-  standards' links, and under it one link's height is kept for Time-series, so
-  in the left column its arrival moves nothing below.
+  The navigation (ADR-0002 decision 57), the sidebar menu's groups (decision
+  73, rule 6), each item a (page, model) address. Under Standard one item per
+  standard the app's table lists, opening that standard's first registered
+  model; under Tools the Explore item, keeping the current model. A
+  standard's item is drawn current on any of its models, the Explore item on
+  Explore; `aria-current` says `page` only on the item whose address is the
+  session's (decision 67, rule 2).
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
   import type { Session } from "$lib/state/session.svelte";
-  import Stack from "$lib/ui/layout/Stack.svelte";
+  import { copy } from "$lib/text/copy";
+  import NavGroup, { type NavItem } from "$lib/ui/layout/NavGroup.svelte";
   import { ariaCurrentOf, interceptLinkClick, pathTo, standardLinks } from "./navigation";
 
   interface Props {
@@ -23,38 +22,30 @@
 
   let { session, onfollow }: Props = $props();
 
-  const links = standardLinks();
-  const exploreLink = $derived<Address>({ page: page.explore, model: session.model });
+  /**
+   * An item that keeps its address, so a new tab and a copied address still
+   * work, and that asks the session first when it is the page the click
+   * belongs to. A click the navigation module declines to hand over is the
+   * browser's, and arrives as an address.
+   */
+  function itemTo(target: Address, label: string): NavItem {
+    return {
+      label,
+      href: pathTo(target),
+      current: ariaCurrentOf(target, session),
+      onclick: (event) => {
+        if (interceptLinkClick(event)) {
+          onfollow(target);
+        }
+      },
+    };
+  }
+
+  const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.displayName)));
+  const toolItems = $derived([itemTo({ page: page.explore, model: session.model }, page.explore.title)]);
 </script>
 
-{#snippet link(target: Address, label: string, levelClass: "nav-group" | "nav-item")}
-  <!--
-    A link that keeps its address, so a new tab and a copied address still
-    work, and that asks the session first when it is the page the click
-    belongs to. A click the navigation module declines to hand over is the
-    browser's, and arrives as an address.
-  -->
-  <a
-    class={levelClass}
-    href={pathTo(target)}
-    aria-current={ariaCurrentOf(target, session)}
-    onclick={(event) => {
-      if (interceptLinkClick(event)) {
-        onfollow(target);
-      }
-    }}
-  >
-    {label}
-  </a>
-{/snippet}
-
 <nav>
-  <Stack gap="2">
-    <strong class="nav-group">{page.standard.title}</strong>
-    {#each links as { standard, address } (standard.id)}
-      {@render link(address, standard.displayName, "nav-item")}
-    {/each}
-    {@render link(exploreLink, page.explore.title, "nav-group")}
-    <span class="nav-reserved" aria-hidden="true"></span>
-  </Stack>
+  <NavGroup label={page.standard.title} items={standardItems} />
+  <NavGroup label={copy.tools} items={toolItems} />
 </nav>

@@ -118,33 +118,6 @@
 
 /* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
 @layer components {
-	/* The navigation (ADR-0002 decision 57): muted links, the current one the brand's. */
-	nav a {
-		color: var(--muted-foreground);
-	}
-	/* Current is one look whichever value it carries: `page`, or `true` on a standard's link on another of its models. */
-	nav a[aria-current] {
-		font-weight: 500;
-	}
-	/* A group's name — Standard's heading, the Explore link — one level above the links inside a group. */
-	nav strong.nav-group,
-	nav a.nav-group {
-		color: var(--foreground);
-		font-weight: 600;
-	}
-	/* The current link is the brand's, the Explore link too: after the group's rule. */
-	nav a[aria-current] {
-		color: var(--brand);
-	}
-	nav .nav-item {
-		padding-left: 0.75rem;
-	}
-	/* The place kept under Explore for Time-series: one link's line, empty. 1.5em is the body's line height, not `1lh`,
-	   which Firefox 115, the browser floor, lacks. */
-	nav .nav-reserved {
-		height: 1.5em;
-	}
-
 	/* A Swatch (CONTEXT.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */
 	.swatch {
 		display: inline-block;
@@ -238,6 +211,11 @@
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
+}
+/* A sidebar menu item is a link drawn as a button: hovered, the primitive fills it, so the base rule's underline does
+   not reach it; a link in text keeps its underline (the shell's spec, "The frame"). */
+[data-slot="sidebar-menu-button"]:hover {
+	text-decoration: none;
 }
 /* A popover that holds a searchable list, a row's Presets: the list reaches the popover's edges. */
 [data-slot="popover-content"].list-popover {

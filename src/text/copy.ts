@@ -36,6 +36,15 @@ export const copy = {
     "Please cite us if you use this software: Tartarini, F., Schiavon, S., Cheung, T., Hoyt, T., 2020. " +
     "CBE Thermal Comfort Tool: online tool for thermal comfort calculations and visualizations. SoftwareX 12, 100563.",
   citationAddress: "https://doi.org/10.1016/j.softx.2020.100563",
+  // The two marks on the header's and the footer's bands, each a link to its institution (ADR-0002 decision 73,
+  // rule 5): the name is the mark's text alternative.
+  cbeName: "Center for the Built Environment",
+  cbeAddress: "https://cbe.berkeley.edu/",
+  berkeleyName: "University of California, Berkeley",
+  berkeleyAddress: "https://www.berkeley.edu/",
+  // The sidebar's group labels after Standard, which is the Standard page's title (decision 73, rule 6).
+  tools: "Tools",
+  session: "Session",
   inputs: "Inputs",
   results: "Results",
   model: "Model",
