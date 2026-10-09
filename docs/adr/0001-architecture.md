@@ -560,6 +560,15 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > **Noted 2026-10-08** ([ADR-0002](0002-library-interface-model-info.md) decisions 65 to 67; Phase 5c's grilling): the tree gains `core/palette.ts` (the design's named colours, which `slotBadge.ts` and `bandPalette.ts` read) and `ui/layout/PageFrame.svelte` (the header, the three columns and the footer); `app.css` also holds a `@layer components` block of semantic classes and one unlayered block of size adjustments to the generated primitives by `data-slot`. A business component carries no `<style>`, a lint rule once Phase 5c closes.
 >
 > **Noted 2026-10-09** ([ADR-0002](0002-library-interface-model-info.md) decisions 65 to 72, as noted the same day; `.scratch/interface-design/` ticket 13): the lint rule is `styleBlockSyntax` (`b373ccc`). The tree also gains `ui/layout/SlotColumns.svelte`, the one column template of Compare's slot buttons, boxes, options and hints (`b0db574`); `core/palette.ts` also exports `lettering`, the family and caption size the hover readout is lettered in (`fe1a3f2`); `ui/primitives/` gains `toggle`, `toggle-group` and `dropdown-menu`, generated. `ui/inputs/EntryModeControls.svelte` is gone (`edb0282`); `EntryGroupMenuButton.svelte` and `PresetMenuButton.svelte` (once `PresetInput.svelte`) are left out by the 2026-09-28 marker's rule. The 2026-09-28 marker's `app.css` line now reads: the colour tokens are `core/palette.ts`'s hex values, `--primary` and `--ring` follow `--brand` (`#2a4583`), and the size tokens are `--font-size-title`, `--font-size-heading`, `--font-size-body`, `--font-size-caption` and `--chart-height`; the unlayered block sets sizes and layout, never a colour.
+>
+> **Noted 2026-10-09** ([ADR-0002](0002-library-interface-model-info.md) decision 73, the shell's grilling; ahead of the
+> code): the UI row's "CLI-generated, never hand-edited" is the primitives'; a block from the registry (`sidebar-16`) is
+> generated too, then edited, and its files live in `ui/layout/`, where utilities are allowed, each file's head listing
+> what was kept and what changed. A page part with a counterpart in the registry is built from it; the hand-made parts
+> are named in decision 73, rule 1. The look is `docs/design.md`. The `app.css` line now reads: `--brand` is `#003262`;
+> a `--ground` token, `#f8fafc`, carries the page's ground and a field's tint; the sidebar primitive's eight tokens
+> derive from the existing ones; `--chart-cap` replaces `--chart-height`; the unlayered block sets sizes, layout and
+> which token a slot reads, never a literal colour.
 
 ```
 src/

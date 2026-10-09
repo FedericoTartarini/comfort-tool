@@ -1664,6 +1664,8 @@ notes under decisions 51 and 53:
     **Noted 2026-10-07 (the roadmap revised).** Rule 6's phase is the plan's Phase 5d, after Phase 5b and before
     Phase 6, with Phase 5c brought ahead of both; the grilling rule 6 asks for opens Phase 5d, and the library's PHS
     port (decision 22) follows it. The user, 2026-10-07: the calculators first, Time-series is not urgent.
+    **Revised 2026-10-09 by decision 73.** The navigation is a sidebar menu, so the place reserved for Time-series is a
+    line added to the menu's Tools group when the page exists; no placeholder item is shown (decision 73, rule 6).
 58. **The page decides what the charts paint: Standard paints Comfort zones on every chart, Explore paints Bands on
     every chart, and a spec builder is told which by being given a Band list or not.** Revises decision 31's split,
     extending it to the psychrometric chart, and amends decisions 27 and 37. Rules. (1) On Standard the dynamic
@@ -2396,6 +2398,11 @@ notes under decisions 51 and 53:
     and the hints (`b0db574`). Rule 6: Export image's size and format are toggle groups too (ticket 14); a chosen item
     is a `radio`, checked, the arrow keys moving focus and Space or Enter choosing. The CLI also generated `toggle`
     and `dropdown-menu` (decision 72).
+    **Revised 2026-10-09 by decision 73.** Rule 2 reads: the unlayered block sets sizes, layout, and which token a slot
+    reads, never a literal colour; a chosen toggle's `var(--primary)` fill and a field's `var(--ground)` tint are what
+    it may write. Rule 4's `PageFrame.svelte` stays the composition both pages use, now made of the `sidebar-16` block's
+    header, sidebar and inset, which live in `ui/layout/` and may be edited (decision 73, rule 1). The design plan is
+    `docs/design.md`, not the Phase 5c spec's.
 66. **One palette: `core/palette.ts` holds the design's named colours, and the interface and the charts both read
     it.** Taken 2026-10-08 in the same grilling; closes decision 60's rule 3 ("for now") and `.scratch/open-points.md`
     D15; amends decision 50's "placeholders for Phase 5c". Facts. Plotly and the Image need colours as strings, and
@@ -2440,6 +2447,11 @@ notes under decisions 51 and 53:
     `ui/charts/` still writes four palette values as literals (`plotlyFigure.ts:98, 212, 262`, `plotlyImage.ts:60`)
     and one grey that is no palette colour, the grid's `#eef1f5` (`plotlyFigure.ts:261`); the palette test reads
     `app.css` alone, so it catches none of them (`.scratch/tidy-later.md` T25).
+    **Revised 2026-10-09 by decision 73.** Rule 1: `brand` is `#003262`, and the palette gains `ground` `#f8fafc`, the
+    page's ground and a field's tint; `paper` is a panel's and the plot's ground. Rule 3's test pins `ground` too, and
+    the eight `--sidebar-*` tokens derive from the existing ones. The Facts' "the deployed tool's only colour of its own
+    is `#2a4583`" is wrong by measurement (2026-10-09, the prototype's round 10): its footer band is `#124f7f` and its
+    title `#0f75bb`; the one blue is now the Clima tool's.
 67. **The page: a header of identity and exits, a left column of navigation and session controls, an input column of
     model and rows, a result column from table to chart; and no control changes the layout.** Taken 2026-10-08 in the
     same grilling, and revised the same day with the user (rule 10, and rules 3 and 8 with it); gives a place and a
@@ -2525,6 +2537,15 @@ notes under decisions 51 and 53:
     2rem)`, and a dropdown menu is as wide as its items, at most `24rem` (decision 72). Rule 10: toggling Compare,
     choosing an entry mode, raising a notice and opening a dialog moved no region's box at 1440, 1200 and 900 px
     (tickets 08 and 11; ticket 13's walk for Compare).
+    **Revised 2026-10-09 by decision 73.** Rule 1: the header is a band of the brand carrying the CBE mark, a separator,
+    the `h1`, the notice centred and Documentation (73, rule 5). Rule 2: the left column is the sidebar block's menu,
+    without icons, its groups Standard, Tools and Session, Session under a separator; Time-series has no placeholder
+    (73, rule 6). Rule 4: the chart controls are the card's heading row and an axis row of their own, the legend stands
+    beside the plot, and Bands is a dialog opened from the heading row, the compact table under the legend withdrawn
+    (73, rule 8). Rule 6: the footer is a band of the brand with the two marks (73, rule 5). Rule 8: the sidebar is
+    `14rem`, the chart a 4:3 plot capped at `24rem`, and the breakpoints are a container query and `md` (73, rule 10).
+    Rules 3, 5, 7, 9 and 10 stand; of the Rejected list, "a second surface" no longer covers the three panels (73, rule
+    4), and still covers a readout box.
 68. **An entry mode is chosen on the row it changes.** Taken 2026-10-08 in the same grilling; amends decision 51's
     "what appears once is the pair of entry-mode controls, `ui/inputs/EntryModeControls.svelte`". Facts. The entry
     modes are a block of four labelled rows above the quantity rows, so the control and the rows it changes are apart,
@@ -2588,6 +2609,10 @@ notes under decisions 51 and 53:
     `<caption>`, which the region would clip with the table. Rule 3: the sticky cell's hovered colour restates the row
     primitive's `hover:bg-muted/50` as an opaque `color-mix` (`app.css:210-212`); a regenerated row would drift from it.
     Rule 4: the fade is a `local` cover over a `scroll` shade, light enough to judge on a real screen.
+    **Confirmed 2026-10-09 by decision 73.** The generated `ScrollArea` was tried in the prototype and rejected: its
+    viewport is made focusable by an `$effect`, against rule 5, and bits-ui's default `type="hover"` hides the scrollbar
+    at rest, the defect rule 4's fade answers. The region stays as the rules say, a named exception to decision 73's
+    rule 1.
 71. **Comfort zones are nested fills however many slots a chart draws, and the outermost fill is never fainter than
     0.2.** Taken 2026-10-08 with the user, the same day as decision 69, withdrawing it after its ticket 05 landed
     (`96eb9f8`) and restoring decision 50's "nested, in the slot's hue with the opacity rising inwards" for every count
@@ -2671,6 +2696,103 @@ notes under decisions 51 and 53:
     and reverted by the user. The table is a second reader of the ids beside `core/shareLink.ts`. Rule 4: the
     component is `EntryGroupMenuButton.svelte`; the box is named by its `<label>` with one slot, by `aria-label` on
     Compare (decision 67's note above); a dropdown menu is at most `24rem` wide (`app.css:227-230`).
+    **Revised 2026-10-09 by decision 73.** The button is `outline`, not ghost, so the control reads as a button (the
+    prototype's round 2).
+73. **The shell: every page part with an official counterpart is generated from it, the modules are three white panels
+    on a faint ground, and the chrome is two bands of the one blue.** Taken 2026-10-09 with the user, in the grilling of
+    the `prototype/shadcn-shell` verdict (`.scratch/prototype-shadcn-shell/notes.md`, rounds 1 to 29, the branch at
+    `f82fdc2`, kept as a source and never merged); revises decisions 57 (the reserved place), 65 (rules 2 and 4, the
+    design plan's home), 66 (rule 1, rule 3's values, its Facts), 67 (rules 1, 2, 4, 6 and 8, its Rejected list) and
+    72's note, confirms 70, and leaves 71 as it stands. Facts. The user's ask, 2026-10-09: a rigorous research tool with
+    an elegant sense of design that still fits a rigorous research tool, one coherent design language, and a style
+    without the look of generated AI output; the Phase 5c page read to them as an unfinished shell. Six shells were
+    built on the real pages with real data, A (the Phase 5c frame) to F; the user chose F in round 5 and settled every
+    value over the rounds after, measured at 1440 and 1920 px. The bare feeling came from an unfinished finish, uneven
+    insets, content against the column rules, headings with no territory, white on white, not from missing cards; so the
+    variables are four, each with one value: radius, boundary material, spacing unit, type scale. Two rules of the
+    user's, in translation: every part of the page, from the smallest control (a dropdown, an input, a text area, a
+    button) to the largest component, is first taken from the official CLI or template and then changed in small ways
+    (round 13); and the whole interface uses one gap, never a mix of several gaps or of several type sizes and faces,
+    unless one is necessary, as the limits' text may be, and the number of different gaps, sizes and faces in use is
+    reduced wherever it is not (round 20). Measured: the deployed tool's psychrometric chart is a fixed 580 × 500 px
+    SVG, and the app's exported image already fixes a 4:3 plot area (`ui/charts/plotlyImage.ts:51`); at the chosen
+    spacing ASHRAE PMV's input column binds the one-screen fit at 767 px of window height, so a plot taller than `24rem`
+    only lengthens the page (round 26); no label row wraps at `24rem` any more than at `26rem`, and the wider column
+    costs the chart 32 px (round 21). The registry: Nova's `sm` button and toggle are 12.8 px (`button.svelte:20`,
+    `toggle.svelte:13`); the sidebar primitive with `collapsible="none"` never renders its mobile Sheet
+    (`sidebar.svelte:25-36`); bits-ui's `ScrollArea` defaults to `type="hover"`
+    (`node_modules/bits-ui/dist/bits/scroll-area/components/scroll-area.svelte:12`), and the prototype's needed an
+    `$effect` to make its viewport focusable. The prototype's ground, 3 % ink, and field tint, 2.5 % ink, mix in oklab
+    to `#f7f7f8` and `#f8f8f9`, one unit apart. Every standard shared one icon in the prototype's sidebar. At 1366 px of
+    window, the room beside the plot is 198 px: the one-slot legend (160 px) fits and Compare's (207 px) does not, so a
+    legend placed by its own width would flip under the plot on a click; the prototype's two-column threshold, `56rem`
+    of main area, leaves the chart card 464 px of content at its narrowest, less than the plot. Every Layout's Sidebar
+    lays out a main element and a sidebar without `@media`: the sidebar's `flex-basis` is its ideal width, the main
+    element grows, and `min-inline-size` sets where the sidebar wraps under (every-layout.dev/layouts/sidebar: "This
+    should be responsive, without `@media` breakpoints"); MDN's responsive-design guide puts a breakpoint "at the point
+    where the content starts to look bad", in relative units. Rules. (1) **Official parts first.** A page part with a
+    counterpart in shadcn-svelte's registry is generated by the CLI, a primitive or a block (`sidebar-16` for the
+    frame), then changed in small ways at the use site or by `data-slot`. A primitive is never hand-edited (ADR-0001
+    §2); a block's files may be, live in `ui/layout/`, and each file's head lists what was kept and what changed.
+    `PageFrame.svelte` stays the composition both pages use (decision 65, rule 4), made of the block's header, sidebar
+    and inset. Hand-made, having no counterpart: the footer, the legend and the Swatch, the Plotly host, Stack, Inline,
+    Grid and SlotColumns, the CBE and UC Berkeley marks; and by choice the result table's scroll region (decision 70).
+    `sonner` is not adopted; the notice stays in the header. (2) **The fewest values, each with one role.** Spacing:
+    `0.75rem` for the page gutter, the gap between modules, a panel's padding, between rows and within a row; `0.25rem`
+    within a field, between its label, box and caption; the header `3.5rem`; a generated component's insides keep its
+    style's own. Type: Geist, one family; 12, 14 and 18 px for caption, body and title; weights 400, 500 and 600; plus
+    the generated components' own sizes, Nova's `sm` control at 12.8 px kept, since the default size costs about 4 px a
+    labelled row and the one-screen fit. Radius: one token, 6 px, Nova's derived steps kept because nesting needs them.
+    An exception is named by its necessity: the range text and captions at 12 px, Plotly's lettering in px. (3)
+    **Colour.** `core/palette.ts`: `brand` is `#003262`, the Clima tool's and UC Berkeley's blue, the one blue; `ground`
+    `#f8fafc` is new, the page's ground and a field's tint, one value; `paper` is a panel's and the plot's ground. The
+    brand is spent on the current navigation item, the primary button, the focus ring, links, the header's and footer's
+    bands, and every chosen or pressed toggle, one pressed state for a toggle-group's item, Compare, the slot buttons
+    and a band's No colour; `alert` also marks a kept row's note. Decision 65's rule 2 reads: the unlayered block sets
+    sizes, layout, and which token a slot reads, never a literal colour; decision 66's test pins `ground` too; the
+    sidebar primitive's eight tokens derive from the existing ones. (4) **Material.** Inputs, Results and Chart are the
+    generated `Card`: white panels on the ground, bounded by the card's ring at 10 % ink, no shadow, no gradient, the
+    one radius; a rule is drawn only inside a panel (table rows) and in the sidebar, above Session. The panels are the
+    one second surface; the readout stays on the pointer. (5) **Header and footer** are bands of the brand, full width,
+    neither resident. The header, in order: the white CBE mark, a link to cbe.berkeley.edu; a `Separator`; the title, an
+    `h1`; the notice line, the generated `Alert` inside the status region, centred; Documentation. The footer: decision
+    67 rule 6's two lines at the left; the white CBE and UC Berkeley marks at the right, links to cbe.berkeley.edu and
+    berkeley.edu. (6) **Sidebar.** The block's `AppSidebar`, fixed (`collapsible="none"`), `14rem`, on the ground, its
+    menu items `gap-1`, no icons. Groups: Standard, one item per standard; Tools, Explore, which Time-series joins as
+    one item when it exists, no placeholder; Session, under a `SidebarSeparator`: the unit system toggle-group, the
+    pressure input, Copy link and Reset. `aria-current` as decision 67 rule 2. The fills, the header's mark and the
+    footer's text share one 12 px line, and the first group label's top meets the cards'. (7) **Input column** `24rem`
+    at every Compare state; decision 67's rules 3 and 10 unchanged. (8) **Chart card.** The heading row: Chart, then at
+    the right the chart type toggle-group (named by `aria-label`, no visible label), on Explore the Bands button, then
+    Export image; the axis selects, where the chart has them, on a row of their own, left-aligned. The plot is the
+    exported image's 4:3 plot area, `--chart-cap` tall, `24rem`, and four thirds of that wide, on the card's leading
+    edge; the legend a column beside it, centred in a room of at most `18rem` to its right; `--chart-height` goes. Bands
+    leaves the chart's flow: a `Dialog` opened from the heading row's button; decision 58 is unchanged, and the dialog's
+    behaviour is B6's own grilling. (9) **A kept row** (`notCalculated`) draws its numbers in `inkMuted`; the note under
+    the table is the generated `Alert`, `destructive` variant, with a triangle-alert icon. (10) **Widths.** The layout
+    is intrinsic: the app writes no `@media` breakpoint of its own, and nothing reads the legend's content, so at one
+    viewport no control moves anything. The chart card lays out the plot and the legend as Every Layout's Sidebar: the
+    plot first, its `min-inline-size` its full width (four thirds of the cap) and `max-inline-size: 100%`, so it shrinks
+    only when the window is narrower than it; the legend a column with `flex-basis: 10rem`, growing into a room of at
+    most `18rem`, its entries wrapping; when the room is narrower than that basis the legend wraps under the plot. Two
+    columns, the input card beside the result and chart cards, while the main area is at least `70rem` wide, a container
+    query in rem derived from the content (the input column, the module gap, the chart card's padding, the plot at its
+    cap, its gap to the legend, the legend's basis and the gutter), about 1356 px of window; narrower, the input card
+    above the other two and the chart card takes the main area's width, the legend beside the plot down to about 932 px.
+    Below `md` (768 px) the sidebar is the primitive's `Sheet`, the one device breakpoint, its trigger in the header
+    before the mark, the Session group inside it. Decision 67 rule 8's `lg` and `xl` rows are void; verified by
+    screenshot at 1440, 1366, 1280, 1024 and 768 px. (11) **Units** are rem, except hairlines, Nova's radius steps,
+    values read off the DOM and Plotly's px API. (12) **Documents.** The design plan, the look, is `docs/design.md`,
+    which these rules point to; Phase 5c's spec keeps its §Design plan as history. Decision 72's note reads `outline`.
+    The relative-humidity labels crowding at the `24rem` plot is a ticket of its own; the ~740 px window is not pursued,
+    767 px is the floor. Rejected: shells A to E (the Phase 5c frame, the collapsible and inset sidebars, stat tiles,
+    bordered regions on white); a collapsible sidebar, which needs a trigger, a scroll script and an exception to rule
+    10; a mono accent; a global `--spacing` scale, which shrinks every generated component; the deployed chart's 580 ×
+    500 or its ratio at the column's width; the legend under the plot, and the plot and legend centred as a group, since
+    the plot then moves with the legend's width; Session at the sidebar's middle or foot, aligned with nothing; icons in
+    the navigation; a "Soon" placeholder; `ScrollArea`; `sonner`; one grey surface for header, sidebar and footer; the
+    default-size control in place of Nova's `sm`; two tints one unit apart; a legend placed by its own width, which
+    Compare flips at 1366 px; a two-column threshold narrower than the plot and the legend's basis beside the inputs.
 
 ## Consequences
 
