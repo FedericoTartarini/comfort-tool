@@ -217,6 +217,16 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > decision 73 rule 5. **Next: the user's `/to-spec` and `/to-tickets` in a folder of its own; then shell tickets 14
 > to 18 and 11; then Phase 5b's grilling.**
 
+> **2026-10-12 — position, the shell done**: `.scratch/shell/` landed on `rewrite/v1`, its commits listed under Phase
+> 5c's shell paragraph below. Ticket 11 read the documents against the code at `b365056`: decision 73 carries a note
+> of this date, rule by rule, naming the values that moved (the two columns from a 1344 px window, the legend beside
+> the plot down to 944 px, the sheet from 767 px, the one-screen fit at about 774 px of window height, the frame's
+> `76rem` measured at 1440 px), and decisions 36, 59, 63 and 65, ADR-0001's §4.3 and §5, and `docs/design.md` carry
+> what the folder changed. The four scripts pass at 959 tests and `npm run test:browser` at 28. Five points wait on
+> the user, each in decision 73's or decision 36's note: the dialog's 10 px and the checkbox's 4 px corners, the
+> plot's 40 px drop on a type switch at 768 px, the notice off the frame's midline, and `inputsOf`'s name. **Next:
+> `.scratch/display-order/` tickets 01 to 05 (decision 74); then Phase 5b's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1407,6 +1417,19 @@ screenshot walk per ticket at 1440, 1366, 1280, 1024 and 768 px; the palette tes
 `core/charts` change is the relative-humidity labels' crowding at the `24rem` plot, a ticket of its own. Done when the
 four scripts and `npm run test:browser` pass, no change under `src/state/`, and under `src/core/` only `palette.ts` and
 the labels' ticket.
+**Done 2026-10-12** (`.scratch/shell/` ticket 11): a commit per ticket. The first pass: 01 `bac8e61` the one blue
+and the ground, 02 `d8a2869` the generated primitives, 03 `f95df51` the frame, header, sidebar and footer, 04
+`a324626` three cards on the ground, 05 `1131827` rows and controls from the registry, 06 `2570c8f` the kept row, 07
+`61c0060` the chart card's 4:3 plot and the legend beside it, 08 `4128fc0` Bands as a dialog, 09 `c7831e7` the five
+widths and the layout test, 10 `367277d` the relative-humidity labels. The second grilling's revisions of decisions
+36, 63 and 73 (`5a952cc`, `cebd554`, `5049630`, `80eddb9`) and its tickets: 12 `e7e55cb` an option where its
+declaration lists it, 13 `1906b86` the header's mark an in-app switch, 14 `47950cd` one radius, 15 `371699a` the
+chart card's view row, 16 `ff3c06a` the frame centred, 17 `5038513` and `4e90e16` Presets as a word, 18 `b365056`
+the small fixes; 11 the documents. Read as a check of source: under `src/core/` the palette, the psychrometric builder
+and decision 36's panel list with its readers, the slot's, the gate's, the input summary's and the share link's
+(`e7e55cb`), changed, which the spec revised 2026-10-12 names (story 62); under `src/state/` no source changed, but
+five tests changed their read of an option, past the spec's "no change under the state layer", since decision 36's
+revision removed the field they read. The four scripts pass at 959 tests and `npm run test:browser` at 28.
 
 ---
 

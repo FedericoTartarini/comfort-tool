@@ -255,6 +255,8 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 34** (2026-09-25 and 2026-09-26): "`run` is the positional call" in the first marker above is retracted. `run` passes the model one params object, each quantity's key written by name; see §4.0's marker for decisions 3, 5 and 34.
 >
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36 as revised 2026-10-12** (`e7e55cb`): `RegisteredModel.options` is gone, in the decision 36 marker above and in the rules below. An option is listed among `inputs`, the panel's list in panel order, as `{ option }` beside the `{ quantity, value }` elements, and read through `optionsOf(model)`, the quantities through `inputsOf(model)`; PMV (ASHRAE 55) lists its one option after `v`. `InputSlot.options` is unchanged.
+>
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 20** (2026-09-15): the rules paragraph's sentence making `presets` a declaration field no longer applies. Presets hang off the `Quantity`: `core/presets.ts` binds `met` and `clo` to the library's tables once, and `presetsFor(quantity)` answers for every model, so no declaration names a preset table.
 
 
@@ -569,6 +571,19 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > a `--ground` token, `#f8fafc`, carries the page's ground and a field's tint; the sidebar primitive's eight tokens
 > derive from the existing ones; `--chart-cap` replaces `--chart-height`; the unlayered block sets sizes, layout and
 > which token a slot reads, never a literal colour.
+>
+> **Noted 2026-10-12** ([ADR-0002](0002-library-interface-model-info.md) decision 73's note of the same date;
+> `.scratch/shell/` ticket 11): the note above holds of the code at `b365056`. `ui/layout/` gains the block's
+> `AppSidebar.svelte`, `SiteHeader.svelte` and `NavGroup.svelte`, and `marks.ts`, the two marks' files and sizes;
+> `routes/inAppSwitch.ts` gains `inAppLinkTo` (`1906b86`), the one link both the navigation and the header's mark
+> are built with. `ui/primitives/` gains `card`, `sidebar`, `sheet`, `tooltip`, `skeleton`, `alert` and `field`, generated,
+> with the mobile hook at `ui/primitives/hooks/is-mobile.svelte.ts`, and `separator` is regenerated. The `app.css`
+> line also has `--space-page`, `--space-field` and `--header-height`, the page's two spacing values and the header's
+> height; the frame's `--frame-width` is set on the sidebar provider beside `--sidebar-width`, not in `app.css`. The
+> 2026-09-28 marker's `gapClass` has three steps, not four of Tailwind's own: `"1"` reads `--space-field`, `"2"` and
+> `"4"` both `--space-page` (`a324626`). The 2026-10-08 note's `PageFrame.svelte`, "the header, the three columns and
+> the footer", is now the sidebar provider holding `SiteHeader`, a row of the sidebar and the inset's three cards,
+> and the footer.
 
 ```
 src/
