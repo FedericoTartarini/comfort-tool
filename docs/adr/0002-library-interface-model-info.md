@@ -2848,9 +2848,13 @@ notes under decisions 51 and 53:
     them, left-aligned, so the plot stands at one height on both chart types and the 44 px move accepted in
     `.scratch/shell/` ticket 09 (its call 2) is undone, while Compare's 37.5 px stands; Plotly's mode bar is kept,
     translucent, though on hover it covers the plot's top-right labels; a row's Presets is a text button, "Presets",
-    not an icon, the word to be revisited when Phase 5b's calculators join its menu. Rule 9: when a row becomes kept
-    the note's arrival moves the chart card 52 px, accepted on ticket 09's principle that no control moves anything
-    while content may; the applicability hints are `role="status"`, the kept row's note stays `role="alert"`. Rule
+    not an icon, the word to be revisited when Phase 5b's calculators join its menu; under Compare it is the list icon
+    with a "Presets" tooltip, its accessible name unchanged, since the person has met the word with Compare off
+    (amended 2026-10-12 at `.scratch/shell/` ticket 17: three slots leave a box 112 px wide, the word's button 64,
+    and Chrome keeps a number box's room for its step arrows, so beside the word `0.5` showed as `0.`). Rule 9: when
+    a row becomes kept the note's arrival moves the chart card 52 px, accepted on ticket 09's principle that no
+    control moves anything while content may; the applicability hints are `role="status"`, the kept row's note stays
+    `role="alert"`. Rule
     10: the main area's grid has a `max-inline-size` derived as the two-column threshold is, the input column, the
     module gap, the chart card's padding, the plot at its cap, its gap to the legend and the legend's room, about
     `76rem`, the ticket to measure it, left-aligned against the sidebar; the header and footer stay full width; a
