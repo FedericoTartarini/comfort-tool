@@ -586,6 +586,13 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > `"4"` both `--space-page` (`a324626`). The 2026-10-08 note's `PageFrame.svelte`, "the header, the three columns and
 > the footer", is now the sidebar provider holding `SiteHeader`, a row of the sidebar and the inset's three cards,
 > and the footer.
+>
+> **Noted 2026-10-12** ([ADR-0002](0002-library-interface-model-info.md) decision 74, as noted the same day;
+> `.scratch/display-order/` ticket 05): the 2026-10-02 note's gloss of `routes/routeModels.ts` no longer names
+> `navigationStandards`, deleted in `25cd739`; `standardLinks` and `modelChoicesOn` read one grouping of the
+> registry by standard, `modelGroupsOf` (`1f139d1`), whose group type, `ModelGroup`, is declared in
+> `ui/inputs/ModelSelect.svelte`'s module script. `core/standard.ts` gains `isSameStandard` (`42e6d0b`), the one
+> reader of whether two editions are of one standard.
 
 ```
 src/

@@ -227,6 +227,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > plot's 40 px drop on a type switch at 768 px, the notice off the frame's midline, and `inputsOf`'s name. **Next:
 > `.scratch/display-order/` tickets 01 to 05 (decision 74); then Phase 5b's grilling.**
 
+> **2026-10-12 — position, the display order done**: `.scratch/display-order/` landed on `rewrite/v1` and the folder
+> is closed: 01 `42e6d0b` one standard across its editions, 02 `10294a0` the tool opens on PMV (ASHRAE 55), 03
+> `25cd739` the sidebar from the registry, 04 `1f139d1` the Explore select grouped by standard, 05 the documents.
+> Decision 74 carries a note of this date naming the commits and the sentences that said more or other than the code
+> (`modelsOf` deleted into one grouping the sidebar and both selects read, two registry-wide tests, the order of
+> ASHRAE 55 before ISO 7730 tested after all, shell ticket 11 landed first), ADR-0001 §5 a note of the modules, and
+> the shell spec and its ticket 13 name PMV (ASHRAE 55)'s address as the default. `npm test` passes at 967 tests;
+> `npm run test:browser` passed at 31 at ticket 04, and no code changed since. Slot naming, decision
+> 50's note of this date (`24ecc5d`), waits for its spec. **Next: the user's `/to-spec` and `/to-tickets` for slot
+> naming in `.scratch/slot-naming/`; then Phase 5b's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
