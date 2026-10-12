@@ -11,9 +11,9 @@
 
 <script lang="ts">
   import { enteredBound, splitViolations, warningFor } from "$lib/core/applicability";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
   import type { Quantity } from "$lib/core/quantities";
-  import { enteredValue, panelQuantities, rowEntryGroupOf } from "$lib/core/slot";
+  import { enteredValue, panelRows, rowEntryGroupOf, type PanelRow } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
@@ -45,9 +45,14 @@
 
   // Every slot is in the session's entry modes (ADR-0002 decision 51), so slot 1's rows and groups are every slot's.
   const firstSlot = $derived(columns[0].inputSlot);
-  const rows = $derived(panelQuantities(model, firstSlot));
+  const rows = $derived(panelRows(model, firstSlot));
   /** Over several slots each control is named for its slot as well. */
   const namesSlots = $derived(columns.length > 1);
+
+  /** A row's key is what it lists, which stays the same object while the rows re-derive. */
+  function keyOf(row: PanelRow): Quantity | OptionSpec {
+    return "option" in row ? row.option : row.quantity;
+  }
 
   function entryOf({ inputSlot, outputs }: SlotColumn, quantity: Quantity): QuantityEntry {
     return {
@@ -71,53 +76,58 @@
   const hasHints = $derived(hints.some((slotHints) => slotHints.length > 0));
 </script>
 
-<Stack gap="4">
-  {#each rows as quantity (quantity)}
-    {@const group = rowEntryGroupOf(model, firstSlot, quantity)}
-    <!-- A row that offers an entry group's modes has the group's menu button beside its label (ADR-0002 decision 72). -->
-    {#snippet entryGroupMenuButton()}
-      {#if group}
-        <EntryGroupMenuButton {group} setters={entryModeSetters} />
-      {/if}
-    {/snippet}
-    <QuantityInput
-      {quantity}
-      {unitSystem}
-      besideLabel={group ? entryGroupMenuButton : undefined}
-      entries={entriesOf(quantity)}
-    />
-  {/each}
+<!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
+     Addressed by its row's position: an option's key is the library's and the share link's string, not the markup's. -->
+{#snippet optionRow(option: OptionSpec, index: number)}
+  {#if namesSlots}
+    <Stack gap="1">
+      <Label for="{id}-option-{index}-0">{option.label}</Label>
+      <SlotColumns count={columns.length}>
+        {#each columns as column, position (position)}
+          <div>
+            {#if column}
+              <Checkbox
+                id="{id}-option-{index}-{position}"
+                aria-label={copy.slotControl(option.label, column.outputs.badge.name)}
+                checked={column.inputSlot.options.get(option)}
+                onCheckedChange={(checked) => column.inputSlot.setOption(option, checked)}
+              />
+            {/if}
+          </div>
+        {/each}
+      </SlotColumns>
+    </Stack>
+  {:else}
+    <Inline gap="2" align="center">
+      <Checkbox
+        id="{id}-option-{index}-0"
+        checked={firstSlot.options.get(option)}
+        onCheckedChange={(checked) => firstSlot.setOption(option, checked)}
+      />
+      <Label for="{id}-option-{index}-0">{option.label}</Label>
+    </Inline>
+  {/if}
+{/snippet}
 
-  <!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
-       Addressed by position: an option's key is the library's and the share link's string, not the markup's. -->
-  {#each model.options as option, index (option)}
-    {#if namesSlots}
-      <Stack gap="1">
-        <Label for="{id}-option-{index}-0">{option.label}</Label>
-        <SlotColumns count={columns.length}>
-          {#each columns as column, position (position)}
-            <div>
-              {#if column}
-                <Checkbox
-                  id="{id}-option-{index}-{position}"
-                  aria-label={copy.slotControl(option.label, column.outputs.badge.name)}
-                  checked={column.inputSlot.options.get(option)}
-                  onCheckedChange={(checked) => column.inputSlot.setOption(option, checked)}
-                />
-              {/if}
-            </div>
-          {/each}
-        </SlotColumns>
-      </Stack>
+<Stack gap="4">
+  <!-- An option's checkbox stands where its declaration lists it among the rows (ADR-0002 decision 36). -->
+  {#each rows as row, index (keyOf(row))}
+    {#if "option" in row}
+      {@render optionRow(row.option, index)}
     {:else}
-      <Inline gap="2" align="center">
-        <Checkbox
-          id="{id}-option-{index}-0"
-          checked={firstSlot.options.get(option)}
-          onCheckedChange={(checked) => firstSlot.setOption(option, checked)}
-        />
-        <Label for="{id}-option-{index}-0">{option.label}</Label>
-      </Inline>
+      {@const group = rowEntryGroupOf(model, firstSlot, row.quantity)}
+      <!-- A row that offers an entry group's modes has the group's menu button beside its label (ADR-0002 decision 72). -->
+      {#snippet entryGroupMenuButton()}
+        {#if group}
+          <EntryGroupMenuButton {group} setters={entryModeSetters} />
+        {/if}
+      {/snippet}
+      <QuantityInput
+        quantity={row.quantity}
+        {unitSystem}
+        besideLabel={group ? entryGroupMenuButton : undefined}
+        entries={entriesOf(row.quantity)}
+      />
     {/if}
   {/each}
 

@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
+import { optionsOf } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { startingSession } from "$lib/core/writtenSession";
@@ -22,7 +23,7 @@ import { Session, slotPositions, type ChartState } from "./session.svelte";
 import { expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
-const [airSpeedControl] = pmvPpdAshrae.options;
+const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 /** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
 const PRESSURE_OUT_OF_RANGE = 20000;
 

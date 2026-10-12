@@ -26,7 +26,11 @@ import {
   hasClothingGroup,
   hasHumidityGroup,
   hasTemperatureGroup,
+  inputsOf,
+  optionsOf,
   takesRelativeAirSpeed,
+  type DeclaredOption,
+  type DeclaredQuantity,
   type OptionSpec,
   type RegisteredModel,
 } from "./modelDeclaration";
@@ -339,41 +343,65 @@ export function expandOperative(values: Map<Quantity, number>): void {
 }
 
 /**
- * The quantities the user actually types, in panel order: the model's inputs
- * with the rows of each entry group it has replaced by those of the group's
- * mode in `modes`, where the first of them stood. The input panel lays these
- * out, humidity as entered ({@link panelQuantities}), and the dynamic chart
- * offers them as axes. A model without a group has no rows of it to replace:
- * without the temperature entry group, its inputs in either temperature mode.
+ * A row of the input panel: a quantity the person enters, or an option's
+ * checkbox, standing where its declaration lists it (ADR-0002 decision 36).
  */
-export function enteredQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
-  let rows = model.inputs.map(({ quantity }) => quantity);
+export type PanelRow = Pick<DeclaredQuantity, "quantity"> | DeclaredOption;
+
+/**
+ * The model's panel list with the rows of each entry group it has replaced by
+ * those of the group's mode in `modes`, where the first of them stood. An
+ * option is no group's row and keeps its place. A model without a group has
+ * no rows of it to replace: without the temperature entry group, its inputs
+ * in either temperature mode.
+ */
+function enteredRows(model: RegisteredModel, modes: ValueEntryModes): PanelRow[] {
+  let rows = model.inputs.map((entry): PanelRow => ("option" in entry ? entry : { quantity: entry.quantity }));
   for (const group of valueEntryGroups) {
     if (!group.appliesTo(model)) {
       continue;
     }
     const declared = group.modeOf(defaultEntryModes).panel;
     const entered = group.modeOf(modes).panel;
-    rows = rows.flatMap((quantity) => {
-      if (!declared.includes(quantity)) {
-        return [quantity];
+    rows = rows.flatMap((row) => {
+      if ("option" in row || !declared.includes(row.quantity)) {
+        return [row];
       }
-      return quantity === declared[0] ? entered : [];
+      return row.quantity === declared[0] ? entered.map((quantity) => ({ quantity })) : [];
     });
   }
   return rows;
 }
 
+/** The quantities among `rows`, in order. */
+function quantitiesOf(rows: readonly PanelRow[]): Quantity[] {
+  return rows.flatMap((row) => ("option" in row ? [] : [row.quantity]));
+}
+
 /**
- * The rows the input panel lists for `slot`: {@link enteredQuantities} under
- * the slot's entry modes, with the slot's humidity entry in `rh`'s place,
- * or `rh` itself for a slot that holds none. Only the panel swaps humidity;
- * the dynamic chart's axes keep the library's `rh`.
+ * The quantities the user actually types, in panel order, under the entry
+ * modes in `modes` ({@link enteredRows}). The dynamic chart offers them as
+ * axes; the input panel lays out {@link panelRows}.
  */
-export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] {
-  return enteredQuantities(model, slot).map((quantity) =>
-    quantity === q.rh ? (slot.humidity?.mode.quantity ?? quantity) : quantity,
+export function enteredQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
+  return quantitiesOf(enteredRows(model, modes));
+}
+
+/**
+ * The rows the input panel lists for `slot`: {@link enteredRows} under the
+ * slot's entry modes, with the slot's humidity entry in `rh`'s place, or `rh`
+ * itself for a slot that holds none. Only the panel swaps humidity; the
+ * dynamic chart's axes keep the library's `rh`.
+ */
+export function panelRows(model: RegisteredModel, slot: Slot): PanelRow[] {
+  return enteredRows(model, slot).map((row) =>
+    "option" in row || row.quantity !== q.rh ? row : { quantity: slot.humidity?.mode.quantity ?? row.quantity },
   );
+}
+
+/** The quantities among {@link panelRows}, in order. */
+export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] {
+  return quantitiesOf(panelRows(model, slot));
 }
 
 /**
@@ -639,7 +667,7 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
  */
 export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   const defaults = new Map<Quantity, number>();
-  for (const { quantity, value } of model.inputs) {
+  for (const { quantity, value } of inputsOf(model)) {
     const held = underEntryModes(quantity, slot);
     // Two declared temperatures stand in one operative entry, so the first of
     // them — the entry mode's own axis — is the one whose default applies.
@@ -648,7 +676,7 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
     }
   }
   const options = new Map(slot.options);
-  for (const option of model.options) {
+  for (const option of optionsOf(model)) {
     if (!options.has(option)) {
       options.set(option, option.default);
     }

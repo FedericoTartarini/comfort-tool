@@ -15,7 +15,7 @@
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { temperatureMode, type HumidityMode } from "./entryModes";
-import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
+import { inputsOf, takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
@@ -108,7 +108,7 @@ function intersect(bounds: readonly Bound[]): Bound | undefined {
  * decision 46). The two hold at once, so a caller intersects them.
  */
 function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
-  const takes = model.inputs.some((entry) => entry.quantity === quantity);
+  const takes = inputsOf(model).some((entry) => entry.quantity === quantity);
   return [boundFor(model.info.inputs, quantity), takes ? kindBounds[quantity.kind] : undefined].filter(
     (bound): bound is Bound => bound !== undefined,
   );

@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -57,7 +57,7 @@ const withoutTemperatureGroup = {
  * an air speed above what the standard allows the room comes back as a broken
  * row on the result, which is how a test sees the option reach the call.
  */
-const [airSpeedControl] = pmvPpdAshrae.options;
+const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** A model that declares a relative humidity other than the 50 every registered model declares. */
 const declaresDrierAir = {

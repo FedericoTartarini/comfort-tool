@@ -17,7 +17,7 @@ import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame } from "$lib/core/charts/specParts";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
+import { optionsOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { entryModesOf, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
@@ -79,7 +79,7 @@ describe("Compare in the session", () => {
 
   it("enables slots 1 and 2 at the first switch-on, slot 2 holding what slot 1 holds, entry modes and options included", () => {
     const session = new Session(pmvPpdAshrae);
-    const [option] = pmvPpdAshrae.options;
+    const [option] = optionsOf(pmvPpdAshrae);
     session.slots[0].setOption(option, !option.default);
     session.setTemperatureMode(temperatureMode.operative);
     session.setHumidityMode(humidityMode.dewPoint);

@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { inputsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -265,7 +265,7 @@ describe("the model switch while Compare is on, by the address or there and back
     expect(session.model).toBe(pmvPpdIso);
     slotPositions.forEach((position) => {
       const held = heldSlot(session, position);
-      for (const { quantity } of pmvPpdIso.inputs) {
+      for (const { quantity } of inputsOf(pmvPpdIso)) {
         if (quantity !== q.rh) {
           expect(held.values.get(quantity)).toBe(before[position].values.get(quantity));
         }

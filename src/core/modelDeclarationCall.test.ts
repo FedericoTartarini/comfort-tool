@@ -12,7 +12,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
-import type { OptionSpec, OptionsReader, RegisteredModel, Values } from "./modelDeclaration";
+import { inputsOf, optionsOf, type OptionSpec, type OptionsReader, type RegisteredModel, type Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantityFor, type Quantity } from "./quantities";
 import { startingSlot } from "./slot";
@@ -43,7 +43,7 @@ vi.mock("jsthermalcomfort", async (importOriginal) => {
 });
 
 /** The option PMV (ASHRAE 55) reads through `run`'s second reader. */
-const [airSpeedControl] = pmvPpdAshrae.options;
+const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The params object of the last call `model.run` made to the library function it is named after. */
 function receivedParams(model: RegisteredModel, values: Values, options: OptionsReader): Readonly<Record<string, unknown>> {
@@ -181,7 +181,7 @@ function isKwargs(argument: unknown): argument is Readonly<Record<string, unknow
 describe("an option's key", () => {
   it("is the kwarg its run feeds the option to, for every registered model", () => {
     for (const model of registeredModels) {
-      for (const option of model.options) {
+      for (const option of optionsOf(model)) {
         expect(kwargsFedBy(model, option), `${model.info.name} ${option.key}`).toEqual([option.key]);
       }
     }
@@ -195,14 +195,14 @@ describe("an option's key", () => {
     const misspelt: OptionSpec = { ...airSpeedControl, key: "airspeed_contol" };
     const declared = {
       ...pmvPpdAshrae,
-      options: [misspelt],
+      inputs: [...inputsOf(pmvPpdAshrae), { option: misspelt }],
       run: (values: Values, options: OptionsReader) => pmvPpdAshrae.run(values, () => options(misspelt)),
     } satisfies RegisteredModel;
     expect(kwargsFedBy(declared, misspelt)).not.toEqual([misspelt.key]);
   });
 
   it("catches an option the run never reads", () => {
-    const unread = { ...pmvPpdIso, options: [airSpeedControl] } satisfies RegisteredModel;
+    const unread = { ...pmvPpdIso, inputs: [...pmvPpdIso.inputs, { option: airSpeedControl }] } satisfies RegisteredModel;
     expect(kwargsFedBy(unread, airSpeedControl)).toEqual([]);
   });
 });

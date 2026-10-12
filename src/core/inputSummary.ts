@@ -1,7 +1,7 @@
 import { copy } from "$lib/text/copy";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
-import type { RegisteredModel } from "./modelDeclaration";
+import { optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 import { enteredValue, panelQuantities, type Slot } from "./slot";
@@ -59,7 +59,7 @@ function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem,
     ...panelQuantities(model, slot).map((quantity) =>
       valueLine(quantity, enteredValue(slot, quantity, model, atmosphericPressure), unitSystem),
     ),
-    ...model.options.map((option) => copy.summaryValue(option.label, options(option) ? copy.yes : copy.no)),
+    ...optionsOf(model).map((option) => copy.summaryValue(option.label, options(option) ? copy.yes : copy.no)),
     valueLine(quantities.p_atm, atmosphericPressure, unitSystem),
   ];
 }

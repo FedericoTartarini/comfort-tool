@@ -16,7 +16,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { addEdge, moveEdge, setColor, setLabel } from "./bands";
 import { chartType } from "./chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
-import type { RegisteredModel } from "./modelDeclaration";
+import { inputsOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { rehearseSwitch } from "./modelSwitch";
 import { page, pagesOf } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -66,7 +66,7 @@ const FAR_LABEL = "很冷 ❄️";
  */
 function editedSession(): WrittenSession {
   const model = pmvPpdAshrae;
-  const [airSpeedControl] = model.options;
+  const [airSpeedControl] = optionsOf(model);
   const first = withEnteredValues(inOtherEntryModes(startingSlot(model), model), new Map([[q.met, 1.2345678901234567]]));
   // Past PMV (ASHRAE 55)'s 30 °C: the gate closes on slot 2.
   const second = withOption(withEnteredValues(first, new Map([[q.operative_tmp, 60]])), airSpeedControl, true);
@@ -169,11 +169,11 @@ function changed(text: string, path: Path, value: unknown): string {
 describe("toDecodedSession", () => {
   const valid = toText(editedSession(), registeredModels);
   const ashrae = pmvPpdAshrae.info.name;
-  const [airSpeedControl] = pmvPpdAshrae.options;
+  const [airSpeedControl] = optionsOf(pmvPpdAshrae);
   const read = (text: string) => toDecodedSession(text, registeredModels);
   const values = ["slots", 0, "values"];
   /** PMV (ASHRAE 55)'s declared default of `quantity`. */
-  const declared = (quantity: Quantity) => pmvPpdAshrae.inputs.find((input) => input.quantity === quantity)?.value;
+  const declared = (quantity: Quantity) => inputsOf(pmvPpdAshrae).find((input) => input.quantity === quantity)?.value;
 
   it("reads a valid text through another Base64 encoder as it reads the codec's own", () => {
     expect(read(textOf(JSON.stringify(jsonOf(valid))))).toEqual({ session: editedSession(), exact: true });
@@ -338,7 +338,7 @@ describe("toDecodedSession", () => {
 describe("narrowedToPage", () => {
   const session = editedSession();
   const [first, second] = session.slots;
-  const [airSpeedControl] = pmvPpdAshrae.options;
+  const [airSpeedControl] = optionsOf(pmvPpdAshrae);
   const ashraeChart = session.charts.get(pmvPpdAshrae);
   /** `session`'s slots, each holding Adaptive's prevailing mean outdoor temperature, which no PMV model enters. */
   const holdingAdaptive = (written: WrittenSession): WrittenSession => {
@@ -397,7 +397,7 @@ describe("narrowedToPage", () => {
       const entered = enteredQuantities(model, slot);
       expect([...slot.values.keys()].sort(byKey), model.info.label).toEqual(entered.filter((quantity) => !isHumidityQuantity(quantity)).sort(byKey));
       expect(slot.humidity !== undefined, model.info.label).toBe(entered.includes(q.rh));
-      expect([...slot.options.keys()], model.info.label).toEqual(model.options);
+      expect([...slot.options.keys()], model.info.label).toEqual(optionsOf(model));
     }
     expect(narrowedToPage(holdingAdaptive(session), page.standard).slots[1]?.options.get(airSpeedControl)).toBe(true);
   });

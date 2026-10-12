@@ -19,7 +19,7 @@ import {
 } from "./applicability";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
-import type { RegisteredModel, Values } from "./modelDeclaration";
+import { optionsOf, type RegisteredModel, type Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { adjustToBounds } from "./modelSwitch";
 import { formatNumber, isShownBeyond } from "./numberFormat";
@@ -460,7 +460,7 @@ describe("violationRows", () => {
     // over the 0.2 m/s the standard allows at this operative temperature.
     const slot: Slot = {
       ...enteredSlotFor(pmvPpdAshrae, { tdb: 22, tr: 22, v: 0.15, met: 1.29 }),
-      options: new Map([[pmvPpdAshrae.options[0], false]]),
+      options: new Map([[optionsOf(pmvPpdAshrae)[0], false]]),
     };
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
@@ -473,7 +473,7 @@ describe("violationRows", () => {
     // 0 – 2 m/s, so the gate passes it, and over the 0.2 m/s the standard allows here.
     const slot: Slot = {
       ...enteredSlotFor(pmvPpdAshrae, { tdb: 22, tr: 22, vr: 0.237, met: 1.29 }),
-      options: new Map([[pmvPpdAshrae.options[0], false]]),
+      options: new Map([[optionsOf(pmvPpdAshrae)[0], false]]),
     };
     expect(outOfRangeQuantities(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);

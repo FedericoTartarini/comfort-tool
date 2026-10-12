@@ -19,6 +19,8 @@ import {
   clothingCorrectionOf,
   dynamicChartOf,
   hasClothingGroup,
+  inputsOf,
+  optionsOf,
   psychrometricChartOf,
   requireAxisRange,
   takesRelativeAirSpeed,
@@ -125,7 +127,7 @@ describe("charts", () => {
 /** `vr` is derived as `v_relative(v, met)`, so a model that takes it must be entered both. */
 function expectVAndMetUnderRelativeAirSpeed(model: RegisteredModel): void {
   if (!takesRelativeAirSpeed(model)) return;
-  const entered = model.inputs.map((entry) => entry.quantity);
+  const entered = inputsOf(model).map((entry) => entry.quantity);
   expect(entered, model.info.label).toEqual(expect.arrayContaining([q.v, q.met]));
 }
 
@@ -136,6 +138,27 @@ describe("takesRelativeAirSpeed", () => {
 
     const inputs = Object.fromEntries(Object.entries(pmvPpdIso.info.inputs).filter(([key]) => key !== q.vr.key));
     expect(takesRelativeAirSpeed({ ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } })).toBe(false);
+  });
+});
+
+describe("inputsOf and optionsOf", () => {
+  it("read PMV (ASHRAE 55)'s quantities with their defaults and its one option off its panel list", () => {
+    expect(inputsOf(pmvPpdAshrae).map((entry) => entry.quantity)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
+    expect(optionsOf(pmvPpdAshrae).map((option) => option.key)).toEqual(["airspeed_control"]);
+  });
+
+  it("answer no option for every other registered model", () => {
+    for (const model of registeredModels.filter((registered) => registered !== pmvPpdAshrae)) {
+      expect(optionsOf(model), model.info.label).toEqual([]);
+    }
+  });
+
+  it("between them read every element of the list once, for every registered model", () => {
+    for (const model of registeredModels) {
+      const read = [...inputsOf(model), ...optionsOf(model).map((option) => ({ option }))];
+      expect(read, model.info.label).toHaveLength(model.inputs.length);
+      expect(model.inputs, model.info.label).toEqual(expect.arrayContaining(read));
+    }
   });
 });
 
@@ -169,7 +192,7 @@ function takesClothingUnderACorrectingStandard(model: RegisteredModel): boolean 
  */
 function expectWhatTheClothingCorrectionTakes(model: RegisteredModel): void {
   if (!hasClothingGroup(model)) return;
-  expect(model.inputs.map((entry) => entry.quantity), model.info.label).toContain(q.met);
+  expect(inputsOf(model).map((entry) => entry.quantity), model.info.label).toContain(q.met);
   let corrected: number;
   try {
     corrected = dynamicClothingOf(startingSlot(model), model);

@@ -47,6 +47,20 @@ export interface OptionSpec {
  */
 export type OptionsReader = (option: OptionSpec) => boolean;
 
+/** A quantity a declaration lists, with the SI value a slot starts from. */
+export interface DeclaredQuantity {
+  readonly quantity: Quantity;
+  readonly value: number;
+}
+
+/** An option a declaration lists: its checkbox stands at this place among the rows. */
+export interface DeclaredOption {
+  readonly option: OptionSpec;
+}
+
+/** One element of a declaration's panel list. */
+export type DeclaredInput = DeclaredQuantity | DeclaredOption;
+
 /** A closed interval, in SI. */
 export interface Range {
   readonly min: number;
@@ -246,7 +260,7 @@ interface CommonDeclaration {
    * (`tdb: values.tr`), and a registry-wide test checks that every quantity key
    * the library receives carries that quantity's own number.
    *
-   * A model with {@link options} reads them through the second reader, each
+   * A model that lists options reads them through the second reader, each
    * written inline under its library key:
    * `airspeed_control: options(airSpeedControl)`. Never through a spread: a
    * spread into an object literal is exempt from the excess-property check,
@@ -262,14 +276,13 @@ interface CommonDeclaration {
    * `state/compute` and by the chart spec builders.
    */
   readonly run: (values: Values, options: OptionsReader) => ModelResult;
-  /** Panel order and SI default values. */
-  readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
   /**
-   * The model's options, in panel order; empty for a model with none. Every
-   * one is shown as a checkbox under the quantity rows, and a slot holds its
-   * value beside the quantities' (ADR-0002 decision 36).
+   * The panel's list, in panel order: each quantity with its SI default, and
+   * each option where its checkbox stands among the rows (ADR-0002 decision
+   * 36 as revised 2026-10-12). Read through {@link inputsOf} and
+   * {@link optionsOf}.
    */
-  readonly options: readonly OptionSpec[];
+  readonly inputs: readonly DeclaredInput[];
   /**
    * How far each quantity is drawn. One table per model rather than one per
    * chart: the deployed tool draws its psychrometric x axis and its field
@@ -355,6 +368,19 @@ export function requireScan(model: RegisteredModel): DeclaredScan {
   return model.scan;
 }
 
+/** The quantities `model` lists, each with its SI default, in panel order. */
+export function inputsOf(model: RegisteredModel): DeclaredQuantity[] {
+  return model.inputs.filter((entry): entry is DeclaredQuantity => !("option" in entry));
+}
+
+/**
+ * The options `model` lists, in panel order; empty for a model with none. A
+ * slot holds each one's value beside the quantities' (ADR-0002 decision 36).
+ */
+export function optionsOf(model: RegisteredModel): OptionSpec[] {
+  return model.inputs.flatMap((entry) => ("option" in entry ? [entry.option] : []));
+}
+
 /**
  * Entry groups are read from `inputs`, not declared (ADR §4.2, 2026-09-08):
  * a model has the humidity group when it takes `rh`, and the temperature
@@ -362,11 +388,11 @@ export function requireScan(model: RegisteredModel): DeclaredScan {
  * with only some of them has none.
  */
 export function hasHumidityGroup(model: RegisteredModel): boolean {
-  return model.inputs.some((entry) => entry.quantity === quantities.rh);
+  return inputsOf(model).some((entry) => entry.quantity === quantities.rh);
 }
 
 export function hasTemperatureGroup(model: RegisteredModel): boolean {
-  const entered = model.inputs.map((entry) => entry.quantity);
+  const entered = inputsOf(model).map((entry) => entry.quantity);
   return temperatureMode.separate.panel.every((quantity) => entered.includes(quantity));
 }
 

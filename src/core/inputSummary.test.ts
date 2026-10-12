@@ -7,7 +7,7 @@ import { bandListOf } from "./bands";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import { inputSummary, type DrawnRun } from "./inputSummary";
-import type { RegisteredModel } from "./modelDeclaration";
+import { inputsOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
@@ -39,7 +39,7 @@ function hasRowOf(lines: readonly string[], quantity: Quantity): boolean {
   return lines.some((line) => line.startsWith(rowOf(quantity)));
 }
 
-const ashraeOption = pmvPpdAshrae.options[0];
+const [ashraeOption] = optionsOf(pmvPpdAshrae);
 const LOWER_PRESSURE = 90_000;
 
 describe("inputSummary", () => {
@@ -48,7 +48,7 @@ describe("inputSummary", () => {
     expect(summary).toEqual([
       [copy.summaryModel(pmvPpdAshrae.info.label, standardCaptionFor(pmvPpdAshrae.standard))],
       [
-        ...pmvPpdAshrae.inputs.map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
+        ...inputsOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,
         `${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE}`,
       ],
@@ -60,9 +60,9 @@ describe("inputSummary", () => {
       const slot = startingSlot(model);
       const [, lines] = summaryOf(model, [runOf(slot)]);
       const rows = panelQuantities(model, slot);
-      expect(lines, model.info.label).toHaveLength(rows.length + model.options.length + 1);
+      expect(lines, model.info.label).toHaveLength(rows.length + optionsOf(model).length + 1);
       rows.forEach((quantity, index) => expect(lines[index]).toMatch(new RegExp(`^${escaped(rowOf(quantity))}\\d`)));
-      model.options.forEach((option, index) => expect(lines[rows.length + index]).toBe(`${option.label}: ${copy.no}`));
+      optionsOf(model).forEach((option, index) => expect(lines[rows.length + index]).toBe(`${option.label}: ${copy.no}`));
     }
   });
 

@@ -27,7 +27,7 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { dynamicChartOf, hasHumidityGroup, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { dynamicChartOf, hasHumidityGroup, inputsOf, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { page, paintsBandsOn, type Page } from "./page";
 import { quantities, type Quantity } from "./quantities";
 import {
@@ -94,7 +94,7 @@ function enteredSlot(slot: Slot, model: RegisteredModel): Slot {
     ...slot,
     values: new Map([...slot.values].filter(([quantity]) => held.includes(quantity))),
     humidity: hasHumidityGroup(model) ? slot.humidity : undefined,
-    options: new Map([...slot.options].filter(([option]) => model.options.includes(option))),
+    options: new Map([...slot.options].filter(([option]) => optionsOf(model).includes(option))),
   };
 }
 
@@ -162,7 +162,7 @@ function slotJson(slot: Slot, models: readonly RegisteredModel[]) {
 
 /** The model in `models` that declares `option`; a slot holds no other. */
 function ownerOf(option: OptionSpec, models: readonly RegisteredModel[]): RegisteredModel {
-  const owner = models.find((model) => model.options.includes(option));
+  const owner = models.find((model) => optionsOf(model).includes(option));
   if (!owner) {
     throw new Error(`No registered model declares the option ${option.label}`);
   }
@@ -297,7 +297,7 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
       continue;
     }
     for (const [key, value] of Object.entries(recordOf(declared))) {
-      const option = memberWithId(owner.options, (candidate) => candidate.key, key);
+      const option = memberWithId(optionsOf(owner), (candidate) => candidate.key, key);
       if (option) {
         options.set(option, booleanOf(value));
       }
@@ -314,7 +314,7 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
  * values, each sought as a switch seeds it: humidity is held apart from them.
  */
 function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
-  return model.inputs.map(({ quantity }) => underEntryModes(quantity, modes)).filter((quantity) => !isHumidityQuantity(quantity));
+  return inputsOf(model).map(({ quantity }) => underEntryModes(quantity, modes)).filter((quantity) => !isHumidityQuantity(quantity));
 }
 
 /**

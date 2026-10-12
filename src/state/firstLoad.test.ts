@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
 import { toDecodedSession, toText } from "$lib/core/shareLink";
@@ -36,7 +36,7 @@ import {
 const q = quantities;
 /** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
 const PRESSURE_OUT_OF_RANGE = 20000;
-const [airSpeedControl] = pmvPpdAshrae.options;
+const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The text of a link copied from `session` on its page. */
 function linkTextOf(session: Session): string {

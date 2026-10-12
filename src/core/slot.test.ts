@@ -8,7 +8,7 @@ import { registeredModels } from "$lib/models";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
-import { hasHumidityGroup, type RegisteredModel } from "./modelDeclaration";
+import { hasHumidityGroup, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import {
   areSameEntryModes,
@@ -19,6 +19,7 @@ import {
   entryModesOf,
   operativeTemperatureOf,
   panelQuantities,
+  panelRows,
   relativeAirSpeedOf,
   relativeHumidityOf,
   rowEntryGroupOf,
@@ -164,6 +165,39 @@ describe("entered values", () => {
       const slot = slotEnteredAs(temperatureMode.separate, humidityMode.dewPoint);
       expect(panelQuantities(pmvPpdIso, slot)).not.toContain(q.rh);
       expect(enteredQuantities(pmvPpdIso, slot)).toContain(q.rh);
+    });
+
+    describe("an option", () => {
+      const [airSpeedControl] = optionsOf(pmvPpdAshrae);
+      const starting = startingSlot(pmvPpdAshrae);
+      const corrected = { ...starting, ...entryModesWithAirSpeed(airSpeedMode.corrected) };
+      /** Each row as what it lists: its quantity, or its option. */
+      const listed = (slot: Slot) => panelRows(pmvPpdAshrae, slot).map((row) => ("option" in row ? row.option : row.quantity));
+
+      it("stands where PMV (ASHRAE 55) lists it, after the air speed, under either air-speed mode", () => {
+        expect(listed(starting)).toEqual([q.tdb, q.tr, q.v, airSpeedControl, q.rh, q.met, q.clo]);
+        expect(listed(corrected)).toEqual([q.tdb, q.tr, q.vr, airSpeedControl, q.rh, q.met, q.clo]);
+        expect(listed({ ...corrected, temperature: { mode: temperatureMode.operative } })).toEqual([
+          q.operative_tmp,
+          q.vr,
+          airSpeedControl,
+          q.rh,
+          q.met,
+          q.clo,
+        ]);
+      });
+
+      it("keeps its place across the humidity swap", () => {
+        for (const humidity of Object.values(humidityMode)) {
+          const slot = { ...starting, humidity: { mode: humidity, value: 0 } };
+          expect(listed(slot), humidity.id).toEqual([q.tdb, q.tr, q.v, airSpeedControl, humidity.quantity, q.met, q.clo]);
+        }
+      });
+
+      it("is not among the quantities the rows enter or the axis picker offers", () => {
+        expect(panelQuantities(pmvPpdAshrae, corrected)).toEqual([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]);
+        expect(enteredQuantities(pmvPpdAshrae, corrected)).toEqual([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]);
+      });
     });
   });
 
