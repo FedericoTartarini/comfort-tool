@@ -46,8 +46,8 @@
   // Every slot is in the session's entry modes (ADR-0002 decision 51), so slot 1's rows and groups are every slot's.
   const firstSlot = $derived(columns[0].inputSlot);
   const rows = $derived(panelRows(model, firstSlot));
-  /** Over several slots each control is named for its slot as well. */
-  const namesSlots = $derived(columns.length > 1);
+  /** Over several columns an option's checkboxes stand in the slot columns under its label, a layout question. */
+  const inColumns = $derived(columns.length > 1);
 
   /** A row's key is what it lists, which stays the same object while the rows re-derive. */
   function keyOf(row: PanelRow): Quantity | OptionSpec {
@@ -59,7 +59,7 @@
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outputs.outOfRangeQuantities.includes(quantity),
-      slotName: namesSlots ? outputs.badge.name : undefined,
+      slotName: outputs.badge.name,
       oncommit: (si) => inputSlot.setEntered(quantity, si),
     };
   }
@@ -79,7 +79,7 @@
 <!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
      Addressed by its row's position: an option's key is the library's and the share link's string, not the markup's. -->
 {#snippet optionRow(option: OptionSpec, index: number)}
-  {#if namesSlots}
+  {#if inColumns}
     <Stack gap="1">
       <Label for="{id}-option-{index}-0">{option.label}</Label>
       <SlotColumns count={columns.length}>

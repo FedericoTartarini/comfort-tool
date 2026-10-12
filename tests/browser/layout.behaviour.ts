@@ -324,7 +324,8 @@ test("at 1440 px, the Standard page's model select lists its models under no hea
 /**
  * A slot is named only on the Standard page while Compare is on (ADR-0002
  * decision 50): the result table's Input column with each row's name and
- * swatch, and the legend's marker entries by name, come and go together.
+ * swatch, the legend's marker entries by name, and the switch question's slot
+ * column come and go together.
  */
 test.describe("the slots' names", () => {
   const resultTable = (page: Page) => card(page, "Results").getByRole("table");
@@ -365,6 +366,43 @@ test.describe("the slots' names", () => {
     await openStandard(page, 1440);
     await expect(page.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
+  });
+
+  test("at 1440 px, name the switch question's slot column with Compare on, slots 2 and 3 disabled too, and none with it off", async ({ page }) => {
+    const question = page.getByRole("dialog");
+    // 2 m/s is Adaptive's top; PMV's bound at the default metabolic rate is lower, so the switch asks.
+    async function askSwitch(airSpeed: Locator) {
+      await airSpeed.fill("2");
+      await page.getByRole("button", { name: "Model", exact: true }).click();
+      await page.getByRole("option", { name: /^PMV/ }).click();
+      await expect(question).toBeVisible();
+    }
+    async function decline() {
+      await question.getByRole("button", { name: /^No/ }).click();
+      await expect(question).toBeHidden();
+    }
+
+    await openStandard(page, 1440, ADAPTIVE_ADDRESS);
+    await askSwitch(page.getByRole("spinbutton", { name: /^Air speed/ }));
+    await expect(question.getByRole("columnheader")).toHaveCount(3);
+    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveCount(0);
+    await decline();
+
+    // Compare enables slot 2 on first use; slot 3 stays disabled.
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("2");
+    await askSwitch(page.getByRole("spinbutton", { name: /^Air speed.*, Input 1$/ }));
+    await expect(question.getByRole("columnheader")).toHaveCount(4);
+    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1", "Input 2"]);
+    await decline();
+
+    const slot2 = page.getByRole("button", { name: "Input 2", exact: true });
+    await slot2.click();
+    await expect(slot2).toHaveAttribute("aria-pressed", "false");
+    await askSwitch(page.getByRole("spinbutton", { name: /^Air speed.*, Input 1$/ }));
+    await expect(question.getByRole("columnheader")).toHaveCount(4);
+    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1"]);
+    await decline();
   });
 });
 

@@ -3,7 +3,7 @@
   and 52). It renders the session's pending switch and decides nothing: which
   values are listed is the pre-call gate's answer for each compared slot,
   carried on the pending switch, and both buttons hand the answer straight back
-  to the session. While more than one slot is compared, the rows are grouped by
+  to the session. While the slots' badges carry names, the rows are grouped by
   slot with the slot's name in a column of its own; otherwise the dialog has no
   such column.
 
@@ -13,9 +13,9 @@
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { slotNames } from "$lib/core/slotBadge";
   import { displayUnitFor, numberWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
+  import type { SlotOutputs } from "$lib/state/compute.svelte";
   import type { PendingSwitch } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import { Button } from "$lib/ui/primitives/button";
@@ -25,15 +25,15 @@
   interface Props {
     /** The session's pending switch. The dialog is open exactly while there is one. */
     pending: PendingSwitch | null;
-    /** Whether each row names its slot: while more than one slot is compared. */
-    namesSlots: boolean;
+    /** What each compared slot shows: a listed slot's rows are named by its badge. */
+    comparedSlots: readonly SlotOutputs[];
     unitSystem: UnitSystem;
     onaccept: () => void;
     /** "No, stay here", and every other way the dialog closes. */
     ondecline: () => void;
   }
 
-  let { pending, namesSlots, unitSystem, onaccept, ondecline }: Props = $props();
+  let { pending, comparedSlots, unitSystem, onaccept, ondecline }: Props = $props();
 
   // Each value as the input panel shows it: converted to the display unit and
   // formatted by the same formatters, so the dialog and the boxes behind it
@@ -44,7 +44,7 @@
       .filter(({ listedRows }) => listedRows.length > 0)
       .map(({ position, listedRows }) => ({
         position,
-        name: slotNames[position],
+        name: comparedSlots.find((slot) => slot.position === position)?.badge.name,
         rows: listedRows.map((row) => {
           const unit = displayUnitFor(row.quantity, unitSystem);
           return {
@@ -55,6 +55,7 @@
         }),
       })),
   );
+  const namesGroups = $derived(groups.some((group) => group.name !== undefined));
 
   // The close button, the Escape key and a click outside all arrive here, and
   // all of them mean "No, stay here": there is no third outcome.
@@ -75,7 +76,7 @@
       <Table.Root>
         <Table.Header>
           <Table.Row>
-            {#if namesSlots}
+            {#if namesGroups}
               <Table.Head></Table.Head>
             {/if}
             <Table.Head>{copy.boundaryWarningInputColumn}</Table.Head>
@@ -87,7 +88,7 @@
           {#each groups as group (group.position)}
             {#each group.rows as row, index (row.quantity)}
               <Table.Row>
-                {#if namesSlots && index === 0}
+                {#if namesGroups && index === 0}
                   <Table.Cell rowspan={group.rows.length}>{group.name}</Table.Cell>
                 {/if}
                 <Table.Cell>{row.quantity.label}</Table.Cell>

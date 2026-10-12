@@ -19,7 +19,7 @@
     /** Allowed bound in SI; shown converted, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
-    /** The slot's name, where the row stands over several slots: the box and its Presets are named for it. */
+    /** The slot's badge's name, while the slots are named: the box and its Presets are named for it. */
     slotName?: string;
     oncommit: (si: number) => void;
   }
@@ -65,7 +65,7 @@
     return preset && bound ? copy.rowCaption(preset, bound) : (preset ?? bound ?? "");
   }
 
-  /** `control`'s accessible name with the entry's slot in it, where the row stands over several slots. */
+  /** `control`'s accessible name with the entry's slot in it, while the slots are named. */
   function controlNameFor(control: string, entry: QuantityEntry): string | undefined {
     return entry.slotName && copy.slotControl(control, entry.slotName);
   }
@@ -85,7 +85,7 @@
               {presets}
               {unit}
               name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger}
-              compact={entry.slotName !== undefined}
+              compact={entries.length > 1}
               oncommit={entry.oncommit}
             />
           {/if}

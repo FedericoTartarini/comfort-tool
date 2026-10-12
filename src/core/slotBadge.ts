@@ -7,7 +7,8 @@ import type { SlotPosition } from "./writtenSession";
  * the name only while the session names its slots, which the session alone
  * decides. Given here once, the name's text read from `copy`, so the input
  * columns, the result table's rows, the legend, the chart's zones and
- * markers and the Input summary cannot disagree about which slot is which.
+ * markers, the Input summary and the model-switch dialog's rows cannot
+ * disagree about which slot is which.
  */
 
 /**

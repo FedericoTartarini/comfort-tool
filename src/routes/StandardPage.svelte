@@ -107,7 +107,7 @@ import { palette } from "$lib/core/palette";
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}
-        namesSlots={session.comparedPositions.length > 1}
+        comparedSlots={outputs.slots}
         unitSystem={session.unitSystem}
         onaccept={inApp.accept}
         ondecline={() => session.declineSwitch()}
