@@ -289,7 +289,7 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   await expect(trigger).toBeFocused();
 });
 
-test("a row's Presets is the word at the box's end, and its list's values end at one x", async ({ page }) => {
+test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {
   await openStandard(page, 1440);
   const box = page
     .locator('[data-slot="input-group"]')
@@ -306,19 +306,22 @@ test("a row's Presets is the word at the box's end, and its list's values end at
   await list.evaluate((element) =>
     Promise.all(element.closest('[data-slot="popover-content"]')!.getAnimations().map((animation) => animation.finished)),
   );
-  // Where each value's text ends, not its box: the box may run past its digits.
-  const rightEdges = await list
-    .getByRole("option")
-    .locator(".item-value")
-    .evaluateAll((values) =>
-      values.map((value) => {
+  // Each item's name and value as far from its two edges, read off their text, not their boxes: a box may run past
+  // its text.
+  const insets = await list.getByRole("option").evaluateAll((items) =>
+    items.map((item) => {
+      const textOf = (element: Element) => {
         const text = document.createRange();
-        text.selectNodeContents(value);
-        return Math.round(text.getBoundingClientRect().right);
-      }),
-    );
-  expect(rightEdges.length).toBeGreaterThan(1);
-  expect(new Set(rightEdges).size).toBe(1);
+        text.selectNodeContents(element);
+        return text.getBoundingClientRect();
+      };
+      const edges = item.getBoundingClientRect();
+      const [name, value] = item.querySelectorAll("span");
+      return [Math.round(textOf(name).left - edges.left), Math.round(edges.right - textOf(value).right)];
+    }),
+  );
+  expect(insets.length).toBeGreaterThan(1);
+  expect(new Set(insets.flat()).size).toBe(1);
 });
 
 test("under Compare with three slots, a row's Presets is the list icon saying the word in a tooltip, and no value beside it is clipped", async ({ page }) => {

@@ -197,12 +197,9 @@
 	.caption-line {
 		min-height: 1.5em;
 	}
-	/* A value at the end of a list's item, a preset's in the box's unit. It alone takes the item's free space, set right
-	   in it: the generated item's hidden check mark has `margin-left: auto`, and two auto margins shared the space, so
-	   each value ended at an x of its own. Its digits are one column. */
+	/* A value at the end of a list's item, a preset's in the box's unit, its digits one column. */
 	.item-value {
-		flex-grow: 1;
-		text-align: right;
+		margin-left: auto;
 		font-variant-numeric: tabular-nums;
 		color: var(--muted-foreground);
 	}
@@ -301,6 +298,12 @@
 /* A popover that holds a searchable list, a row's Presets: the list reaches the popover's edges. */
 [data-slot="popover-content"].list-popover {
 	padding: 0;
+}
+/* An item that ends in a value, a row's Presets: the generated item's check mark goes, since no preset is ever checked.
+   Hidden, it still took its width and an auto margin, so the values ended short of the right edge, each at an x of its
+   own, and stood further from it than the names from the left. */
+[data-slot="command-item"]:has(> .item-value) > svg {
+	display: none;
 }
 /* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
    (decision 72, rule 2), which wrap at 24rem. */
