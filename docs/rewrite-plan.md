@@ -238,6 +238,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > 50's note of this date (`24ecc5d`), waits for its spec. **Next: the user's `/to-spec` and `/to-tickets` for slot
 > naming in `.scratch/slot-naming/`; then Phase 5b's grilling.**
 
+> **2026-10-12 — position, slot naming done**: `.scratch/slot-naming/` landed on `rewrite/v1` and the folder is
+> closed: 01 `d307194` the session names its slots once, where each badge is given, 02 `31a112a` the Input summary
+> follows the badge and the drawn-count rule goes, 03 `f77916d` the model-switch dialog and the input panel read the
+> badge, 04 `5f6ad43` the documents. A slot is named "Input 1" to "Input 3" on the Standard page while Compare is on,
+> and has no name otherwise. Decision 50 carries a note of this date naming the commits and the sentences that said
+> other than the code: the naming is answered by `Session.slotsNamed` and the badge derived from it, two places, not
+> one; ADR-0001's result-table note and decision 52's note read "on the Standard page while Compare is on", since
+> Explore keeps Compare and names nothing; `slotBadges` became `slotBadge(position, named)`. `.scratch/open-points.md`
+> B15 is done and D4 closed. `npm test` passes at 988 tests; `npm run test:browser` passed at 34 at ticket 03, and no
+> code changed since. **Next: Phase 5b's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
