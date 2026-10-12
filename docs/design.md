@@ -115,10 +115,10 @@ full width above and below, neither resident. The sidebar's fills, the header's 
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Header.** A band of the brand: the white CBE mark, a link to the tool's own root, `/`, which opens the page the
-tab kept (decision 63, rule 3 as revised 2026-10-12); a vertical separator; the title, an
-`h1`; the notice line, the generated `Alert` inside the status region, centred in the room between; Documentation.
-Focus after Reset or a link's yes lands on the `h1`.
+**Header.** A band of the brand: the white CBE mark, a link to the default model's address, followed as an in-app
+switch that keeps the values and asks where one is out of range (decision 73, rule 5 as revised again 2026-10-12); a
+vertical separator; the title, an `h1`; the notice line, the generated `Alert` inside the status region, centred in
+the room between; Documentation. Focus after Reset or a link's yes lands on the `h1`.
 
 **Sidebar.** The `sidebar-16` block's menu on the ground, no icons, items `gap-1`. Groups: Standard, one item per
 standard; Tools, Explore (Time-series joins as one item when it exists, no placeholder); a separator; Session, the
