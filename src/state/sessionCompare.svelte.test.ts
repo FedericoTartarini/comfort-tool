@@ -19,8 +19,9 @@ import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { optionsOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { page } from "$lib/core/page";
+import { palette } from "$lib/core/palette";
 import { entryModesOf, type ValueEntryModes } from "$lib/core/slot";
-import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -248,7 +249,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
     .filter(
       (trace): trace is ZoneLine =>
         (trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined)) &&
-        trace.color === chartInk.zoneLine(slotBadges[position].hue),
+        trace.color === chartInk.zoneLine(palette.slots[position]),
     )
     .map((zone) => (zone.kind === "path" ? { x: zone.x, y: zone.y } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
 }
@@ -256,7 +257,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
 /** Where slot `position`'s marker is on `chart`, or `undefined` for none. */
 function markerAt(chart: ChartSpec | null, position: SlotPosition) {
   const marker = chart?.traces.find(
-    (trace): trace is PointTrace => trace.kind === "point" && trace.color === chartInk.marker(slotBadges[position].hue),
+    (trace): trace is PointTrace => trace.kind === "point" && trace.color === chartInk.marker(palette.slots[position]),
   );
   return marker && { x: marker.x, y: marker.y };
 }
@@ -269,6 +270,69 @@ function chartAlone(entries: ReadonlyMap<Quantity, number>): ChartSpec | null {
   }
   return new Outputs(session).chart;
 }
+
+describe("the compared slots' badges", () => {
+  /** The name each compared slot's badge carries, in slot order: `undefined` for a slot not named. */
+  function badgeNamesOf(outputs: Outputs): (string | undefined)[] {
+    return outputs.slots.map((slot) => slot.badge.name);
+  }
+
+  /** The labels of the chart's marker entries in its legend, in slot order. */
+  function markerEntriesOf(outputs: Outputs): string[] {
+    return (outputs.chart?.legend ?? []).filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
+  }
+
+  it("names no slot on the Standard page with Compare off, and the marker reads Input", () => {
+    const outputs = new Outputs(new Session(pmvPpdIso));
+    expect(badgeNamesOf(outputs)).toEqual([undefined]);
+    expect(markerEntriesOf(outputs)).toEqual(["Input"]);
+  });
+
+  it("names every compared slot by position while Compare is on, slots 2 and 3 disabled or not", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+    expect(badgeNamesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(markerEntriesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
+
+    session.setSlotEnabled(1, false);
+    session.setSlotEnabled(2, false);
+    expect(badgeNamesOf(outputs)).toEqual(["Input 1"]);
+    expect(markerEntriesOf(outputs)).toEqual(["Input 1"]);
+  });
+
+  it("names slot 2 Input 2 while Compare is on and it is drawn alone, slot 1 never calculated", () => {
+    const session = new Session(pmvPpdIso);
+    session.setCompare(true);
+    session.slots[0].setEntered(q.tdb, 200);
+    expect(markerEntriesOf(new Outputs(session))).toEqual(["Input 2"]);
+  });
+
+  it("follows Compare: switched off, the slot is unnamed again, and on, named again", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.setCompare(false);
+    expect(badgeNamesOf(outputs)).toEqual([undefined]);
+    session.setCompare(true);
+    expect(badgeNamesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
+  });
+
+  it("names no slot on Explore, whatever Compare holds", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    session.setAddress({ page: page.explore, model: pmvPpdIso });
+    const outputs = new Outputs(session);
+    expect(session.compare).toBe(true);
+    expect(badgeNamesOf(outputs)).toEqual([undefined]);
+    expect(markerEntriesOf(outputs)).toEqual(["Input"]);
+  });
+
+  it("keeps each slot's hue by position, named or not", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+    expect(outputs.slots.map((slot) => slot.badge.hue)).toEqual(palette.slots);
+    session.setCompare(false);
+    expect(outputs.slots.map((slot) => slot.badge.hue)).toEqual([palette.slots[0]]);
+  });
+});
 
 describe("the charts of the compared slots", () => {
   const moreClothing = new Map<Quantity, number>([[q.clo, 1]]);
@@ -652,7 +716,7 @@ describe("the compared slots' scans", () => {
     for (const slot of outputs.slots) {
       const last = slot.lastValid;
       if (!last) {
-        throw new Error(`${slot.badge.name} has no run`);
+        throw new Error(`The slot at position ${slot.position} has no run`);
       }
       expect(slot.scan).toEqual(scannedField(frameOf(entryModesOf(last.slot), last.atmosphericPressure), last.slot));
     }

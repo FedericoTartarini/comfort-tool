@@ -1,7 +1,8 @@
 <script lang="ts">
   import { chartInk } from "$lib/core/bandPalette";
   import { page } from "$lib/core/page";
-  import { slotBadges } from "$lib/core/slotBadge";
+import { palette } from "$lib/core/palette";
+  import { slotNames } from "$lib/core/slotBadge";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { slotPositions, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -91,8 +92,8 @@
               variant="outline"
               bind:pressed={() => session.isSlotEnabled(position), (pressed) => setSlotEnabled(position, pressed)}
             >
-              <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(slotBadges[position].hue)}></span>
-              {slotBadges[position].name}
+              <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(palette.slots[position])}></span>
+              {slotNames[position]}
             </Toggle>
           {/each}
         </SlotColumns>
@@ -119,7 +120,6 @@
       model={session.model}
       rows={outputs.slots}
       unitSystem={session.unitSystem}
-      compare={session.compare}
       labelledby={headingId}
     />
   {/snippet}

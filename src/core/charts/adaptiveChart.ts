@@ -57,7 +57,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   request.slots.forEach((charted, position) => {
     const zones = zonesOfSlot[position];
     for (const [index, zone] of zones.entries()) {
-      const ink = zoneInkFor(request, charted, zone.label, index, zones.length);
+      const ink = zoneInkFor(charted, zone.label, index, zones.length);
       const { label } = ink.legendEntry;
       // Neither the fill nor a line captures the pointer, so the hover grid below reads for them.
       fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
@@ -71,7 +71,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   traces.push(
     hoverGridFor({ quantity: x, range: xRange }, { quantity: y, range: yRange }, unitSystem, (cell) =>
       request.slots.flatMap((charted, position) =>
-        innermostLabels(regionsOfSlot[position], cell.x, cell.y).map((label) => labelFor(request, charted, label)),
+        innermostLabels(regionsOfSlot[position], cell.x, cell.y).map((label) => labelFor(charted, label)),
       ),
     ),
   );

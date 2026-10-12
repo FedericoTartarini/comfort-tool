@@ -12,15 +12,15 @@ import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/co
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { dynamicChartOf, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
-import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout } from "./chartSpec";
-import { chartRequestFor } from "./chartTestRequests";
+import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 
 const q = quantities;
@@ -121,7 +121,7 @@ describe("the scanned dynamic chart given a Band list", () => {
 
   it("paints one fill per band of the list, from its lower Edge up to the last, and no Comfort zone", () => {
     expect(intervalsOf(spec)).toEqual(contiguousFillsOf(isoBands));
-    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(slotBadges[0].hue));
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(palette.slots[0]));
   });
 
   it("strokes every band's own upper Edge once, in the band line, read by nothing", () => {
@@ -142,7 +142,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("carries one legend: every band, then the slot", () => {
     expect(spec.legend).toEqual([
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: slotBadges[0].name, swatch: "marker", color: chartInk.marker(slotBadges[0].hue) },
+      { label: "Input", swatch: "marker", color: chartInk.marker(palette.slots[0]) },
     ]);
   });
 
@@ -271,12 +271,8 @@ describe("a Band list whose Edges are unevenly spaced", () => {
 describe("a Band list over several slots", () => {
   it("paints the first slot's scan and reads each slot's number and band", () => {
     const warm = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
-    const request = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
     const one = bandedSpec(isoBands);
-    const two = dynamicSpec(
-      { ...request, slots: [...request.slots, { ...slotBadges[1], slot: warm }], bands: isoBands },
-      isoChart.axes,
-    );
+    const two = dynamicSpec({ ...chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), warm]), bands: isoBands }, isoChart.axes);
     expect(fillsOf(two).map((fill) => fill.z)).toEqual(fillsOf(one).map((fill) => fill.z));
     expect(hoverGridOf(two).hoverText[2][26]).toHaveLength(6);
   });

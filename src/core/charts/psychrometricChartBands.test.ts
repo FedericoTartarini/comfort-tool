@@ -14,9 +14,9 @@ import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
+import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
-import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -111,7 +111,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(fillsOf(spec).map((fill) => [fill.label, fill.color, fill.lower, fill.upper])).toEqual(
       isoBands.labels.map((label, index) => [label, isoBands.colors[index], isoBands.edges[index - 1], lastEdge]),
     );
-    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(slotBadges[0].hue));
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(palette.slots[0]));
     expect(spec.traces.some((entry) => entry.kind === "path" && entry.fill !== undefined && entry.fill !== chartInk.ground)).toBe(false);
   });
 
@@ -195,7 +195,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(spec.legend).toEqual([
       { label: q.rh.label, swatch: "line", color: chartInk.isoline },
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: slotBadges[0].name, swatch: "marker", color: chartInk.marker(slotBadges[0].hue) },
+      { label: "Input", swatch: "marker", color: chartInk.marker(palette.slots[0]) },
     ]);
   });
 

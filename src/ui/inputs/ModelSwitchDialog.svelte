@@ -13,7 +13,7 @@
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { slotBadges } from "$lib/core/slotBadge";
+  import { slotNames } from "$lib/core/slotBadge";
   import { displayUnitFor, numberWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { PendingSwitch } from "$lib/state/session.svelte";
@@ -44,7 +44,7 @@
       .filter(({ listedRows }) => listedRows.length > 0)
       .map(({ position, listedRows }) => ({
         position,
-        name: slotBadges[position].name,
+        name: slotNames[position],
         rows: listedRows.map((row) => {
           const unit = displayUnitFor(row.quantity, unitSystem);
           return {

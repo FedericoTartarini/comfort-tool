@@ -1,15 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { chartInk } from "./bandPalette";
 import { palette } from "./palette";
-import { slotBadges } from "./slotBadge";
+import { slotBadge, slotNames } from "./slotBadge";
+import { slotPositions } from "./writtenSession";
 
 describe("a slot's badge", () => {
-  it("names the three positions Input 1 to Input 3", () => {
-    expect(slotBadges.map((badge) => badge.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
+  it("names position n Input n while the slots are named, in the position's hue", () => {
+    expect(slotPositions.map((position) => slotBadge(position, true))).toEqual([
+      { name: "Input 1", hue: palette.slots[0] },
+      { name: "Input 2", hue: palette.slots[1] },
+      { name: "Input 3", hue: palette.slots[2] },
+    ]);
   });
 
-  it("gives the three positions the palette's three slot hues, one hex each", () => {
-    expect(slotBadges.map((badge) => badge.hue)).toEqual(palette.slots);
+  it("names no position while the slots are not named, and keeps the position's hue", () => {
+    expect(slotPositions.map((position) => slotBadge(position, false))).toEqual(palette.slots.map((hue) => ({ hue })));
+  });
+
+  it("keeps the named texts by position, Input 1 to Input 3, for the slot buttons", () => {
+    expect(slotNames).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 });
 

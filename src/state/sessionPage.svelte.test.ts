@@ -12,8 +12,8 @@ import type { ChartSpec, ContourFillTrace, ContourLineTrace, PointTrace, Trace }
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
+import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
-import { slotBadges } from "$lib/core/slotBadge";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -27,7 +27,7 @@ const q = quantities;
 /** The positions of the slots whose markers `chart` draws, in slot order. */
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   const markers = (chart?.traces ?? []).filter((trace): trace is PointTrace => trace.kind === "point");
-  return slotPositions.filter((position) => markers.some((marker) => marker.color === chartInk.marker(slotBadges[position].hue)));
+  return slotPositions.filter((position) => markers.some((marker) => marker.color === chartInk.marker(palette.slots[position])));
 }
 
 /** The fills among `traces`, a Comfort zone's or a Band's, in drawing order. */

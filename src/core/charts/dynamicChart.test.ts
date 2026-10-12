@@ -10,9 +10,9 @@ import {
   type DeclaredDynamicChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
+import { palette } from "$lib/core/palette";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot } from "$lib/core/slot";
-import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -164,7 +164,7 @@ describe("the scanned dynamic chart of one slot", () => {
 
   it("paints each zone as a fill in the slot's hue by its level, and after every fill its line over the same interval", () => {
     const zones = declaredZonesOf(pmvPpdIso);
-    const hue = slotBadges[0].hue;
+    const hue = palette.slots[0];
     expect(contourKindsOf(spec)).toEqual([...zones.map(() => "contourFill"), ...zones.map(() => "contourLine")]);
     expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
     expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
@@ -216,7 +216,7 @@ describe("the scanned dynamic chart of one slot", () => {
   it("carries one legend: every zone, then the slot", () => {
     expect(spec.legend.map((entry) => [entry.label, entry.swatch])).toEqual([
       ...declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), "fill"]),
-      [slotBadges[0].name, "marker"],
+      ["Input", "marker"],
     ]);
   });
 });

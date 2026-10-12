@@ -117,7 +117,7 @@ describe("a declared limits source", () => {
 
   it("carries every zone into the one legend, ahead of the slot marker", () => {
     const spec = adaptiveSpec(request);
-    expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "90% acceptability", "Input 1"]);
+    expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "90% acceptability", "Input"]);
   });
 
   it("stays on its declared operative axis under separate entry, where the dynamic chart would map it to tdb", () => {
@@ -315,7 +315,7 @@ describe("Adaptive's acceptability zones", () => {
   it("gives each zone a legend swatch in its own fill, then the slot", () => {
     expect(spec.legend).toEqual([
       ...fills.map((fill) => ({ label: fill.label, swatch: "fill", color: fill.fill })),
-      expect.objectContaining({ label: "Input 1", swatch: "marker" }),
+      expect.objectContaining({ label: "Input", swatch: "marker" }),
     ]);
   });
 

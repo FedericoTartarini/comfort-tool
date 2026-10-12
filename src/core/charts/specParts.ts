@@ -12,7 +12,7 @@ import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclara
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
-import { namesSlots, type SlotBadge } from "$lib/core/slotBadge";
+import type { SlotBadge } from "$lib/core/slotBadge";
 import { displayUnitFor, labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
@@ -163,7 +163,7 @@ export function fieldPaintFor(
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
         const interval = { lower: -zone.limit, upper: zone.limit };
-        const ink = zoneInkFor(request, charted, copy.zoneLegend(zone), index, zones.length);
+        const ink = zoneInkFor(charted, copy.zoneLegend(zone), index, zones.length);
         lay(paintedRegionFor(ink.legendEntry.label, { ...drawn, z: surfaces[position] }, {
           fill: { interval, color: ink.fill },
           line: interval,
@@ -180,7 +180,7 @@ export function fieldPaintFor(
     return request.slots.flatMap((charted, position) => {
       const value = masked ? Number.NaN : fields[position][yIndex][xIndex];
       const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
-      return lines.map((line) => labelFor(request, charted, line));
+      return lines.map((line) => labelFor(charted, line));
     });
   });
   return { fills, outlines, hoverGrid, bandLegend, zoneLegendOfSlot };
@@ -246,11 +246,11 @@ function displayedSamplesOf(x: Sweep, y: Sweep, unitSystem: UnitSystem): { reado
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for
- * `charted`: prefixed with the slot's name where {@link namesSlots} says
- * the request's slots are named, and as it is otherwise.
+ * `charted`: prefixed with the slot's name where the slot has one, and as it
+ * is otherwise.
  */
-export function labelFor(request: ChartRequest, charted: ChartedSlot, label: string): string {
-  return namesSlots(request.slots.length) ? copy.slotEntry(charted.name, label) : label;
+export function labelFor(charted: ChartedSlot, label: string): string {
+  return charted.name === undefined ? label : copy.slotEntry(charted.name, label);
 }
 
 /** A Comfort zone's paint: its fill's colour, its line's colour and width, and its legend entry. */
@@ -262,7 +262,7 @@ export interface ZoneInk {
 }
 
 /**
- * How a chart of `request` paints a Comfort zone of `charted` whose own
+ * How a chart paints a Comfort zone of `charted` whose own
  * label is `zoneLabel`, level `level` of `levels` nested zones, 0 the
  * outermost (ADR-0002 decision 71); the legend names it as {@link labelFor}
  * does. However many slots the chart draws, the zone is filled in the slot's
@@ -271,8 +271,8 @@ export interface ZoneInk {
  * colour is the compositing's, which the legend does not name; every
  * boundary keeps its slot's hue.
  */
-export function zoneInkFor(request: ChartRequest, charted: ChartedSlot, zoneLabel: string, level: number, levels: number): ZoneInk {
-  const label = labelFor(request, charted, zoneLabel);
+export function zoneInkFor(charted: ChartedSlot, zoneLabel: string, level: number, levels: number): ZoneInk {
+  const label = labelFor(charted, zoneLabel);
   const fill = chartInk.zoneFill(charted.hue, level, levels);
   return {
     fill,
@@ -284,8 +284,8 @@ export function zoneInkFor(request: ChartRequest, charted: ChartedSlot, zoneLabe
 
 /**
  * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
- * and the legend entry that names it by the slot. Chrome, so it never
- * captures the pointer.
+ * and the legend entry that names it by the slot, or as the one input where
+ * the slot has no name. Chrome, so it never captures the pointer.
  */
 export function markerFor(
   badge: SlotBadge,
@@ -293,9 +293,10 @@ export function markerFor(
   y: number,
 ): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
   const color = chartInk.marker(badge.hue);
+  const label = badge.name ?? copy.unnamedMarker;
   return {
-    trace: { kind: "point", x, y, color, hover: "off", label: badge.name },
-    legendEntry: { label: badge.name, swatch: "marker", color },
+    trace: { kind: "point", x, y, color, hover: "off", label },
+    legendEntry: { label, swatch: "marker", color },
   };
 }
 

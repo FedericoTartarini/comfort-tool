@@ -12,7 +12,7 @@ import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
-import { namesSlots, slotBadges } from "./slotBadge";
+import { namesSlots, slotNames } from "./slotBadge";
 import { standardCaptionFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -22,7 +22,7 @@ const si = unitSystem.si;
 
 /** `slot` drawn as the slot at `position`, at `atmosphericPressure`. */
 function runOf(slot: Slot, position = 0, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): DrawnRun {
-  return { name: slotBadges[position].name, slot, atmosphericPressure };
+  return { name: slotNames[position], slot, atmosphericPressure };
 }
 
 /** The summary of `runs` on Standard: no Band list. */
@@ -74,18 +74,18 @@ describe("inputSummary", () => {
   it("gives three runs three groups in slot order, each headed by its slot's name", () => {
     const runs = [0, 1, 2].map((position) => runOf(startingSlot(pmvPpdIso), position));
     const [, ...slots] = summaryOf(pmvPpdIso, runs);
-    expect(slots.map((lines) => lines[0])).toEqual(slotBadges.map((badge) => badge.name));
+    expect(slots.map((lines) => lines[0])).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("heads a slot by its name exactly where the chart's legend names the slots", () => {
     const runs = [0, 1, 2].map((position) => runOf(startingSlot(pmvPpdIso), position));
     for (const drawn of [1, 2, 3]) {
       const [, first] = summaryOf(pmvPpdIso, runs.slice(0, drawn));
-      expect(first[0] === slotBadges[0].name, `${drawn} drawn`).toBe(namesSlots(drawn));
+      expect(first[0] === "Input 1", `${drawn} drawn`).toBe(namesSlots(drawn));
     }
     // Slot 2 drawn alone is named as the legend names it.
     const [, alone] = summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso), 1)]);
-    expect(alone).not.toContain(slotBadges[1].name);
+    expect(alone).not.toContain("Input 2");
   });
 
   it("lists each entry group's second mode under that mode's quantities and not the first mode's", () => {

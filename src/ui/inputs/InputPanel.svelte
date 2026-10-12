@@ -88,7 +88,7 @@
             {#if column}
               <Checkbox
                 id="{id}-option-{index}-{position}"
-                aria-label={copy.slotControl(option.label, column.outputs.badge.name)}
+                aria-label={column.outputs.badge.name && copy.slotControl(option.label, column.outputs.badge.name)}
                 checked={column.inputSlot.options.get(option)}
                 onCheckedChange={(checked) => column.inputSlot.setOption(option, checked)}
               />

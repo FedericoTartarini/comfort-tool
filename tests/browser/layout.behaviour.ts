@@ -321,6 +321,53 @@ test("at 1440 px, the Standard page's model select lists its models under no hea
   await expect(list.locator('[data-slot="select-group-heading"]')).toHaveCount(0);
 });
 
+/**
+ * A slot is named only on the Standard page while Compare is on (ADR-0002
+ * decision 50): the result table's Input column with each row's name and
+ * swatch, and the legend's marker entries by name, come and go together.
+ */
+test.describe("the slots' names", () => {
+  const resultTable = (page: Page) => card(page, "Results").getByRole("table");
+  const inputColumn = (page: Page) => resultTable(page).getByRole("columnheader", { name: "Input", exact: true });
+  const markerEntries = (page: Page) => page.locator(".chart-legend li").filter({ has: page.locator(".swatch-marker") });
+
+  async function expectUnnamed(page: Page) {
+    await expect(inputColumn(page)).toHaveCount(0);
+    await expect(resultTable(page).getByRole("row", { name: /^Input 1/ })).toHaveCount(0);
+    await expect(markerEntries(page)).toHaveText(["Input"]);
+  }
+
+  test("at 1440 px, appear with Compare and go with it", async ({ page }) => {
+    await openStandard(page, 1440);
+    await expectUnnamed(page);
+
+    const compare = page.getByRole("button", { name: "Compare", exact: true });
+    await compare.click();
+    await expect(inputColumn(page)).toHaveCount(1);
+    for (const name of ["Input 1", "Input 2"]) {
+      await expect(resultTable(page).getByRole("row", { name: new RegExp(`^${name}`) }).locator(".swatch-marker")).toHaveCount(1);
+    }
+    await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
+
+    await compare.click();
+    await expectUnnamed(page);
+  });
+
+  test("at 1440 px, are absent on Explore while the session's Compare is on", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
+
+    await openStandard(page, 1440, EXPLORE_ADDRESS);
+    await expectUnnamed(page);
+
+    // The tab kept the session, Compare on, and Standard names its slots again.
+    await openStandard(page, 1440);
+    await expect(page.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
+  });
+});
+
 test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {
   await openStandard(page, 1440);
   const box = page

@@ -33,15 +33,16 @@ function openAt(session: Session, target: Page): void {
   session.setAddress({ page: target, model: session.model });
 }
 
-/** What `outputs` draw: every compared slot's last valid run, painting the Band list on Explore. */
+/** What `outputs` draw: every compared slot's last valid run under its badge, painting the Band list on Explore. */
 function requestOf(session: Session, outputs: Outputs): ChartRequest {
-  const slots = outputs.slots.map((slot) => {
+  const charted = outputs.slots.map((slot) => {
     if (!slot.lastValid) {
-      throw new Error(`${slot.badge.name} has no run`);
+      throw new Error(`The slot at position ${slot.position} has no run`);
     }
-    return slot.lastValid.slot;
+    return { ...slot.badge, slot: slot.lastValid.slot };
   });
-  return { ...chartRequestForSlots(session.model, slots), bands: session.page === page.explore ? session.chart.bands : null };
+  const request = chartRequestForSlots(session.model, charted.map(({ slot }) => slot));
+  return { ...request, slots: charted, bands: session.page === page.explore ? session.chart.bands : null };
 }
 
 /** The session's picked axes, which a session on a model with a dynamic chart holds. */
@@ -67,7 +68,7 @@ describe("a session on Adaptive", () => {
         expect(outputs.slots).toHaveLength(compare && target === page.standard ? 3 : 1);
         expect(outputs.chart).toEqual(adaptiveSpec(requestOf(session, outputs)));
         for (const slot of outputs.slots) {
-          expect(() => slot.scan).toThrow(slot.badge.name);
+          expect(() => slot.scan).toThrow(`The slot at position ${slot.position}`);
         }
         expect(outputs.drawnAxes).toBeNull();
       });

@@ -139,12 +139,15 @@ export const copy = {
   yes: "Yes",
   no: "No",
   slotName: (index: number) => `Input ${index + 1}`,
+  // The chart marker's legend entry while its slot has no name: the one slot of a page that compares nothing. Its
+  // own string beside the two "Input" column headings, three places that say the word.
+  unnamedMarker: "Input",
   // The accessible name of one slot's control in a row that stands over several slots, on Compare.
   slotControl: (control: string, slotName: string) => `${control}, ${slotName}`,
   compare: "Compare",
   // A caption line about one row of the result table, while Compare is on.
   slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,
-  // A chart's legend entry or readout line of one slot, while the chart draws more than one.
+  // A chart's legend entry or readout line of one slot, while the slots are named.
   slotEntry: (slotName: string, entry: string) => `${slotName} · ${entry}`,
   chart: "Chart",
   // The chart type toggle-group's name, on the chart card's view row with no visible label (ADR-0002 decision 73, rule 8).

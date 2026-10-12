@@ -84,7 +84,6 @@
       model={session.model}
       rows={outputs.slots}
       unitSystem={session.unitSystem}
-      compare={false}
       labelledby={headingId}
     />
   {/snippet}

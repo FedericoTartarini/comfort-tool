@@ -17,9 +17,9 @@ import { imageSize } from "$lib/core/image";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
+import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
-import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { registeredModels } from "$lib/models";
@@ -228,7 +228,7 @@ describe("psychrometricSpec", () => {
 
   it("fills them in the slot's hue, the opacity rising inwards, and traces no polygon", () => {
     const drawn = fillsOf(spec);
-    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(slotBadges[0].hue, level, 3)));
+    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(palette.slots[0], level, 3)));
     expect(spec.traces.some((trace) => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground)).toBe(false);
   });
 
@@ -239,7 +239,7 @@ describe("psychrometricSpec", () => {
     expect(lines.map((line) => [line.label, line.z, line.lower, line.upper])).toEqual(
       fills.map((fill) => [fill.label, fill.z, fill.lower, fill.upper]),
     );
-    expect(lines.every((line) => line.color === chartInk.zoneLine(slotBadges[0].hue) && line.width === chartInk.zoneLineWidth)).toBe(true);
+    expect(lines.every((line) => line.color === chartInk.zoneLine(palette.slots[0]) && line.width === chartInk.zoneLineWidth)).toBe(true);
   });
 
   it("scans the drawn axes: the temperature axis and the humidity ratio, in display units", () => {
@@ -463,7 +463,7 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
     const alone = slots.map((entered) => hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, entered))).hoverText);
     expect(compared[10][25]).toEqual([
       ...hoverText[10][25].slice(0, 2),
-      ...alone.map((field, position) => copy.slotEntry(slotBadges[position].name, field[10][25][2])),
+      ...alone.map((field, position) => copy.slotEntry(`Input ${position + 1}`, field[10][25][2])),
     ]);
     expect(new Set(alone.map((field) => field[10][25][2])).size).toBe(3);
   });

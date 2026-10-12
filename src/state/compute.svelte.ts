@@ -18,7 +18,7 @@ import { runOn } from "$lib/core/modelRun";
 import { paintsBandsOn } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
 import { areSameEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
-import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
+import { slotBadge, type SlotBadge } from "$lib/core/slotBadge";
 import type { InputSlot, Session, SlotPosition } from "./session.svelte";
 
 /**
@@ -181,7 +181,7 @@ export class Outputs {
 
   /**
    * The runs {@link chart} is drawn of, in slot order, each with its slot's
-   * name: what an Image's Input summary lists (ADR-0002 decision 64, rule 3).
+   * name where its badge carries one: what an Image's Input summary lists (ADR-0002 decision 64, rule 3).
    * Read at the click, so nothing is kept of it.
    */
   get drawnRuns(): readonly DrawnRun[] {
@@ -236,8 +236,6 @@ export class Outputs {
 export class SlotOutputs {
   /** Which of the session's slots this is, from 0. */
   readonly position: SlotPosition;
-  /** The name and hue {@link position} gives the slot. */
-  readonly badge: SlotBadge;
   readonly #session: Session;
   readonly #atmosphericPressureOutOfRange: () => boolean;
   readonly #scanFrame: () => ScanFrame | null;
@@ -254,10 +252,13 @@ export class SlotOutputs {
   readonly #slot = $derived.by((): InputSlot => {
     const slot = this.#session.slots[this.position];
     if (!slot) {
-      throw new Error(`${this.badge.name} is read before it was ever enabled, and holds nothing`);
+      throw new Error(`The slot at position ${this.position} is read before it was ever enabled, and holds nothing`);
     }
     return slot;
   });
+
+  /** Named as the session says its slots are, so it follows Compare and the page. */
+  readonly #badge = $derived.by((): SlotBadge => slotBadge(this.position, this.#session.slotsNamed));
 
   /** Entered values the gate stops right now — the one thing that is never kept. */
   readonly #outOfRangeQuantities = $derived.by(() =>
@@ -300,7 +301,7 @@ export class SlotOutputs {
     const frame = this.#scanFrame();
     const last = this.#lastValid;
     if (!frame || !last) {
-      throw new Error(`${this.badge.name} is scanned while no scanned chart is drawn of a run of it`);
+      throw new Error(`The slot at position ${this.position} is scanned while no scanned chart is drawn of a run of it`);
     }
     return scannedField(frame, last.slot);
   });
@@ -317,10 +318,14 @@ export class SlotOutputs {
     scanFrame: () => ScanFrame | null,
   ) {
     this.position = position;
-    this.badge = slotBadges[position];
     this.#session = session;
     this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
     this.#scanFrame = scanFrame;
+  }
+
+  /** The hue {@link position} gives the slot, and its name while the session names its slots. */
+  get badge(): SlotBadge {
+    return this.#badge;
   }
 
   /** The last valid result. Kept as it is while an input is out of range. */

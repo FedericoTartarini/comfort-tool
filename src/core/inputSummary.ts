@@ -13,10 +13,10 @@ import type { UnitSystem } from "./unitSystem";
 /**
  * A slot the chart draws, as its last valid run left it: the slot as it was
  * entered and the atmospheric pressure it ran at (ADR-0002 decision 33), with
- * the name its position gives it.
+ * its slot's name where the slot has one.
  */
 export interface DrawnRun {
-  readonly name: string;
+  readonly name?: string;
   readonly slot: Slot;
   readonly atmosphericPressure: number;
 }
@@ -55,7 +55,7 @@ function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem,
   const { slot, atmosphericPressure } = run;
   const options = optionsReader(slot.options);
   return [
-    ...(named ? [run.name] : []),
+    ...(named && run.name !== undefined ? [run.name] : []),
     ...panelQuantities(model, slot).map((quantity) =>
       valueLine(quantity, enteredValue(slot, quantity, model, atmosphericPressure), unitSystem),
     ),

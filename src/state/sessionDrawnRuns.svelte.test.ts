@@ -9,7 +9,6 @@ import { describe, expect, it } from "vitest";
 import { temperatureMode } from "$lib/core/entryModes";
 import { inputSummary } from "$lib/core/inputSummary";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor, labelWithUnit } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -47,18 +46,18 @@ describe("Outputs.drawnRuns", () => {
     const session = new Session(pmvPpdIso);
     const runs = new Outputs(session).drawnRuns;
     expect(runs).toHaveLength(1);
-    expect(runs[0].name).toBe(slotBadges[0].name);
+    expect(runs[0].name).toBeUndefined();
     expect(runs[0].slot).toEqual(shapeOf(session.slots[0]));
     expect(runs[0].atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
   });
 
   it("is each of three compared slots' run in slot order, and leaves out a compared slot never calculated", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(slotBadges.map((badge) => badge.name));
+    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
     const neverCalculated = sessionComparingThreeSlots(pmvPpdIso);
     heldSlot(neverCalculated, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
-    expect(new Outputs(neverCalculated).drawnRuns.map((run) => run.name)).toEqual([slotBadges[0].name, slotBadges[1].name]);
+    expect(new Outputs(neverCalculated).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2"]);
   });
 
   it("keeps a slot's run while a value is out of range, so the summary lists the earlier value and not the entry", () => {

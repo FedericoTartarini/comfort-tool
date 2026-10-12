@@ -31,7 +31,7 @@ import {
   type Slot,
 } from "$lib/core/slot";
 import { imageDescription, imageSize } from "$lib/core/image";
-import { slotBadges } from "$lib/core/slotBadge";
+import { palette } from "$lib/core/palette";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { quantities } from "$lib/core/quantities";
@@ -127,11 +127,16 @@ function threeSlots(model: RegisteredModel): Slot[] {
   return [startingSlot(model), enteredSlotFor(model, { clo: 1 }), enteredSlotFor(model, { met: 1.4 })];
 }
 
-/** A named way to draw a model's chart of a list of slots, and how many zones each slot has on it. */
+/**
+ * A named way to draw a model's chart of a list of slots, each named by its
+ * position as while Compare is on, or of one slot unnamed as while it is off,
+ * and how many zones each slot has on it.
+ */
 interface Drawing {
   readonly name: string;
   readonly slots: readonly Slot[];
   readonly draw: (slots: readonly Slot[]) => ChartSpec;
+  readonly drawAlone: (slot: Slot) => ChartSpec;
   readonly zonesPerSlot: number;
 }
 
@@ -140,6 +145,7 @@ function psychrometricDrawing(model: RegisteredModel): Drawing {
     name: `${model.info.label}, psychrometric`,
     slots: threeSlots(model),
     draw: (slots) => psychrometricSpec(chartRequestForSlots(model, slots)),
+    drawAlone: (slot) => psychrometricSpec(chartRequestFor(model, slot)),
     zonesPerSlot: declaredZonesOf(model).length,
   };
 }
@@ -150,6 +156,7 @@ function dynamicDrawing(model: RegisteredModel): Drawing {
     name: `${model.info.label}, dynamic`,
     slots: threeSlots(model),
     draw: (drawn) => dynamicSpec(chartRequestForSlots(model, drawn), chart.axes),
+    drawAlone: (slot) => dynamicSpec(chartRequestFor(model, slot), chart.axes),
     zonesPerSlot: declaredZonesOf(model).length,
   };
 }
@@ -159,6 +166,7 @@ const adaptiveDrawing: Drawing = {
   name: `${adaptiveAshrae.info.label}, adaptive`,
   slots: [startingSlot(adaptiveAshrae), enteredSlotFor(adaptiveAshrae, { v: 0.9 }), enteredSlotFor(adaptiveAshrae, { v: 1.2 })],
   draw: (drawn) => adaptiveSpec(chartRequestForSlots(adaptiveAshrae, drawn)),
+  drawAlone: (slot) => adaptiveSpec(chartRequestFor(adaptiveAshrae, slot)),
   zonesPerSlot: 2,
 };
 
@@ -175,6 +183,20 @@ function zoneLegendOf(spec: ChartSpec) {
   return spec.legend.filter((entry) => entry.swatch !== "marker" && entry.color !== chartInk.isoline);
 }
 
+/** The slots' readout lines in every cell of `spec`'s hover grid, past the two axis lines each cell starts with. */
+function slotReadoutsOf(spec: ChartSpec): string[] {
+  const grid = spec.traces.find((trace): trace is HoverGridTrace => trace.kind === "hoverGrid");
+  return (grid?.hoverText ?? []).flat().flatMap((cell) => cell.slice(2));
+}
+
+/** The labels of `spec`'s marker entries in its legend, in slot order. */
+function markerEntriesOf(spec: ChartSpec): string[] {
+  return spec.legend.filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
+}
+
+/** The three slots' names while they are named. */
+const namedSlots = ["Input 1", "Input 2", "Input 3"];
+
 /**
  * Asserts that each of the first `count` slots' zones in `spec` are painted as
  * one slot's are, however many slots it draws (ADR-0002 decision 71): nested
@@ -185,17 +207,17 @@ function zoneLegendOf(spec: ChartSpec) {
 function expectNestedFills(spec: ChartSpec, count: number, zonesPerSlot: number) {
   const zones = zoneFillsOf(spec);
   expect(zones).toHaveLength(count * zonesPerSlot);
-  slotBadges.slice(0, count).forEach((badge, position) => {
+  palette.slots.slice(0, count).forEach((hue, position) => {
     const zonesOfSlot = zones.slice(position * zonesPerSlot, (position + 1) * zonesPerSlot);
     const alphas = zonesOfSlot.map((zone) => alphaOf(fillColorOf(zone)));
     expect(alphas).toEqual([...alphas].sort((a, b) => a - b));
     expect(new Set(alphas).size).toBe(zonesPerSlot);
-    expect(zonesOfSlot.map(fillColorOf)).toEqual(zonesOfSlot.map((_, level) => chartInk.zoneFill(badge.hue, level, zonesPerSlot)));
+    expect(zonesOfSlot.map(fillColorOf)).toEqual(zonesOfSlot.map((_, level) => chartInk.zoneFill(hue, level, zonesPerSlot)));
     const outlinesPerSlot = outlinesOf(spec).length / count;
     const outlinesOfSlot = outlinesOf(spec).slice(position * outlinesPerSlot, (position + 1) * outlinesPerSlot);
     expect(outlinesOfSlot.length).toBeGreaterThanOrEqual(zonesPerSlot);
     expect(outlinesOfSlot.map((outline) => ({ color: outline.color, width: outline.width }))).toEqual(
-      outlinesOfSlot.map(() => ({ color: chartInk.zoneLine(badge.hue), width: chartInk.zoneLineWidth })),
+      outlinesOfSlot.map(() => ({ color: chartInk.zoneLine(hue), width: chartInk.zoneLineWidth })),
     );
   });
   expect(zoneLegendOf(spec)).toEqual(zones.map((zone) => ({ label: zone.label, swatch: "fill", color: fillColorOf(zone) })));
@@ -204,18 +226,37 @@ function expectNestedFills(spec: ChartSpec, count: number, zonesPerSlot: number)
   expect(firstOutline).toBeGreaterThan(lastFill);
 }
 
-describe.each(drawings)("$name, drawn of one slot", ({ slots, draw, zonesPerSlot }) => {
-  const spec = draw([slots[0]]);
-  const [badge] = slotBadges;
+describe.each(drawings)("$name, drawn of one slot while the slots are not named", ({ slots, drawAlone, zonesPerSlot }) => {
+  const spec = drawAlone(slots[0]);
 
   it("fills its zones in its hue, nested, the opacity rising inwards, outlined after them, each with a fill swatch", () => {
     expectNestedFills(spec, 1, zonesPerSlot);
   });
 
-  it("draws its marker filled in its hue", () => {
+  it("draws its marker filled in its hue, Input in the legend", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual([
-      { label: badge.name, color: chartInk.marker(badge.hue) },
+      { label: "Input", color: chartInk.marker(palette.slots[0]) },
     ]);
+    expect(markerEntriesOf(spec)).toEqual(["Input"]);
+  });
+
+  it("names no zone entry and no readout line by its slot", () => {
+    const readouts = slotReadoutsOf(spec);
+    expect(readouts.length).toBeGreaterThan(0);
+    expect([...zoneLegendOf(spec).map((entry) => entry.label), ...readouts].filter((line) => line.startsWith("Input"))).toEqual([]);
+  });
+});
+
+describe.each(drawings)("$name, drawn of one slot while the slots are named", ({ slots, draw, drawAlone }) => {
+  const spec = draw([slots[0]]);
+  const unnamed = drawAlone(slots[0]);
+
+  it("prefixes each zone entry and readout line with Input 1, and names its marker Input 1", () => {
+    expect(zoneLegendOf(spec).map((entry) => entry.label)).toEqual(
+      zoneLegendOf(unnamed).map((entry) => copy.slotEntry("Input 1", entry.label)),
+    );
+    expect(slotReadoutsOf(spec)).toEqual(slotReadoutsOf(unnamed).map((line) => copy.slotEntry("Input 1", line)));
+    expect(markerEntriesOf(spec)).toEqual(["Input 1"]);
   });
 });
 
@@ -227,20 +268,20 @@ describe.each(drawings)("$name, drawn of two slots", ({ slots, draw, zonesPerSlo
   });
 
   it("draws two markers filled, each in its slot's hue", () => {
-    expect(markersOf(spec).map((marker) => marker.color)).toEqual(slotBadges.slice(0, 2).map((badge) => chartInk.marker(badge.hue)));
+    expect(markersOf(spec).map((marker) => marker.color)).toEqual(palette.slots.slice(0, 2).map(chartInk.marker));
   });
 });
 
-describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerSlot }) => {
+describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone, zonesPerSlot }) => {
   const spec = draw(slots);
   const zones = zoneFillsOf(spec);
 
   it("draws three markers and fills each slot's zones as one slot's, each named and coloured by its slot", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual(
-      slotBadges.map((badge) => ({ label: badge.name, color: chartInk.marker(badge.hue) })),
+      namedSlots.map((name, position) => ({ label: name, color: chartInk.marker(palette.slots[position]) })),
     );
     expectNestedFills(spec, 3, zonesPerSlot);
-    expect(outlinesOf(spec).every((outline) => slotBadges.some((badge) => outline.label?.startsWith(badge.name)))).toBe(true);
+    expect(outlinesOf(spec).every((outline) => namedSlots.some((name) => outline.label?.startsWith(name)))).toBe(true);
   });
 
   it("draws each slot's zones, outlines and marker as a list holding that slot alone draws them", () => {
@@ -274,17 +315,15 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
 
   it("has a fill legend entry per slot per zone, in the slot's hue, and one marker entry per slot", () => {
     const expected = slots.flatMap((slot, position) =>
-      zoneLegendOf(draw([slot])).map((entry, level) => ({
-        label: copy.slotEntry(slotBadges[position].name, entry.label),
+      zoneLegendOf(drawAlone(slot)).map((entry, level) => ({
+        label: copy.slotEntry(namedSlots[position], entry.label),
         swatch: "fill",
-        color: chartInk.zoneFill(slotBadges[position].hue, level, zonesPerSlot),
+        color: chartInk.zoneFill(palette.slots[position], level, zonesPerSlot),
       })),
     );
     expect(zoneLegendOf(spec)).toEqual(expected);
     expect(expected).toHaveLength(3 * zonesPerSlot);
-    expect(spec.legend.filter((entry) => entry.swatch === "marker").map((entry) => entry.label)).toEqual(
-      slotBadges.map((badge) => badge.name),
-    );
+    expect(markerEntriesOf(spec)).toEqual(namedSlots);
   });
 });
 
@@ -304,7 +343,7 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
   it("names each zone by its slot and by the zone", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
     const largest = [...declaredZonesOf(pmvPpdIso)].sort((a, b) => b.limit - a.limit)[0];
-    const label = copy.slotEntry(slotBadges[1].name, copy.zoneLegend(largest));
+    const label = copy.slotEntry("Input 2", copy.zoneLegend(largest));
     expect(zoneFillsOf(spec)[3].label).toBe(label);
     expect(contourLinesOf(spec)[3].label).toBe(label);
   });
@@ -333,7 +372,7 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
 
   it("paints no band, every fill and line being a slot's zone", () => {
     const regions = [...zoneFillsOf(spec), ...contourLinesOf(spec)];
-    expect(regions.every((region) => slotBadges.some((badge) => region.label?.startsWith(badge.name)))).toBe(true);
+    expect(regions.every((region) => namedSlots.some((name) => region.label?.startsWith(name)))).toBe(true);
   });
 
   it("cuts each slot's zones from the field the slot alone is scanned on", () => {
@@ -351,7 +390,7 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
     const alone = slots.map((slot) => hoverGridOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes)));
     expect(grid.hoverText[2][26]).toEqual([
       ...alone[0].hoverText[2][26].slice(0, 2),
-      ...alone.map((field, position) => copy.slotEntry(slotBadges[position].name, field.hoverText[2][26][2])),
+      ...alone.map((field, position) => copy.slotEntry(namedSlots[position], field.hoverText[2][26][2])),
     ]);
   });
 });
@@ -420,20 +459,20 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     const kept = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
     const back = withAirSpeedMode(kept, airSpeedMode.uncorrected);
     const uncorrected = entryModesWithAirSpeed(airSpeedMode.uncorrected);
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), chart.axes);
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, kept, unitSystem.si, uncorrected), chart.axes);
     const alone = dynamicSpec(chartRequestFor(pmvPpdIso, back), chart.axes);
     expect(spec.layout.y.title).toContain(q.v.label);
     expect(spec.traces).toEqual(alone.traces);
     expect(markersOf(spec)[0].y).toBe(0.4);
     expect(relativeAirSpeedOf(back)).toBe(relativeAirSpeedOf(kept));
 
-    const drawn = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected));
+    const drawn = psychrometricSpec(chartRequestFor(pmvPpdIso, kept, unitSystem.si, uncorrected));
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, back)).traces);
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, kept)).traces);
   });
 
   it("has its comfort zones scanned on the relative air speed the model is given, in either mode", () => {
-    const kept = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [entered], unitSystem.si, corrected));
+    const kept = psychrometricSpec(chartRequestFor(pmvPpdIso, entered, unitSystem.si, corrected));
     const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)));
     const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered));
     expect(kept.traces).toEqual(converted.traces);
@@ -456,7 +495,7 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
   });
 
   it("has its comfort zones scanned on the dynamic clothing insulation the model is given, in either mode", () => {
-    const kept = psychrometricSpec(chartRequestForSlots(model, [entered], unitSystem.si, corrected));
+    const kept = psychrometricSpec(chartRequestFor(model, entered, unitSystem.si, corrected));
     const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)));
     const uncorrected = psychrometricSpec(chartRequestFor(model, entered));
     expect(kept.traces).toEqual(converted.traces);
@@ -474,13 +513,13 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     const kept = withClothingMode(entered, clothingMode.corrected, model);
     const back = withClothingMode(kept, clothingMode.uncorrected, model);
     const uncorrected = entryModesWithClothing(clothingMode.uncorrected);
-    const spec = dynamicSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), clothingAxes);
+    const spec = dynamicSpec(chartRequestFor(model, kept, unitSystem.si, uncorrected), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo.label);
     expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), clothingAxes).traces);
     expect(markersOf(spec)[0].y).toBe(1);
     expect(dynamicClothingOf(back, model)).toBe(dynamicClothingOf(kept, model));
 
-    const drawn = psychrometricSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected));
+    const drawn = psychrometricSpec(chartRequestFor(model, kept, unitSystem.si, uncorrected));
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back)).traces);
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, kept)).traces);
   });

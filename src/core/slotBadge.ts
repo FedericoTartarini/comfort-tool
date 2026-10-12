@@ -1,11 +1,13 @@
 import { copy } from "$lib/text/copy";
 import { palette } from "./palette";
+import type { SlotPosition } from "./writtenSession";
 
 /**
- * A slot's name and hue, which follow its position (ADR-0002 decision 50).
- * Given here once, the name's text read from `copy`, so the input columns,
- * the result table's rows, the legend and the chart's zones and markers
- * cannot disagree about which slot is which.
+ * A slot's name and hue, which follow its position (ADR-0002 decision 50);
+ * the name only while the session names its slots, which the session alone
+ * decides. Given here once, the name's text read from `copy`, so the input
+ * columns, the result table's rows, the legend and the chart's zones and
+ * markers cannot disagree about which slot is which.
  */
 
 /**
@@ -16,23 +18,25 @@ import { palette } from "./palette";
 export type SlotHue = (typeof palette.slots)[number];
 
 export interface SlotBadge {
-  readonly name: string;
+  /** The slot's name while the session names its slots, and absent otherwise; whatever prints the slot prints this and decides nothing. */
+  readonly name?: string;
   readonly hue: SlotHue;
 }
 
 /**
- * Whether a chart of `drawn` slots names each by its slot: while it draws
- * more than one, so three zones of one kind can be told apart, and not while
- * it draws one, so a session whose Compare is off reads as it did (ADR-0002
- * decision 50). The legend and the Input summary both ask it.
+ * Whether the Input summary of `drawn` runs heads each with its slot's name:
+ * while it lists more than one. The summary's rule until it reads the runs'
+ * names as the badges give them (`.scratch/slot-naming` ticket 02).
  */
 export function namesSlots(drawn: number): boolean {
   return drawn > 1;
 }
 
-/** One badge per slot of the session, by position. */
-export const slotBadges = [
-  { name: copy.slotName(0), hue: palette.slots[0] },
-  { name: copy.slotName(1), hue: palette.slots[1] },
-  { name: copy.slotName(2), hue: palette.slots[2] },
-] as const satisfies readonly SlotBadge[];
+/** The name each position gives its slot while the slots are named, as the slot buttons read it. */
+export const slotNames = [copy.slotName(0), copy.slotName(1), copy.slotName(2)] as const;
+
+/** The badge of the slot at `position`: its hue, and its name while `named`. */
+export function slotBadge(position: SlotPosition, named: boolean): SlotBadge {
+  const hue = palette.slots[position];
+  return named ? { name: slotNames[position], hue } : { hue };
+}

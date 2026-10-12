@@ -363,6 +363,15 @@ export class Session {
     return this.#comparedPositions;
   }
 
+  /**
+   * Whether each compared slot is named by its position: on the Standard page
+   * while Compare is on, and nowhere else (ADR-0002 decision 50). Asked here
+   * alone; each slot's badge is given from it (`state/compute.svelte.ts`).
+   */
+  get slotsNamed(): boolean {
+    return this.page === page.standard && this.#compare;
+  }
+
   /** Whether the slot at `position` is enabled; slot 1 always is. Compare decides whether it is compared. */
   isSlotEnabled(position: SlotPosition): boolean {
     return this.#enabled[position];

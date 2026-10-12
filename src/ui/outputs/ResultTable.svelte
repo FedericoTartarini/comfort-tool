@@ -15,16 +15,17 @@
 
   interface Props {
     model: RegisteredModel;
-    /** One row per compared slot, in slot order. */
+    /**
+     * One row per compared slot, in slot order. While their badges carry names, the table has an Input column naming
+     * each row beside its swatch, and the kept rows' note names the row it is about.
+     */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
-    /** While Compare is on, a row wears its slot's hue and the kept rows' note names the row it is about. */
-    compare: boolean;
     /** The id of the Results heading, which names the table's scroll region (ADR-0002 decision 70, rule 2). */
     labelledby: string;
   }
 
-  let { model, rows, unitSystem, compare, labelledby }: Props = $props();
+  let { model, rows, unitSystem, labelledby }: Props = $props();
 
   // ADR §4.3: the Compliance column appears only when the model has a
   // classified output or a broken output row. An output-role violation also
@@ -36,13 +37,14 @@
       caveats: splitViolations(row.violations).outputs,
     })),
   );
+  const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
   const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
   const uncalculatedRows = $derived(rows.filter((row) => row.notCalculated));
   const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 
   function notCalculatedNote(row: SlotOutputs): string {
     const note = row.result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult;
-    return compare ? copy.slotNote(row.badge.name, note) : note;
+    return row.badge.name === undefined ? note : copy.slotNote(row.badge.name, note);
   }
 </script>
 
@@ -59,7 +61,9 @@
     <Table.Root class="result-table">
       <Table.Header>
         <Table.Row>
-          <Table.Head>{copy.inputColumn}</Table.Head>
+          {#if namesRows}
+            <Table.Head>{copy.inputColumn}</Table.Head>
+          {/if}
           {#if hasCompliance}
             <Table.Head>{copy.complianceColumn}</Table.Head>
           {/if}
@@ -72,16 +76,14 @@
         {#each tableRows as { row, classified, caveats } (row)}
           <!-- A row kept from an earlier run is marked, so its numbers read as not current (decision 73, rule 9). -->
           <Table.Row data-kept={row.notCalculated || undefined}>
-            <Table.Cell>
-              {#if compare}
+            {#if namesRows}
+              <Table.Cell>
                 <span class="swatch-label">
                   {@render slotSwatch(row)}
                   {row.badge.name}
                 </span>
-              {:else}
-                {row.badge.name}
-              {/if}
-            </Table.Cell>
+              </Table.Cell>
+            {/if}
             {#if hasCompliance}
               <Table.Cell>
                 <Inline gap="2">
@@ -123,7 +125,7 @@
             <Inline gap="4">
               {#each uncalculatedRows as row (row)}
                 <span class="swatch-label">
-                  {#if compare}
+                  {#if row.badge.name !== undefined}
                     {@render slotSwatch(row)}
                   {/if}
                   {notCalculatedNote(row)}
