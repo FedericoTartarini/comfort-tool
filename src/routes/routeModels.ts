@@ -3,6 +3,7 @@ import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { isSameStandard, routeSegmentFor, standards, type StandardEntry } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
+import type { ModelGroup } from "$lib/ui/inputs/ModelSelect.svelte";
 
 /*
  * Which models the routes and the navigation offer, how a URL names one, and
@@ -11,14 +12,6 @@ import { registeredModels } from "$lib/models";
  * `createRouter`, which needs `IntersectionObserver`; `navigation.ts`
  * re-exports what pages use.
  */
-
-/** The models of `standard`, of whichever edition, in registry order. */
-export function modelsOf(
-  standard: Standard,
-  models: readonly RegisteredModel[] = registeredModels,
-): RegisteredModel[] {
-  return models.filter((model) => model.standard !== undefined && isSameStandard(model.standard, standard));
-}
 
 /** Models that belong to a standard, in registry order. */
 export function standardModels(): RegisteredModel[] {
@@ -37,19 +30,9 @@ export function standardModels(): RegisteredModel[] {
 export function standardLinks(
   models: readonly RegisteredModel[] = registeredModels,
 ): { standard: StandardEntry; address: Address }[] {
-  const links: { standard: StandardEntry; address: Address }[] = [];
-  for (const model of models) {
-    const id = model.standard;
-    if (id === undefined || links.some(({ standard }) => isSameStandard(standard.id, id))) {
-      continue;
-    }
-    const standard = standards.find((entry) => entry.id === id);
-    if (!standard) {
-      throw new Error(`No entry declared for standard "${id}"`);
-    }
-    links.push({ standard, address: { page: page.standard, model } });
-  }
-  return links;
+  return modelGroupsOf(models).flatMap(({ standard, models: [first] }) =>
+    standard ? [{ standard, address: { page: page.standard, model: first } }] : [],
+  );
 }
 
 /**
@@ -77,15 +60,50 @@ export function ariaCurrentOf(link: Address, address: Address): "page" | "true" 
 }
 
 /**
- * What the model select offers at `address`, in registry order: the models of
- * the open model's standard on the Standard page, and every registered model
- * on Explore (ADR-0002 decision 57).
+ * What the model select offers at `address`, in registry order (ADR-0002
+ * decisions 57 and 74): on the Standard page one group, the open model's
+ * standard's; on Explore every registered model, grouped as
+ * {@link modelGroupsOf} groups them.
  */
 export function modelChoicesOn(
   address: Address,
   models: readonly RegisteredModel[] = registeredModels,
-): readonly RegisteredModel[] {
-  return address.page === page.standard ? modelsOf(requireStandard(address.model), models) : models;
+): readonly ModelGroup[] {
+  const groups = modelGroupsOf(models);
+  if (address.page !== page.standard) {
+    return groups;
+  }
+  const open = requireStandard(address.model);
+  return groups.filter(({ standard }) => standard !== undefined && isSameStandard(standard.id, open));
+}
+
+/**
+ * `models` grouped by standard (ADR-0002 decision 74): one group per
+ * standard, of whichever edition, in the order `models` first names each,
+ * under the entry of the edition its first model declares; then one group of
+ * the models with no standard, when there are any.
+ */
+function modelGroupsOf(models: readonly RegisteredModel[]): ModelGroup[] {
+  const groups: { standard: StandardEntry; models: RegisteredModel[] }[] = [];
+  const withoutStandard: RegisteredModel[] = [];
+  for (const model of models) {
+    const id = model.standard;
+    if (id === undefined) {
+      withoutStandard.push(model);
+      continue;
+    }
+    const group = groups.find(({ standard }) => isSameStandard(standard.id, id));
+    if (group) {
+      group.models.push(model);
+      continue;
+    }
+    const standard = standards.find((entry) => entry.id === id);
+    if (!standard) {
+      throw new Error(`No entry declared for standard "${id}"`);
+    }
+    groups.push({ standard, models: [model] });
+  }
+  return withoutStandard.length > 0 ? [...groups, { standard: undefined, models: withoutStandard }] : groups;
 }
 
 export function defaultModel(): RegisteredModel {

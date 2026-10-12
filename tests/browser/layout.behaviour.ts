@@ -16,6 +16,8 @@ const ADAPTIVE_ADDRESS = "/standard/ashrae-55/adaptive-ashrae";
 const DEFAULT_ADDRESS = PMV_ADDRESS;
 /** PMV (ISO 7730), whose bounds the default model's do not all contain: metabolic rate from 0.8 met, not 1. */
 const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
+/** Explore, whose model select offers every registered model. */
+const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
 /** A box as the test compares it: where it starts and how wide it is, its height being its content's. */
 interface Box {
@@ -298,6 +300,25 @@ test("at 1440 px, the sidebar's Standard items read ASHRAE 55 then ISO 7730, the
     "ASHRAE 55",
     "ISO 7730",
   ]);
+});
+
+test("at 1440 px, Explore's model select lists its models under ASHRAE 55, ISO 7730 and Other, Heat Index under the last", async ({ page }) => {
+  await openStandard(page, 1440, EXPLORE_ADDRESS);
+  await page.getByRole("button", { name: "Model", exact: true }).click();
+  const list = page.getByRole("listbox");
+
+  await expect(list.locator('[data-slot="select-group-heading"]')).toHaveText(["ASHRAE 55", "ISO 7730", "Other"]);
+  // The heading names its group, as a screen reader announces it.
+  await expect(list.getByRole("group", { name: "Other" }).getByRole("option")).toHaveText(["Heat Index (Rothfusz)"]);
+});
+
+test("at 1440 px, the Standard page's model select lists its models under no heading", async ({ page }) => {
+  await openStandard(page, 1440);
+  await page.getByRole("button", { name: "Model", exact: true }).click();
+  const list = page.getByRole("listbox");
+
+  await expect(list.getByRole("option")).toHaveCount(2);
+  await expect(list.locator('[data-slot="select-group-heading"]')).toHaveCount(0);
 });
 
 test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {

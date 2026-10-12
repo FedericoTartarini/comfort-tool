@@ -8,6 +8,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { registeredModels } from "$lib/models";
+import type { ModelGroup } from "$lib/ui/inputs/ModelSelect.svelte";
 import {
   ariaCurrentOf,
   defaultModel,
@@ -16,7 +17,6 @@ import {
   modelByExploreSegment,
   modelBySegment,
   modelChoicesOn,
-  modelsOf,
   routeSegmentsOf,
   standardLinks,
   standardModels,
@@ -81,22 +81,6 @@ describe("routeSegmentsOf", () => {
 
   it("throws for a model with no standard, which has no Standard page", () => {
     expect(() => routeSegmentsOf(fixtureWithoutStandard)).toThrow();
-  });
-});
-
-describe("modelsOf", () => {
-  it("returns the models of the given standard, in registry order", () => {
-    expect(modelsOf(Standard.iso_7730_2025, [pmvPpdIso, fixtureWithoutStandard])).toEqual([pmvPpdIso]);
-  });
-
-  it("returns the models of either edition of the standard, in registry order", () => {
-    for (const standard of [Standard.iso_7730_2005, Standard.iso_7730_2025]) {
-      expect(modelsOf(standard, fixtures), standard).toEqual([pmvPpdIso, fixtureIso2005]);
-    }
-  });
-
-  it("returns an empty list for a standard no fixture declares", () => {
-    expect(modelsOf(Standard.ashrae_55_2023, [pmvPpdIso, fixtureWithoutStandard])).toEqual([]);
   });
 });
 
@@ -210,22 +194,48 @@ describe("standardLinks", () => {
 });
 
 describe("modelChoicesOn", () => {
-  it("offers the standard's models on the Standard page, in registry order", () => {
-    expect(modelChoicesOn({ page: page.standard, model: adaptiveAshrae })).toEqual([pmvPpdAshrae, adaptiveAshrae]);
-    expect(modelChoicesOn({ page: page.standard, model: pmvPpdIso })).toEqual([pmvPpdIso]);
+  /** Each group as its standard's identifier, or `undefined` for the standard-less group, and its models. */
+  function byStandard(groups: readonly ModelGroup[]): [Standard | undefined, readonly RegisteredModel[]][] {
+    return groups.map(({ standard, models }) => [standard?.id, models]);
+  }
+
+  it("offers one group on the Standard page, the standard's models in registry order", () => {
+    expect(byStandard(modelChoicesOn({ page: page.standard, model: adaptiveAshrae }))).toEqual([
+      [Standard.ashrae_55_2023, [pmvPpdAshrae, adaptiveAshrae]],
+    ]);
+    expect(byStandard(modelChoicesOn({ page: page.standard, model: pmvPpdIso }))).toEqual([[Standard.iso_7730_2025, [pmvPpdIso]]]);
   });
 
-  it("offers the models of either edition of the standard on the Standard page, whichever is open", () => {
+  it("offers one group of either edition's models on the Standard page, whichever is open, named by its model registered first", () => {
     for (const model of [pmvPpdIso, fixtureIso2005]) {
-      expect(modelChoicesOn({ page: page.standard, model }, fixtures), model.info.label).toEqual([pmvPpdIso, fixtureIso2005]);
+      expect(byStandard(modelChoicesOn({ page: page.standard, model }, fixtures)), model.info.label).toEqual([
+        [Standard.iso_7730_2025, [pmvPpdIso, fixtureIso2005]],
+      ]);
     }
   });
 
-  it("offers every registered model on Explore, flat and in registry order, Heat Index among them", () => {
+  it("offers on Explore one group per standard in the order the registry first names each, the standard-less group last", () => {
+    const models = [fixtureWithoutStandard, pmvPpdIso, adaptiveAshrae, fixtureIso2005];
+    expect(byStandard(modelChoicesOn({ page: page.explore, model: pmvPpdIso }, models))).toEqual([
+      [Standard.iso_7730_2025, [pmvPpdIso, fixtureIso2005]],
+      [Standard.ashrae_55_2023, [adaptiveAshrae]],
+      [undefined, [fixtureWithoutStandard]],
+    ]);
+  });
+
+  it("offers on Explore no standard-less group when every model has a standard", () => {
+    expect(byStandard(modelChoicesOn({ page: page.explore, model: pmvPpdIso }, [pmvPpdIso]))).toEqual([
+      [Standard.iso_7730_2025, [pmvPpdIso]],
+    ]);
+  });
+
+  it("offers on Explore ASHRAE 55, ISO 7730 and then Heat Index alone, every registered model once in registry order", () => {
     for (const model of registeredModels) {
-      expect(modelChoicesOn({ page: page.explore, model })).toEqual(registeredModels);
+      const groups = modelChoicesOn({ page: page.explore, model });
+      expect(groups.map(({ standard }) => standard?.displayName)).toEqual(["ASHRAE 55", "ISO 7730", undefined]);
+      expect(groups[groups.length - 1].models).toEqual([heatIndexRothfusz]);
+      expect(groups.flatMap(({ models }) => models)).toEqual(registeredModels);
     }
-    expect(modelChoicesOn({ page: page.explore, model: pmvPpdIso })).toContain(heatIndexRothfusz);
   });
 });
 

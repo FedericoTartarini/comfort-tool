@@ -49,6 +49,8 @@ export const copy = {
   results: "Results",
   model: "Model",
   units: "Units",
+  // The Explore model select's heading over the models with no standard (ADR-0002 decision 74, rule 4).
+  otherModels: "Other",
   // The entry groups' names, each its menu button's whole text (ADR-0002 decision 72, rule 1).
   temperatureGroup: "Temperature",
   humidityGroup: "Humidity",
