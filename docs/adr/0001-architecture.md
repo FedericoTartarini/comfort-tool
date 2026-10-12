@@ -302,6 +302,8 @@ Result table (`table`):
 >
 > **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Coloured with the slot colour" in the second rule above holds while Compare is on: a row's first cell is then the slot's name beside a swatch of its hue. While Compare is off the one row reads "Input 1" with no swatch. Whether a row was calculated is said in the table's caption, one line per slot that was not (`ui/outputs/ResultTable.svelte`).
 >
+> **Noted 2026-10-12 ([ADR-0002](0002-library-interface-model-info.md) decision 50, as noted the same day).** "While Compare is off the one row reads "Input 1" with no swatch" above is withdrawn: the one-row table has no Input column, and "always the first column" in the second rule holds while Compare is on.
+>
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 60** (2026-10-01): "from the app's one band palette" in the second rule is one palette per classifier, chosen from a table in `core/bandPalette.ts` keyed by the classifier object, diverging or sequential, read at the band count; ISO 7730's "none" has no swatch. "Explore's output selection" in the third rule: there is none (decision 31).
 >
 > **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decision 60's note of the same day; `.scratch/explore/` ticket 09): built as `e39791a`. "Diverging or sequential" holds for the table's families but one: the thermal-sensation bins keep the CBE fills (`palettes.cbeSensation`, `core/bandPalette.ts:56`), decision 60 rule 3's exception, and no registered classifier is painted diverging yet.

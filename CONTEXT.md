@@ -73,7 +73,7 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Slot**:
-One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
+One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Compare**:

@@ -96,8 +96,8 @@ meets the cards' top.
 │ [CBE] │ CBE Thermal Comfort Tool     [notice, when there is one]     Documentation       │  brand band, 3.5rem
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ Standard   ┌─ Inputs ──────────────────────┐ ┌─ Results ───────────────────────────────┐ │
-│ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Input    Compliance     PMV    PPD  …   │ │
-│  ISO 7730  │                   [Compare]   │ │ Input 1  ▢ Neutral    −0.24  6.15 %     │ │
+│ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Compliance     PMV    PPD  …            │ │
+│  ISO 7730  │                   [Compare]   │ │ ▢ Neutral    −0.24  6.15 %              │ │
 │            │ Air temp (°C) [Temperature ▾] │ │ ASHRAE 55:2023                          │ │
 │ Tools      │ [25                       ]   │ └─────────────────────────────────────────┘ │
 │  Explore   │ 10 – 40                       │ ┌─ Chart ────────────────── [Export image]┐ │
@@ -105,7 +105,7 @@ meets the cards' top.
 │ ────────── │ [25                       ]   │ │ ┌──────────────┐                        │ │
 │ Session    │ 10 – 40                       │ │ │   plot 4:3   │   ─ Relative humidity  │ │
 │ Units      │ Air speed (m/s) [Air speed ▾] │ │ │  ≤ 24rem tall│   ■ Comfort zone       │ │
-│ [SI|IP]    │ [0.1                      ]   │ │ │              │   ● Input 1            │ │
+│ [SI|IP]    │ [0.1                      ]   │ │ │              │   ● Input              │ │
 │ Pressure   │ 0 – 1.97                      │ │ │              │                        │ │
 │ [101325]   │ ☐ Occupants control…          │ │ └──────────────┘                        │ │
 │ 30000 – …  │ Relative humidity (%) [… ▾]   │ └─────────────────────────────────────────┘ │

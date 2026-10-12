@@ -1157,6 +1157,13 @@ the local `../comfort_tool` checkout:
     (`core/charts/specParts.ts:249`). Accepted as they are, the same day: the chart drawing the other slots when
     slot 1 has no run, and the not-calculated note as a caption line rather than in the slot's row (decision 52's
     note), which the image export does not carry.
+    **Noted 2026-10-12 (`.scratch/open-points.md` D4, B15).** "A slot's name is fixed, "Input 1" to "Input 3"" holds
+    while Compare is on. While it is off, and on every page but Standard, the one slot has no name: the result table
+    has no Input column, the legend's marker reads "Input", and no label, caption, heading or accessible name carries
+    a number. Whether slots are named is decided once, where the badge is given (`state/compute.svelte.ts`), and read
+    by everything that prints it. Withdrawn: the 2026-09-30 note's "while it is off the one row reads "Input 1" with
+    no swatch", and the 2026-10-07 note's "unless the chart draws slot 1 alone". The name follows the toggle, not what
+    the chart draws, so slot 2 drawn alone while Compare is on is named.
     **Amended 2026-10-08 (decisions 66, 67 and 69; Phase 5c's grilling).** Slots 2 and 3's hues are no longer
     placeholders: one hex per slot from `core/palette.ts` (decision 66, rule 2). "Nested, in the slot's hue with the
     opacity rising inwards" was narrowed to a chart drawing one slot by decision 69, *withdrawn the same day by decision
