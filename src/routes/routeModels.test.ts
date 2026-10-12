@@ -1,6 +1,8 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
+import { isSameStandard } from "$lib/core/standard";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -8,6 +10,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { registeredModels } from "$lib/models";
 import {
   ariaCurrentOf,
+  defaultModel,
   exploreSegmentsOf,
   isCurrentLink,
   modelByExploreSegment,
@@ -35,6 +38,24 @@ const fixtureIso2005 = {
 };
 
 const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
+
+/** Whether `a` and `b` both have a standard, and it is one standard, of whichever edition. */
+function shareAStandard(a: RegisteredModel, b: RegisteredModel): boolean {
+  return a.standard !== undefined && b.standard !== undefined && isSameStandard(a.standard, b.standard);
+}
+
+/** Whether no model without a standard comes before a model with one. */
+function hasStandardModelsFirst(models: readonly RegisteredModel[]): boolean {
+  return models.every((model, i) => model.standard === undefined || models.slice(0, i).every((earlier) => earlier.standard !== undefined));
+}
+
+/** Whether each model of a standard follows another of it, or is the first of its standard. */
+function keepsStandardsTogether(models: readonly RegisteredModel[]): boolean {
+  return models.every(
+    (model, i) =>
+      (i > 0 && shareAStandard(model, models[i - 1])) || !models.slice(0, i).some((earlier) => shareAStandard(model, earlier)),
+  );
+}
 
 describe("toRouteSegment", () => {
   it("spells the library's underscores as hyphens", () => {
@@ -251,5 +272,24 @@ describe("ariaCurrentOf", () => {
     expect(
       ariaCurrentOf({ page: page.explore, model: pmvPpdAshrae }, { page: page.standard, model: pmvPpdAshrae }),
     ).toBeUndefined();
+  });
+});
+
+describe("defaultModel", () => {
+  it("is PMV (ASHRAE 55), the first registered model with a standard", () => {
+    expect(defaultModel()).toBe(pmvPpdAshrae);
+  });
+});
+
+describe("the registry's order", () => {
+  it("puts every model with a standard before every model without one", () => {
+    expect(hasStandardModelsFirst(registeredModels)).toBe(true);
+    expect(hasStandardModelsFirst([pmvPpdAshrae, heatIndexRothfusz, pmvPpdIso])).toBe(false);
+  });
+
+  it("keeps the models of one standard together, of whichever edition", () => {
+    expect(keepsStandardsTogether(registeredModels)).toBe(true);
+    expect(keepsStandardsTogether([pmvPpdIso, pmvPpdAshrae, fixtureIso2005])).toBe(false);
+    expect(keepsStandardsTogether([pmvPpdAshrae, pmvPpdIso, fixtureIso2005, heatIndexRothfusz])).toBe(true);
   });
 });

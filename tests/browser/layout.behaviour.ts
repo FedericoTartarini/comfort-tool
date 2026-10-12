@@ -12,8 +12,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 /** ASHRAE 55's two models: PMV has a chart of both types, and a switch from Adaptive can ask. */
 const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
 const ADAPTIVE_ADDRESS = "/standard/ashrae-55/adaptive-ashrae";
-/** The default model's Standard page, where the header's mark goes. */
-const DEFAULT_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
+/** The default model's Standard page, where the header's mark goes: PMV (ASHRAE 55)'s. */
+const DEFAULT_ADDRESS = PMV_ADDRESS;
+/** PMV (ISO 7730), whose bounds the default model's do not all contain: metabolic rate from 0.8 met, not 1. */
+const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
 
 /** A box as the test compares it: where it starts and how wide it is, its height being its content's. */
 interface Box {
@@ -362,6 +364,7 @@ test("under Compare with three slots, a row's Presets is the list icon saying th
 test.describe("the header's mark", () => {
   const mark = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Center for the Built Environment" });
   const dryBulb = (page: Page) => page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ });
+  const metabolicRate = (page: Page) => page.getByRole("spinbutton", { name: /^Metabolic rate/ });
 
   test("links to the default model's address, and the footer's marks to their institutions", async ({ page }) => {
     await openStandard(page, 1440);
@@ -378,8 +381,8 @@ test.describe("the header's mark", () => {
     );
   });
 
-  test("on PMV (ASHRAE 55), a click switches to the default model with a value inside both models' bounds kept", async ({ page }) => {
-    await openStandard(page, 1440);
+  test("on PMV (ISO 7730), a click switches to the default model with a value inside both models' bounds kept", async ({ page }) => {
+    await openStandard(page, 1440, ISO_ADDRESS);
     await dryBulb(page).fill("26");
 
     await mark(page).click();
@@ -388,9 +391,9 @@ test.describe("the header's mark", () => {
     await expect(dryBulb(page)).toHaveValue("26");
   });
 
-  test("on PMV (ASHRAE 55), with a dry-bulb temperature past the default model's bound, a click asks, and No leaves everything as it was", async ({ page }) => {
-    await openStandard(page, 1440);
-    await dryBulb(page).fill("32");
+  test("on PMV (ISO 7730), with a metabolic rate below the default model's bound, a click asks, and No leaves everything as it was", async ({ page }) => {
+    await openStandard(page, 1440, ISO_ADDRESS);
+    await metabolicRate(page).fill("0.9");
     const question = page.getByRole("dialog");
 
     await mark(page).click();
@@ -398,7 +401,7 @@ test.describe("the header's mark", () => {
     await question.getByRole("button", { name: /^No/ }).click();
 
     await expect(question).toBeHidden();
-    await expect(page).toHaveURL((url) => url.pathname === PMV_ADDRESS);
-    await expect(dryBulb(page)).toHaveValue("32");
+    await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+    await expect(metabolicRate(page)).toHaveValue("0.9");
   });
 });
