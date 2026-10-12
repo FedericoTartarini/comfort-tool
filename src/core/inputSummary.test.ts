@@ -12,17 +12,23 @@ import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
-import { namesSlots, slotNames } from "./slotBadge";
+import { slotNames } from "./slotBadge";
 import { standardCaptionFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
+import type { SlotPosition } from "./writtenSession";
 
 const q = quantities;
 const si = unitSystem.si;
 
-/** `slot` drawn as the slot at `position`, at `atmosphericPressure`. */
-function runOf(slot: Slot, position = 0, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): DrawnRun {
-  return { name: slotNames[position], slot, atmosphericPressure };
+/** `slot` drawn unnamed, at `atmosphericPressure`. */
+function runOf(slot: Slot, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): DrawnRun {
+  return { slot, atmosphericPressure };
+}
+
+/** `slot` drawn as the slot at `position` while the slots are named. */
+function namedRunOf(slot: Slot, position: SlotPosition): DrawnRun {
+  return { ...runOf(slot), name: slotNames[position] };
 }
 
 /** The summary of `runs` on Standard: no Band list. */
@@ -71,21 +77,26 @@ describe("inputSummary", () => {
     expect(chart).toEqual([heatIndexRothfusz.info.label]);
   });
 
-  it("gives three runs three groups in slot order, each headed by its slot's name", () => {
-    const runs = [0, 1, 2].map((position) => runOf(startingSlot(pmvPpdIso), position));
+  it("gives three named runs three groups in slot order, each headed by its slot's name", () => {
+    const runs = ([0, 1, 2] as const).map((position) => namedRunOf(startingSlot(pmvPpdIso), position));
     const [, ...slots] = summaryOf(pmvPpdIso, runs);
     expect(slots.map((lines) => lines[0])).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
-  it("heads a slot by its name exactly where the chart's legend names the slots", () => {
-    const runs = [0, 1, 2].map((position) => runOf(startingSlot(pmvPpdIso), position));
-    for (const drawn of [1, 2, 3]) {
-      const [, first] = summaryOf(pmvPpdIso, runs.slice(0, drawn));
-      expect(first[0] === "Input 1", `${drawn} drawn`).toBe(namesSlots(drawn));
+  it("heads each run by its name when the runs are named, whatever their count", () => {
+    for (const positions of [[0], [1], [0, 2]] as const) {
+      const [, ...slots] = summaryOf(pmvPpdIso, positions.map((position) => namedRunOf(startingSlot(pmvPpdIso), position)));
+      expect(slots.map((lines) => lines[0])).toEqual(positions.map((position) => slotNames[position]));
     }
-    // Slot 2 drawn alone is named as the legend names it.
-    const [, alone] = summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso), 1)]);
-    expect(alone).not.toContain("Input 2");
+  });
+
+  it("heads no run when the runs are unnamed, whatever their count", () => {
+    const [{ quantity, value }] = inputsOf(pmvPpdIso);
+    for (const count of [1, 2, 3]) {
+      const runs = Array.from({ length: count }, () => runOf(startingSlot(pmvPpdIso)));
+      const [, ...slots] = summaryOf(pmvPpdIso, runs);
+      expect(slots.map((lines) => lines[0]), `${count} drawn`).toEqual(runs.map(() => `${rowOf(quantity)}${formatNumber(value)}`));
+    }
   });
 
   it("lists each entry group's second mode under that mode's quantities and not the first mode's", () => {
@@ -123,7 +134,7 @@ describe("inputSummary", () => {
   it("lists each run's own option and its own pressure", () => {
     const off = startingSlot(pmvPpdAshrae);
     const on = withOption(off, ashraeOption, true);
-    const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off, 0), runOf(on, 1, LOWER_PRESSURE)]);
+    const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off), runOf(on, LOWER_PRESSURE)]);
     expect(first).toContain(`${ashraeOption.label}: ${copy.no}`);
     expect(second).toContain(`${ashraeOption.label}: ${copy.yes}`);
     expect(first).toContain(`${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE}`);

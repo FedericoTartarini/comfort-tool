@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { temperatureMode } from "$lib/core/entryModes";
 import { inputSummary } from "$lib/core/inputSummary";
+import { page } from "$lib/core/page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor, labelWithUnit } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -58,6 +59,35 @@ describe("Outputs.drawnRuns", () => {
     const neverCalculated = sessionComparingThreeSlots(pmvPpdIso);
     heldSlot(neverCalculated, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
     expect(new Outputs(neverCalculated).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2"]);
+  });
+
+  it("names each run as its slot's badge does: unnamed with Compare off, named with it on whatever is drawn", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    const namesOf = () => outputs.drawnRuns.map((run) => run.name);
+    const badgeNames = () => outputs.slots.map((slot) => slot.badge.name);
+
+    session.setCompare(true);
+    session.setSlotEnabled(1, false);
+    expect(namesOf()).toEqual(["Input 1"]);
+    expect(namesOf()).toEqual(badgeNames());
+
+    session.setCompare(false);
+    expect(namesOf()).toEqual([undefined]);
+    expect(namesOf()).toEqual(badgeNames());
+  });
+
+  it("names no run on Explore, whatever Compare holds", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    session.setAddress({ page: page.explore, model: pmvPpdIso });
+    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual([undefined]);
+  });
+
+  it("names slot 2 drawn alone while Compare is on and slot 1 was never calculated", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    session.setSlotEnabled(2, false);
+    heldSlot(session, 0).setEntered(q.tdb, OUT_OF_RANGE_TDB);
+    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(["Input 2"]);
   });
 
   it("keeps a slot's run while a value is out of range, so the summary lists the earlier value and not the entry", () => {

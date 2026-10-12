@@ -5,7 +5,6 @@ import { optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 import { enteredValue, panelQuantities, type Slot } from "./slot";
-import { namesSlots } from "./slotBadge";
 import { standardCaptionFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -32,8 +31,8 @@ export type InputSummary = readonly (readonly string[])[];
  * What the chart of `runs` is computed from, as an Image writes it under its
  * legend (ADR-0002 decision 64, rule 3): the model's name and its standard;
  * then each run's rows as the input panel lists them for its slot, its
- * options and its pressure, headed by the slot's name where the legend names
- * slots; then, given the Band list the chart paints, its Edges. It reads the
+ * options and its pressure, headed by its slot's name where the run has one;
+ * then, given the Band list the chart paints, its Edges. It reads the
  * runs and never the session's slots, so what is being typed out of range
  * cannot appear in it, and no line names an entry mode: a run's rows are
  * those of its own modes, and their quantities say which. It holds no result.
@@ -46,16 +45,15 @@ export function inputSummary(parts: {
 }): InputSummary {
   const { model, runs, unitSystem, bands } = parts;
   const modelLine = model.standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardCaptionFor(model.standard));
-  const named = namesSlots(runs.length);
   const edges = bands && model.scan ? [[edgesLine(model.scan.output, bands, unitSystem)]] : [];
-  return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem, named)), ...edges];
+  return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem)), ...edges];
 }
 
-function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem, named: boolean): string[] {
+function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem): string[] {
   const { slot, atmosphericPressure } = run;
   const options = optionsReader(slot.options);
   return [
-    ...(named && run.name !== undefined ? [run.name] : []),
+    ...(run.name === undefined ? [] : [run.name]),
     ...panelQuantities(model, slot).map((quantity) =>
       valueLine(quantity, enteredValue(slot, quantity, model, atmosphericPressure), unitSystem),
     ),
