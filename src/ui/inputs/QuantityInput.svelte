@@ -81,7 +81,13 @@
       {#if entry}
         {#snippet presetMenu()}
           {#if presets}
-            <PresetMenuButton {presets} {unit} name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger} oncommit={entry.oncommit} />
+            <PresetMenuButton
+              {presets}
+              {unit}
+              name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger}
+              compact={entry.slotName !== undefined}
+              oncommit={entry.oncommit}
+            />
           {/if}
         {/snippet}
         <Field.Field data-invalid={entry.outOfRange || undefined}>

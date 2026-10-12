@@ -197,9 +197,13 @@
 	.caption-line {
 		min-height: 1.5em;
 	}
-	/* A value at the end of a list's item, a preset's in the box's unit. */
+	/* A value at the end of a list's item, a preset's in the box's unit. It alone takes the item's free space, set right
+	   in it: the generated item's hidden check mark has `margin-left: auto`, and two auto margins shared the space, so
+	   each value ended at an x of its own. Its digits are one column. */
 	.item-value {
-		margin-left: auto;
+		flex-grow: 1;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
 		color: var(--muted-foreground);
 	}
 

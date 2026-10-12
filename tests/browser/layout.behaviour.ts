@@ -289,6 +289,67 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   await expect(trigger).toBeFocused();
 });
 
+test("a row's Presets is the word at the box's end, and its list's values end at one x", async ({ page }) => {
+  await openStandard(page, 1440);
+  const box = page
+    .locator('[data-slot="input-group"]')
+    .filter({ has: page.getByRole("spinbutton", { name: /^Metabolic rate/ }) });
+  const presets = box.getByRole("button", { name: "Presets" });
+
+  await expect(presets).toHaveText("Presets");
+  await expect(presets.locator("svg")).toHaveCount(0);
+
+  await presets.click();
+  const list = page.getByRole("listbox");
+  await expect(list).toBeVisible();
+  // The popover zooms in; read the boxes once it stands at its size.
+  await list.evaluate((element) =>
+    Promise.all(element.closest('[data-slot="popover-content"]')!.getAnimations().map((animation) => animation.finished)),
+  );
+  // Where each value's text ends, not its box: the box may run past its digits.
+  const rightEdges = await list
+    .getByRole("option")
+    .locator(".item-value")
+    .evaluateAll((values) =>
+      values.map((value) => {
+        const text = document.createRange();
+        text.selectNodeContents(value);
+        return Math.round(text.getBoundingClientRect().right);
+      }),
+    );
+  expect(rightEdges.length).toBeGreaterThan(1);
+  expect(new Set(rightEdges).size).toBe(1);
+});
+
+test("under Compare with three slots, a row's Presets is the list icon saying the word in a tooltip, and no value beside it is clipped", async ({ page }) => {
+  await openStandard(page, 1440);
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  for (const slot of ["Input 2", "Input 3"]) {
+    const toggle = page.getByRole("button", { name: slot, exact: true });
+    if ((await toggle.getAttribute("aria-pressed")) !== "true") {
+      await toggle.click();
+    }
+  }
+
+  for (const slot of ["Input 1", "Input 2", "Input 3"]) {
+    const clothing = page.getByRole("spinbutton", { name: `Clothing insulation (clo), ${slot}` });
+    const presets = page
+      .locator('[data-slot="input-group"]')
+      .filter({ has: clothing })
+      .getByRole("button", { name: `Presets, ${slot}` });
+    await expect(presets).toHaveText("");
+    await expect(presets.locator("svg")).toHaveCount(1);
+
+    for (const value of ["0.57", "25.55"]) {
+      await clothing.fill(value);
+      expect(await clothing.evaluate((box: HTMLInputElement) => box.scrollWidth <= box.clientWidth)).toBe(true);
+    }
+  }
+
+  await page.getByRole("button", { name: "Presets, Input 1" }).first().hover();
+  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Presets");
+});
+
 /**
  * The header's mark is a link to the default model's address, and a plain
  * click on it is an in-app switch as a Standard link's is (ADR-0002 decision
