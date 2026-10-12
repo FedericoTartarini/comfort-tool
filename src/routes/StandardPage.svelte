@@ -1,5 +1,6 @@
 <script lang="ts">
   import { chartInk } from "$lib/core/bandPalette";
+  import { page } from "$lib/core/page";
   import { slotBadges } from "$lib/core/slotBadge";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { slotPositions, type SlotPosition } from "$lib/state/session.svelte";
@@ -18,8 +19,8 @@
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Toggle } from "$lib/ui/primitives/toggle";
-  import { inAppSwitch } from "./inAppSwitch";
-  import { modelChoicesOn } from "./navigation";
+  import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
+  import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
@@ -46,7 +47,11 @@
   });
 </script>
 
-<PageFrame notice={tab.notice} onclosenotice={tab.closeNotice}>
+<PageFrame
+  notice={tab.notice}
+  onclosenotice={tab.closeNotice}
+  mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}
+>
   {#snippet navigation()}
     <PageNavigation {session} onfollow={inApp.follow} />
   {/snippet}

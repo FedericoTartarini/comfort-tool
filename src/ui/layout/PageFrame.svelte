@@ -23,11 +23,14 @@
   import * as Sidebar from "$lib/ui/primitives/sidebar";
   import AppSidebar from "./AppSidebar.svelte";
   import { marks } from "./marks";
+  import type { InAppLink } from "./NavGroup.svelte";
   import SiteHeader from "./SiteHeader.svelte";
 
   interface Props {
     notice: Notice | null;
     onclosenotice: () => void;
+    /** The header's mark's link, which the page writes and follows as its navigation's (decision 73, rule 5). */
+    mark: InAppLink;
     navigation: Snippet;
     sessionControls: Snippet;
     inputs: Snippet;
@@ -38,7 +41,7 @@
     chart: Snippet;
   }
 
-  let { notice, onclosenotice, navigation, sessionControls, inputs, results, chartActions, chart }: Props = $props();
+  let { notice, onclosenotice, mark, navigation, sessionControls, inputs, results, chartActions, chart }: Props = $props();
 
   const id = $props.id();
 </script>
@@ -49,7 +52,7 @@
 {/snippet}
 
 <Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem;">
-  <SiteHeader {notice} {onclosenotice} />
+  <SiteHeader {notice} {onclosenotice} {mark} />
 
   <div class="flex flex-1">
     <AppSidebar {navigation} {sessionControls} />

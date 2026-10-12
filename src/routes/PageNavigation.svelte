@@ -12,7 +12,8 @@
   import type { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import NavGroup, { type NavItem } from "$lib/ui/layout/NavGroup.svelte";
-  import { ariaCurrentOf, interceptLinkClick, pathTo, standardLinks } from "./navigation";
+  import { inAppLinkTo } from "./inAppSwitch";
+  import { ariaCurrentOf, standardLinks } from "./navigation";
 
   interface Props {
     session: Session;
@@ -22,23 +23,9 @@
 
   let { session, onfollow }: Props = $props();
 
-  /**
-   * An item that keeps its address, so a new tab and a copied address still
-   * work, and that asks the session first when it is the page the click
-   * belongs to. A click the navigation module declines to hand over is the
-   * browser's, and arrives as an address.
-   */
+  /** An item that is an in-app link to `target`, drawn current by the route models' reader. */
   function itemTo(target: Address, label: string): NavItem {
-    return {
-      label,
-      href: pathTo(target),
-      current: ariaCurrentOf(target, session),
-      onclick: (event) => {
-        if (interceptLinkClick(event)) {
-          onfollow(target);
-        }
-      },
-    };
+    return { label, current: ariaCurrentOf(target, session), ...inAppLinkTo(target, onfollow) };
   }
 
   const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.displayName)));

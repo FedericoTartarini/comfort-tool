@@ -8,6 +8,7 @@
   in a dialog the chart card's heading row opens (decision 73, rule 8).
 -->
 <script lang="ts">
+  import { page } from "$lib/core/page";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
@@ -25,8 +26,8 @@
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import * as Dialog from "$lib/ui/primitives/dialog";
-  import { inAppSwitch } from "./inAppSwitch";
-  import { modelChoicesOn } from "./navigation";
+  import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
+  import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
@@ -35,7 +36,11 @@
   const inApp = inAppSwitch(session);
 </script>
 
-<PageFrame notice={tab.notice} onclosenotice={tab.closeNotice}>
+<PageFrame
+  notice={tab.notice}
+  onclosenotice={tab.closeNotice}
+  mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}
+>
   {#snippet navigation()}
     <PageNavigation {session} onfollow={inApp.follow} />
   {/snippet}

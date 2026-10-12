@@ -12,12 +12,16 @@
 <script lang="ts" module>
   import type { HTMLAnchorAttributes } from "svelte/elements";
 
-  /** A menu item: a link that keeps its address, and what its click does first. */
-  export interface NavItem {
-    label: string;
+  /** A link that keeps its address, and what its click does first: a menu item's, or the header's mark's. */
+  export interface InAppLink {
     href: string;
-    current: HTMLAnchorAttributes["aria-current"];
     onclick: (event: MouseEvent) => void;
+  }
+
+  /** A menu item: its name, its link, and whether it is current. */
+  export interface NavItem extends InAppLink {
+    label: string;
+    current: HTMLAnchorAttributes["aria-current"];
   }
 </script>
 

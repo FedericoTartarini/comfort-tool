@@ -1,11 +1,29 @@
 import type { Address } from "$lib/core/page";
 import type { Session } from "$lib/state/session.svelte";
-import { addressFromRoute, navigateTo } from "./navigation";
+import type { InAppLink } from "$lib/ui/layout/NavGroup.svelte";
+import { addressFromRoute, interceptLinkClick, navigateTo, pathTo } from "./navigation";
 
-/** The app's own ways to an address: a navigation link and the model select follow one, the dialog's yes accepts. */
+/** The app's own ways to an address: a navigation link, the header's mark and the model select follow one, the dialog's yes accepts. */
 export interface InAppSwitch {
   follow(target: Address): void;
   accept(): void;
+}
+
+/**
+ * A link to `target` that keeps its address, so a new tab and a copied address
+ * still work, and hands an ordinary click to `onfollow`, which asks the
+ * session first. A click the navigation module declines to hand over is the
+ * browser's, and arrives as an address.
+ */
+export function inAppLinkTo(target: Address, onfollow: (target: Address) => void): InAppLink {
+  return {
+    href: pathTo(target),
+    onclick: (event) => {
+      if (interceptLinkClick(event)) {
+        onfollow(target);
+      }
+    },
+  };
 }
 
 /**

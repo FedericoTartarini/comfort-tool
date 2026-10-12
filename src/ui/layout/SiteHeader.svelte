@@ -7,9 +7,11 @@
   under it and not sticky, so it scrolls away with the page; the row's inset
   and gap are the page's spacing token; the trigger stands only below `md`,
   where the sidebar is the primitive's sheet (rule 10), and is gone while it
-  is fixed; the CBE mark, a link, follows it; the separator stands after the
-  mark, not the trigger, `h-6` in the band's white at 30 %; the breadcrumb is the
-  title, the `h1`; the search form is the notice line, centred in the room
+  is fixed; the CBE mark follows it, a link to the default model's address
+  that the page follows as an in-app switch (rule 5 as revised again
+  2026-10-12), handed in as the navigation's items are; the separator stands
+  after the mark, not the trigger, `h-6` in the band's white at 30 %; the
+  breadcrumb is the title, the `h1`; the search form is the notice line, centred in the room
   between the title and Documentation, the last item. The band's own links
   and the trigger ring in the paper's white on focus, where the brand's ring
   would not show; the notice keeps the brand's, on its own white.
@@ -21,13 +23,16 @@
   import { Separator } from "$lib/ui/primitives/separator";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
   import { marks } from "./marks";
+  import type { InAppLink } from "./NavGroup.svelte";
 
   interface Props {
     notice: Notice | null;
     onclosenotice: () => void;
+    /** The mark's link: the default model's address, and what its click does first. */
+    mark: InAppLink;
   }
 
-  let { notice, onclosenotice }: Props = $props();
+  let { notice, onclosenotice, mark }: Props = $props();
 
   const sidebar = Sidebar.useSidebar();
 </script>
@@ -37,7 +42,7 @@
     {#if sidebar.isMobile}
       <Sidebar.Trigger class="shrink-0 [--ring:var(--background)]" />
     {/if}
-    <a href={copy.cbeAddress} class="flex shrink-0 items-center [--ring:var(--background)]">
+    <a href={mark.href} onclick={mark.onclick} class="flex shrink-0 items-center [--ring:var(--background)]">
       <img src={marks.cbe.src} alt={copy.cbeName} width={marks.cbe.width} height={marks.cbe.height} class="h-8 w-auto" />
     </a>
     <Separator orientation="vertical" class="bg-background/30 data-vertical:h-6 data-vertical:self-auto" />
