@@ -1,7 +1,7 @@
 import { Standard } from "jsthermalcomfort";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
-import { routeSegmentFor, standards, type StandardEntry } from "$lib/core/standard";
+import { isSameStandard, routeSegmentFor, standards, type StandardEntry } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 
 /*
@@ -12,12 +12,12 @@ import { registeredModels } from "$lib/models";
  * re-exports what pages use.
  */
 
-/** The models of `standard`, in registry order. */
+/** The models of `standard`, of whichever edition, in registry order. */
 export function modelsOf(
   standard: Standard,
   models: readonly RegisteredModel[] = registeredModels,
 ): RegisteredModel[] {
-  return models.filter((model) => model.standard === standard);
+  return models.filter((model) => model.standard !== undefined && isSameStandard(model.standard, standard));
 }
 
 /** Models that belong to a standard, in registry order. */
@@ -27,9 +27,10 @@ export function standardModels(): RegisteredModel[] {
 
 /**
  * The standards the navigation links, in its order: the app's own table, not
- * the library's key order or the registry's (the user, 2026-10-01). A
- * standard not listed has no link, though its models keep their Standard page
- * and their place in the model select.
+ * the library's key order or the registry's (the user, 2026-10-01). An entry
+ * stands for its standard, so a model pinned to another edition of it shares
+ * its link; a standard not listed has no link, though its models keep their
+ * Standard page and their place in the model select.
  */
 const navigationStandards: readonly Standard[] = [Standard.ashrae_55_2023, Standard.iso_7730_2025];
 
@@ -52,11 +53,14 @@ export function standardLinks(
 
 /**
  * Whether the navigation marks `link` current at `address`: a standard's link
- * on any model of that standard on the Standard page, though it opens the
- * standard's first, and the Explore link on Explore.
+ * on any model of that standard, of whichever edition, on the Standard page,
+ * though it opens the standard's first, and the Explore link on Explore.
  */
 export function isCurrentLink(link: Address, address: Address): boolean {
-  return link.page === address.page && (link.page !== page.standard || link.model.standard === address.model.standard);
+  return (
+    link.page === address.page &&
+    (link.page !== page.standard || isSameStandard(requireStandard(link.model), requireStandard(address.model)))
+  );
 }
 
 /**
@@ -76,8 +80,11 @@ export function ariaCurrentOf(link: Address, address: Address): "page" | "true" 
  * the open model's standard on the Standard page, and every registered model
  * on Explore (ADR-0002 decision 57).
  */
-export function modelChoicesOn(address: Address): readonly RegisteredModel[] {
-  return address.page === page.standard ? modelsOf(requireStandard(address.model)) : registeredModels;
+export function modelChoicesOn(
+  address: Address,
+  models: readonly RegisteredModel[] = registeredModels,
+): readonly RegisteredModel[] {
+  return address.page === page.standard ? modelsOf(requireStandard(address.model), models) : models;
 }
 
 export function defaultModel(): RegisteredModel {

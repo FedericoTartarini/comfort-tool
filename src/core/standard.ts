@@ -34,6 +34,14 @@ export function routeSegmentFor(standard: Standard): string {
   return entryFor(standard).routeSegment;
 }
 
+/**
+ * Whether `a` and `b` are editions of one standard (ADR-0002 decision 74, rule
+ * 2): `iso_7730_2005` and `iso_7730_2025` are, by their shared route segment.
+ */
+export function isSameStandard(a: Standard, b: Standard): boolean {
+  return routeSegmentFor(a) === routeSegmentFor(b);
+}
+
 /** `standard` as the result table's caption and the Input summary write it: `ASHRAE 55:2023`. */
 export function standardCaptionFor(standard: Standard): string {
   const { displayName, year } = entryFor(standard);

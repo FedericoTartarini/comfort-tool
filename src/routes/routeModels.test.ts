@@ -61,6 +61,12 @@ describe("modelsOf", () => {
     expect(modelsOf(Standard.iso_7730_2025, [pmvPpdIso, fixtureWithoutStandard])).toEqual([pmvPpdIso]);
   });
 
+  it("returns the models of either edition of the standard, in registry order", () => {
+    for (const standard of [Standard.iso_7730_2005, Standard.iso_7730_2025]) {
+      expect(modelsOf(standard, fixtures), standard).toEqual([pmvPpdIso, fixtureIso2005]);
+    }
+  });
+
   it("returns an empty list for a standard no fixture declares", () => {
     expect(modelsOf(Standard.ashrae_55_2023, [pmvPpdIso, fixtureWithoutStandard])).toEqual([]);
   });
@@ -154,10 +160,10 @@ describe("standardLinks", () => {
     ]);
   });
 
-  it("gives no link to a standard the app's table does not list, though a model has it", () => {
+  it("gives a standard one link whichever edition its models are pinned to, to its model registered first", () => {
     expect(standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ address }) => address.model)).toEqual([
       adaptiveAshrae,
-      pmvPpdIso,
+      fixtureIso2005,
     ]);
   });
 
@@ -176,6 +182,12 @@ describe("modelChoicesOn", () => {
     expect(modelChoicesOn({ page: page.standard, model: pmvPpdIso })).toEqual([pmvPpdIso]);
   });
 
+  it("offers the models of either edition of the standard on the Standard page, whichever is open", () => {
+    for (const model of [pmvPpdIso, fixtureIso2005]) {
+      expect(modelChoicesOn({ page: page.standard, model }, fixtures), model.info.label).toEqual([pmvPpdIso, fixtureIso2005]);
+    }
+  });
+
   it("offers every registered model on Explore, flat and in registry order, Heat Index among them", () => {
     for (const model of registeredModels) {
       expect(modelChoicesOn({ page: page.explore, model })).toEqual(registeredModels);
@@ -191,6 +203,13 @@ describe("isCurrentLink", () => {
     for (const model of [pmvPpdAshrae, adaptiveAshrae]) {
       expect(isCurrentLink(ashraeLink, { page: page.standard, model }), model.info.label).toBe(true);
       expect(isCurrentLink(isoLink, { page: page.standard, model }), model.info.label).toBe(false);
+    }
+  });
+
+  it("marks a standard's link current on a model of either of its editions", () => {
+    const [isoFixtureLink] = standardLinks(fixtures).map(({ address }) => address);
+    for (const model of [pmvPpdIso, fixtureIso2005]) {
+      expect(isCurrentLink(isoFixtureLink, { page: page.standard, model }), model.info.label).toBe(true);
     }
   });
 
