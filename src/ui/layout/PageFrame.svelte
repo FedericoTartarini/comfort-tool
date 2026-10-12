@@ -11,9 +11,11 @@
   of the brand's band follows the row, hand-made, as no block has one; below
   `md` the sidebar is the primitive's sheet, out of the row, and the inset
   takes the gutter its insets gave (decision 73, rule 10). The header
-  and the footer run the page's width and scroll with it. The header's row
-  is that fixed height, so a notice appearing or closing in it moves nothing
-  (decision 67, rule 10).
+  and the footer run the page's width and scroll with it; wider than the
+  content needs, the row and the bands' contents stand in one frame,
+  `--frame-width`, centred in the window (rule 10 as revised again
+  2026-10-12). The header's row is that fixed height, so a notice appearing
+  or closing in it moves nothing (decision 67, rule 10).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -52,10 +54,15 @@
   <span aria-hidden="true">·</span>
 {/snippet}
 
-<Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem;">
+<!--
+  The frame: the sidebar and the main area's `76rem`, the main area's width at
+  1440 px, so a wide monitor keeps those proportions (decision 73, rule 10 as
+  revised again 2026-10-12).
+-->
+<Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem);">
   <SiteHeader {notice} {onclosenotice} {mark} />
 
-  <div class="flex flex-1">
+  <div class="mx-auto flex w-full max-inline-(--frame-width) flex-1">
     <AppSidebar {navigation} {sessionControls} />
     <!--
       The inset is the block's content area, the page's `main`, on the ground,
@@ -111,39 +118,41 @@
     A band of the brand as the header is (decision 73, rule 5): decision 67
     rule 6's two lines at the left, its links in the band's white and
     underlined, as the CBE tools' footers draw them; the two marks at the
-    right, each a link to its institution.
+    right, each a link to its institution; the two sides in the frame.
   -->
   <footer
-    class="flex items-center justify-between gap-(--space-page) bg-(--brand) p-(--space-page) text-(length:--font-size-caption) text-background [&_a]:text-background [&_a]:underline [&_a]:underline-offset-2 [&_a]:[--ring:var(--background)]"
+    class="bg-(--brand) text-(length:--font-size-caption) text-background [&_a]:text-background [&_a]:underline [&_a]:underline-offset-2 [&_a]:[--ring:var(--background)]"
   >
-    <div>
-      <p>
-        {copy.footerTool(copy.appTitle, __APP_VERSION__)}
-        {@render separator()}
-        {copy.footerTool(copy.libraryName, __LIBRARY_VERSION__)}
-        {@render separator()}
-        <a href={copy.licenceAddress}>{copy.licence}</a>
-        {@render separator()}
-        <a href={copy.codeAddress}>{copy.code}</a>
-      </p>
-      <p>
-        {copy.citation}
-        <a href={copy.citationAddress}>{copy.citationAddress}</a>
-      </p>
-    </div>
-    <div class="flex shrink-0 items-center gap-(--space-page)">
-      <a href={copy.cbeAddress}>
-        <img src={marks.cbe.src} alt={copy.cbeName} width={marks.cbe.width} height={marks.cbe.height} class="h-9 w-auto" />
-      </a>
-      <a href={copy.berkeleyAddress}>
-        <img
-          src={marks.berkeley.src}
-          alt={copy.berkeleyName}
-          width={marks.berkeley.width}
-          height={marks.berkeley.height}
-          class="h-7 w-auto"
-        />
-      </a>
+    <div class="mx-auto flex max-inline-(--frame-width) items-center justify-between gap-(--space-page) p-(--space-page)">
+      <div>
+        <p>
+          {copy.footerTool(copy.appTitle, __APP_VERSION__)}
+          {@render separator()}
+          {copy.footerTool(copy.libraryName, __LIBRARY_VERSION__)}
+          {@render separator()}
+          <a href={copy.licenceAddress}>{copy.licence}</a>
+          {@render separator()}
+          <a href={copy.codeAddress}>{copy.code}</a>
+        </p>
+        <p>
+          {copy.citation}
+          <a href={copy.citationAddress}>{copy.citationAddress}</a>
+        </p>
+      </div>
+      <div class="flex shrink-0 items-center gap-(--space-page)">
+        <a href={copy.cbeAddress}>
+          <img src={marks.cbe.src} alt={copy.cbeName} width={marks.cbe.width} height={marks.cbe.height} class="h-9 w-auto" />
+        </a>
+        <a href={copy.berkeleyAddress}>
+          <img
+            src={marks.berkeley.src}
+            alt={copy.berkeleyName}
+            width={marks.berkeley.width}
+            height={marks.berkeley.height}
+            class="h-7 w-auto"
+          />
+        </a>
+      </div>
     </div>
   </footer>
 </Sidebar.Provider>

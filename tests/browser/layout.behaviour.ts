@@ -202,6 +202,61 @@ for (const width of [1280, 1024]) {
   });
 }
 
+/**
+ * Wider than the content needs, the page stops growing: the sidebar and the
+ * main grid are one frame, as wide as at 1440 px and centred in the window,
+ * and the header's and footer's contents stand in it, while their bands run
+ * the window's width (decision 73, rule 10 as revised again 2026-10-12). The
+ * frame's width is read at 1440 px rather than restated.
+ */
+async function frame(page: Page, width: number) {
+  const banner = page.getByRole("banner");
+  const footer = page.getByRole("contentinfo");
+  const frameStart = (await boxOf(page.locator('[data-slot="sidebar-content"]').locator(".."))).x;
+  const grid = await boxOf(card(page, "Inputs").locator(".."));
+  const frameEnd = grid.x + grid.width;
+  const fromStart = async (locator: Locator) => (await boxOf(locator)).x - frameStart;
+  const toEnd = async (locator: Locator) => {
+    const box = await boxOf(locator);
+    return frameEnd - (box.x + box.width);
+  };
+  return {
+    margins: { start: frameStart, end: width - frameEnd },
+    /** The frame's width and how far inside it each band's first and last item stands. */
+    inside: {
+      width: frameEnd - frameStart,
+      markFromStart: await fromStart(banner.getByRole("link", { name: "Center for the Built Environment" })),
+      documentationToEnd: await toEnd(banner.getByRole("link", { name: "Documentation" })),
+      footerTextFromStart: await fromStart(footer.locator("p").first()),
+      footerMarksToEnd: await toEnd(footer.getByRole("link", { name: "University of California, Berkeley" })),
+    },
+  };
+}
+
+for (const width of [1920, 2560]) {
+  test(`at ${width} px, the sidebar, the main grid and the bands' contents are the 1440 px frame centred in the window, the legend beside the plot`, async ({ page }) => {
+    await openStandard(page, 1440);
+    const at1440 = await frame(page, 1440);
+
+    await openStandard(page, width);
+    const { margins, inside } = await frame(page, width);
+
+    expect(inside).toEqual(at1440.inside);
+    expect(margins.start).toBe(margins.end);
+    expect(isLegendBesidePlot(await boxes(page))).toBe(true);
+  });
+}
+
+for (const width of [2560, 1920, 1440, 1366, 1280, 1024, 768, 767]) {
+  test(`at ${width} px, the header and footer bands span the window`, async ({ page }) => {
+    await openStandard(page, width);
+
+    for (const band of [page.getByRole("banner"), page.getByRole("contentinfo")]) {
+      expect(await boxOf(band)).toMatchObject({ x: 0, width });
+    }
+  });
+}
+
 test("at 768 px, the sidebar is fixed and the header has no trigger", async ({ page }) => {
   await openStandard(page, 768);
 

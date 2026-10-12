@@ -12,9 +12,12 @@
   2026-10-12), handed in as the navigation's items are; the separator stands
   after the mark, not the trigger, `h-6` in the band's white at 30 %; the
   breadcrumb is the title, the `h1`; the search form is the notice line, centred in the room
-  between the title and Documentation, the last item. The band's own links
-  and the trigger ring in the paper's white on focus, where the brand's ring
-  would not show; the notice keeps the brand's, on its own white.
+  between the title and Documentation, the last item; the row stands in the
+  page's frame, `--frame-width`, which `PageFrame` sets beside the sidebar's
+  width, the band's ground the window's width (rule 10 as revised again
+  2026-10-12). The band's own links and the trigger ring in the paper's
+  white on focus, where the brand's ring would not show; the notice keeps
+  the brand's, on its own white.
 -->
 <script lang="ts">
   import type { Notice } from "$lib/state/openSession";
@@ -38,7 +41,7 @@
 </script>
 
 <header class="flex w-full items-center bg-(--brand) text-background">
-  <div class="flex h-(--header-height) w-full items-center gap-(--space-page) px-(--space-page)">
+  <div class="mx-auto flex h-(--header-height) w-full max-inline-(--frame-width) items-center gap-(--space-page) px-(--space-page)">
     {#if sidebar.isMobile}
       <Sidebar.Trigger class="shrink-0 [--ring:var(--background)]" />
     {/if}
