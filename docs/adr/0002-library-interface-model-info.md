@@ -1264,6 +1264,10 @@ the local `../comfort_tool` checkout:
     held slot, whose `listedRows` are empty for a slot not compared (`state/session.svelte.ts:130-151, 348-357`).
     "With the slot's name in a column of its own": while more than one slot is compared. With one, the dialog has no
     such column and reads as it did. The column has no heading: "Input" already heads the quantity's column.
+    **Noted 2026-10-12 (decision 50's note of the same day).** "While more than one slot is compared" is withdrawn:
+    the dialog has its slot column while the slots are named, that is while Compare is on, whatever the count, and
+    it reads the names from the slots' badges, deciding nothing itself. Decision 67's note's "with one slot the
+    not-calculated line has no swatch" reads "while Compare is off" likewise.
     **Amended 2026-10-01 (decision 57).** On the Explore page the compared slots are slot 1 alone: the dialog lists its
     rows, and slots 2 and 3 are converted and seeded as a slot not compared is.
 53. **A bound that depends on the pressure is not taken while the pressure is out of range.** Amends decisions 32, 46
