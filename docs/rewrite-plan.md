@@ -249,6 +249,20 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > B15 is done and D4 closed. `npm test` passes at 988 tests; `npm run test:browser` passed at 34 at ticket 03, and no
 > code changed since. **Next: Phase 5b's grilling.**
 
+> **2026-10-12 — position, Phase 5b grilled**: ADR-0002 decision 75, ahead of the code: three input calculators and no
+> fourth, each a one-shot Apply on the row whose box opened it, declared on that row (`calculators` on the declared
+> quantity), its own inputs quantities in `core/quantities.ts`, its bounds the library's `_INFO`, one conversion rule
+> for every target (`D1` generalised: written under the group's first mode, converted by the slot's), the ensemble a
+> sum grouped by ASHRAE 55 Table 5-3, the solar dialog the standard's eight inputs with the mean radiant temperature
+> shown before and after; the library first, `clo_tout` and `solar_gain` ported from pythermalcomfort 4.6.1 as params
+> objects with their `_INFO`, `CLO_INDIVIDUAL_GARMENT_GROUPS` added, and an upstream issue for the groups and the three
+> lost garments. ADR-0001 §4.1.5 carries the marker; decisions 50, 54, 67 and 73 are noted; `CONTEXT.md`'s **Quantity**
+> widens to a calculator's and **Input calculator** is added; `.scratch/open-points.md`'s `D1`, `B13` and `D6` are
+> updated and the `f_svv` window helper deferred as `B16`. The user's principle is recorded in the decision:
+> pythermalcomfort's code and methods are the baseline, a JS-only method is not preferred, and what belongs in the
+> library is built there. **Next: the user's `/to-tickets` in `../jsthermalcomfort/.scratch/` for the library's three
+> tickets, then `/to-spec` and `/to-tickets` in `.scratch/input-calculators/`.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1319,12 +1333,29 @@ A library function the app is about to call is ported to TypeScript first, with 
 it (`../jsthermalcomfort/CLAUDE.md:3`, "migrating to TypeScript one module at a time"; its JavaScript modules ship no
 `.d.ts`), so `clo_tout`, `solar_gain` and `clo_individual_garments` are ported ahead of their tickets, and `B13`'s two
 ensemble functions are written.
+**Grilled 2026-10-12** (ADR-0002 decision 75, ahead of the code). The ★5b rows: `D1`'s (b) is generalised to every
+target (rule 3); `B13` closes, its two functions not ported, since an ensemble is ASHRAE 55 §5.2.2.2's sum and ISO
+9920's regression a different method (rule 1); `D6` is not this phase's. The open points: the declaration field is
+`calculators` on the declared quantity it writes (rule 2); `solar_gain`'s dialog asks ASHRAE 55 Appendix C's eight
+inputs, the floor reflectance left at the library's default, the air and mean radiant temperatures neither asked nor
+duplicated (rule 4); and the library work is `clo_tout` and `solar_gain` ported from pythermalcomfort 4.6.1's
+signatures as one params object each, with their `_INFO` carrying the bounds the app reads (rules 5 and 8), and a
+grouped garment export, `CLO_INDIVIDUAL_GARMENT_GROUPS`, for the ensemble dialog (rule 7). Two sentences above are
+corrected: the library's JavaScript modules do ship a generated `.d.ts`, weakly typed, so the port's reason is the
+params object and the types; and `clo_individual_garments` is not ported, being a typed frozen table already. The
+library's three tickets live in `../jsthermalcomfort/.scratch/`, each ahead of the app ticket that calls it and the
+lock moved to it; the app's spec and tickets in `.scratch/input-calculators/`. Every calculator's own numeric input
+is a quantity in `core/quantities.ts`, landed ahead (rule 4).
 **Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
-into when it is applied.
+into when it is applied. **Decided 2026-10-12** (decision 75 rule 6): the slot is the one whose box opened the
+dialog, named in its title; no picker.
 
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 
 1. **Custom clothing ensemble** — build a garment list from the library's `clo_individual_garments`, Apply writes `clo`.
+   **Decided 2026-10-12** (decision 75 rules 1 and 7): the clo is the sum of the chosen garments' values, the chairs
+   among them; the list is a searchable checklist grouped under ASHRAE 55 Table 5-3's headings, the groups from the
+   library's `CLO_INDIVIDUAL_GARMENT_GROUPS`, with chips of the chosen garments and the running sum.
 2. **Predicted clothing from outdoor temperature** — `clo_tout`, the clo people wear at a given 6 a.m. outdoor
    temperature; Apply writes `clo`. **Rewritten 2026-09-30** (ADR-0002 decision 54): it read "Dynamic predictive
    clothing — `clo_dynamic_ashrae` / `clo_dynamic_iso` (split 2026-09-05; the ISO one also takes `v` and `i_a`),
@@ -1336,13 +1367,23 @@ Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly ou
    `clo_dynamic`. So "Apply writes `clo`" holds under clothing insulation entry. Under dynamic clothing entry the slot
    holds no `clo` and the panel shows no clothing insulation row; whether the calculator is offered there, writes
    the entry in the session's mode, or switches the mode first, is this item's to decide, and item 1's too.
+   **Decided 2026-10-12** (decision 75 rule 3): offered there, and the written `clo` is converted by the clothing
+   group's switch into the slot's mode; one input, the outdoor temperature at 6 a.m., in the session's unit system,
+   with no bound.
 3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
    the formula is general (ADR §3).
    **Confirmed 2026-10-07**: the main repository ships it as JavaScript, `src/models/solar_gain.js`, exported from the
    root (`src/models/index.js:20`); its TypeScript port is the library work above.
+   **Decided 2026-10-12** (decision 75 rules 3 to 5): Apply writes `tr + delta_mrt` into the slot's `tr`, folded
+   back to the operative temperature under operative entry; the dialog asks the standard's eight inputs, shows ERF,
+   ΔMRT and the mean radiant temperature before and after, and takes its bounds from `SOLAR_GAIN_INFO` (Table C-2's
+   allowable ranges, two of them stricter than upstream's code, revised in place the same day) and, for the three
+   fractions, from the `fraction` kind's definitional 0 to 1.
 
 The declaration field that says which model offers which calculator is added here, not earlier: Phase 4's acceptance is
 already past, and an optional field with no consumer would be exactly the speculative abstraction the ADR forbids.
+**Decided 2026-10-12** (decision 75 rule 2): `calculators` on the declared quantity; PMV (ASHRAE 55) lists all three,
+PMV (ISO 7730) the ensemble, Adaptive and Heat Index none.
 
 ---
 

@@ -5,7 +5,7 @@ A front-end that declares thermal-comfort models, takes their inputs, and render
 ## Language
 
 **Quantity**:
-A physical quantity a model takes or returns, defined once in the app's table with the library's key, a kind and a label. Referenced by object identity, never by its key string outside the library boundary.
+A physical quantity a model or an input calculator takes or returns, defined once in the app's table with the library's key, a kind and a label. Referenced by object identity, never by its key string outside the library boundary.
 _Avoid_: variable, field, parameter
 
 **Key**:
@@ -67,6 +67,10 @@ _Avoid_: derived input, self-generated air speed, activity-generated air speed, 
 **Preset**:
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
 _Avoid_: default, option, template
+
+**Input calculator**:
+A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slot whose row opened it, converted into the entry mode the slot is in. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
+_Avoid_: modifier, tool, wizard, helper
 
 **Option**:
 A switch a model takes beside its quantities, carrying no unit and never on a chart. Declared by the model, entered in the slot.
