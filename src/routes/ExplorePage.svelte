@@ -91,7 +91,6 @@
 
   {#snippet chartActions()}
     <Inline gap="2" align="center">
-      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="type" />
       <!-- Its edits are live, as decision 59 has them; Close only closes. A model with no Band list has nothing to edit. -->
       <Dialog.Root>
         <Dialog.Trigger disabled={session.chart.bands === null}>
@@ -128,7 +127,7 @@
 
   {#snippet chart()}
     <Stack gap="4">
-      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="axes" />
+      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
       {#if outputs.chart}
         <div class="chart-area">
           <PlotlyChart spec={outputs.chart} />

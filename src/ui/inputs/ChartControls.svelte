@@ -15,14 +15,9 @@
     chart: ChartState;
     /** The axes of the chart on screen, not of the live slot; `null` hides the picker. */
     drawnAxes: DrawnAxes | null;
-    /**
-     * Which part this draws (ADR-0002 decision 73, rule 8): the chart type, on the chart card's heading row, or the
-     * axis selects, on a row of their own under it, nothing where the chart declares no axes.
-     */
-    part: "type" | "axes";
   }
 
-  let { model, chart, drawnAxes, part }: Props = $props();
+  let { model, chart, drawnAxes }: Props = $props();
 
   const id = $props.id();
   // Options are addressed by position in these lists rather than by any string
@@ -35,14 +30,19 @@
   const yChoices = $derived(drawnAxes?.choices.filter((quantity) => quantity !== drawnAxes.selected.x) ?? []);
 </script>
 
-{#if part === "type"}
-  <!-- The card's heading already says "Chart", so the group is named, not labelled a second time. A click on the
-       chosen type asks for none (an empty value), which the setter ignores. -->
+<!--
+  The chart card's view row (ADR-0002 decision 73, rule 8 as revised 2026-10-12): the chart type, then the axis
+  selects where the chart declares axes. Every control in it is the small size, so the row, while it holds one line, is
+  one height on both chart types and a switch between them moves no row and not the plot.
+-->
+<Inline gap="2" align="center">
+  <!-- Named, not labelled: the card's heading says "Chart" once. A click on the chosen type asks for none (an empty
+       value), which the setter ignores. -->
   <ToggleGroup.Root
     type="single"
     variant="outline"
     size="sm"
-    aria-label={copy.chart}
+    aria-label={copy.chartType}
     bind:value={
       () => String(types.indexOf(chart.type)),
       (value) => {
@@ -56,27 +56,29 @@
       <ToggleGroup.Item value={String(index)}>{type.title}</ToggleGroup.Item>
     {/each}
   </ToggleGroup.Root>
-{:else if drawnAxes}
-  <Inline gap="2" align="center">
+  {#if drawnAxes}
     {@render axisPicker("x", copy.xAxis, xChoices, drawnAxes.selected.x)}
     {@render axisPicker("y", copy.yAxis, yChoices, drawnAxes.selected.y)}
-  </Inline>
-{/if}
+  {/if}
+</Inline>
 
+<!-- A label and its select are one item of the row, so a narrow row wraps them together. -->
 {#snippet axisPicker(axis: keyof ChartAxes, label: string, choices: readonly Quantity[], selected: Quantity)}
-  <Label for="{id}-{axis}">{label}</Label>
-  <Select.Root
-    type="single"
-    value={String(choices.indexOf(selected))}
-    onValueChange={(value) => chart.setAxes({ [axis]: choices[Number(value)] })}
-  >
-    <Select.Trigger id="{id}-{axis}">{selected.label}</Select.Trigger>
-    <Select.Content>
-      <Select.Group>
-        {#each choices as quantity, index (quantity)}
-          <Select.Item value={String(index)} label={quantity.label} />
-        {/each}
-      </Select.Group>
-    </Select.Content>
-  </Select.Root>
+  <Inline gap="2" align="center">
+    <Label for="{id}-{axis}">{label}</Label>
+    <Select.Root
+      type="single"
+      value={String(choices.indexOf(selected))}
+      onValueChange={(value) => chart.setAxes({ [axis]: choices[Number(value)] })}
+    >
+      <Select.Trigger id="{id}-{axis}" size="sm">{selected.label}</Select.Trigger>
+      <Select.Content>
+        <Select.Group>
+          {#each choices as quantity, index (quantity)}
+            <Select.Item value={String(index)} label={quantity.label} />
+          {/each}
+        </Select.Group>
+      </Select.Content>
+    </Select.Root>
+  </Inline>
 {/snippet}

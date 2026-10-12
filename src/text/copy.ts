@@ -145,6 +145,8 @@ export const copy = {
   // A chart's legend entry or readout line of one slot, while the chart draws more than one.
   slotEntry: (slotName: string, entry: string) => `${slotName} · ${entry}`,
   chart: "Chart",
+  // The chart type toggle-group's name, on the chart card's view row with no visible label (ADR-0002 decision 73, rule 8).
+  chartType: "Chart type",
   xAxis: "X axis",
   yAxis: "Y axis",
   comfortZone: "Comfort zone",

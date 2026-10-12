@@ -246,8 +246,8 @@
 	border-radius: var(--radius);
 }
 /* Every control has the one radius whatever its size (decision 73, rule 2), where Nova rounds a small button (`sm`,
-   `xs`, `icon-sm`, `icon-xs`), an `sm` toggle and toggle-group a step smaller, and the input group's button smaller
-   again. A button that opens or closes a dialog, a sheet, a popover or a menu carries that part's slot, the sidebar's
+   `xs`, `icon-sm`, `icon-xs`), an `sm` toggle, toggle-group and select trigger a step smaller, and the input group's
+   button smaller again. A button that opens or closes a dialog, a sheet, a popover or a menu carries that part's slot, the sidebar's
    trigger its own. A toggle-group's items keep the primitive's corners, the group's at the outer ends and none
    between; an item inside a popup or the sidebar's menu keeps Nova's smaller step. */
 [data-slot="button"],
@@ -258,7 +258,8 @@
 [data-slot="dropdown-menu-trigger"],
 [data-slot="sidebar-trigger"],
 [data-slot="toggle"],
-[data-slot="toggle-group"] {
+[data-slot="toggle-group"],
+[data-slot="select-trigger"] {
 	border-radius: var(--radius);
 }
 /* A quantity's row is the generated field (the shell's spec, "The rows"): its label, box and caption the field's spacing

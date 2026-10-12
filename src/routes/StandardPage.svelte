@@ -125,22 +125,19 @@
   {/snippet}
 
   {#snippet chartActions()}
-    <Inline gap="2" align="center">
-      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="type" />
-      <ExportImageDialog
-        chart={outputs.chart}
-        model={session.model}
-        chartType={session.chart.type}
-        runs={outputs.drawnRuns}
-        unitSystem={session.unitSystem}
-        onfailed={() => tab.raiseNotice("imageFailed")}
-      />
-    </Inline>
+    <ExportImageDialog
+      chart={outputs.chart}
+      model={session.model}
+      chartType={session.chart.type}
+      runs={outputs.drawnRuns}
+      unitSystem={session.unitSystem}
+      onfailed={() => tab.raiseNotice("imageFailed")}
+    />
   {/snippet}
 
   {#snippet chart()}
     <Stack gap="4">
-      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} part="axes" />
+      <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
       {#if outputs.chart}
         <div class="chart-area">
           <PlotlyChart spec={outputs.chart} />

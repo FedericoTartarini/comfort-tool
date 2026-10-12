@@ -36,8 +36,9 @@
     inputs: Snippet;
     /** The Results card's content, given the heading's id, which names the result table's scroll region. */
     results: Snippet<[headingId: string]>;
-    /** The chart card's controls, at the right of its heading row (decision 73, rule 8). */
+    /** The chart card's actions, at the right of its heading row (decision 73, rule 8 as revised 2026-10-12). */
     chartActions: Snippet;
+    /** The chart card's content: the view row, then the plot and the legend. */
     chart: Snippet;
   }
 
@@ -90,7 +91,7 @@
             </Card.Content>
           </Card.Root>
           <Card.Root>
-            <!-- One row: the heading, and the controls on the title's line rather than the primitive's two rows. -->
+            <!-- One row: the heading, and the actions on the title's line rather than the primitive's two rows. -->
             <Card.Header class="items-center">
               <Card.Title><h2>{copy.chart}</h2></Card.Title>
               <Card.Action class="row-span-1 self-center">

@@ -65,10 +65,9 @@ async function boxes(page: Page): Promise<Boxes> {
 /**
  * What a click must leave in place: every region's start and width, the
  * footer's apart from its height on the page, which follows the content's;
- * the plot's start and size. Compare and the chart type may move the plot
- * down, by the Results card's new rows or the axis row above it (the user's
- * call, `.scratch/shell/issues/09-…md` Comments), so their check leaves the
- * plot's `y` out.
+ * the plot's start and size. Compare may move the plot down, by the Results
+ * card's new rows (the user's call, `.scratch/shell/issues/09-…md`
+ * Comments), so its check leaves the plot's `y` out.
  */
 function inPlace({ header, sidebar, inputs, results, footer, plot }: Boxes, plotMayDrop = false) {
   return {
@@ -109,7 +108,7 @@ async function holdBoxes(page: Page) {
 }
 
 for (const width of [1440, 1366]) {
-  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare and the chart type move the plot down, and the legend stays beside it`, async ({ page }) => {
+  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare moves the plot down, and the legend stays beside it`, async ({ page }) => {
     await openStandard(page, width);
     const inputs = await boxOf(card(page, "Inputs"));
     expect(inputs.x + inputs.width).toBeLessThanOrEqual((await boxOf(card(page, "Results"))).x);
@@ -159,11 +158,11 @@ for (const width of [1440, 1366]) {
       await expect(notice).toBeEmpty();
     });
 
-    const chartType = (name: string) => page.getByRole("radio", { name });
+    const chartType = (name: string) => page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name });
     await expectInPlace(async () => {
       await chartType("Dynamic").click();
       await expect(page.getByLabel("X axis")).toBeVisible();
-    }, true);
+    });
     await expectInPlace(async () => {
       await chartType("Psychrometric").click();
       await expect(page.getByLabel("X axis")).toHaveCount(0);
