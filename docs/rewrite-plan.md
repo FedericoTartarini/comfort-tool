@@ -200,6 +200,14 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > the user's `/to-spec` and `/to-tickets` for the shell, in a folder of its own, ahead of Phase 5b's grilling (step 4 of
 > the table above).**
 
+> **2026-10-12 — position, the shell's second grilling**: `.scratch/shell/` tickets 01 to 10 have landed (01 `bac8e61`
+> to 10 `367277d`); before its docs close-out, ticket 11, the user's adjustments to the built page and the tickets'
+> open points were grilled into revisions of ADR-0002 decisions 36 (an option stands where its declaration lists it
+> among the inputs, one ordered list), 63 (a model-less address opens the page the tab kept) and 73 (one radius on
+> every control, the header's mark to `/`, a view row under the chart card's heading row, a maximum width on the main
+> area, and the open points settled), and `docs/design.md`. **Next: the user's `/to-spec` revises the shell's spec in
+> place and `/to-tickets` adds the tickets, 11 blocked by them and last; then Phase 5b's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /

@@ -77,8 +77,9 @@ Two spacing values for the page: `0.75rem` for the page gutter, the gap between 
 rows and within a row (the layout helpers' `gap="4"` and `gap="2"` read this token); `0.25rem` within a field, between
 its label, its box and its caption (`gap="1"`). The header is `3.5rem` tall. A generated component keeps its style's
 own insides (a sidebar group's `p-2`, a menu's `gap-1`, a button's padding): those are the registry's, not the page's.
-One radius token, 6 px; Nova's derived steps (`--radius-sm/md/xl`) are kept, since an item inside a padded popup
-needs a smaller corner than the popup. Units are rem, except hairlines (1 px borders, the 2 px line swatch), the
+One radius token, 6 px, on every bordered control whatever its size, the `sm` and `xs` buttons, the toggles and the
+input-group's buttons among them (decision 73, rule 2 as revised 2026-10-12); Nova's derived steps
+(`--radius-sm/md/xl`) are kept only for the items inside a padded popup, which need a smaller corner than the popup. Units are rem, except hairlines (1 px borders, the 2 px line swatch), the
 radius steps, values read off the DOM and Plotly's px API.
 
 ## The page at 1440 px
@@ -114,7 +115,8 @@ full width above and below, neither resident. The sidebar's fills, the header's 
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Header.** A band of the brand: the white CBE mark, a link to cbe.berkeley.edu; a vertical separator; the title, an
+**Header.** A band of the brand: the white CBE mark, a link to the tool's own root, `/`, which opens the page the
+tab kept (decision 63, rule 3 as revised 2026-10-12); a vertical separator; the title, an
 `h1`; the notice line, the generated `Alert` inside the status region, centred in the room between; Documentation.
 Focus after Reset or a link's yes lands on the `h1`.
 
@@ -133,10 +135,12 @@ a select's trigger is not. With Compare on, the three slot buttons head three co
 column sticky, the region scrolls sideways with its clipped edge faded), then the standard's caption and the kept
 rows' note, an `Alert` in the `destructive` variant with a triangle-alert icon; a kept row's numbers are muted.
 
-**Chart.** A card: the heading row carries Chart, then at the right the chart type toggle-group, on Explore the
-Bands button, and Export image; where the chart has axis selects they take a row of their own, left-aligned. The
+**Chart.** A card: the heading row carries Chart, then at the right, on Explore, the Bands button, and Export image;
+under it a view row, on every chart, holds the chart type toggle-group, named "Chart type", then the axis selects
+where the chart has them, left-aligned (decision 73, rule 8 as revised 2026-10-12). The
 plot is the exported image's 4:3 plot area, capped at `24rem` tall, so the screen and the file are one picture; it
-stands on the card's leading edge and never moves. The legend is a column beside it, `10rem` wide by preference, centred
+stands on the card's leading edge and never moves; content above the chart card may (a kept row's note, Compare's
+rows), controls never. The legend is a column beside it, `10rem` wide by preference, centred
 in a room of at most `18rem` to its right, entries wrapping to lines. Bands is a dialog, `40rem` as every dialog (decision 67, rule 9),
 opened from the heading row; what the dialog does is decided apart (`.scratch/open-points.md` B6). The readout stays
 on the pointer, lettered at the caption's size.
@@ -162,8 +166,11 @@ input column, the module gap, the chart card's padding, the plot at its cap, its
 basis and the gutter), about 1356 px of window; narrower, the input card stands above the other two and the chart
 card takes the main area's width, the legend beside the plot down to about 932 px. Below `md` (768 px) the sidebar
 is the primitive's `Sheet`, the one device breakpoint, its trigger in the header before the mark, with the Session
-group inside it. Compare's three slot columns stay side by side at every width (decision 50). Verified by a
-screenshot walk at 1440, 1366, 1280, 1024 and 768 px.
+group inside it. Compare's three slot columns stay side by side at every width (decision 50). Wider than the content
+needs, the main area's grid stops growing: a `max-inline-size` derived as the threshold is, about `76rem`,
+left-aligned against the sidebar, so the chart card, the table's columns and the legend's room keep the 1440 px
+proportions on a wide monitor; the header and footer bands stay full width (decision 73, rule 10 as revised
+2026-10-12). Verified by a screenshot walk at 1440, 1366, 1280, 1024 and 768 px.
 
 ## Self-check against the generic
 
