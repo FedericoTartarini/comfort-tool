@@ -209,6 +209,14 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > points settled), and `docs/design.md`. **Next: the user's `/to-spec` revises the shell's spec in
 > place and `/to-tickets` adds the tickets, 11 blocked by them and last; then Phase 5b's grilling.**
 
+> **2026-10-12 — position, the display order grilled**: after `.scratch/shell/` ticket 13 (`1906b86`), the order the
+> sidebar, the two model selects and the default model show was grilled into ADR-0002 decision 74, ahead of the code:
+> the registry is the one order, reordered so ASHRAE 55 leads and the default model is PMV (ASHRAE 55); the sidebar's
+> table goes; a standard is a family and an edition is the model's; the Explore select is grouped by standard.
+> CONTEXT.md's **Standard** is revised and **Edition** added. It lands before shell ticket 11, whose close-out reads
+> decision 73 rule 5. **Next: the user's `/to-spec` and `/to-tickets` in a folder of its own; then shell tickets 14
+> to 18 and 11; then Phase 5b's grilling.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /

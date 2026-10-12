@@ -41,8 +41,12 @@ How far a quantity is drawn on a chart. A viewport, declared by the model file; 
 _Avoid_: limit, extent, domain
 
 **Standard**:
-A versioned identifier from the library (`iso_7730_2005`). A model declares the one it implements; its display name and route segment are generated from it. The Standard page is named after it; "standard" alone means the identifier.
-_Avoid_: edition (except when contrasting two versions of one standard), norm
+A published standard as a family, `ISO 7730`: what a sidebar item, a Standard page, a route segment and a model select are each one of. Its display name and route segment are generated from the library's identifier. A model belongs to one standard by declaring one of its editions.
+_Avoid_: norm, edition (that is one version of a standard)
+
+**Edition**:
+One version of a standard: the versioned identifier the library names and a declaration writes (`iso_7730_2025`). It appears in the result table's caption and the Input summary (`ISO 7730:2025`) and nowhere else; two models may declare different editions of one standard and share its page.
+_Avoid_: version, revision, year (the year is how an edition is written)
 
 **Declaration**:
 The one file in `src/models/` that binds a model: its info, standard, run call, defaults, axis ranges, table columns and charts.
