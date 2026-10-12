@@ -37,6 +37,13 @@ const fixtureIso2005 = {
   info: { ...pmvPpdIso.info, name: "fixture_iso_2005" },
 };
 
+// A standard no registered model declares.
+const fixtureIso7933 = {
+  ...pmvPpdIso,
+  standard: Standard.iso_7933_2023,
+  info: { ...pmvPpdIso.info, name: "fixture_iso_7933" },
+};
+
 const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
 
 /** Whether `a` and `b` both have a standard, and it is one standard, of whichever edition. */
@@ -163,15 +170,15 @@ describe("modelByExploreSegment", () => {
 });
 
 describe("standardLinks", () => {
-  it("gives each standard with a model one link, in the app's order, to its first registered model on the Standard page", () => {
+  it("gives each standard with a model one link, in the registry's order, to its first registered model on the Standard page", () => {
     expect(standardLinks().map(({ standard, address }) => [standard.displayName, address.page, address.model])).toEqual([
       ["ASHRAE 55", page.standard, pmvPpdAshrae],
       ["ISO 7730", page.standard, pmvPpdIso],
     ]);
   });
 
-  it("keeps the app's order whatever the registry's", () => {
-    expect(standardLinks([pmvPpdIso, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([pmvPpdAshrae, pmvPpdIso]);
+  it("follows the order the registry first names each standard, whatever the library's key order", () => {
+    expect(standardLinks([pmvPpdIso, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([pmvPpdIso, pmvPpdAshrae]);
   });
 
   it("opens the standard's model registered first", () => {
@@ -181,15 +188,20 @@ describe("standardLinks", () => {
     ]);
   });
 
-  it("gives a standard one link whichever edition its models are pinned to, to its model registered first", () => {
-    expect(standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ address }) => address.model)).toEqual([
-      adaptiveAshrae,
-      fixtureIso2005,
+  it("gives a standard one link whichever edition its models are pinned to, named by its model registered first", () => {
+    expect(
+      standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.id, address.model]),
+    ).toEqual([
+      [Standard.iso_7730_2005, fixtureIso2005],
+      [Standard.ashrae_55_2023, adaptiveAshrae],
     ]);
   });
 
-  it("gives no link to a listed standard no model has", () => {
-    expect(standardLinks([pmvPpdIso]).map(({ address }) => address.model)).toEqual([pmvPpdIso]);
+  it("gives a standard no other model has its own link", () => {
+    expect(standardLinks([pmvPpdAshrae, fixtureIso7933]).map(({ standard, address }) => [standard.displayName, address.model])).toEqual([
+      ["ASHRAE 55", pmvPpdAshrae],
+      ["ISO 7933", fixtureIso7933],
+    ]);
   });
 
   it("gives a model with no standard no link", () => {

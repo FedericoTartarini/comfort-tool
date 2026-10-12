@@ -26,29 +26,30 @@ export function standardModels(): RegisteredModel[] {
 }
 
 /**
- * The standards the navigation links, in its order: the app's own table, not
- * the library's key order or the registry's (the user, 2026-10-01). An entry
- * stands for its standard, so a model pinned to another edition of it shares
- * its link; a standard not listed has no link, though its models keep their
- * Standard page and their place in the model select.
- */
-const navigationStandards: readonly Standard[] = [Standard.ashrae_55_2023, Standard.iso_7730_2025];
-
-/**
- * The navigation's Standard group: one link per standard of
- * {@link navigationStandards} that has a model, in that order, each opening
- * the standard's first registered model on the Standard page (ADR-0002
- * decision 57). The link is an address, so it opens the same model whichever
- * model the person is on.
+ * The navigation's Standard group: one link per standard that has a registered
+ * model, in the order the registry first names each, each opening the
+ * standard's first registered model on the Standard page (ADR-0002 decisions
+ * 57 and 74). A model pinned to another edition of a standard already linked
+ * shares its link; the link names the edition its first model declares. The
+ * link is an address, so it opens the same model whichever model the person
+ * is on.
  */
 export function standardLinks(
   models: readonly RegisteredModel[] = registeredModels,
 ): { standard: StandardEntry; address: Address }[] {
-  return navigationStandards.flatMap((id) => {
+  const links: { standard: StandardEntry; address: Address }[] = [];
+  for (const model of models) {
+    const id = model.standard;
+    if (id === undefined || links.some(({ standard }) => isSameStandard(standard.id, id))) {
+      continue;
+    }
     const standard = standards.find((entry) => entry.id === id);
-    const [first] = modelsOf(id, models);
-    return standard && first ? [{ standard, address: { page: page.standard, model: first } }] : [];
-  });
+    if (!standard) {
+      throw new Error(`No entry declared for standard "${id}"`);
+    }
+    links.push({ standard, address: { page: page.standard, model } });
+  }
+  return links;
 }
 
 /**

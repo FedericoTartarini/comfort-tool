@@ -291,6 +291,15 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   await expect(trigger).toBeFocused();
 });
 
+test("at 1440 px, the sidebar's Standard items read ASHRAE 55 then ISO 7730, the registry's order", async ({ page }) => {
+  await openStandard(page, 1440);
+
+  await expect(page.getByRole("navigation").getByRole("group", { name: "Standard" }).getByRole("link")).toHaveText([
+    "ASHRAE 55",
+    "ISO 7730",
+  ]);
+});
+
 test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {
   await openStandard(page, 1440);
   const box = page

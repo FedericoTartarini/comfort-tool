@@ -1,11 +1,11 @@
 <!--
   The navigation (ADR-0002 decision 57), the sidebar menu's groups (decision
   73, rule 6), each item a (page, model) address. Under Standard one item per
-  standard the app's table lists, opening that standard's first registered
-  model; under Tools the Explore item, keeping the current model. A
-  standard's item is drawn current on any of its models, the Explore item on
-  Explore; `aria-current` says `page` only on the item whose address is the
-  session's (decision 67, rule 2).
+  standard with a registered model, in the registry's order, opening that
+  standard's first registered model (decision 74); under Tools the Explore
+  item, keeping the current model. A standard's item is drawn current on any
+  of its models, the Explore item on Explore; `aria-current` says `page` only
+  on the item whose address is the session's (decision 67, rule 2).
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
