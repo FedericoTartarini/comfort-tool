@@ -167,10 +167,11 @@ basis and the gutter), about 1356 px of window; narrower, the input card stands 
 card takes the main area's width, the legend beside the plot down to about 932 px. Below `md` (768 px) the sidebar
 is the primitive's `Sheet`, the one device breakpoint, its trigger in the header before the mark, with the Session
 group inside it. Compare's three slot columns stay side by side at every width (decision 50). Wider than the content
-needs, the main area's grid stops growing: a `max-inline-size` derived as the threshold is, about `76rem`,
-left-aligned against the sidebar, so the chart card, the table's columns and the legend's room keep the 1440 px
-proportions on a wide monitor; the header and footer bands stay full width (decision 73, rule 10 as revised
-2026-10-12). Verified by a screenshot walk at 1440, 1366, 1280, 1024 and 768 px.
+needs, the page stops growing: the sidebar and the main area are one frame, the sidebar's `14rem` and the main area's
+`76rem`, its width at 1440 px, centred in the window, so the chart card, the table's columns and the legend's room
+keep the 1440 px proportions on a wide monitor; the header's and footer's contents stand in the same frame, their
+bands' ground full width, as the deployed tool's are (decision 73, rule 10 as revised again 2026-10-12). Verified by a
+screenshot walk at 1440, 1366, 1280, 1024 and 768 px.
 
 ## Self-check against the generic
 
