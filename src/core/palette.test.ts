@@ -49,9 +49,10 @@ describe("the stylesheet", () => {
     expect(declared("--ring")).toBe("var(--brand)");
   });
 
-  // The sidebar primitive's tokens, each another token's value, so no colour enters with them (decision 73, rule 3).
+  // The sidebar primitive's tokens, each another token's value, so no colour enters with them, its ground the ground
+  // (decision 73, rule 3).
   const sidebar = {
-    "--sidebar": "var(--background)",
+    "--sidebar": "var(--ground)",
     "--sidebar-foreground": "var(--foreground)",
     "--sidebar-primary": "var(--brand)",
     "--sidebar-primary-foreground": "var(--primary-foreground)",

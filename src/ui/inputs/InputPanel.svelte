@@ -132,13 +132,15 @@
   {/each}
 
   <!-- A slot's applicability hints are the generated alert (the shell's spec, "The result table"), in its default
-       variant, which leaves red to the kept rows' note: the lead as its title, one hint a line. -->
+       variant, which leaves red to the kept rows' note: the lead as its title, one hint a line. Announced politely
+       (`status`), where the note keeps the primitive's `alert`, so typing a value out of range interrupts no one
+       (decision 73, rule 9). -->
   {#if hasHints}
     <SlotColumns count={columns.length}>
       {#each hints as slotHints, position (position)}
         <div>
           {#if slotHints.length > 0}
-            <Alert.Root>
+            <Alert.Root role="status">
               <Alert.Title>{copy.applicabilityHint}</Alert.Title>
               {#each slotHints as violation (violation)}
                 <Alert.Description>{warningFor(violation, unitSystem)}</Alert.Description>

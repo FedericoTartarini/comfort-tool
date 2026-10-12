@@ -48,7 +48,7 @@
 	/* The one radius (decision 73, rule 2); `@theme` derives Nova's smaller and larger steps from it. */
 	--radius: 0.375rem;
 
-	--sidebar: var(--background);
+	--sidebar: var(--ground);
 	--sidebar-foreground: var(--foreground);
 	--sidebar-primary: var(--brand);
 	--sidebar-primary-foreground: var(--primary-foreground);
@@ -277,6 +277,11 @@
 [data-slot="input"]:not([type="color"]),
 [data-slot="input-group"] {
 	background-color: var(--ground);
+}
+/* A box takes the other colour of the surface it stands on (decision 73, rule 6): in the sidebar, which is the ground,
+   the session's pressure box is the paper. The sidebar's content is the slot both the column and the sheet carry. */
+[data-slot="sidebar-content"] :is([data-slot="input"]:not([type="color"]), [data-slot="input-group"]) {
+	background-color: var(--background);
 }
 /* One pressed state (decision 73, rule 3): a chosen toggle-group item and a pressed toggle, Compare, a slot button or
    a band's No colour, take the primary fill, where the generated toggle's pressed state is the hover's `bg-muted`. */

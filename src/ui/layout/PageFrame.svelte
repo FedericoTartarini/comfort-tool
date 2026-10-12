@@ -15,7 +15,8 @@
   content needs, the row and the bands' contents stand in one frame,
   `--frame-width`, centred in the window (rule 10 as revised again
   2026-10-12). The header's row is that fixed height, so a notice appearing
-  or closing in it moves nothing (decision 67, rule 10).
+  or closing in it moves nothing (decision 67, rule 10). The provider's
+  Cmd/Ctrl+B is stopped at the window, so it writes no cookie (rule 6).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -23,6 +24,7 @@
   import { copy } from "$lib/text/copy";
   import * as Card from "$lib/ui/primitives/card";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
+  import { SIDEBAR_KEYBOARD_SHORTCUT } from "$lib/ui/primitives/sidebar/constants";
   import AppSidebar from "./AppSidebar.svelte";
   import { marks } from "./marks";
   import type { InAppLink } from "./NavGroup.svelte";
@@ -47,7 +49,17 @@
   let { notice, onclosenotice, mark, navigation, sessionControls, inputs, results, chartActions, chart }: Props = $props();
 
   const id = $props.id();
+
+  // The tool sets no cookie (decision 73, rule 6), and the sidebar provider's Cmd/Ctrl+B writes `sidebar_state`
+  // whatever its `open`, at a width where the sidebar never collapses. The key stops at the window, before the
+  // provider's listener hears it, and does what the browser does with it; below `md` it no longer opens the sheet,
+  // which the trigger does.
+  function stopSidebarShortcut(event: KeyboardEvent) {
+    if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) event.stopPropagation();
+  }
 </script>
+
+<svelte:window onkeydowncapture={stopSidebarShortcut} />
 
 <!-- The middle dot the copy separates with (the Image's footer, the legend), hidden from a screen reader. -->
 {#snippet separator()}
