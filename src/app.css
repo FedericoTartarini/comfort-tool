@@ -106,14 +106,13 @@
 	html {
 		@apply font-sans;
 	}
-	/* The title, the page frame's `h1`, and a heading: a card's, set over the card title's own size, or the Bands
-	   panel's inside the chart card (the Phase 5c spec's type roles; decision 73, rule 2). */
+	/* The title, the header's `h1`, and a heading, a card's `h2`, set over the card title's own size (the Phase 5c
+	   spec's type roles; decision 73, rule 2). */
 	h1 {
 		font-size: var(--font-size-title);
 		font-weight: 600;
 	}
-	h2,
-	h3 {
+	h2 {
 		font-size: var(--font-size-heading);
 		font-weight: 600;
 	}
