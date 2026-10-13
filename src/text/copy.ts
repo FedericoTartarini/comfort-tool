@@ -93,6 +93,11 @@ export const copy = {
   // A dialog whose result is added to its row shows the row before and after Apply: "Mean radiant temperature before".
   calculatorBefore: (label: string) => `${label} before`,
   calculatorAfter: (label: string) => `${label} after`,
+  // Custom ensemble's checklist: its search box, its empty list, a chosen garment's remove button, and the sum.
+  ensembleSearchPlaceholder: "Search garments…",
+  ensembleEmpty: "No garment matches.",
+  ensembleRemove: (garment: string) => `Remove ${garment}`,
+  ensembleInsulation: "Ensemble insulation",
   // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.
   rowCaption: (preset: string, bound: string) => `${preset} · ${bound}`,
   presetSearchPlaceholder: "Search…",

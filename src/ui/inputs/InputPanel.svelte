@@ -23,6 +23,7 @@
   import * as Alert from "$lib/ui/primitives/alert";
   import { Checkbox } from "$lib/ui/primitives/checkbox";
   import { Label } from "$lib/ui/primitives/label";
+  import CalculatorEnsembleDialog from "./CalculatorEnsembleDialog.svelte";
   import CalculatorFormDialog from "./CalculatorFormDialog.svelte";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
   import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";
@@ -170,12 +171,20 @@
   {/if}
 </Stack>
 
-<!-- Custom ensemble's checklist dialog lands with its own ticket; until then choosing it opens nothing. -->
+<!-- A calculator's dialog is told apart by what it asks: quantity rows, or the library's garments. -->
 {#if opened?.calculator.asks}
   <CalculatorFormDialog
     calculator={opened.calculator}
     slot={opened.column.inputSlot}
     {model}
+    slotName={opened.column.outputs.badge.name}
+    {unitSystem}
+    onapply={apply}
+    onclose={() => (opened = null)}
+  />
+{:else if opened?.calculator.groups}
+  <CalculatorEnsembleDialog
+    calculator={opened.calculator}
     slotName={opened.column.outputs.badge.name}
     {unitSystem}
     onapply={apply}

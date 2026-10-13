@@ -116,8 +116,8 @@ export const customEnsemble: GarmentCalculator = {
   },
 };
 
-/** The library's insulation of `garment`, or a throw naming a key its table lacks. */
-function requireGarment(garment: string): number {
+/** The library's insulation of `garment` in clo, or a throw naming a key its table lacks. */
+export function requireGarment(garment: string): number {
   const insulation = clo_individual_garments[garment];
   if (insulation === undefined) {
     throw new Error(`The library has no garment ${garment}`);

@@ -1,5 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { clo_dynamic_ashrae, clo_tout, solar_gain, Standard, t_o } from "jsthermalcomfort";
+import {
+  CLO_INDIVIDUAL_GARMENT_GROUPS,
+  clo_dynamic_ashrae,
+  clo_individual_garments,
+  clo_tout,
+  solar_gain,
+  Standard,
+  t_o,
+} from "jsthermalcomfort";
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
@@ -314,5 +322,135 @@ test.describe("Solar gain on occupants", () => {
     await dialog.getByRole("button", { name: "Apply" }).click();
     const folded = t_o(25, 25 + increaseAt(0), 0.1, Standard.ashrae_55_2023);
     await expect(page.getByRole("spinbutton", { name: /^Operative temperature/ })).toHaveValue(formatNumber(folded));
+  });
+});
+
+test.describe("Custom ensemble", () => {
+  const ENSEMBLE = "Custom ensemble";
+  const SUM = "Ensemble insulation (clo)";
+  /** The library's sum of `garments`, and that sum at the app's two decimals. */
+  const totalOf = (...garments: string[]) => garments.reduce((total, garment) => total + clo_individual_garments[garment], 0);
+  const sumOf = (...garments: string[]) => formatNumber(totalOf(...garments));
+  /** A garment's entry, by the key it shows: some keys begin others, so matched whole. */
+  const garment = (dialog: Locator, key: string) => dialog.getByRole("option").filter({ has: dialog.page().getByText(key, { exact: true }) });
+  const chips = (dialog: Locator) => dialog.getByRole("button", { name: /^Remove / });
+  const clothingMenu = (page: Page, name: string | RegExp = /^Clothing insulation/, button = "Presets") =>
+    boxOf(page, name).getByRole("button", { name: button });
+
+  test("on PMV (ISO 7730) lists every garment once under the library's groups, in their order with Chairs last, valued in clo", async ({ page }) => {
+    await open(page, ISO_ADDRESS);
+    const dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await expect(dialog.getByRole("heading")).toHaveText(ENSEMBLE);
+
+    const groups = dialog.getByRole("listbox").getByRole("group");
+    const headings = CLO_INDIVIDUAL_GARMENT_GROUPS.map(({ group }) => group);
+    expect(headings[headings.length - 1]).toBe("Chairs");
+    await expect(groups).toHaveCount(headings.length);
+    for (const [index, { group, garments }] of CLO_INDIVIDUAL_GARMENT_GROUPS.entries()) {
+      await expect(groups.nth(index)).toHaveAccessibleName(group);
+      await expect(groups.nth(index).getByRole("option")).toHaveText(
+        garments.map((key) => `${key} ${formatNumber(clo_individual_garments[key])}`),
+      );
+    }
+    await expect(dialog.getByRole("option")).toHaveCount(Object.keys(clo_individual_garments).length);
+  });
+
+  test("searching narrows the list across the groups", async ({ page }) => {
+    await open(page, ISO_ADDRESS);
+    const dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await dialog.getByRole("combobox").fill("shoes");
+    const groups = dialog.getByRole("listbox").getByRole("group");
+    await expect(groups).toHaveCount(1);
+    await expect(groups).toHaveAccessibleName("Footwear");
+    await expect(dialog.getByRole("option")).toHaveCount(1);
+    await expect(garment(dialog, "Shoes or sandals")).toBeVisible();
+  });
+
+  test("checking adds a chip and the sum, a chip removes its garment, and Apply writes the sum and closes", async ({ page }) => {
+    await open(page);
+    const dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    const apply = dialog.getByRole("button", { name: "Apply" });
+    await expect(apply).toBeDisabled();
+
+    await garment(dialog, "Thin trousers").click();
+    await garment(dialog, "Long-sleeve dress shirt").click();
+    await garment(dialog, "Shoes or sandals").click();
+    await expect(chips(dialog)).toHaveCount(3);
+    await expect(garment(dialog, "Thin trousers")).toBeChecked();
+    await expect(dialog.getByRole("status", { name: SUM })).toHaveText(sumOf("Thin trousers", "Long-sleeve dress shirt", "Shoes or sandals"));
+
+    await dialog.getByRole("button", { name: "Remove Long-sleeve dress shirt" }).click();
+    await expect(chips(dialog)).toHaveCount(2);
+    await expect(garment(dialog, "Long-sleeve dress shirt")).not.toBeChecked();
+    await expect(dialog.getByRole("status", { name: SUM })).toHaveText(sumOf("Thin trousers", "Shoes or sandals"));
+
+    await apply.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("spinbutton", { name: /^Clothing insulation/ })).toHaveValue(sumOf("Thin trousers", "Shoes or sandals"));
+  });
+
+  test("checking a chosen garment again unchecks it, and with nothing chosen Apply is disabled", async ({ page }) => {
+    await open(page);
+    const dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await garment(dialog, "Boots").click();
+    await expect(dialog.getByRole("button", { name: "Apply" })).toBeEnabled();
+    await garment(dialog, "Boots").click();
+    await expect(chips(dialog)).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled();
+  });
+
+  test("closing without Apply changes nothing; the chosen set is kept for another model and starts empty on a reload", async ({ page }) => {
+    await open(page);
+    const clothing = page.getByRole("spinbutton", { name: /^Clothing insulation/ });
+    const before = await clothing.inputValue();
+    let dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await garment(dialog, "Thick skirt").click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(clothing).toHaveValue(before);
+
+    const standards = page.getByRole("navigation").getByRole("group", { name: "Standard" });
+    await standards.getByRole("link", { name: "ISO 7730" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+    dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await expect(chips(dialog)).toHaveText(["Thick skirt"]);
+    await page.keyboard.press("Escape");
+
+    await page.reload();
+    dialog = await openCalculator(clothingMenu(page), ENSEMBLE);
+    await expect(chips(dialog)).toHaveCount(0);
+  });
+
+  test("under Compare, the title names the slot, Apply writes that column alone, and another slot's dialog holds the same set", async ({ page }) => {
+    await open(page);
+    await compareThreeSlots(page);
+    const before = await page.getByRole("spinbutton", { name: "Clothing insulation (clo), Input 1" }).inputValue();
+    let dialog = await openCalculator(clothingMenu(page, "Clothing insulation (clo), Input 2", "Presets, Input 2"), ENSEMBLE);
+    await expect(dialog.getByRole("heading")).toHaveText(`${ENSEMBLE}, Input 2`);
+    await garment(dialog, "Sweatpants").click();
+    await garment(dialog, "Long-sleeve sweat shirt").click();
+    await dialog.getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByRole("spinbutton", { name: "Clothing insulation (clo), Input 2" })).toHaveValue(sumOf("Sweatpants", "Long-sleeve sweat shirt"));
+    for (const slot of ["Input 1", "Input 3"]) {
+      await expect(page.getByRole("spinbutton", { name: `Clothing insulation (clo), ${slot}` })).toHaveValue(before);
+    }
+
+    dialog = await openCalculator(clothingMenu(page, "Clothing insulation (clo), Input 3", "Presets, Input 3"), ENSEMBLE);
+    await expect(chips(dialog)).toHaveText(["Sweatpants", "Long-sleeve sweat shirt"]);
+  });
+
+  test("under dynamic clothing entry, Apply writes the corrected sum into the dynamic box", async ({ page }) => {
+    await open(page);
+    await page.getByRole("spinbutton", { name: /^Metabolic rate/ }).fill("2");
+    await page.getByRole("button", { name: "Clothing", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: /^Dynamic clothing insulation/ }).click();
+
+    const dialog = await openCalculator(clothingMenu(page, /^Dynamic clothing insulation/, "Calculators"), ENSEMBLE);
+    await garment(dialog, "Thin trousers").click();
+    await garment(dialog, "Short-sleeve knit shirt").click();
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    const corrected = clo_dynamic_ashrae(totalOf("Thin trousers", "Short-sleeve knit shirt"), 2);
+    await expect(page.getByRole("spinbutton", { name: /^Dynamic clothing insulation/ })).toHaveValue(formatNumber(corrected));
   });
 });

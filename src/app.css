@@ -309,8 +309,13 @@
 /* An item that ends in a value, a row's Presets: the generated item's check mark goes, since no preset is ever checked.
    Hidden, it still took its width and an auto margin, so the values ended short of the right edge, each at an x of its
    own, and stood further from it than the names from the left. */
-[data-slot="command-item"]:has(> .item-value) > svg {
+.list-popover [data-slot="command-item"]:has(> .item-value) > svg {
 	display: none;
+}
+/* A list whose items are checked, Custom ensemble's garments: the check mark keeps its width whether shown or not, at
+   the item's end after the value, so the values stand in one column. */
+.checklist [data-slot="command-item"] > svg {
+	margin-left: 0;
 }
 /* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
    (decision 72, rule 2), which wrap at 24rem. */
