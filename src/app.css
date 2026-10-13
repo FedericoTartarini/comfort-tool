@@ -293,6 +293,9 @@
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */
 	max-width: min(40rem, calc(100% - 2rem));
+	/* A dialog taller than the window scrolls inside the same margin: Solar gain's eight inputs and result are. */
+	max-height: calc(100dvh - 2rem);
+	overflow-y: auto;
 }
 /* A sidebar menu item is a link drawn as a button: hovered, the primitive fills it, so the base rule's underline does
    not reach it; a link in text keeps its underline (the shell's spec, "The frame"). */

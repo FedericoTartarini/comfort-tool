@@ -19,6 +19,7 @@ import {
   solarGainOnOccupants,
   startingInputs,
   withCalculatorResult,
+  writtenRow,
   type CalculatorResult,
 } from "./calculators";
 import { enteredSlotFor } from "./declarationTestSlots";
@@ -184,26 +185,37 @@ describe("outOfRangeCalculatorInputs", () => {
     expect(outOfRangeCalculatorInputs(solarGainOnOccupants, withValue(q.sol_altitude, 90.001))).toEqual([]);
   });
 
+  it("passes nothing the library warns of: at every end of every bound, Solar gain's result carries no warnings", () => {
+    for (const { quantity } of solarGainOnOccupants.asks) {
+      const bound = calculatorBound(solarGainOnOccupants, quantity)!;
+      for (const end of [bound.min, bound.max]) {
+        const inputs = withValue(quantity, end!);
+        expect(outOfRangeCalculatorInputs(solarGainOnOccupants, inputs), `${quantity.key} ${end}`).toEqual([]);
+        expect(solarGainOnOccupants.compute(inputs).warnings, `${quantity.key} ${end}`).toEqual([]);
+      }
+    }
+  });
+
   it("names nothing for an input with no bound", () => {
     const inputs = { values: new Map([[q.tout, -80]]) };
     expect(outOfRangeCalculatorInputs(clothingFromOutdoorTemperature, inputs)).toEqual([]);
   });
 });
 
+/** A result whose output is `value`, as a calculator's compute gives it. */
+const resultOf = (output: Quantity, value: number): CalculatorResult => ({ outputs: new Map([[output, value]]), warnings: [] });
+const clothing = resultOf(q.clo, 0.83);
+const increase = resultOf(q.delta_mrt, 4.2);
+
+// Not the declaration's defaults where it matters: 1.5 met, above the 1.2 met
+// ASHRAE 55 corrects from, and a mean radiant temperature apart from the air.
+const room = withOption(
+  withHumidityMode(enteredSlotFor(pmvPpdAshrae, { tdb: 24, tr: 27, v: 0.3, met: 1.5 }), humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE),
+  optionsOf(pmvPpdAshrae)[0],
+  true,
+);
+
 describe("withCalculatorResult", () => {
-  /** A result whose output is `value`, as a calculator's compute gives it. */
-  const resultOf = (output: Quantity, value: number): CalculatorResult => ({ outputs: new Map([[output, value]]), warnings: [] });
-  const clothing = resultOf(q.clo, 0.83);
-  const increase = resultOf(q.delta_mrt, 4.2);
-
-  // Not the declaration's defaults where it matters: 1.5 met, above the 1.2 met
-  // ASHRAE 55 corrects from, and a mean radiant temperature apart from the air.
-  const room = withOption(
-    withHumidityMode(enteredSlotFor(pmvPpdAshrae, { tdb: 24, tr: 27, v: 0.3, met: 1.5 }), humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE),
-    optionsOf(pmvPpdAshrae)[0],
-    true,
-  );
-
   /** What a write must leave as it was: the humidity entry, the air speed and the options. */
   function expectUntouched(written: Slot, slot: Slot) {
     expect(written.humidity).toEqual(slot.humidity);
@@ -257,5 +269,33 @@ describe("withCalculatorResult", () => {
     expect(() => withCalculatorResult(startingSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
       "Solar gain on occupants",
     );
+  });
+});
+
+describe("writtenRow", () => {
+  it("is the mean radiant temperature before and raised after, under separate entry", () => {
+    expect(writtenRow(room, solarGainOnOccupants, increase, pmvPpdAshrae)).toEqual({ quantity: q.tr, before: 27, after: 27 + 4.2 });
+  });
+
+  it("is the mean radiant temperature as expanded from the operative entry, which is what the write raises", () => {
+    const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
+    const entered = operative.values.get(q.operative_tmp)!;
+    expect(writtenRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae)).toEqual({
+      quantity: q.tr,
+      before: entered,
+      after: entered + 4.2,
+    });
+  });
+
+  it("is the clothing insulation before and the result after, for a calculator that replaces", () => {
+    const row = writtenRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae);
+    expect(row.quantity).toBe(q.clo);
+    expect(row.after).toBe(0.83);
+    expect(row.before).toBe(room.values.get(q.clo));
+  });
+
+  it("is what the next one starts from once written", () => {
+    const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
+    expect(writtenRow(once, solarGainOnOccupants, increase, pmvPpdAshrae).before).toBeCloseTo(27 + 4.2, 9);
   });
 });

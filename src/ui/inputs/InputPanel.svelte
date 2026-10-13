@@ -174,6 +174,8 @@
 {#if opened?.calculator.asks}
   <CalculatorFormDialog
     calculator={opened.calculator}
+    slot={opened.column.inputSlot}
+    {model}
     slotName={opened.column.outputs.badge.name}
     {unitSystem}
     onapply={apply}

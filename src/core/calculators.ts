@@ -205,6 +205,26 @@ export function outputOf(calculator: Calculator, result: CalculatorResult): numb
   return requireValue(result.outputs, calculator.output);
 }
 
+/** The row Apply writes: its value as the slot holds it in the entry group's first mode, and after the result meets it. */
+export interface WrittenRow {
+  readonly quantity: Quantity;
+  readonly before: number;
+  readonly after: number;
+}
+
+/**
+ * The row of `model` that declares `calculator`, before and after Apply of
+ * `result` on `slot` (decision 75 rule 3): read in its entry group's first
+ * mode, the one the declaration writes its inputs in, so under operative
+ * entry the mean radiant temperature is the one the operative temperature
+ * expands to. A solar dialog shows it as the slot's mean radiant temperature
+ * before and after; a second Apply starts from the raised one.
+ */
+export function writtenRow(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): WrittenRow {
+  const { quantity, before, after } = writeOf(slot, calculator, result, model);
+  return { quantity, before, after };
+}
+
 /**
  * `slot` after Apply of `calculator`'s `result`, on the row of `model` that
  * declares it (decision 75 rule 3): the slot is put into its entry group's
@@ -218,14 +238,24 @@ export function outputOf(calculator: Calculator, result: CalculatorResult): numb
  * gates what is written as it gates a typed value.
  */
 export function withCalculatorResult(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): Slot {
+  const { quantity, after, group, entered } = writeOf(slot, calculator, result, model);
+  const written = withEnteredValues(entered, new Map([[quantity, after]]));
+  return group ? group.convert(written, group.modeOf(slot), model) : written;
+}
+
+/**
+ * What Apply does on `slot`: the row `calculator` writes in `model`, before
+ * and after `result` meets it, its entry group, and `slot` put into that
+ * group's first mode, where the row is read and written.
+ */
+function writeOf(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel) {
   const row = inputsOf(model).find((entry) => entry.calculators?.includes(calculator));
   if (!row) {
     throw new Error(`${model.info.label} declares ${calculator.label} on no row`);
   }
-  const target = row.quantity;
-  const group = valueEntryGroups.find((candidate) => candidate.modes.some((mode) => mode.panel.includes(target)));
+  const { quantity } = row;
+  const group = valueEntryGroups.find((candidate) => candidate.modes.some((mode) => mode.panel.includes(quantity)));
   const entered = group ? group.convert(slot, group.modeOf(defaultEntryModes), model) : slot;
-  const met = calculator.meets(requireValue(entered.values, target), outputOf(calculator, result));
-  const written = withEnteredValues(entered, new Map([[target, met]]));
-  return group ? group.convert(written, group.modeOf(slot), model) : written;
+  const before = requireValue(entered.values, quantity);
+  return { quantity, before, after: calculator.meets(before, outputOf(calculator, result)), group, entered };
 }

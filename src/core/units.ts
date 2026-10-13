@@ -134,7 +134,12 @@ export function displayUnitFor(quantity: Quantity, system: UnitSystem): DisplayU
 
 /** `quantity`'s label with its display unit in brackets, or the bare label when the unit has no symbol. */
 export function labelWithUnit(quantity: Quantity, unit: DisplayUnit): string {
-  return unit.symbol ? `${quantity.label} (${unit.symbol})` : quantity.label;
+  return nameWithUnit(quantity.label, unit);
+}
+
+/** `name` with `unit` in brackets, or bare when the unit has no symbol: a label that is not a quantity's own. */
+export function nameWithUnit(name: string, unit: DisplayUnit): string {
+  return unit.symbol ? `${name} (${unit.symbol})` : name;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { clo_dynamic_ashrae, clo_tout } from "jsthermalcomfort";
+import { clo_dynamic_ashrae, clo_tout, solar_gain, Standard, t_o } from "jsthermalcomfort";
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
@@ -33,9 +33,9 @@ function predicted(tout: number) {
   return formatNumber(clo_tout({ tout }).clo_tout);
 }
 
-async function openCalculator(menuButton: Locator) {
+async function openCalculator(menuButton: Locator, calculator = CALCULATOR) {
   await menuButton.click();
-  await menuButton.page().getByRole("listbox").getByRole("option", { name: CALCULATOR }).click();
+  await menuButton.page().getByRole("listbox").getByRole("option", { name: calculator }).click();
   return menuButton.page().getByRole("dialog");
 }
 
@@ -189,5 +189,130 @@ test.describe("Clothing from outdoor temperature", () => {
     await dialog.getByRole("button", { name: "Apply" }).click();
     const corrected = clo_dynamic_ashrae(clo_tout({ tout: 20 }).clo_tout, 2);
     await expect(page.getByRole("spinbutton", { name: /^Dynamic clothing insulation/ })).toHaveValue(formatNumber(corrected));
+  });
+});
+
+test.describe("Solar gain on occupants", () => {
+  const SOLAR = "Solar gain on occupants";
+  /** The library's increase at the dialog's defaults but `sharp` and `posture`, unrounded as the app asks it. */
+  const increaseAt = (sharp: number, posture: "sitting" | "standing" = "sitting") =>
+    solar_gain({
+      sol_altitude: 45,
+      sharp,
+      sol_radiation_dir: 900,
+      sol_transmittance: 0.8,
+      f_svv: 0.2,
+      f_bes: 0.5,
+      asw: 0.7,
+      posture,
+      round_output: false,
+    }).delta_mrt;
+  const mrtMenu = (page: Page, name: string | RegExp = /^Mean radiant temperature/, button = "Calculators") =>
+    boxOf(page, name).getByRole("button", { name: button });
+  const status = (dialog: Locator, name: string) => dialog.getByRole("status", { name });
+
+  test("the mean radiant temperature box holds it alone under Calculators, and PMV (ISO 7730)'s holds none", async ({ page }) => {
+    await open(page);
+    const menu = mrtMenu(page);
+    await expect(menu).toHaveText("Calculators");
+    await menu.click();
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText([SOLAR]);
+
+    await open(page, ISO_ADDRESS);
+    await expect(boxOf(page, /^Mean radiant temperature/).getByRole("button")).toHaveCount(0);
+  });
+
+  test("asks the posture and seven boxes with their ranges, and shows the result before and after", async ({ page }) => {
+    await open(page);
+    const dialog = await openCalculator(mrtMenu(page), SOLAR);
+    await expect(dialog.getByRole("heading")).toHaveText(SOLAR);
+    await expect(dialog.getByRole("button", { name: "Posture", exact: true })).toHaveText("Seated");
+    await dialog.getByRole("button", { name: "Posture", exact: true }).click();
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Seated", "Standing", "Supine"]);
+    await page.keyboard.press("Escape");
+    // bits-ui 2.19.0 reads a list's z-index a frame after it mounts: reopened while the last one still closes, the
+    // list stacks under the dialog. Reopen once it has gone, as a person does.
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+
+    await expect(dialog.getByRole("spinbutton")).toHaveCount(7);
+    const captions = dialog.locator(".caption-line");
+    await expect(captions).toHaveText(["0 – 90", "0 – 180", "200 – 1000", "0 – 1", "0 – 1", "0 – 1", "0.2 – 0.9"]);
+
+    const increase = increaseAt(0);
+    await expect(status(dialog, "Mean radiant temperature increase (°C)")).toHaveText(formatNumber(increase));
+    await expect(status(dialog, "Effective radiant field (W/m²)")).toBeVisible();
+    await expect(status(dialog, "Mean radiant temperature before (°C)")).toHaveText("25");
+    await expect(status(dialog, "Mean radiant temperature after (°C)")).toHaveText(formatNumber(25 + increase));
+
+    await dialog.getByRole("button", { name: "Posture", exact: true }).click();
+    await page.getByRole("option", { name: "Standing" }).click();
+    await expect(status(dialog, "Mean radiant temperature increase (°C)")).toHaveText(formatNumber(increaseAt(0, "standing")));
+  });
+
+  test("a box out of range is marked, the result cleared and Apply disabled", async ({ page }) => {
+    await open(page);
+    const dialog = await openCalculator(mrtMenu(page), SOLAR);
+    const altitude = dialog.getByRole("spinbutton", { name: /^Solar altitude/ });
+    await altitude.fill("95");
+    await expect(altitude).toHaveAttribute("aria-invalid", "true");
+    await expect(dialog.getByRole("status")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled();
+  });
+
+  test("at the defaults Apply raises the box by the shown increase, past its bound and marked; reopened, it starts from there, keeps its inputs and raises again", async ({ page }) => {
+    await open(page);
+    const mrt = page.getByRole("spinbutton", { name: /^Mean radiant temperature/ });
+    let dialog = await openCalculator(mrtMenu(page), SOLAR);
+    const shownAfter = await status(dialog, "Mean radiant temperature after (°C)").textContent();
+    await expect(status(dialog, "Mean radiant temperature increase (°C)")).toHaveText(formatNumber(increaseAt(0)));
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(mrt).toHaveValue(shownAfter!);
+    await expect(mrt).toHaveAttribute("aria-invalid", "true");
+
+    dialog = await openCalculator(mrtMenu(page), SOLAR);
+    await expect(status(dialog, "Mean radiant temperature before (°C)")).toHaveText(shownAfter!);
+    await dialog.getByRole("spinbutton", { name: /^Solar horizontal angle/ }).fill("30");
+    await page.keyboard.press("Escape");
+    await expect(mrt).toHaveValue(shownAfter!);
+
+    dialog = await openCalculator(mrtMenu(page), SOLAR);
+    await expect(dialog.getByRole("spinbutton", { name: /^Solar horizontal angle/ })).toHaveValue("30");
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(mrt).toHaveValue(formatNumber(25 + increaseAt(0) + increaseAt(30)));
+  });
+
+  test("with IP on, the direct beam stays in W/m² and the temperatures are in °F", async ({ page }) => {
+    await open(page);
+    await page.getByRole("radio", { name: "IP" }).click();
+    const dialog = await openCalculator(mrtMenu(page), SOLAR);
+    await expect(dialog.getByRole("spinbutton", { name: "Direct-beam solar radiation (W/m²)" })).toHaveValue("900");
+    await expect(status(dialog, "Mean radiant temperature increase (°F)")).toHaveText(formatNumber((increaseAt(0) * 9) / 5));
+    await expect(status(dialog, "Mean radiant temperature before (°F)")).toHaveText("77");
+  });
+
+  test("under Compare, the title names the slot and Apply writes that column alone", async ({ page }) => {
+    await open(page);
+    await compareThreeSlots(page);
+    const dialog = await openCalculator(mrtMenu(page, "Mean radiant temperature (°C), Input 3", "Calculators, Input 3"), SOLAR);
+    await expect(dialog.getByRole("heading")).toHaveText(`${SOLAR}, Input 3`);
+    await dialog.getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByRole("spinbutton", { name: "Mean radiant temperature (°C), Input 3" })).toHaveValue(formatNumber(25 + increaseAt(0)));
+    for (const slot of ["Input 1", "Input 2"]) {
+      await expect(page.getByRole("spinbutton", { name: `Mean radiant temperature (°C), ${slot}` })).toHaveValue("25");
+    }
+  });
+
+  test("under operative entry, the operative row holds it and Apply folds the raised temperature at the model's standard", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Temperature", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: /^Operative temperature/ }).click();
+
+    const dialog = await openCalculator(mrtMenu(page, /^Operative temperature/), SOLAR);
+    await expect(status(dialog, "Mean radiant temperature before (°C)")).toHaveText("25");
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    const folded = t_o(25, 25 + increaseAt(0), 0.1, Standard.ashrae_55_2023);
+    await expect(page.getByRole("spinbutton", { name: /^Operative temperature/ })).toHaveValue(formatNumber(folded));
   });
 });
