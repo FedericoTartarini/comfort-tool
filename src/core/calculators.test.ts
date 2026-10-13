@@ -10,7 +10,7 @@ import {
   t_o,
 } from "jsthermalcomfort";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
-import { calculatorBound } from "./applicability";
+import { calculatorBound, outOfRangeCalculatorInputs } from "./applicability";
 import {
   clothingFromOutdoorTemperature,
   customEnsemble,
@@ -162,6 +162,31 @@ describe("calculatorBound", () => {
 
   it("is nothing for the outdoor temperature", () => {
     expect(calculatorBound(clothingFromOutdoorTemperature, q.tout)).toBeUndefined();
+  });
+});
+
+describe("outOfRangeCalculatorInputs", () => {
+  const withValue = (quantity: Quantity, value: number) => {
+    const inputs = startingInputs(solarGainOnOccupants);
+    return { ...inputs, values: new Map(inputs.values).set(quantity, value) };
+  };
+
+  it("is none at the defaults", () => {
+    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, startingInputs(solarGainOnOccupants))).toEqual([]);
+  });
+
+  it("names an input past its info row, and one past its kind bound", () => {
+    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, withValue(q.sol_altitude, 95))).toEqual([q.sol_altitude]);
+    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, withValue(q.f_svv, 1.2))).toEqual([q.f_svv]);
+  });
+
+  it("judges an end as a row shows it, as the gate does", () => {
+    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, withValue(q.sol_altitude, 90.001))).toEqual([]);
+  });
+
+  it("names nothing for an input with no bound", () => {
+    const inputs = { values: new Map([[q.tout, -80]]) };
+    expect(outOfRangeCalculatorInputs(clothingFromOutdoorTemperature, inputs)).toEqual([]);
   });
 });
 

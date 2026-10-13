@@ -74,7 +74,13 @@ export const copy = {
     "clothing-insulation": "The dynamic clothing insulation follows the metabolic rate, and under ISO 7730 the air speed.",
     "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
+  // A row's menu button reads what it holds: "Presets" where it holds presets, with calculators or not, else
+  // "Calculators"; holding both, its list is in two groups under these headings (ADR-0002 decision 75, rule 6).
   presetTrigger: "Presets",
+  calculatorTrigger: "Calculators",
+  presetGroup: "Presets",
+  calculatorGroup: "Calculators",
+  calculatorApply: "Apply",
   // The input calculators' menu entries and dialog titles, and Solar gain's postures in the standard's words
   // (ADR-0002 decision 75).
   customEnsemble: "Custom ensemble",

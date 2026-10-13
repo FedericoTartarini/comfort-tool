@@ -11,6 +11,7 @@
 
 <script lang="ts">
   import { enteredBound, splitViolations, warningFor } from "$lib/core/applicability";
+  import { withCalculatorResult, type Calculator, type CalculatorResult } from "$lib/core/calculators";
   import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
   import type { Quantity } from "$lib/core/quantities";
   import { enteredValue, panelRows, rowEntryGroupOf, type PanelRow } from "$lib/core/slot";
@@ -22,6 +23,7 @@
   import * as Alert from "$lib/ui/primitives/alert";
   import { Checkbox } from "$lib/ui/primitives/checkbox";
   import { Label } from "$lib/ui/primitives/label";
+  import CalculatorFormDialog from "./CalculatorFormDialog.svelte";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
   import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";
 
@@ -54,13 +56,27 @@
     return "option" in row ? row.option : row.quantity;
   }
 
-  function entryOf({ inputSlot, outputs }: SlotColumn, quantity: Quantity): QuantityEntry {
+  /** The input calculator whose dialog is open, and the column of the box that opened it, the slot it writes. */
+  let opened: { calculator: Calculator; column: SlotColumn } | null = $state.raw(null);
+
+  /** Apply: the result written into the slot as decision 75 rule 3 converts it, then gated by its row as a typed value. */
+  function apply(result: CalculatorResult) {
+    if (opened) {
+      const { inputSlot } = opened.column;
+      inputSlot.replaceWith(withCalculatorResult(inputSlot, opened.calculator, result, model));
+      opened = null;
+    }
+  }
+
+  function entryOf(column: SlotColumn, quantity: Quantity): QuantityEntry {
+    const { inputSlot, outputs } = column;
     return {
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outputs.outOfRangeQuantities.includes(quantity),
       slotName: outputs.badge.name,
       oncommit: (si) => inputSlot.setEntered(quantity, si),
+      onopen: (calculator) => (opened = { calculator, column }),
     };
   }
 
@@ -126,6 +142,7 @@
         quantity={row.quantity}
         {unitSystem}
         besideLabel={group ? entryGroupMenuButton : undefined}
+        calculators={row.calculators}
         entries={entriesOf(row.quantity)}
       />
     {/if}
@@ -152,3 +169,14 @@
     </SlotColumns>
   {/if}
 </Stack>
+
+<!-- Custom ensemble's checklist dialog lands with its own ticket; until then choosing it opens nothing. -->
+{#if opened?.calculator.asks}
+  <CalculatorFormDialog
+    calculator={opened.calculator}
+    slotName={opened.column.outputs.badge.name}
+    {unitSystem}
+    onapply={apply}
+    onclose={() => (opened = null)}
+  />
+{/if}

@@ -1,0 +1,193 @@
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { clo_dynamic_ashrae, clo_tout } from "jsthermalcomfort";
+import { formatNumber } from "../../src/core/numberFormat";
+
+/**
+ * A row's menu holds its presets and its input calculators, and a
+ * calculator's dialog writes its result into the slot whose box opened it
+ * (ADR-0002 decision 75 rules 3 and 6). Numbers are the library's for the
+ * same SI values, at the app's two decimals.
+ */
+
+const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
+const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
+const ADAPTIVE_ADDRESS = "/standard/ashrae-55/adaptive-ashrae";
+const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
+
+const CALCULATOR = "Clothing from outdoor temperature";
+const OUTDOOR_TEMPERATURE = /^Outdoor air temperature at 6 a\.m\./;
+
+async function open(page: Page, address = PMV_ADDRESS) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(address);
+  await expect(page.locator(".chart-plot svg").first()).toBeVisible();
+}
+
+/** The box of the row whose spinbutton is named `name`, its menu button inside it. */
+function boxOf(page: Page, name: string | RegExp) {
+  return page.locator('[data-slot="input-group"]').filter({ has: page.getByRole("spinbutton", { name }) });
+}
+
+/** The predicted clo at `tout` °C, as a row shows it. */
+function predicted(tout: number) {
+  return formatNumber(clo_tout({ tout }).clo_tout);
+}
+
+async function openCalculator(menuButton: Locator) {
+  await menuButton.click();
+  await menuButton.page().getByRole("listbox").getByRole("option", { name: CALCULATOR }).click();
+  return menuButton.page().getByRole("dialog");
+}
+
+async function compareThreeSlots(page: Page) {
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  for (const slot of ["Input 2", "Input 3"]) {
+    const toggle = page.getByRole("button", { name: slot, exact: true });
+    if ((await toggle.getAttribute("aria-pressed")) !== "true") {
+      await toggle.click();
+    }
+  }
+}
+
+test.describe("the row menu", () => {
+  test("on PMV (ASHRAE 55), the clothing box's list has a Calculators group of two under the Presets group", async ({ page }) => {
+    await open(page);
+    const presets = boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" });
+    await expect(presets).toHaveText("Presets");
+
+    await presets.click();
+    const groups = page.getByRole("listbox").getByRole("group");
+    await expect(groups).toHaveCount(2);
+    await expect(groups.nth(0)).toHaveAccessibleName("Presets");
+    await expect(groups.nth(1)).toHaveAccessibleName("Calculators");
+    await expect(groups.nth(1).getByRole("option")).toHaveText(["Custom ensemble", CALCULATOR]);
+  });
+
+  test("on PMV (ISO 7730), the clothing box's Calculators group has one entry", async ({ page }) => {
+    await open(page, ISO_ADDRESS);
+    await boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }).click();
+    await expect(page.getByRole("listbox").getByRole("group", { name: "Calculators" }).getByRole("option")).toHaveText(["Custom ensemble"]);
+  });
+
+  test("on Explore, the clothing box's list is the Standard page's", async ({ page }) => {
+    await open(page, EXPLORE_ADDRESS);
+    await boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }).click();
+    await expect(page.getByRole("listbox").getByRole("group", { name: "Calculators" }).getByRole("option")).toHaveText(["Custom ensemble", CALCULATOR]);
+  });
+
+  test("on Adaptive (ASHRAE 55), no box has a menu button", async ({ page }) => {
+    await open(page, ADAPTIVE_ADDRESS);
+    await expect(page.locator('[data-slot="input-group"]').getByRole("button")).toHaveCount(0);
+  });
+
+  test("a row with presets alone keeps its one ungrouped list", async ({ page }) => {
+    await open(page);
+    await boxOf(page, /^Metabolic rate/).getByRole("button", { name: "Presets" }).click();
+    await expect(page.getByRole("listbox").getByRole("group", { name: "Calculators" })).toHaveCount(0);
+    await expect(page.getByRole("listbox").getByRole("option").first()).toBeVisible();
+  });
+});
+
+test.describe("Clothing from outdoor temperature", () => {
+  test("opens a titled dialog whose result moves with its box, and Apply writes it and closes", async ({ page }) => {
+    await open(page);
+    const dialog = await openCalculator(boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }));
+    await expect(dialog.getByRole("heading")).toHaveText(CALCULATOR);
+
+    const outdoor = dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE });
+    await expect(outdoor).toHaveValue("20");
+    const result = dialog.getByRole("status", { name: "Clothing insulation (clo)" });
+    await expect(result).toHaveText(predicted(20));
+    await outdoor.fill("10");
+    await expect(result).toHaveText(predicted(10));
+
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("spinbutton", { name: /^Clothing insulation/ })).toHaveValue(predicted(10));
+  });
+
+  test("closing without Apply changes nothing, and reopening shows the typed value", async ({ page }) => {
+    await open(page);
+    const clothing = page.getByRole("spinbutton", { name: /^Clothing insulation/ });
+    const before = await clothing.inputValue();
+    const menu = boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" });
+
+    let dialog = await openCalculator(menu);
+    await dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE }).fill("5");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(clothing).toHaveValue(before);
+
+    dialog = await openCalculator(menu);
+    await expect(dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE })).toHaveValue("5");
+    await expect(dialog.getByRole("status", { name: "Clothing insulation (clo)" })).toHaveText(predicted(5));
+  });
+
+  test("keeps its box after a model switch, and a reload starts it at the default", async ({ page }) => {
+    await open(page);
+    let dialog = await openCalculator(boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }));
+    await dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE }).fill("5");
+    await page.keyboard.press("Escape");
+
+    const standards = page.getByRole("navigation").getByRole("group", { name: "Standard" });
+    await standards.getByRole("link", { name: "ISO 7730" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+    await standards.getByRole("link", { name: "ASHRAE 55" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === PMV_ADDRESS);
+    dialog = await openCalculator(boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }));
+    await expect(dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE })).toHaveValue("5");
+    await page.keyboard.press("Escape");
+
+    await page.reload();
+    dialog = await openCalculator(boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }));
+    await expect(dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE })).toHaveValue("20");
+  });
+
+  test("its box is in °F with IP on", async ({ page }) => {
+    await open(page);
+    await page.getByRole("radio", { name: "IP" }).click();
+    const dialog = await openCalculator(boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" }));
+    const outdoor = dialog.getByRole("spinbutton", { name: /^Outdoor air temperature at 6 a\.m\. \(°F\)/ });
+    await expect(outdoor).toHaveValue("68");
+    await outdoor.fill("50");
+    await expect(dialog.getByRole("status", { name: "Clothing insulation (clo)" })).toHaveText(predicted(10));
+  });
+
+  test("under Compare with three slots, names the slot and writes that column alone", async ({ page }) => {
+    await open(page);
+    await compareThreeSlots(page);
+    for (const slot of ["Input 1", "Input 2", "Input 3"]) {
+      await expect(boxOf(page, `Clothing insulation (clo), ${slot}`).getByRole("button", { name: `Presets, ${slot}` })).toBeVisible();
+    }
+    const before = await page.getByRole("spinbutton", { name: "Clothing insulation (clo), Input 1" }).inputValue();
+
+    const dialog = await openCalculator(boxOf(page, "Clothing insulation (clo), Input 2").getByRole("button", { name: "Presets, Input 2" }));
+    await expect(dialog.getByRole("heading")).toHaveText(`${CALCULATOR}, Input 2`);
+    await dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE }).fill("10");
+    await dialog.getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByRole("spinbutton", { name: "Clothing insulation (clo), Input 2" })).toHaveValue(predicted(10));
+    for (const slot of ["Input 1", "Input 3"]) {
+      await expect(page.getByRole("spinbutton", { name: `Clothing insulation (clo), ${slot}` })).toHaveValue(before);
+    }
+  });
+
+  test("under dynamic clothing entry, the dynamic box offers it and Apply writes the corrected value", async ({ page }) => {
+    await open(page);
+    await page.getByRole("spinbutton", { name: /^Metabolic rate/ }).fill("2");
+    await page.getByRole("button", { name: "Clothing", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: /^Dynamic clothing insulation/ }).click();
+
+    // The dynamic row holds no presets: its button says what it holds, and its list is the two calculators ungrouped.
+    const menu = boxOf(page, /^Dynamic clothing insulation/).getByRole("button", { name: "Calculators" });
+    await expect(menu).toHaveText("Calculators");
+    await menu.click();
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Custom ensemble", CALCULATOR]);
+    await page.keyboard.press("Escape");
+
+    const dialog = await openCalculator(menu);
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    const corrected = clo_dynamic_ashrae(clo_tout({ tout: 20 }).clo_tout, 2);
+    await expect(page.getByRole("spinbutton", { name: /^Dynamic clothing insulation/ })).toHaveValue(formatNumber(corrected));
+  });
+});

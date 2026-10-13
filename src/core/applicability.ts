@@ -14,7 +14,7 @@
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
-import type { FormCalculator } from "./calculators";
+import type { CalculatorInputs, FormCalculator } from "./calculators";
 import { temperatureMode, type HumidityMode } from "./entryModes";
 import { inputsOf, takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
@@ -203,6 +203,18 @@ function correctedEntryBoundFor(
  */
 export function calculatorBound(calculator: FormCalculator, quantity: Quantity): Bound | undefined {
   return intersect([boundFor(calculator.info.inputs, quantity), kindBounds[quantity.kind]].filter((bound): bound is Bound => bound !== undefined));
+}
+
+/**
+ * The quantities of `inputs` outside {@link calculatorBound}, judged as the
+ * gate judges an entry: the dialog's boxes marked out of range, while its
+ * result is cleared and its Apply disabled (decision 75 rule 5).
+ */
+export function outOfRangeCalculatorInputs(calculator: FormCalculator, inputs: CalculatorInputs): Quantity[] {
+  return [...inputs.values].flatMap(([quantity, value]) => {
+    const bound = calculatorBound(calculator, quantity);
+    return bound && breaksBound(quantity, bound, value) ? [quantity] : [];
+  });
 }
 
 /**

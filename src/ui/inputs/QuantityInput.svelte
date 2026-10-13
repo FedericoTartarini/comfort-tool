@@ -1,8 +1,9 @@
 <!--
   A quantity's row, one shape for every row (ADR-0002 decision 67, rule 3):
-  the label row, then per entry a box, with a quantity's Presets inside it,
-  and a caption line under it of the matching preset's name and the bound;
-  an entry is a slot's, or the session's pressure. The row is the generated
+  the label row, then per entry a box, with the row's menu of its presets and
+  input calculators inside it, and a caption line under it of the matching
+  preset's name and the bound; an entry is a slot's, or the session's
+  pressure. The row is the generated
   field, and each entry's box and caption a field of their own, marked
   invalid while the entry is out of range (the shell's spec, "The rows").
   On Compare the label row stands over the three slot columns, so it names
@@ -11,6 +12,7 @@
 -->
 <script module lang="ts">
   import type { Bound } from "$lib/core/applicability";
+  import type { Calculator } from "$lib/core/calculators";
 
   /** One box in a row: a slot's, or the session's pressure. */
   export interface QuantityEntry {
@@ -19,9 +21,11 @@
     /** Allowed bound in SI; shown converted, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
-    /** The slot's badge's name, while the slots are named: the box and its Presets are named for it. */
+    /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */
     slotName?: string;
     oncommit: (si: number) => void;
+    /** Opens `calculator`'s dialog for this entry's slot: an entry of a row with calculators. */
+    onopen?: (calculator: Calculator) => void;
   }
 </script>
 
@@ -37,7 +41,7 @@
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import * as Field from "$lib/ui/primitives/field";
   import NumberInput from "./NumberInput.svelte";
-  import PresetMenuButton from "./PresetMenuButton.svelte";
+  import RowMenuButton from "./RowMenuButton.svelte";
 
   interface Props {
     quantity: Quantity;
@@ -47,16 +51,19 @@
      * its entry group's menu button there (ADR-0002 decision 72).
      */
     besideLabel?: Snippet;
+    /** The input calculators the row offers, in its menu beside its presets (ADR-0002 decision 75). */
+    calculators?: readonly Calculator[];
     /** One per slot column, in slot order; `null` keeps the column of a slot not compared empty. */
     entries: readonly [QuantityEntry, ...(QuantityEntry | null)[]];
   }
 
-  let { quantity, unitSystem, besideLabel, entries }: Props = $props();
+  let { quantity, unitSystem, besideLabel, calculators = [], entries }: Props = $props();
 
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const labelText = $derived(labelWithUnit(quantity, unit));
-  const presets = $derived(presetsFor(quantity));
+  const presets = $derived(presetsFor(quantity) ?? []);
+  const hasMenu = $derived(presets.length > 0 || calculators.length > 0);
 
   /** The caption line under a box: the matching preset's name and the bound, either alone where the other is not. */
   function captionOf(entry: QuantityEntry): string {
@@ -79,16 +86,16 @@
   <SlotColumns count={entries.length}>
     {#each entries as entry, index (index)}
       {#if entry}
-        {#snippet presetMenu()}
-          {#if presets}
-            <PresetMenuButton
-              {presets}
-              {unit}
-              name={controlNameFor(copy.presetTrigger, entry) ?? copy.presetTrigger}
-              compact={entries.length > 1}
-              oncommit={entry.oncommit}
-            />
-          {/if}
+        {#snippet rowMenu()}
+          <RowMenuButton
+            {presets}
+            {calculators}
+            {unit}
+            slotName={entry.slotName}
+            compact={entries.length > 1}
+            oncommit={entry.oncommit}
+            onopen={(calculator) => entry.onopen?.(calculator)}
+          />
         {/snippet}
         <Field.Field data-invalid={entry.outOfRange || undefined}>
           <NumberInput
@@ -97,7 +104,7 @@
             {unit}
             invalid={entry.outOfRange}
             ariaLabel={controlNameFor(labelText, entry)}
-            end={presets ? presetMenu : undefined}
+            end={hasMenu ? rowMenu : undefined}
             oncommit={entry.oncommit}
           />
           <Field.Description class="caption-line">{captionOf(entry)}</Field.Description>
