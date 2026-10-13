@@ -1335,7 +1335,7 @@ place, which the deployed tool fixes).
 **Process (2026-10-07)**: a short grilling, opening with `.scratch/open-points.md`'s rows marked ★5b, then spec and
 tickets. Settled already: the one-shot Apply (ADR §4.1.5), the slot named at Apply (decision 50), and `D1` (a calculator
 writes in the session's clothing mode). Open: the declaration field below, `solar_gain`'s inputs, and the library work.
-A library function the app is about to call is ported to TypeScript first, with what the library's `CONTEXT.md` asks of
+A library function the app is about to call is ported to TypeScript first, with what the library's `GLOSSARY.md` asks of
 it (`../jsthermalcomfort/CLAUDE.md:3`, "migrating to TypeScript one module at a time"; its JavaScript modules ship no
 `.d.ts`), so `clo_tout`, `solar_gain` and `clo_individual_garments` are ported ahead of their tickets, and `B13`'s two
 ensemble functions are written.
