@@ -255,13 +255,19 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > for every target (`D1` generalised: written under the group's first mode, converted by the slot's), the ensemble a
 > sum grouped by ASHRAE 55 Table 5-3, the solar dialog the standard's eight inputs with the mean radiant temperature
 > shown before and after; the library first, `clo_tout` and `solar_gain` ported from pythermalcomfort 4.6.1 as params
-> objects with their `_INFO`, `CLO_INDIVIDUAL_GARMENT_GROUPS` added, and an upstream issue for the groups and the three
-> lost garments. ADR-0001 §4.1.5 carries the marker; decisions 50, 54, 67 and 73 are noted; `CONTEXT.md`'s **Quantity**
+> objects with their `_INFO`, `CLO_INDIVIDUAL_GARMENT_GROUPS` added, and an upstream issue for the groups and the rows
+> the garment table lacks. ADR-0001 §4.1.5 carries the marker; decisions 50, 54, 67 and 73 are noted; `CONTEXT.md`'s **Quantity**
 > widens to a calculator's and **Input calculator** is added; `.scratch/open-points.md`'s `D1`, `B13` and `D6` are
 > updated and the `f_svv` window helper deferred as `B16`. The user's principle is recorded in the decision:
 > pythermalcomfort's code and methods are the baseline, a JS-only method is not preferred, and what belongs in the
 > library is built there. **Next: the user's `/to-tickets` in `../jsthermalcomfort/.scratch/` for the library's three
 > tickets, then `/to-spec` and `/to-tickets` in `.scratch/input-calculators/`.**
+
+> **2026-10-13 — position, the library work done**: `../jsthermalcomfort/.scratch/input-calculators/` 01 to 03 are
+> resolved on `feat/v2-typescript-setup` (`535bf48`): `clo_tout` and `solar_gain` as params objects with
+> `CLO_TOUT_INFO` and `SOLAR_GAIN_INFO`, and `CLO_INDIVIDUAL_GARMENT_GROUPS`. Upstream issues pythermalcomfort#476,
+> #477 and #478 are filed and open. Decision 75 is noted the same day, and rule 5's Table C-2 wording and reason are
+> corrected in place. **Next: the user's `/to-spec` and `/to-tickets` in `.scratch/input-calculators/`.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1346,6 +1352,8 @@ params object and the types; and `clo_individual_garments` is not ported, being 
 library's three tickets live in `../jsthermalcomfort/.scratch/`, each ahead of the app ticket that calls it and the
 lock moved to it; the app's spec and tickets in `.scratch/input-calculators/`. Every calculator's own numeric input
 is a quantity in `core/quantities.ts`, landed ahead (rule 4).
+**Done 2026-10-13** (decision 75's note): the library's three tickets are resolved at `535bf48`; the upstream issues
+are pythermalcomfort#476 to #478.
 **Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
 into when it is applied. **Decided 2026-10-12** (decision 75 rule 6): the slot is the one whose box opened the
 dialog, named in its title; no picker.
@@ -1377,7 +1385,7 @@ Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly ou
    **Decided 2026-10-12** (decision 75 rules 3 to 5): Apply writes `tr + delta_mrt` into the slot's `tr`, folded
    back to the operative temperature under operative entry; the dialog asks the standard's eight inputs, shows ERF,
    ΔMRT and the mean radiant temperature before and after, and takes its bounds from `SOLAR_GAIN_INFO` (Table C-2's
-   allowable ranges, two of them stricter than upstream's code, revised in place the same day) and, for the three
+   ranges of inputs, two of them stricter than upstream's code, revised in place the same day) and, for the three
    fractions, from the `fraction` kind's definitional 0 to 1.
 
 The declaration field that says which model offers which calculator is added here, not earlier: Phase 4's acceptance is
