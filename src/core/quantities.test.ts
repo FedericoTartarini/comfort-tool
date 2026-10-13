@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import * as jsthermalcomfort from "jsthermalcomfort";
-import { ADAPTIVE_ASHRAE_INFO, HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, UTCI_INFO } from "jsthermalcomfort";
+import {
+  ADAPTIVE_ASHRAE_INFO,
+  CLO_TOUT_INFO,
+  HEAT_INDEX_ROTHFUSZ_INFO,
+  PMV_PPD_ASHRAE_INFO,
+  SOLAR_GAIN_INFO,
+  UTCI_INFO,
+} from "jsthermalcomfort";
 import type { ModelInfo } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, quantityFor } from "./quantities";
 import { displayUnitFor } from "./units";
 import { unitSystem } from "./unitSystem";
 
@@ -22,14 +29,32 @@ function variableKeys(info: ModelInfo): string[] {
   return [...Object.keys(info.inputs), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
 }
 
+/**
+ * Keys the input calculators' model infos name that the table has no row for
+ * (ADR-0002 decision 75). `floor_reflectance`: the solar-gain dialog does not
+ * ask it, the library's default being the standard's fixed value.
+ * `clo_tout`: the predicted clothing insulation is shown on the row it
+ * writes, `clo`.
+ */
+const calculatorKeysWithoutRow = new Set(["floor_reflectance", "clo_tout"]);
+
 const tableKeys = Object.keys(quantities);
 
 describe("quantities table drift", () => {
-  it("direction 1: has a row for every input, output and derived key a registered model's info names", () => {
+  it("direction 1: has a row for every input, output and derived key a registered model's or an input calculator's info names", () => {
     for (const model of registeredModels) {
       for (const key of variableKeys(model.info)) {
         expect(tableKeys).toContain(key);
       }
+    }
+    for (const info of [SOLAR_GAIN_INFO, CLO_TOUT_INFO]) {
+      for (const key of variableKeys(info).filter((named) => !calculatorKeysWithoutRow.has(named))) {
+        expect(tableKeys).toContain(key);
+      }
+    }
+    // The check above cannot fail on an exemption the table has since gained a row for.
+    for (const key of calculatorKeysWithoutRow) {
+      expect(tableKeys, key).not.toContain(key);
     }
   });
 
@@ -119,5 +144,53 @@ describe("atmospheric pressure", () => {
   it("leaves the pressure kind to vapour pressure, in kPa", () => {
     expect(quantities.pa.kind).toBe("pressure");
     expect(displayUnitFor(quantities.pa, unitSystem.si).symbol).toBe("kPa");
+  });
+});
+
+describe("the input calculators' quantities", () => {
+  it("are ten rows, each under its key and of its kind", () => {
+    const kinds = {
+      tout: "temperature",
+      sol_altitude: "angle",
+      sharp: "angle",
+      sol_radiation_dir: "irradiance",
+      erf: "irradiance",
+      sol_transmittance: "fraction",
+      f_svv: "fraction",
+      f_bes: "fraction",
+      asw: "fraction",
+      delta_mrt: "temperatureDifference",
+    };
+    for (const [key, kind] of Object.entries(kinds)) {
+      expect([quantityFor(key)?.key, quantityFor(key)?.kind], key).toEqual([key, kind]);
+    }
+  });
+
+  it("show an angle in degrees in both systems, stepped by 1", () => {
+    for (const system of Object.values(unitSystem)) {
+      const degrees = displayUnitFor(quantities.sol_altitude, system);
+      expect([degrees.symbol, degrees.step, degrees.fromSi(45)]).toEqual(["°", 1, 45]);
+    }
+  });
+
+  it("show an irradiance in W/m² in both systems, stepped by 10", () => {
+    for (const system of Object.values(unitSystem)) {
+      const wattsPerSquareMetre = displayUnitFor(quantities.sol_radiation_dir, system);
+      expect([wattsPerSquareMetre.symbol, wattsPerSquareMetre.step, wattsPerSquareMetre.fromSi(900)]).toEqual(["W/m²", 10, 900]);
+    }
+  });
+
+  it("show a fraction with no symbol in both systems, stepped by 0.01", () => {
+    for (const system of Object.values(unitSystem)) {
+      const fraction = displayUnitFor(quantities.asw, system);
+      expect([fraction.symbol, fraction.step, fraction.fromSi(0.7)]).toEqual(["", 0.01, 0.7]);
+    }
+  });
+});
+
+describe("kind bounds", () => {
+  it("bound a percentage 0 to 100 and a fraction 0 to 1, by definition", () => {
+    expect(kindBounds.percentage).toEqual({ min: 0, max: 100 });
+    expect(kindBounds.fraction).toEqual({ min: 0, max: 1 });
   });
 });

@@ -97,6 +97,12 @@ const displayUnits = {
   metabolicRate: sameInBothSystems({ symbol: "met", step: 0.1 }),
   clothingInsulation: sameInBothSystems({ symbol: "clo", step: 0.1 }),
   thermalSensation: sameInBothSystems({ symbol: "", step: 0.1 }),
+  // The solar-gain inputs stay as the standard and the library give them in
+  // IP too: `solar_gain` takes SI alone, and the deployed tool converts only
+  // the temperature increase (ADR-0002 decision 75).
+  angle: sameInBothSystems({ symbol: "°", step: 1 }),
+  irradiance: sameInBothSystems({ symbol: "W/m²", step: 10 }),
+  fraction: sameInBothSystems({ symbol: "", step: 0.01 }),
   // A classified output (`tsv`, `stress_category`): no unit, no meaningful
   // step — it is never an editable input.
   category: sameInBothSystems({ symbol: "", step: 0 }),

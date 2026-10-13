@@ -29,6 +29,9 @@ export type QuantityKind =
   | "pressure"
   | "atmosphericPressure"
   | "humidityRatio"
+  | "angle"
+  | "irradiance"
+  | "fraction"
   | "category"
   | "yesNo";
 
@@ -46,6 +49,9 @@ export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
   // Neither the library nor pythermalcomfort bounds `p_atm`; this is the
   // deployed tool's range, one for every model (ADR-0002 decision 49).
   atmosphericPressure: { min: 30000, max: 110000 },
+  // A share of a whole, 0 to 1 by definition: `SOLAR_GAIN_INFO` bounds no
+  // transmittance or view fraction, and bounds the absorptivity inside it.
+  fraction: { min: 0, max: 1 },
 };
 
 /**
@@ -110,6 +116,18 @@ export const quantities = {
   acceptability_80: { key: "acceptability_80", kind: "yesNo", label: "80% acceptability" },
   acceptability_90: { key: "acceptability_90", kind: "yesNo", label: "90% acceptability" },
   compliance: { key: "compliance", kind: "yesNo", label: "ASHRAE 55 compliance" },
+  // The input calculators' quantities, named by `CLO_TOUT_INFO` and
+  // `SOLAR_GAIN_INFO` (ADR-0002 decision 75).
+  tout: { key: "tout", kind: "temperature", label: "Outdoor air temperature at 6 a.m." },
+  sol_altitude: { key: "sol_altitude", kind: "angle", label: "Solar altitude" },
+  sharp: { key: "sharp", kind: "angle", label: "Solar horizontal angle (SHARP)" },
+  sol_radiation_dir: { key: "sol_radiation_dir", kind: "irradiance", label: "Direct-beam solar radiation" },
+  sol_transmittance: { key: "sol_transmittance", kind: "fraction", label: "Window transmittance" },
+  f_svv: { key: "f_svv", kind: "fraction", label: "Sky-vault view fraction" },
+  f_bes: { key: "f_bes", kind: "fraction", label: "Fraction of body exposed to sun" },
+  asw: { key: "asw", kind: "fraction", label: "Short-wave absorptivity" },
+  erf: { key: "erf", kind: "irradiance", label: "Effective radiant field" },
+  delta_mrt: { key: "delta_mrt", kind: "temperatureDifference", label: "Mean radiant temperature increase" },
 } as const satisfies Record<string, Quantity>;
 
 const byKey: Readonly<Record<string, Quantity>> = quantities;
