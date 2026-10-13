@@ -1356,7 +1356,9 @@ is a quantity in `core/quantities.ts`, landed ahead (rule 4).
 are pythermalcomfort#476 to #478.
 **Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
 into when it is applied. **Decided 2026-10-12** (decision 75 rule 6): the slot is the one whose box opened the
-dialog, named in its title; no picker.
+dialog, named in its title; no picker. **Revised 2026-10-14** (decision 75's note): the calculators are one "Input
+calculators" button in the Inputs card's heading row, opening one tabbed dialog in which the slot is chosen while the
+slots are named.
 
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 

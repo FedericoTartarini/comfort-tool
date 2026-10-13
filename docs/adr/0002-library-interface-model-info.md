@@ -2645,6 +2645,9 @@ notes under decisions 51 and 53:
     **Noted 2026-10-12 (decision 75).** Rule 3's "Phase 5b's calculators are entries of the same menu" holds as
     decision 75 rule 6: the button's word is what the menu holds, so the mean radiant temperature's row, which has no
     presets, gains a button reading "Calculators".
+    **Revised 2026-10-14 by decision 75's note of that date.** Rule 3's "Phase 5b's calculators are entries of the same
+    menu" is withdrawn: the calculators are one button, "Input calculators", at the right end of the Inputs card's
+    heading row, and a row's menu holds presets alone; a box still carries one attached control.
 68. **An entry mode is chosen on the row it changes.** Taken 2026-10-08 in the same grilling; amends decision 51's
     "what appears once is the pair of entry-mode controls, `ui/inputs/EntryModeControls.svelte`". Facts. The entry
     modes are a block of four labelled rows above the quantity rows, so the control and the rows it changes are apart,
@@ -3011,6 +3014,9 @@ notes under decisions 51 and 53:
     is revisited by decision 75 rule 6: "Presets" stays where the menu holds presets, the calculators a second group
     under their own heading, and a menu of calculators alone reads "Calculators"; the icon under Compare and its
     tooltip are unchanged.
+    **Revised 2026-10-14 by decision 75's note of that date.** The Presets menu holds presets alone again; the word
+    "Presets", the icon under Compare and its tooltip stand; the calculators are a button in the Inputs card's heading
+    row, as this rule places Bands and Export image in the Chart card's.
 74. **Display order: the registry is the one order, a standard is a family, and the Explore select is grouped by
     standard.** Taken 2026-10-12 with the user in the display-order grilling, after `.scratch/shell/` ticket 13
     (`1906b86`) and ahead of the code; revises decision 57 rule 3, notes decisions 6 and 73, and CONTEXT.md's
@@ -3202,6 +3208,49 @@ notes under decisions 51 and 53:
     supports; 210 W/m² at 5° is in Addendum g's Table C2-3, the standard cloudless atmosphere. Rule 5 also said
     upstream's docstring gives the range only as "should typically", and omitted the non-finite exception. Rules 7
     and 8 said "lost garments" for what #478 counts as five rows.
+    **Revised 2026-10-14 with the user** (`.scratch/input-calculators/` tickets 01 to 05 built, `abbca8f` to `bd16e17`;
+    ticket 06 paused for this). Rule 6 is replaced, and the Rejected list's "a slot picker or an Apply to every slot, the
+    box having chosen" is withdrawn with it: its premise was the box as the entry. The grounds. Three clicks from the row
+    to a dialog, the box's "Presets" button, a group of its menu, then the dialog, for a feature used seldom, and the
+    word "Presets" hides the clothing calculators, where the deployed tool shows three worded buttons at once; a worded
+    entry cannot be per slot, since a Compare column leaves a box 112 px (decision 73 rule 8's note), so under Compare a
+    worded entry has to ask for the slot. Judged goal-first across every entry, the deployed buttons and the prototype's
+    "Input modifiers" included: one entry for the people who need it, a click away from its settings, and one control's
+    room for the people who do not. Rule 6, revised. (a) **One entry, "Input calculators"**: a button at the right end
+    of the Inputs card's heading row, as the Chart card's heading row holds Bands and Export image (decision 73 rule 8),
+    card-level tools standing in the card's heading row; a row's menu holds presets alone again, its word "Presets"
+    true, and a row with no presets has no button. The button stands on a model that declares a calculator on any row,
+    so Adaptive (ASHRAE 55) and Heat Index show none; the panel reads the calculators from its rows' declarations in row
+    order (rule 2 unchanged; the folded rows' reader, the spec's decision 5, still gives Solar gain under operative
+    entry). (b) **One dialog, tabs**: the button opens one dialog titled "Input calculators", one tab per calculator the
+    model declares, the tab list always drawn, a one-tab list on PMV (ISO 7730); the tabs primitive is generated
+    (decision 65). The dialog opens on the tab last used while the app is loaded, kept with the dialogs' inputs (the
+    spec's decision 9), the first tab after a reload. (c) **The slot is chosen in the dialog** while the slots are named
+    (decision 50): a toggle-group of the enabled slots' badge names under the title, the first enabled slot chosen on
+    opening and not remembered; with one slot nothing is shown, and the title carries no slot name. (d) **The dialog
+    ends with the row it writes**: below a calculator's own outputs, the row the slot holds in its current entry mode,
+    named by its label, before and after Apply, so under dynamic clothing entry the ensemble's 0.61 clo is followed by
+    "Dynamic clothing insulation before 0.80, after 0.52", and under operative entry Solar gain's increase by the
+    operative temperature before and after; in the group's first mode a replaced row's "after" repeats the result,
+    accepted for one rule. Rule 3's mean radiant temperature before and after are these lines where the slot enters
+    its temperatures separately. (e) Unchanged: one Apply writes the chosen slot by rule 3 and closes; the dialogs'
+    inputs live for the page's life and nowhere else; the row menu keeps "Presets", and under Compare the icon with the
+    word as its tooltip (decision 73 rule 8), with no calculators in it. Agreed beside this decision: PMV (ASHRAE 55)'s
+    option reads "Occupants have local control of the air speed" (`models/pmvPpdAshrae.ts:32` reads "Occupants control
+    the air speed"), the deployed tool's and the standard's "local control" kept in a sentence that says what is
+    decided (decision 36's `label`). Rejected now: a line of the calculators' names under the caption, per slot, which
+    has no room under Compare and so changes shape with it; a second button in the box beside Presets, which Compare's
+    112 px cannot hold beside a value, and which keeps the menu layer; the shared menu reworded "Presets &
+    calculators", which keeps the layer and the mixed list; a menu of the names on the card, which moves the layer
+    rather than removing it; three worded buttons at the card's foot, the deployed tool's, two lines of long buttons
+    standing for everyone; the button beside Compare, a seldom-used tool among the frequent ones; "Input modifiers" as
+    the word, GLOSSARY.md's _Avoid_, since nothing stays in force; "Calculators" alone, which on a comfort calculator
+    asks "of what"; a dialog kept open after Apply; a single calculator's dialog titled by its name, one word on the
+    button and another on what opens. Decisions 67 (rule 3) and 73 (rule 8) carry notes; GLOSSARY.md's **Input
+    calculator** loses "the slot whose row opened it", no term moving; the plan's Phase 5b carries a line. The one
+    visual question, left to `prototype/calculator-entry`: whether the Inputs heading row holds the button at the
+    card's 24rem without crowding its title, and whether the 40rem dialog's tab list, slot toggle-group and form stack
+    without crowding. The spec's decision 7 and tickets 07 onward are the user's.
 
 ## Consequences
 
