@@ -28,7 +28,7 @@ checklist line below turns out to be mechanisable, it should move up into the ma
 |---|---|---|
 | `core/` imports no `svelte` / `state` / `ui` / `routes` | eslint `coreBoundary` | ADR §5 |
 | `ui/charts/` imports no model, state or `jsthermalcomfort` | eslint `chartBoundary` | ADR §4.4 |
-| Library model functions imported only in `models/` and `temporary-library/` | eslint `libraryModelImports` | ADR §3 |
+| Library model functions imported only in `models/` and `temporary-library/`, and `clo_tout` and `solar_gain` also in `core/calculators.ts` | eslint `libraryModelImports` | ADR §3, ADR-0002 decision 75 |
 | No quantity wire string outside `shareLink.ts` | eslint `wireStringSyntax` | ADR §4.0, DRY |
 | Tailwind utilities only in `ui/primitives/` and `ui/layout/` | eslint `tailwindSyntax` | ADR §2 |
 | No `<style>` block outside `ui/primitives/` and `ui/layout/` | eslint `styleBlockSyntax` | ADR-0002 decision 65 |

@@ -2,15 +2,18 @@
  * What a declaration says about itself: the name its model info gives it,
  * unique across the registry; the standard edition it picks, checked against
  * that model info for every registered model; the table columns it lists;
- * the charts it offers; and the axis range a chart reads off it. What its
- * `run` does is the sibling `modelDeclarationRun.test.ts`'s.
+ * the charts it offers; the input calculators its rows offer; and the axis
+ * range a chart reads off it. What its `run` does is the sibling
+ * `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
 import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants, type Calculator } from "./calculators";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor } from "./clothingCorrection";
 import {
@@ -28,7 +31,7 @@ import {
   type RegisteredModel,
   type ZoneLimits,
 } from "./modelDeclaration";
-import { quantities } from "./quantities";
+import { quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
 
 const q = quantities;
@@ -158,6 +161,47 @@ describe("inputsOf and optionsOf", () => {
       const read = [...inputsOf(model), ...optionsOf(model).map((option) => ({ option }))];
       expect(read, model.info.label).toHaveLength(model.inputs.length);
       expect(model.inputs, model.info.label).toEqual(expect.arrayContaining(read));
+    }
+  });
+});
+
+describe("calculators", () => {
+  /** Each row of `model` that offers a calculator, as its quantity and what it offers. */
+  const offeredBy = (model: RegisteredModel) =>
+    inputsOf(model).flatMap((entry) => (entry.calculators ? [[entry.quantity, entry.calculators]] : []));
+
+  it("stand on the rows decision 75 names, and on no other, for every registered model", () => {
+    const table = new Map<RegisteredModel, unknown[]>([
+      [
+        pmvPpdAshrae,
+        [
+          [q.tr, [solarGainOnOccupants]],
+          [q.clo, [customEnsemble, clothingFromOutdoorTemperature]],
+        ],
+      ],
+      [pmvPpdIso, [[q.clo, [customEnsemble]]]],
+      [adaptiveAshrae, []],
+      [heatIndexRothfusz, []],
+    ]);
+    // A model registered later is added to the table above.
+    expect(registeredModels.filter((model) => !table.has(model)).map((model) => model.info.label)).toEqual([]);
+    for (const [model, offered] of table) {
+      expect(offeredBy(model), model.info.label).toEqual(offered);
+    }
+  });
+
+  it("that write a clothing insulation stand only on clo rows, and Solar gain only on tr rows, for every registered model", () => {
+    const rowOf = new Map<Calculator, Quantity>([
+      [customEnsemble, q.clo],
+      [clothingFromOutdoorTemperature, q.clo],
+      [solarGainOnOccupants, q.tr],
+    ]);
+    for (const model of registeredModels) {
+      for (const entry of inputsOf(model)) {
+        for (const calculator of entry.calculators ?? []) {
+          expect(entry.quantity, `${model.info.label}: ${calculator.label}`).toBe(rowOf.get(calculator));
+        }
+      }
     }
   });
 });

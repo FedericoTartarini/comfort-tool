@@ -1,4 +1,5 @@
 import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
+import type { Calculator } from "./calculators";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor, type ClothingCorrection } from "./clothingCorrection";
 import { temperatureMode } from "./entryModes";
@@ -51,6 +52,12 @@ export type OptionsReader = (option: OptionSpec) => boolean;
 export interface DeclaredQuantity {
   readonly quantity: Quantity;
   readonly value: number;
+  /**
+   * The input calculators its row offers, in menu order, each writing this
+   * quantity: the row is the target, so no field names it again (ADR-0002
+   * decision 75 rule 2). Absent for a row that offers none.
+   */
+  readonly calculators?: readonly Calculator[];
 }
 
 /** An option a declaration lists: its checkbox stands at this place among the rows. */

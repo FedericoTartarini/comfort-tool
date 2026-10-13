@@ -20,6 +20,12 @@ const libraryModelFunctionNames = Object.entries(jsthermalcomfort.models)
   .filter(([name, value]) => typeof value === "function" && name !== "classifyFromBins")
   .map(([name]) => name);
 
+// ADR-0002 decision 75 rule 2: an input calculator is a core object whose
+// formula calls the library, and the package lists these two calculation
+// functions under `models`, beside the model functions. `core/calculators.ts`
+// alone may import them; every other model function stays barred there.
+const calculatorFunctionNames = ["clo_tout", "solar_gain"];
+
 const libraryModelImports = {
   paths: [
     {
@@ -234,6 +240,21 @@ export default [
     ignores: ["src/core/**/*.test.ts"],
     rules: {
       "no-restricted-imports": ["error", { ...libraryModelImports, patterns: [coreBoundary] }],
+    },
+  },
+  {
+    files: ["src/core/calculators.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: libraryModelImports.paths.map((path) => ({
+            ...path,
+            importNames: path.importNames.filter((name) => !calculatorFunctionNames.includes(name)),
+          })),
+          patterns: [coreBoundary],
+        },
+      ],
     },
   },
   {

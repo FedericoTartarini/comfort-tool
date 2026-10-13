@@ -5,6 +5,7 @@ import {
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
   Standard,
 } from "jsthermalcomfort";
+import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
 import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
@@ -60,12 +61,12 @@ export const pmvPpdAshrae = {
     }),
   inputs: [
     { quantity: q.tdb, value: 25 },
-    { quantity: q.tr, value: 25 },
+    { quantity: q.tr, value: 25, calculators: [solarGainOnOccupants] },
     { quantity: q.v, value: 0.1 },
     { option: airSpeedControl },
     { quantity: q.rh, value: 50 },
     { quantity: q.met, value: 1.1 },
-    { quantity: q.clo, value: 0.5 },
+    { quantity: q.clo, value: 0.5, calculators: [customEnsemble, clothingFromOutdoorTemperature] },
   ],
   // The same ranges as PMV (ISO 7730) today; each declaration owns its own.
   axisRanges: [

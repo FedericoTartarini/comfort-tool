@@ -14,6 +14,7 @@
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
+import type { FormCalculator } from "./calculators";
 import { temperatureMode, type HumidityMode } from "./entryModes";
 import { inputsOf, takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
@@ -192,6 +193,16 @@ function correctedEntryBoundFor(
   const converted = taken && convertedBound(taken, (end) => correction.entryGiving(end, slot, model));
   const both = intersect([converted, kind].filter((bound): bound is Bound => bound !== undefined));
   return both && isInverted(both) ? kind : both;
+}
+
+/**
+ * The bound an input calculator's dialog holds an entry of `quantity` to: the
+ * row of the calculator's model info, with the bound of the quantity's kind,
+ * as a model's entered quantity is held (ADR-0002 decisions 46 and 75 rule
+ * 5); `undefined` for a quantity with neither, as the outdoor temperature.
+ */
+export function calculatorBound(calculator: FormCalculator, quantity: Quantity): Bound | undefined {
+  return intersect([boundFor(calculator.info.inputs, quantity), kindBounds[quantity.kind]].filter((bound): bound is Bound => bound !== undefined));
 }
 
 /**

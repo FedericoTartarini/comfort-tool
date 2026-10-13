@@ -343,31 +343,44 @@ export function expandOperative(values: Map<Quantity, number>): void {
 }
 
 /**
- * A row of the input panel: a quantity the person enters, or an option's
- * checkbox, standing where its declaration lists it (ADR-0002 decision 36).
+ * A row of the input panel: a quantity the person enters, with the input
+ * calculators it offers, or an option's checkbox, standing where its
+ * declaration lists it (ADR-0002 decisions 36 and 75).
  */
-export type PanelRow = Pick<DeclaredQuantity, "quantity"> | DeclaredOption;
+export type PanelRow = Required<Pick<DeclaredQuantity, "quantity" | "calculators">> | DeclaredOption;
 
 /**
  * The model's panel list with the rows of each entry group it has replaced by
  * those of the group's mode in `modes`, where the first of them stood. An
  * option is no group's row and keeps its place. A model without a group has
  * no rows of it to replace: without the temperature entry group, its inputs
- * in either temperature mode.
+ * in either temperature mode. A row offers the calculators declared on the
+ * quantities it stands for: under the declared mode its own, and under another
+ * mode every declared row of the group's, so the operative row offers what the
+ * mean radiant temperature's does, and the dynamic clothing row what the
+ * clothing insulation's does (ADR-0002 decision 75 rule 3).
  */
 function enteredRows(model: RegisteredModel, modes: ValueEntryModes): PanelRow[] {
-  let rows = model.inputs.map((entry): PanelRow => ("option" in entry ? entry : { quantity: entry.quantity }));
+  let rows = model.inputs.map((entry): PanelRow =>
+    "option" in entry ? entry : { quantity: entry.quantity, calculators: entry.calculators ?? [] },
+  );
   for (const group of valueEntryGroups) {
     if (!group.appliesTo(model)) {
       continue;
     }
-    const declared = group.modeOf(defaultEntryModes).panel;
-    const entered = group.modeOf(modes).panel;
+    const declaredMode = group.modeOf(defaultEntryModes);
+    const mode = group.modeOf(modes);
+    const declared = declaredMode.panel;
+    const replaced = rows.flatMap((row) => ("option" in row || !declared.includes(row.quantity) ? [] : [row]));
+    const calculatorsFor = (quantity: Quantity) => {
+      const standsFor = mode === declaredMode ? replaced.filter((row) => row.quantity === quantity) : replaced;
+      return [...new Set(standsFor.flatMap((row) => row.calculators))];
+    };
     rows = rows.flatMap((row) => {
       if ("option" in row || !declared.includes(row.quantity)) {
         return [row];
       }
-      return row.quantity === declared[0] ? entered.map((quantity) => ({ quantity })) : [];
+      return row.quantity === declared[0] ? mode.panel.map((quantity) => ({ quantity, calculators: calculatorsFor(quantity) })) : [];
     });
   }
   return rows;
@@ -395,7 +408,7 @@ export function enteredQuantities(model: RegisteredModel, modes: ValueEntryModes
  */
 export function panelRows(model: RegisteredModel, slot: Slot): PanelRow[] {
   return enteredRows(model, slot).map((row) =>
-    "option" in row || row.quantity !== q.rh ? row : { quantity: slot.humidity?.mode.quantity ?? row.quantity },
+    "option" in row || row.quantity !== q.rh ? row : { ...row, quantity: slot.humidity?.mode.quantity ?? row.quantity },
   );
 }
 

@@ -5,11 +5,12 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { registeredModels } from "$lib/models";
+import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "./calculators";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
 import { hasHumidityGroup, optionsOf, type RegisteredModel } from "./modelDeclaration";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import {
   areSameEntryModes,
   defaultEntryModes,
@@ -165,6 +166,37 @@ describe("entered values", () => {
       const slot = slotEnteredAs(temperatureMode.separate, humidityMode.dewPoint);
       expect(panelQuantities(pmvPpdIso, slot)).not.toContain(q.rh);
       expect(enteredQuantities(pmvPpdIso, slot)).toContain(q.rh);
+    });
+
+    describe("the calculators a row offers", () => {
+      const starting = startingSlot(pmvPpdAshrae);
+      /** The calculators of the row of `quantity` among `model`'s rows for `slot`. */
+      const offeredOn = (model: RegisteredModel, slot: Slot, quantity: Quantity) =>
+        panelRows(model, slot).find((row) => !("option" in row) && row.quantity === quantity)!;
+
+      it("are those declared on the quantity the row enters", () => {
+        expect(offeredOn(pmvPpdAshrae, starting, q.clo)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
+        expect(offeredOn(pmvPpdAshrae, starting, q.tr)).toMatchObject({ calculators: [solarGainOnOccupants] });
+      });
+
+      it("are the clothing calculators on the row re-pointed to the dynamic clothing insulation", () => {
+        const dynamic = { ...starting, ...entryModesWithClothing(clothingMode.corrected) };
+        expect(offeredOn(pmvPpdAshrae, dynamic, q.clo_dynamic)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
+      });
+
+      it("are Solar gain on the operative row, which stands for the mean radiant temperature too", () => {
+        const operative = { ...starting, ...entryModesWithTemperature(temperatureMode.operative) };
+        expect(offeredOn(pmvPpdAshrae, operative, q.operative_tmp)).toMatchObject({ calculators: [solarGainOnOccupants] });
+      });
+
+      it("are none on a dry-bulb row, a humidity row, or any row of a model that declares none", () => {
+        expect(offeredOn(pmvPpdAshrae, starting, q.tdb)).toMatchObject({ calculators: [] });
+        expect(offeredOn(pmvPpdAshrae, starting, q.rh)).toMatchObject({ calculators: [] });
+        const dewPoint = { ...starting, humidity: { mode: humidityMode.dewPoint, value: 10 } };
+        expect(offeredOn(pmvPpdAshrae, dewPoint, q.dew_point_tmp)).toMatchObject({ calculators: [] });
+        const rows = panelRows(adaptiveAshrae, startingSlot(adaptiveAshrae));
+        expect(rows.flatMap((row) => ("option" in row ? [] : row.calculators))).toEqual([]);
+      });
     });
 
     describe("an option", () => {

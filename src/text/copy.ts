@@ -75,6 +75,14 @@ export const copy = {
     "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
   presetTrigger: "Presets",
+  // The input calculators' menu entries and dialog titles, and Solar gain's postures in the standard's words
+  // (ADR-0002 decision 75).
+  customEnsemble: "Custom ensemble",
+  clothingFromOutdoorTemperature: "Clothing from outdoor temperature",
+  solarGainOnOccupants: "Solar gain on occupants",
+  postureSeated: "Seated",
+  postureStanding: "Standing",
+  postureSupine: "Supine",
   // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.
   rowCaption: (preset: string, bound: string) => `${preset} · ${bound}`,
   presetSearchPlaceholder: "Search…",

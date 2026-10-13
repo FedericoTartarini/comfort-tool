@@ -5,6 +5,7 @@ import {
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
   Standard,
 } from "jsthermalcomfort";
+import { customEnsemble } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { categoryZones } from "$lib/core/comfortZones";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -44,7 +45,7 @@ export const pmvPpdIso = {
     { quantity: q.v, value: 0.1 },
     { quantity: q.rh, value: 50 },
     { quantity: q.met, value: 1.1 },
-    { quantity: q.clo, value: 0.5 },
+    { quantity: q.clo, value: 0.5, calculators: [customEnsemble] },
   ],
   // The ranges the deployed CBE tool draws, not ISO 7730's applicability
   // bounds (ADR §4.4) — the charts show what the field looks like around the
