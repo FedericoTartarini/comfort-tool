@@ -53,6 +53,6 @@
     "sv-router": "^0.18.0"
   },
   "allowScripts": {
-    "github:FedericoTartarini/jsthermalcomfort#95f0a8702311abb5a32a865ca118272c477e93a1": true
+    "github:FedericoTartarini/jsthermalcomfort#535bf48089ed54448e3dc4d91b33dd1ac478421c": true
   }
 }
