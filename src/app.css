@@ -127,7 +127,7 @@
 
 /* Semantic classes, named for what a thing is (ADR-0002 decision 65, rule 1). */
 @layer components {
-	/* A Swatch (CONTEXT.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */
+	/* A Swatch (GLOSSARY.md) in its colour, `--swatch-color`, drawn in the shape the chart draws its thing. */
 	.swatch {
 		display: inline-block;
 		flex-shrink: 0;

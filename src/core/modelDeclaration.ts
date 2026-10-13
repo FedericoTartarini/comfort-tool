@@ -129,7 +129,7 @@ export interface ComfortZone {
  * (ADR-0002 decision 61): the dynamic chart and the psychrometric chart both
  * scan {@link output}; on Explore both paint the Band list copied from
  * {@link classifier}, on Standard both draw {@link comfortZones} (decision
- * 58). Each field is named for the CONTEXT.md
+ * 58). Each field is named for the GLOSSARY.md
  * term it holds, not for the page that paints it.
  */
 export interface DeclaredScan {
