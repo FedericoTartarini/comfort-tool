@@ -1358,7 +1358,9 @@ are pythermalcomfort#476 to #478.
 into when it is applied. **Decided 2026-10-12** (decision 75 rule 6): the slot is the one whose box opened the
 dialog, named in its title; no picker. **Revised 2026-10-14** (decision 75's note): the calculators are one "Input
 calculators" button in the Inputs card's heading row, opening one tabbed dialog in which the slot is chosen while the
-slots are named.
+slots are named. **Revised 2026-10-15** (decision 75's note, after the prototype): one button at the Inputs
+card's foot naming the calculators; the dialog has a fixed height and a result dock and writes every slot chosen by
+its checkboxes; decision 76 added for the app's switches, segmented groups and checkboxes.
 
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 
