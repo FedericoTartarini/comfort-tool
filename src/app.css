@@ -191,6 +191,11 @@
 		font-size: var(--font-size-caption);
 		color: var(--muted-foreground);
 	}
+	/* A model's option tucked under the row it qualifies, the field's gap from it where the rows' gap stood (ADR-0002
+	   decision 36 as revised 2026-10-15). */
+	.option-row {
+		margin-top: calc(var(--space-field) - var(--space-page));
+	}
 	/* A row's caption line under its box (decision 67, rule 3), the field's description: one line while empty too, so
 	   a preset's name appearing as a value is typed moves no row below. 1.5em for `1lh`, which Firefox 115 lacks. */
 	.caption-line {
@@ -292,6 +297,13 @@
 	--card-spacing: var(--space-page);
 	border-radius: var(--radius);
 }
+/* Every card's heading row is one height, a small button's, its content centred: a card without an action keeps the
+   row's height, so the Inputs and Results titles stand level and a model with no action moves nothing (decision 73,
+   rule 8 as revised 2026-10-15). */
+[data-slot="card-header"] {
+	min-height: 1.75rem;
+	align-content: center;
+}
 /* Every control has the one radius whatever its size (decision 73, rule 2), where Nova rounds a small button (`sm`,
    `xs`, `icon-sm`, `icon-xs`), an `sm` toggle, toggle-group and select trigger a step smaller, and the input group's
    button smaller again. A button that opens or closes a dialog, a sheet, a popover or a menu carries that part's slot, the sidebar's
@@ -329,13 +341,19 @@
 [data-slot="sidebar-content"] :is([data-slot="input"]:not([type="color"]), [data-slot="input-group"]) {
 	background-color: var(--background);
 }
-/* One pressed state (decision 73, rule 3): a chosen toggle-group item and a pressed toggle, Compare, a slot button or
-   a band's No colour, take the primary fill, where the generated toggle's pressed state is the hover's `bg-muted`. */
+/* One pressed state (decision 73, rule 3): a chosen toggle-group item and a pressed toggle, a slot button or a band's
+   No colour, take the primary fill, where the generated toggle's pressed state is the hover's `bg-muted`. */
 [data-slot="toggle-group-item"][data-state="on"],
 [data-slot="toggle"][data-state="on"] {
 	border-color: var(--primary);
 	background-color: var(--primary);
 	color: var(--primary-foreground);
+}
+/* An unchecked checkbox's border and an off switch's track edge in the muted text colour, 4.76:1 on the paper, where
+   the generated `border-input` is 1.23:1, under WCAG 2.1 SC 1.4.11's 3:1 for what identifies a control and its state
+   (ADR-0002 decision 76, rule 3). Checked, focused or invalid, the primitives' own edge stands. */
+:is([data-slot="checkbox"], [data-slot="switch"])[data-state="unchecked"]:not(:focus-visible, [aria-invalid="true"]) {
+	border-color: var(--muted-foreground);
 }
 [data-slot="dialog-content"] {
 	/* Every dialog is one width (decision 67, rule 9); a narrower window keeps the primitive's margin. */

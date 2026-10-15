@@ -38,6 +38,8 @@
     navigation: Snippet;
     sessionControls: Snippet;
     inputs: Snippet;
+    /** The Inputs card's actions, at the right of its heading row as the chart card's are: Compare, on Standard. */
+    inputsActions?: Snippet;
     /** The Results card's content, given the heading's id, which names the result table's scroll region. */
     results: Snippet<[headingId: string]>;
     /** The chart card's actions, at the right of its heading row (decision 73, rule 8 as revised 2026-10-12). */
@@ -46,7 +48,8 @@
     chart: Snippet;
   }
 
-  let { notice, onclosenotice, mark, navigation, sessionControls, inputs, results, chartActions, chart }: Props = $props();
+  let { notice, onclosenotice, mark, navigation, sessionControls, inputs, inputsActions, results, chartActions, chart }: Props =
+    $props();
 
   const id = $props.id();
 
@@ -93,8 +96,13 @@
         class="grid grid-cols-[minmax(0,1fr)] items-start gap-(--space-page) p-(--space-page) pl-0 @min-[70rem]:grid-cols-[24rem_minmax(0,1fr)]"
       >
         <Card.Root>
-          <Card.Header>
+          <Card.Header class="items-center">
             <Card.Title><h2>{copy.inputs}</h2></Card.Title>
+            {#if inputsActions}
+              <Card.Action class="row-span-1 self-center">
+                {@render inputsActions()}
+              </Card.Action>
+            {/if}
           </Card.Header>
           <Card.Content>
             {@render inputs()}

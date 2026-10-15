@@ -42,9 +42,10 @@ export const copy = {
   cbeAddress: "https://cbe.berkeley.edu/",
   berkeleyName: "University of California, Berkeley",
   berkeleyAddress: "https://www.berkeley.edu/",
-  // The sidebar's group labels after Standard, which is the Standard page's title (decision 73, rule 6).
+  // The sidebar's group labels after Standard, which is the Standard page's title (decision 73, rule 6): the session
+  // controls' group reads "Settings", the users' word, not the project's (rule 6 as revised 2026-10-15).
   tools: "Tools",
-  session: "Session",
+  settings: "Settings",
   inputs: "Inputs",
   results: "Results",
   model: "Model",
@@ -184,6 +185,10 @@ export const copy = {
   // The accessible name of one slot's control in a row that stands over several slots, on Compare.
   slotControl: (control: string, slotName: string) => `${control}, ${slotName}`,
   compare: "Compare",
+  // A switch's state beside it, under Compare, where its label stands above the slot columns (ADR-0002 decision 76,
+  // rule 2).
+  on: "On",
+  off: "Off",
   // A caption line about one row of the result table, while Compare is on.
   slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,
   // A chart's legend entry or readout line of one slot, while the slots are named.

@@ -56,7 +56,7 @@ function dockLine(dialog: Locator, name: string) {
 
 /** Compare on with its three slots enabled: Compare enables slot 2 on first use, and slot 3 by its button. */
 async function compareThreeSlots(page: Page) {
-  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  await page.getByRole("switch", { name: "Compare", exact: true }).click();
   await page.getByRole("button", { name: "Input 3", exact: true }).click();
   await expect(mrtOf(page, "Input 3")).toBeVisible();
 }
@@ -619,7 +619,7 @@ test.describe("Apply to, under Compare", () => {
   test("offers no disabled slot, and with no slot checked, Apply is disabled", async ({ page }) => {
     await open(page);
     // Compare enables slot 2 on first use; slot 3 stays disabled.
-    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
     const dialog = await openDialog(page, SOLAR);
     const panel = dialog.getByRole("tabpanel");
     await expect(panel.getByRole("checkbox")).toHaveCount(2);
@@ -632,7 +632,7 @@ test.describe("Apply to, under Compare", () => {
 
   test("is reached by the keyboard after the settings and before Apply", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
     const dialog = await openDialog(page, CLOTHING);
     const panel = dialog.getByRole("tabpanel");
     await dialog.getByRole("tab", { name: CLOTHING }).focus();
@@ -651,7 +651,7 @@ test.describe("Apply to, under Compare", () => {
 
   test("on Explore with the session's Compare on, there is no Apply to and the dock's line names no slot", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
     await open(page, EXPLORE_ADDRESS);
     const dialog = await openDialog(page, SOLAR);
     await expect(dialog.getByText("Apply to")).toHaveCount(0);

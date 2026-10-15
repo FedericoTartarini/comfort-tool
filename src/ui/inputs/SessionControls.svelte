@@ -4,6 +4,7 @@
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
+  import { Separator } from "$lib/ui/primitives/separator";
   import CopyLinkButton from "./CopyLinkButton.svelte";
   import QuantityInput from "./QuantityInput.svelte";
   import QuestionDialog from "./QuestionDialog.svelte";
@@ -37,10 +38,11 @@
 
 <!--
   The session controls (ADR-0002 decision 67, rule 2; GLOSSARY.md): what applies
-  to every slot and every page, the sidebar's Session group under the
-  navigation (decision 73, rule 6), the same on both pages. Copy link and
-  Reset stand one under the other, so Copy link saying the link was copied
-  moves nothing.
+  to every slot and every page, the sidebar's Settings group under the
+  navigation (decision 73, rule 6), the same on both pages. A rule parts the
+  settings from the two actions on the whole page (rule 6 as revised
+  2026-10-15). Copy link and Reset stand one under the other, so Copy link
+  saying the link was copied moves nothing.
 -->
 <Stack gap="4">
   <UnitSystemControls {session} />
@@ -62,6 +64,7 @@
     a yes the tab shows what a new tab at this address shows (decision 63,
     rules 7 and 8).
   -->
+  <Separator />
   <Stack gap="2">
     <CopyLinkButton {link} onrefused={oncopyrefused} />
     <Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>

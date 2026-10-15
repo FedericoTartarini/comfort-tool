@@ -20,6 +20,9 @@ import { palette } from "$lib/core/palette";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
+  import { Label } from "$lib/ui/primitives/label";
+  import { Separator } from "$lib/ui/primitives/separator";
+  import { Switch } from "$lib/ui/primitives/switch";
   import { Toggle } from "$lib/ui/primitives/toggle";
   import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
   import { defaultModel, modelChoicesOn } from "./navigation";
@@ -29,6 +32,7 @@ import { palette } from "$lib/core/palette";
   const { session, outputs } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
+  const id = $props.id();
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
   function setSlotEnabled(position: SlotPosition, enabled: boolean) {
@@ -69,17 +73,14 @@ import { palette } from "$lib/core/palette";
   {/snippet}
 
   {#snippet inputs()}
+    <!-- What the card computes, the model, ruled off from the values it computes from (decision 73, rule 8). -->
     <Stack gap="4">
-      <Inline gap="2" align="center">
-        <ModelSelect
-          choices={modelChoicesOn(session)}
-          model={session.model}
-          onchoose={(model) => inApp.follow({ page: session.page, model })}
-        />
-        <Toggle size="sm" variant="outline" bind:pressed={() => session.compare, (pressed) => session.setCompare(pressed)}>
-          {copy.compare}
-        </Toggle>
-      </Inline>
+      <ModelSelect
+        choices={modelChoicesOn(session)}
+        model={session.model}
+        onchoose={(model) => inApp.follow({ page: session.page, model })}
+      />
+      <Separator />
       <!--
         While Compare is on, a slot button at the head of each slot column; a
         disabled slot's column is empty below its button (ADR-0002 decision 50).
@@ -120,6 +121,17 @@ import { palette } from "$lib/core/palette";
         ondecline={() => session.declineSwitch()}
       />
     </Stack>
+  {/snippet}
+
+  <!--
+    Compare is a setting on or off that takes effect at once, so a switch with its label (ADR-0002 decision 76,
+    rule 1), at the Inputs heading row's right end, where no model's name can move it (decision 73, rule 8).
+  -->
+  {#snippet inputsActions()}
+    <Inline gap="2" align="center">
+      <Switch id="{id}-compare" bind:checked={() => session.compare, (checked) => session.setCompare(checked)} />
+      <Label for="{id}-compare">{copy.compare}</Label>
+    </Inline>
   {/snippet}
 
   {#snippet results(headingId)}

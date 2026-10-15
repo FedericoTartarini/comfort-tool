@@ -29,7 +29,7 @@ const ASHRAE_55 = Standard.ashrae_55_2023;
 // not ported.
 const airSpeedControl: OptionSpec = {
   key: "airspeed_control",
-  label: "Occupants control the air speed",
+  label: "Occupants have local control of the air speed",
   default: false,
 };
 

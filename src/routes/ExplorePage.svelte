@@ -27,6 +27,7 @@
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import * as Dialog from "$lib/ui/primitives/dialog";
+  import { Separator } from "$lib/ui/primitives/separator";
   import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
   import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
@@ -60,12 +61,14 @@
   {/snippet}
 
   {#snippet inputs()}
+    <!-- What the card computes, the model, ruled off from the values it computes from (decision 73, rule 8). -->
     <Stack gap="4">
       <ModelSelect
         choices={modelChoicesOn(session)}
         model={session.model}
         onchoose={(model) => inApp.follow({ page: session.page, model })}
       />
+      <Separator />
       <InputPanel
         model={session.model}
         {columns}

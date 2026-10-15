@@ -118,7 +118,7 @@ for (const width of [1440, 1366]) {
     expect(inputs.x + inputs.width).toBeLessThanOrEqual((await boxOf(card(page, "Results"))).x);
     const expectInPlace = await holdBoxes(page);
 
-    const compare = page.getByRole("button", { name: "Compare", exact: true });
+    const compare = page.getByRole("switch", { name: "Compare", exact: true });
     await expectInPlace(async () => {
       await compare.click();
       await expect(page.getByRole("row", { name: /^Input 2/ })).toBeVisible();
@@ -264,7 +264,7 @@ for (const width of [2560, 1920, 1440, 1366, 1280, 1024, 768, 767]) {
 test("at 768 px, the sidebar is fixed and the header has no trigger", async ({ page }) => {
   await openStandard(page, 768);
 
-  await expect(page.getByRole("group", { name: "Session" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Settings" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
   expect((await boxOf(page.getByRole("main"))).x).toBeGreaterThan(0);
 });
@@ -275,7 +275,7 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   const sheet = page.getByRole("dialog", { name: "Sidebar" });
 
   expect((await boxOf(page.getByRole("main"))).x).toBe(0);
-  await expect(page.getByRole("group", { name: "Session" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Settings" })).toHaveCount(0);
   expect((await boxOf(trigger)).x).toBeLessThan(
     (await boxOf(page.getByRole("link", { name: "Center for the Built Environment" }).first())).x,
   );
@@ -285,7 +285,7 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   await expect(trigger).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole("group", { name: "Session" })).toBeVisible();
+  await expect(sheet.getByRole("group", { name: "Settings" })).toBeVisible();
   await expect(sheet.getByRole("link", { name: "Explore" })).toBeVisible();
 
   await page.keyboard.press("Escape");
@@ -342,7 +342,7 @@ test.describe("the slots' names", () => {
     await openStandard(page, 1440);
     await expectUnnamed(page);
 
-    const compare = page.getByRole("button", { name: "Compare", exact: true });
+    const compare = page.getByRole("switch", { name: "Compare", exact: true });
     await compare.click();
     await expect(inputColumn(page)).toHaveCount(1);
     for (const name of ["Input 1", "Input 2"]) {
@@ -356,7 +356,7 @@ test.describe("the slots' names", () => {
 
   test("at 1440 px, are absent on Explore while the session's Compare is on", async ({ page }) => {
     await openStandard(page, 1440);
-    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
     await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
 
     await openStandard(page, 1440, EXPLORE_ADDRESS);
@@ -364,7 +364,7 @@ test.describe("the slots' names", () => {
 
     // The tab kept the session, Compare on, and Standard names its slots again.
     await openStandard(page, 1440);
-    await expect(page.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("switch", { name: "Compare", exact: true })).toHaveAttribute("aria-checked", "true");
     await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
   });
 
@@ -389,7 +389,7 @@ test.describe("the slots' names", () => {
     await decline();
 
     // Compare enables slot 2 on first use; slot 3 stays disabled.
-    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
     await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("2");
     await askSwitch(page.getByRole("spinbutton", { name: /^Air speed.*, Input 1$/ }));
     await expect(question.getByRole("columnheader")).toHaveCount(4);
@@ -403,6 +403,163 @@ test.describe("the slots' names", () => {
     await expect(question.getByRole("columnheader")).toHaveCount(4);
     await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1"]);
     await decline();
+  });
+});
+
+/**
+ * A control by the question it answers (ADR-0002 decision 76): a setting on
+ * or off at once is a switch, Compare in the Inputs heading row and a model's
+ * option under the row it qualifies; every checkbox's and switch's edge holds
+ * 3:1 against the paper; the sidebar's settings are headed "Settings".
+ */
+test.describe("controls by their question", () => {
+  const OPTION = "Occupants have local control of the air speed";
+  const compareSwitch = (page: Page) => page.getByRole("switch", { name: "Compare", exact: true });
+
+  /**
+   * WCAG 2.1's contrast ratio of an element's top border colour against white, the paper, the colour laid on the
+   * paper by its alpha first, so a transparent edge reads as the paper's and not as black.
+   */
+  async function edgeContrast(control: Locator) {
+    return control.evaluate((element) => {
+      const [r, g, b, alpha = 1] = getComputedStyle(element).borderTopColor.match(/\d+(\.\d+)?/g)!.map(Number);
+      const linear = (channel: number) => {
+        const c = (alpha * channel + (1 - alpha) * 255) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+      return 1.05 / (luminance + 0.05);
+    });
+  }
+
+  test("at 1440 px, Compare is a switch at the Inputs heading row's right end, one place on every Standard model; every heading row is at least 1.75rem and the Inputs and Results titles are level", async ({ page }) => {
+    const places = [];
+    for (const address of [PMV_ADDRESS, ADAPTIVE_ADDRESS, ISO_ADDRESS]) {
+      await openStandard(page, 1440, address);
+      const header = card(page, "Inputs").locator('[data-slot="card-header"]');
+      const compare = header.getByRole("switch", { name: "Compare", exact: true });
+      const label = header.getByText("Compare", { exact: true });
+      const title = await boxOf(header.getByRole("heading", { name: "Inputs", exact: true }));
+      const switchBox = await boxOf(compare);
+      const labelBox = await boxOf(label);
+
+      // The label after its switch, at the row's end, the title at its start.
+      expect(switchBox.x).toBeGreaterThan(title.x + title.width);
+      expect(labelBox.x).toBeGreaterThan(switchBox.x);
+      const contentEnd = await header.evaluate((element) => {
+        const { right } = element.getBoundingClientRect();
+        return right - parseFloat(getComputedStyle(element).paddingRight);
+      });
+      expect(labelBox.x + labelBox.width).toBeCloseTo(contentEnd, 0);
+      places.push({ switchBox, labelBox });
+
+      for (const row of await page.locator('[data-slot="card-header"]').all()) {
+        expect((await boxOf(row)).height).toBeGreaterThanOrEqual(28);
+      }
+      const results = await boxOf(card(page, "Results").getByRole("heading", { name: "Results", exact: true }));
+      expect(title.y).toBe(results.y);
+    }
+    expect(places[1]).toEqual(places[0]);
+    expect(places[2]).toEqual(places[0]);
+  });
+
+  test("at 1440 px, the Inputs card reads Model, a rule, the rows and the Input calculators button, on Standard and Explore", async ({ page }) => {
+    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+      await openStandard(page, 1440, address);
+      const inputs = card(page, "Inputs").locator('[data-slot="card-content"]');
+      const model = await boxOf(inputs.getByRole("button", { name: "Model", exact: true }));
+      const rule = await boxOf(inputs.locator('[data-slot="separator"]'));
+      const firstRow = await boxOf(inputs.getByRole("spinbutton").first());
+      const entry = await boxOf(inputs.getByRole("button", { name: /^Input calculators/ }));
+
+      expect(rule.y).toBeGreaterThan(model.y + model.height);
+      expect(firstRow.y).toBeGreaterThan(rule.y);
+      expect(entry.y).toBeGreaterThan(firstRow.y);
+    }
+  });
+
+  test("at 1440 px, the option is a switch under the air speed row at the field gap, under either air-speed mode", async ({ page }) => {
+    await openStandard(page, 1440);
+    const option = page.getByRole("switch", { name: OPTION, exact: true });
+    const airSpeedRow = page
+      .locator('[data-slot="field"]')
+      .filter({ has: page.getByRole("spinbutton", { name: /^(Relative a|A)ir speed/ }) })
+      .first();
+
+    for (const mode of ["Air speed", "Relative air speed"]) {
+      await expect(page.getByRole("spinbutton", { name: new RegExp(`^${mode} `) })).toBeVisible();
+      const row = await boxOf(airSpeedRow);
+      // The option's line: its switch and its label.
+      const line = await boxOf(option.locator(".."));
+      // The field gap, `--space-field`.
+      expect(line.y - (row.y + row.height)).toBeCloseTo(4, 0);
+      await expect(page.getByText(OPTION, { exact: true })).toBeVisible();
+
+      await page.getByRole("button", { name: "Air speed", exact: true }).click();
+      await page.getByRole("menu").getByRole("menuitemradio", { checked: false }).first().click();
+    }
+  });
+
+  test("at 1440 px, under Compare each column's switch is named by its slot, with On or Off beside it, hidden from assistive technology", async ({ page }) => {
+    await openStandard(page, 1440);
+    await compareSwitch(page).click();
+
+    for (const slot of ["Input 1", "Input 2"]) {
+      const option = page.getByRole("switch", { name: `${OPTION}, ${slot}`, exact: true });
+      const state = option.locator("..").locator('[aria-hidden="true"]');
+      await expect(option).toHaveAttribute("aria-checked", "false");
+      await expect(state).toHaveText("Off");
+      await option.click();
+      await expect(option).toHaveAttribute("aria-checked", "true");
+      await expect(state).toHaveText("On");
+    }
+    await expect(page.getByText(OPTION, { exact: true })).toHaveCount(1);
+  });
+
+  test("at 1440 px, an off switch's and an unchecked checkbox's edge is 3:1 against the paper, a focused switch's and a checked checkbox's the primitive's own", async ({ page }) => {
+    await openStandard(page, 1440);
+    expect(await edgeContrast(compareSwitch(page))).toBeGreaterThanOrEqual(3);
+    expect(await edgeContrast(page.getByRole("switch", { name: OPTION, exact: true }))).toBeGreaterThanOrEqual(3);
+    // Focused from the keyboard, the primitive's own edge, the ring's colour, stands; polled, as the switch's edge
+    // changes by a transition.
+    await page.keyboard.press("Tab");
+    await compareSwitch(page).focus();
+    await expect
+      .poll(() =>
+        compareSwitch(page).evaluate((element) => {
+          const probe = document.createElement("span");
+          probe.style.color = getComputedStyle(element).getPropertyValue("--ring");
+          document.body.append(probe);
+          const ring = getComputedStyle(probe).color;
+          probe.remove();
+          return element.matches(":focus-visible") && getComputedStyle(element).borderTopColor === ring;
+        }),
+      )
+      .toBe(true);
+
+    // Apply to under Compare: Input 1 checked, Input 2 not.
+    await compareSwitch(page).click();
+    await page.getByRole("button", { name: /^Input calculators/ }).click();
+    const applyTo = page.getByRole("dialog").getByRole("tabpanel");
+    const unchecked = applyTo.getByRole("checkbox", { name: "Input 2" });
+    const checked = applyTo.getByRole("checkbox", { name: "Input 1" });
+    await expect(unchecked).toHaveAttribute("aria-checked", "false");
+    expect(await edgeContrast(unchecked)).toBeGreaterThanOrEqual(3);
+    await expect(checked).toHaveAttribute("aria-checked", "true");
+    expect(await checked.evaluate((element) => getComputedStyle(element).borderTopColor)).toBe(
+      await checked.evaluate((element) => getComputedStyle(element).backgroundColor),
+    );
+  });
+
+  test("at 1440 px, the sidebar's settings are headed Settings, ruled off from Copy link and Reset", async ({ page }) => {
+    await openStandard(page, 1440);
+    const settings = page.getByRole("group", { name: "Settings" });
+    const pressure = await boxOf(settings.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
+    const rule = await boxOf(settings.locator('[data-slot="separator"]'));
+    const copyLink = await boxOf(settings.getByRole("button", { name: "Copy link" }));
+
+    expect(rule.y).toBeGreaterThan(pressure.y + pressure.height);
+    expect(copyLink.y).toBeGreaterThan(rule.y);
   });
 });
 
@@ -443,7 +600,7 @@ test("a row's Presets is the word at the box's end, and its list's values end at
 
 test("under Compare with three slots, a row's Presets is the list icon saying the word in a tooltip, and no value beside it is clipped", async ({ page }) => {
   await openStandard(page, 1440);
-  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  await page.getByRole("switch", { name: "Compare", exact: true }).click();
   for (const slot of ["Input 2", "Input 3"]) {
     const toggle = page.getByRole("button", { name: slot, exact: true });
     if ((await toggle.getAttribute("aria-pressed")) !== "true") {

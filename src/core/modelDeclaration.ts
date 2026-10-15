@@ -60,7 +60,7 @@ export interface DeclaredQuantity {
   readonly calculators?: readonly Calculator[];
 }
 
-/** An option a declaration lists: its checkbox stands at this place among the rows. */
+/** An option a declaration lists: its switch stands at this place among the rows. */
 export interface DeclaredOption {
   readonly option: OptionSpec;
 }
@@ -285,7 +285,7 @@ interface CommonDeclaration {
   readonly run: (values: Values, options: OptionsReader) => ModelResult;
   /**
    * The panel's list, in panel order: each quantity with its SI default, and
-   * each option where its checkbox stands among the rows (ADR-0002 decision
+   * each option where its switch stands among the rows (ADR-0002 decision
    * 36 as revised 2026-10-12). Read through {@link inputsOf} and
    * {@link optionsOf}.
    */

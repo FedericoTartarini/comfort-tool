@@ -12,7 +12,7 @@
   on; no brand tile in a `Sidebar.Header` (the header
   holds the mark), no user menu in a `Sidebar.Footer` (the page's footer
   holds the versions); the block's sample groups are the navigation the page
-  hands in, then a `Sidebar.Separator` and the Session group, which holds the
+  hands in, then a `Sidebar.Separator` and the Settings group, which holds the
   session controls whole, inset as a menu item's text is.
 -->
 <script lang="ts">
@@ -40,8 +40,8 @@
   <Sidebar.Content>
     {@render navigation()}
     <Sidebar.Separator />
-    <Sidebar.Group role="group" aria-labelledby="{id}-session">
-      <Sidebar.GroupLabel id="{id}-session">{copy.session}</Sidebar.GroupLabel>
+    <Sidebar.Group role="group" aria-labelledby="{id}-settings">
+      <Sidebar.GroupLabel id="{id}-settings">{copy.settings}</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="px-2 pt-1">
         {@render sessionControls()}
       </Sidebar.GroupContent>

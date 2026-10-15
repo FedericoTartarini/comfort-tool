@@ -106,7 +106,7 @@ export class InputSlot implements Slot {
     this.replaceWith(withEnteredValues(this, new Map([[quantity, value]])));
   }
 
-  /** Tick or untick `option`, as the option's checkbox does. */
+  /** Turn `option` on or off, as the option's switch does. */
   setOption(option: OptionSpec, value: boolean): void {
     this.replaceWith(withOption(this, option, value));
   }

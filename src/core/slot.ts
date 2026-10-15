@@ -344,7 +344,7 @@ export function expandOperative(values: Map<Quantity, number>): void {
 
 /**
  * A row of the input panel: a quantity the person enters, with the input
- * calculators it offers, or an option's checkbox, standing where its
+ * calculators it offers, or an option's switch, standing where its
  * declaration lists it (ADR-0002 decisions 36 and 75).
  */
 export type PanelRow = Required<Pick<DeclaredQuantity, "quantity" | "calculators">> | DeclaredOption;
