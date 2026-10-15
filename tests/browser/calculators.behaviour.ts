@@ -187,7 +187,7 @@ test.describe("Solar gain on occupants", () => {
     await open(page);
     const dialog = await openDialog(page, SOLAR);
     const panel = dialog.getByRole("tabpanel");
-    await expect(panel.getByText(/^ASHRAE 55 Normative Appendix C: /)).toBeVisible();
+    await expect(panel.getByText("The mean radiant temperature increase equivalent to the solar gain (ASHRAE 55 Normative Appendix C).")).toBeVisible();
     await expect(panel.locator('[data-slot="field-label"]')).toHaveText([
       "Posture",
       "Solar altitude above horizon (°)",
@@ -224,8 +224,8 @@ test.describe("Solar gain on occupants", () => {
     const twice = formatNumber(25 + 2 * increaseAt(0));
 
     let dialog = await openDialog(page, SOLAR);
-    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`25 → ${once} · 10 – 40`);
-    await expect(dockLine(dialog, MRT_LINE).locator(".out-of-range")).toHaveText(`${once} · 10 – 40`);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`25 → ${once} (limit 10 – 40)`);
+    await expect(dockLine(dialog, MRT_LINE).locator(".out-of-range")).toHaveText(`${once} (limit 10 – 40)`);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(entryOf(page)).toBeFocused();
@@ -233,7 +233,7 @@ test.describe("Solar gain on occupants", () => {
     await expect(mrt).toHaveAttribute("aria-invalid", "true");
 
     dialog = await openDialog(page);
-    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`${once} → ${twice} · 10 – 40`);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`${once} → ${twice} (limit 10 – 40)`);
     await expect(dialog.getByRole("button", { name: "Apply" })).toBeEnabled();
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(mrt).toHaveValue(twice);
@@ -277,7 +277,7 @@ test.describe("Clothing from outdoor temperature", () => {
     await open(page);
     await page.getByRole("radio", { name: "IP" }).click();
     const dialog = await openDialog(page, CLOTHING);
-    await expect(dialog.getByRole("tabpanel").getByText(/^ASHRAE 55 §5\.2\.2\.2\(f\): /)).toBeVisible();
+    await expect(dialog.getByRole("tabpanel").getByText(/\(ASHRAE 55 §5\.2\.2\.2\(f\)\)\.$/)).toBeVisible();
 
     const outdoor = dialog.getByRole("spinbutton", { name: "Outdoor air temperature at 6 a.m. (°F)" });
     await expect(outdoor).toHaveValue("68");

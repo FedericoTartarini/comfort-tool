@@ -90,16 +90,17 @@ export const copy = {
   postureStanding: "Standing",
   postureSupine: "Supine",
   posture: "Posture",
-  // The line each calculator's tab opens with, naming the standard's method, its citation first (decision 75,
+  // The line each calculator's tab opens with, naming the standard's method, its citation last (decision 75,
   // rule 6 (b); the wording the user's, 2026-10-15).
-  solarGainMethod: "ASHRAE 55 Normative Appendix C: the mean radiant temperature increase equivalent to the solar gain.",
-  customEnsembleMethod: "ASHRAE 55 §5.2.2.2(c) and (d): the sum of the garments' and the chair's insulation.",
+  solarGainMethod: "The mean radiant temperature increase equivalent to the solar gain (ASHRAE 55 Normative Appendix C).",
+  customEnsembleMethod: "The sum of the garments' and the chair's insulation (ASHRAE 55 §5.2.2.2(c) and (d)).",
   clothingFromOutdoorTemperatureMethod:
-    "ASHRAE 55 §5.2.2.2(f): the clothing of the day predicted from the outdoor air temperature at 6 a.m.",
+    "The clothing of the day predicted from the outdoor air temperature at 6 a.m. (ASHRAE 55 §5.2.2.2(f)).",
   // The result dock's line for a slot: the row's value before and after Apply, and an after outside the row's bound
-  // with that bound, "84.93 · 10 – 40" (decision 75, rule 6 (d)).
+  // with that bound named as its limit, "84.93 (limit 10 – 40)" (decision 75, rule 6 (d); worded by the user,
+  // 2026-10-15).
   calculatorChangeJoiner: " → ",
-  calculatorBrokenBound: (after: string, bound: string) => `${after} · ${bound}`,
+  calculatorBrokenBound: (after: string, bound: string) => `${after} (limit ${bound})`,
   // Custom ensemble's checklist: its search box, its empty list, a chosen garment's remove button, and the sum.
   ensembleSearchPlaceholder: "Search garments…",
   ensembleEmpty: "No garment matches.",
