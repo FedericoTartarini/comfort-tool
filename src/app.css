@@ -255,6 +255,19 @@
 	.result-dock .out-of-range {
 		color: var(--destructive);
 	}
+	/* The footer's "Apply to" stands at its start, Apply at its end; its heading is set as the labels beside it. Where
+	   the generated footer stacks its children in reverse, below `sm`, it is ordered after Apply so it still stands
+	   above it, where the Tab order reaches it first. */
+	.apply-to {
+		margin-inline-end: auto;
+		@variant max-sm {
+			order: 1;
+		}
+	}
+	.apply-to-heading {
+		font-size: var(--font-size-body);
+		font-weight: 500;
+	}
 	/* The input calculators' entry: its title over the calculators' names, a caption at the text's regular weight. */
 	.calculator-entry-text {
 		display: grid;

@@ -5,9 +5,10 @@ import { formatNumber } from "../../src/core/numberFormat";
 /**
  * The input calculators enter by one button at the Inputs card's foot, which
  * opens one dialog with a tab per calculator the model's panel offers; Apply
- * writes slot 1 as decision 75 rule 3 converts it (ADR-0002 decision 75 rule 6
- * as noted 2026-10-15). Numbers are the library's for the same SI values, at
- * the app's two decimals.
+ * writes slot 1, or under Compare the slots checked under "Apply to", as
+ * decision 75 rule 3 converts it (ADR-0002 decision 75 rule 6 as noted
+ * 2026-10-15). Numbers are the library's for the same SI values, at the app's
+ * two decimals.
  */
 
 const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
@@ -21,6 +22,7 @@ const CLOTHING = "Clothing from outdoor temperature";
 const ALL_NAMES = `${SOLAR} · ${ENSEMBLE} · ${CLOTHING}`;
 const OUTDOOR_TEMPERATURE = /^Outdoor air temperature at 6 a\.m\./;
 const DASH = "—";
+const MRT_LINE = "Mean radiant temperature (°C)";
 
 async function open(page: Page, address = PMV_ADDRESS) {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -50,6 +52,18 @@ function boxOf(page: Page, name: string | RegExp) {
 /** A line of the dock, by its name; hidden tabs' docks are not found. */
 function dockLine(dialog: Locator, name: string) {
   return dialog.getByRole("status", { name, exact: true });
+}
+
+/** Compare on with its three slots enabled: Compare enables slot 2 on first use, and slot 3 by its button. */
+async function compareThreeSlots(page: Page) {
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  await page.getByRole("button", { name: "Input 3", exact: true }).click();
+  await expect(mrtOf(page, "Input 3")).toBeVisible();
+}
+
+/** The mean radiant temperature box of the slot named `slotName`, under Compare. */
+function mrtOf(page: Page, slotName: string) {
+  return page.getByRole("spinbutton", { name: new RegExp(`^Mean radiant temperature.*, ${slotName}$`) });
 }
 
 /** The predicted clo at `tout` °C, as a row shows it. */
@@ -136,20 +150,31 @@ test.describe("the dialog", () => {
     await expect(dialog.getByRole("tab", { name: SOLAR })).toHaveAttribute("aria-selected", "true");
   });
 
-  test("keeps the tab list, the dock's foot and Apply at one y on every tab", async ({ page }) => {
+  test("keeps the tab list, the dock's foot and Apply at one y on every tab, with three slots chosen too", async ({ page }) => {
     await open(page);
-    const dialog = await openDialog(page);
-    const places: number[][] = [];
-    for (const tab of [SOLAR, ENSEMBLE, CLOTHING]) {
-      await dialog.getByRole("tab", { name: tab }).click();
-      const panel = dialog.getByRole("tabpanel");
-      const tabList = await dialog.getByRole("tablist").boundingBox();
-      const dock = await panel.locator(".result-dock").boundingBox();
-      const apply = await panel.getByRole("button", { name: "Apply" }).boundingBox();
-      places.push([tabList!.y, dock!.y + dock!.height, apply!.y]);
+    async function placesOnEveryTab(dialog: Locator) {
+      const places: number[][] = [];
+      for (const tab of [SOLAR, ENSEMBLE, CLOTHING]) {
+        await dialog.getByRole("tab", { name: tab }).click();
+        const panel = dialog.getByRole("tabpanel");
+        const tabList = await dialog.getByRole("tablist").boundingBox();
+        const dock = await panel.locator(".result-dock").boundingBox();
+        const apply = await panel.getByRole("button", { name: "Apply" }).boundingBox();
+        places.push([tabList!.y, dock!.y + dock!.height, apply!.y]);
+      }
+      return places;
     }
-    expect(places[1]).toEqual(places[0]);
-    expect(places[2]).toEqual(places[0]);
+    let dialog = await openDialog(page);
+    const [first, ...rest] = await placesOnEveryTab(dialog);
+    expect(rest).toEqual([first, first]);
+    await page.keyboard.press("Escape");
+
+    await compareThreeSlots(page);
+    dialog = await openDialog(page, SOLAR);
+    for (const name of ["Input 2", "Input 3"]) {
+      await dialog.getByRole("tabpanel").getByRole("checkbox", { name }).click();
+    }
+    expect(await placesOnEveryTab(dialog)).toEqual([first, first, first]);
   });
 
   test("reaches the tab list, the settings, Apply, Restore defaults and Close by the keyboard in that order", async ({ page }) => {
@@ -181,7 +206,6 @@ test.describe("the dialog", () => {
 });
 
 test.describe("Solar gain on occupants", () => {
-  const MRT_LINE = "Mean radiant temperature (°C)";
 
   test("opens on the method line, Posture and seven boxes with the deployed tool's labels and their ranges, and the dock", async ({ page }) => {
     await open(page);
@@ -340,5 +364,97 @@ test.describe("the dock's row under the entry modes", () => {
     await expect(dockLine(dialog, "Operative temperature (°C)")).toHaveText(`25 → ${folded}`);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("spinbutton", { name: /^Operative temperature/ })).toHaveValue(folded);
+  });
+});
+
+test.describe("Apply to, under Compare", () => {
+  const increase = increaseAt(0);
+  const mrtLine = (slotName: string) => `Mean radiant temperature, ${slotName} (°C)`;
+
+  test("lists the enabled slots with Input 1 checked, a dock line per checked slot read from that slot, and is not remembered", async ({ page }) => {
+    await open(page);
+    // With Compare off there is no Apply to, and the dock's line names no slot.
+    let dialog = await openDialog(page, SOLAR);
+    await expect(dialog.getByText("Apply to")).toHaveCount(0);
+    await expect(dockLine(dialog, MRT_LINE)).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await compareThreeSlots(page);
+    await mrtOf(page, "Input 2").fill("30");
+
+    dialog = await openDialog(page, SOLAR);
+    let panel = dialog.getByRole("tabpanel");
+    const applyTo = panel.getByRole("group", { name: "Apply to" });
+    await expect(applyTo.getByRole("checkbox")).toHaveCount(3);
+    for (const [name, checked] of [["Input 1", true], ["Input 2", false], ["Input 3", false]] as const) {
+      await expect(applyTo.getByRole("checkbox", { name })).toHaveAttribute("aria-checked", String(checked));
+    }
+    await expect(dockLine(dialog, mrtLine("Input 1"))).toContainText(`25 → ${formatNumber(25 + increase)}`);
+    await expect(dockLine(dialog, mrtLine("Input 2"))).toHaveCount(0);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveCount(0);
+
+    await applyTo.getByRole("checkbox", { name: "Input 2" }).click();
+    await expect(dockLine(dialog, mrtLine("Input 2"))).toContainText(`30 → ${formatNumber(30 + increase)}`);
+
+    await page.keyboard.press("Escape");
+    dialog = await openDialog(page);
+    panel = dialog.getByRole("tabpanel");
+    await expect(panel.getByRole("checkbox", { name: "Input 1" })).toHaveAttribute("aria-checked", "true");
+    await expect(panel.getByRole("checkbox", { name: "Input 2" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("one Apply writes every checked slot and closes, the unchecked slot unchanged", async ({ page }) => {
+    await open(page);
+    await compareThreeSlots(page);
+    const dialog = await openDialog(page, SOLAR);
+    await dialog.getByRole("tabpanel").getByRole("checkbox", { name: "Input 3" }).click();
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(mrtOf(page, "Input 1")).toHaveValue(formatNumber(25 + increase));
+    await expect(mrtOf(page, "Input 2")).toHaveValue("25");
+    await expect(mrtOf(page, "Input 3")).toHaveValue(formatNumber(25 + increase));
+  });
+
+  test("offers no disabled slot, and with no slot checked, Apply is disabled", async ({ page }) => {
+    await open(page);
+    // Compare enables slot 2 on first use; slot 3 stays disabled.
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    const dialog = await openDialog(page, SOLAR);
+    const panel = dialog.getByRole("tabpanel");
+    await expect(panel.getByRole("checkbox")).toHaveCount(2);
+    await expect(panel.getByRole("checkbox", { name: "Input 3" })).toHaveCount(0);
+    await panel.getByRole("checkbox", { name: "Input 1" }).click();
+    await expect(panel.getByRole("button", { name: "Apply" })).toBeDisabled();
+    await panel.getByRole("checkbox", { name: "Input 2" }).click();
+    await expect(panel.getByRole("button", { name: "Apply" })).toBeEnabled();
+  });
+
+  test("is reached by the keyboard after the settings and before Apply", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    const dialog = await openDialog(page, CLOTHING);
+    const panel = dialog.getByRole("tabpanel");
+    await dialog.getByRole("tab", { name: CLOTHING }).focus();
+    const order = [
+      panel,
+      panel.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE }),
+      panel.getByRole("checkbox", { name: "Input 1" }),
+      panel.getByRole("checkbox", { name: "Input 2" }),
+      panel.getByRole("button", { name: "Apply" }),
+    ];
+    for (const next of order) {
+      await page.keyboard.press("Tab");
+      await expect(next).toBeFocused();
+    }
+  });
+
+  test("on Explore with the session's Compare on, there is no Apply to and the dock's line names no slot", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await open(page, EXPLORE_ADDRESS);
+    const dialog = await openDialog(page, SOLAR);
+    await expect(dialog.getByText("Apply to")).toHaveCount(0);
+    await expect(dialog.getByRole("checkbox")).toHaveCount(0);
+    await expect(dockLine(dialog, MRT_LINE)).toContainText(`25 → ${formatNumber(25 + increase)}`);
   });
 });
