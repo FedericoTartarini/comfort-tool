@@ -24,7 +24,6 @@ import {
   solarGainOnOccupants,
   startingInputs,
   withCalculatorResult,
-  writtenRow,
   type Calculator,
   type CalculatorResult,
 } from "./calculators";
@@ -69,12 +68,14 @@ describe("clothingFromOutdoorTemperature", () => {
     expect(clothingFromOutdoorTemperature.output).toBe(q.clo);
     expect(clothingFromOutdoorTemperature.info).toBe(CLO_TOUT_INFO);
     expect(clothingFromOutdoorTemperature.asks).toEqual([{ quantity: q.tout, value: 20 }]);
+    expect(clothingFromOutdoorTemperature.outputs).toEqual([q.clo]);
     expect(clothingFromOutdoorTemperature.postures).toBeUndefined();
   });
 
   it("is the library's clo_tout in SI, below, between and above the formula's flat ends", () => {
     for (const tout of [-10, 20, 30]) {
       const result = clothingFromOutdoorTemperature.compute({ values: new Map([[q.tout, tout]]) });
+      expect([...result.outputs.keys()]).toEqual(clothingFromOutdoorTemperature.outputs);
       expect(outputOf(clothingFromOutdoorTemperature, result), `${tout} °C`).toBe(clo_tout({ tout }).clo_tout);
       expect(result.warnings).toEqual([]);
     }
@@ -87,6 +88,7 @@ describe("solarGainOnOccupants", () => {
     expect(solarGainOnOccupants.meets).toBe(meeting.adds);
     expect(solarGainOnOccupants.output).toBe(q.delta_mrt);
     expect(solarGainOnOccupants.info).toBe(SOLAR_GAIN_INFO);
+    expect(solarGainOnOccupants.outputs).toEqual([q.erf, q.delta_mrt]);
   });
 
   it("asks Table C-2's seven numbers with the spec's defaults, in dialog order", () => {
@@ -129,6 +131,7 @@ describe("solarGainOnOccupants", () => {
     const result = solarGainOnOccupants.compute(defaults);
     const library = libraryAt("sitting");
     expect(result.outputs).toEqual(new Map<Quantity, number>([[q.erf, library.erf], [q.delta_mrt, library.delta_mrt]]));
+    expect([...result.outputs.keys()]).toEqual(solarGainOnOccupants.outputs);
     expect(outputOf(solarGainOnOccupants, result)).toBe(library.delta_mrt);
     expect(result.warnings).toEqual(library.warnings);
   });
@@ -278,34 +281,6 @@ describe("withCalculatorResult", () => {
   });
 });
 
-describe("writtenRow", () => {
-  it("is the mean radiant temperature before and raised after, under separate entry", () => {
-    expect(writtenRow(room, solarGainOnOccupants, increase, pmvPpdAshrae)).toEqual({ quantity: q.tr, before: 27, after: 27 + 4.2 });
-  });
-
-  it("is the mean radiant temperature as expanded from the operative entry, which is what the write raises", () => {
-    const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
-    const entered = operative.values.get(q.operative_tmp)!;
-    expect(writtenRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae)).toEqual({
-      quantity: q.tr,
-      before: entered,
-      after: entered + 4.2,
-    });
-  });
-
-  it("is the clothing insulation before and the result after, for a calculator that replaces", () => {
-    const row = writtenRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae);
-    expect(row.quantity).toBe(q.clo);
-    expect(row.after).toBe(0.83);
-    expect(row.before).toBe(room.values.get(q.clo));
-  });
-
-  it("is what the next one starts from once written", () => {
-    const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
-    expect(writtenRow(once, solarGainOnOccupants, increase, pmvPpdAshrae).before).toBeCloseTo(27 + 4.2, 9);
-  });
-});
-
 describe("panelCalculators", () => {
   const expected: [RegisteredModel, Calculator[]][] = [
     [pmvPpdAshrae, [solarGainOnOccupants, customEnsemble, clothingFromOutdoorTemperature]],
@@ -355,6 +330,13 @@ describe("shownRow", () => {
     expect(row.quantity).toBe(q.operative_tmp);
     expect(row.before).toBe(entered);
     expect(row.after).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, pmvPpdAshrae.standard), 2);
+  });
+
+  it("is what the next Apply starts from once written: a second raise from the raised value", () => {
+    const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const row = shownRow(once, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    expect(row.before).toBeCloseTo(27 + 4.2, 2);
+    expect(row.after).toBeCloseTo(27 + 2 * 4.2, 2);
   });
 
   it("has an after that is not a number while there is no result", () => {

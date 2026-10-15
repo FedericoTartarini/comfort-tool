@@ -74,15 +74,15 @@ export const copy = {
     "clothing-insulation": "The dynamic clothing insulation follows the metabolic rate, and under ISO 7730 the air speed.",
     "dynamic-clothing-insulation": "Held as the metabolic rate or the air speed changes.",
   } satisfies Record<EntryModeId, string>,
-  // A row's menu button reads what it holds: "Presets" where it holds presets, with calculators or not, else
-  // "Calculators"; holding both, its list is in two groups under these headings (ADR-0002 decision 75, rule 6).
+  // A row's menu button holds the row's presets alone (ADR-0002 decision 75, rule 6).
   presetTrigger: "Presets",
-  calculatorTrigger: "Calculators",
-  presetGroup: "Presets",
-  calculatorGroup: "Calculators",
+  // The input calculators' entry at the Inputs card's foot, its second line the calculators' names, and the dialog's
+  // title (decision 75, rule 6 (a) and (b)).
+  inputCalculators: "Input calculators",
+  calculatorNames: (labels: readonly string[]) => labels.join(" · "),
   calculatorApply: "Apply",
-  // The input calculators' menu entries and dialog titles, and Solar gain's postures in the standard's words
-  // (ADR-0002 decision 75).
+  restoreDefaults: "Restore defaults",
+  // The input calculators' tab names, and Solar gain's postures in the standard's words (ADR-0002 decision 75).
   customEnsemble: "Custom ensemble",
   clothingFromOutdoorTemperature: "Clothing from outdoor temperature",
   solarGainOnOccupants: "Solar gain on occupants",
@@ -90,9 +90,16 @@ export const copy = {
   postureStanding: "Standing",
   postureSupine: "Supine",
   posture: "Posture",
-  // A dialog whose result is added to its row shows the row before and after Apply: "Mean radiant temperature before".
-  calculatorBefore: (label: string) => `${label} before`,
-  calculatorAfter: (label: string) => `${label} after`,
+  // The line each calculator's tab opens with, naming the standard's method, its citation first (decision 75,
+  // rule 6 (b); the wording the user's, 2026-10-15).
+  solarGainMethod: "ASHRAE 55 Normative Appendix C: the mean radiant temperature increase equivalent to the solar gain.",
+  customEnsembleMethod: "ASHRAE 55 §5.2.2.2(c) and (d): the sum of the garments' and the chair's insulation.",
+  clothingFromOutdoorTemperatureMethod:
+    "ASHRAE 55 §5.2.2.2(f): the clothing of the day predicted from the outdoor air temperature at 6 a.m.",
+  // The result dock's line for a slot: the row's value before and after Apply, and an after outside the row's bound
+  // with that bound, "84.93 · 10 – 40" (decision 75, rule 6 (d)).
+  calculatorChangeJoiner: " → ",
+  calculatorBrokenBound: (after: string, bound: string) => `${after} · ${bound}`,
   // Custom ensemble's checklist: its search box, its empty list, a chosen garment's remove button, and the sum.
   ensembleSearchPlaceholder: "Search garments…",
   ensembleEmpty: "No garment matches.",

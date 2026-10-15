@@ -16,7 +16,8 @@
   import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
-  import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
+  import InputCalculators from "$lib/ui/inputs/InputCalculators.svelte";
+  import InputPanel, { type SlotColumn } from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
@@ -34,6 +35,9 @@
   const { session, outputs } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
+
+  /** Explore compares nothing: slot 1's column alone, for the input panel and the input calculators. */
+  const columns = $derived<readonly [SlotColumn]>([{ inputSlot: session.slots[0], outputs: outputs.slots[0] }]);
 </script>
 
 <PageFrame
@@ -64,10 +68,16 @@
       />
       <InputPanel
         model={session.model}
-        columns={[{ inputSlot: session.slots[0], outputs: outputs.slots[0] }]}
+        {columns}
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
         entryModeSetters={session}
+      />
+      <InputCalculators
+        model={session.model}
+        {columns}
+        unitSystem={session.unitSystem}
+        atmosphericPressure={session.atmosphericPressure}
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}

@@ -3,7 +3,7 @@ import { copy } from "$lib/text/copy";
 import { humidityMode } from "./entryModes";
 import { formatNumber } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
-import { displayUnitFor, labelWithUnit, nameWithUnit, numberWithUnit, valueWithUnit } from "./units";
+import { displayUnitFor, labelWithUnit, nameWithUnit, numberInUnit, numberWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
 
 describe("displayUnitFor", () => {
@@ -127,6 +127,16 @@ describe("valueWithUnit", () => {
 
   it("is the bare value when the unit has no symbol", () => {
     expect(valueWithUnit("0.5", displayUnitFor(quantities.pmv, unitSystem.si))).toBe("0.5");
+  });
+});
+
+describe("numberInUnit", () => {
+  it("converts the SI number to the display unit and formats it, with no symbol", () => {
+    expect(numberInUnit(25, displayUnitFor(quantities.tdb, unitSystem.ip))).toBe("77");
+  });
+
+  it("is the dash for a value that is not a finite number", () => {
+    expect(numberInUnit(Number.NaN, displayUnitFor(quantities.tdb, unitSystem.si))).toBe(copy.notAvailable);
   });
 });
 

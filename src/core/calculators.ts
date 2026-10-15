@@ -60,8 +60,10 @@ export interface CalculatorInputs {
 
 /** What every calculator says of itself, whatever its dialog asks. */
 interface CommonCalculator {
-  /** The menu entry and the dialog's title. */
+  /** Its tab's name in the dialog, and its name on the entry. */
   readonly label: string;
+  /** The line its tab opens with, naming the standard's method. */
+  readonly method: string;
   /** How its result meets the row it is declared on. */
   readonly meets: Meeting;
   /** The output of its result that meets the row. */
@@ -80,6 +82,8 @@ export interface FormCalculator extends CommonCalculator {
   readonly asks: readonly Pick<DeclaredQuantity, "quantity" | "value">[];
   /** The postures it offers, the first the default; absent for a calculator that asks none. */
   readonly postures?: readonly [PostureOption, ...PostureOption[]];
+  /** The outputs its result holds, in the order its dialog shows them, which it shows without a result too. */
+  readonly outputs: readonly [Quantity, ...Quantity[]];
   readonly compute: (inputs: CalculatorInputs) => CalculatorResult;
   readonly groups?: never;
   readonly garments?: never;
@@ -96,6 +100,7 @@ export interface GarmentCalculator extends CommonCalculator {
   readonly info?: never;
   readonly asks?: never;
   readonly postures?: never;
+  readonly outputs?: never;
 }
 
 export type Calculator = FormCalculator | GarmentCalculator;
@@ -107,6 +112,7 @@ export type Calculator = FormCalculator | GarmentCalculator;
  */
 export const customEnsemble: GarmentCalculator = {
   label: copy.customEnsemble,
+  method: copy.customEnsembleMethod,
   meets: meeting.replaces,
   output: q.clo,
   groups: CLO_INDIVIDUAL_GARMENT_GROUPS,
@@ -135,10 +141,12 @@ export function requireGarment(garment: string): number {
  */
 export const clothingFromOutdoorTemperature: FormCalculator = {
   label: copy.clothingFromOutdoorTemperature,
+  method: copy.clothingFromOutdoorTemperatureMethod,
   meets: meeting.replaces,
   output: q.clo,
   info: CLO_TOUT_INFO,
   asks: [{ quantity: q.tout, value: 20 }],
+  outputs: [q.clo],
   compute: ({ values }) => ({
     outputs: new Map([[q.clo, clo_tout({ tout: requireValue(values, q.tout) }).clo_tout]]),
     warnings: [],
@@ -156,6 +164,7 @@ export const clothingFromOutdoorTemperature: FormCalculator = {
  */
 export const solarGainOnOccupants: FormCalculator = {
   label: copy.solarGainOnOccupants,
+  method: copy.solarGainMethod,
   meets: meeting.adds,
   output: q.delta_mrt,
   info: SOLAR_GAIN_INFO,
@@ -173,6 +182,7 @@ export const solarGainOnOccupants: FormCalculator = {
     { value: "standing", label: copy.postureStanding },
     { value: "supine", label: copy.postureSupine },
   ],
+  outputs: [q.erf, q.delta_mrt],
   compute: ({ values, posture }) => {
     const result = solar_gain({
       sol_altitude: requireValue(values, q.sol_altitude),
@@ -264,26 +274,6 @@ export function shownRow(
   const written = withCalculatorResult(slot, calculator, result, model);
   const broken = outOfRangeRows(written, model, atmosphericPressure).find((row) => row.quantity === quantity);
   return { quantity, before, after: valueIn(written), ...(broken && { brokenBound: broken.bound }) };
-}
-
-/** The row Apply writes: its value as the slot holds it in the entry group's first mode, and after the result meets it. */
-export interface WrittenRow {
-  readonly quantity: Quantity;
-  readonly before: number;
-  readonly after: number;
-}
-
-/**
- * The row of `model` that declares `calculator`, before and after Apply of
- * `result` on `slot` (decision 75 rule 3): read in its entry group's first
- * mode, the one the declaration writes its inputs in, so under operative
- * entry the mean radiant temperature is the one the operative temperature
- * expands to. A solar dialog shows it as the slot's mean radiant temperature
- * before and after; a second Apply starts from the raised one.
- */
-export function writtenRow(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): WrittenRow {
-  const { quantity, before, after } = writeOf(slot, calculator, result, model);
-  return { quantity, before, after };
 }
 
 /**

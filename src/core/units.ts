@@ -152,10 +152,19 @@ export function valueWithUnit(text: string, unit: DisplayUnit): string {
 }
 
 /**
- * The SI `value` as the tool shows it: converted to `unit`, formatted, and
- * followed by the unit's symbol as {@link valueWithUnit} writes it; the dash
- * for anything that is not a finite number.
+ * The SI `value` as a row shows it in `unit`, where the label carries the
+ * symbol: converted and formatted; the dash for anything that is not a finite
+ * number.
+ */
+export function numberInUnit(value: number, unit: DisplayUnit): string {
+  return Number.isFinite(value) ? formatNumber(unit.fromSi(value)) : copy.notAvailable;
+}
+
+/**
+ * The SI `value` as the tool shows it: {@link numberInUnit}, followed by the
+ * unit's symbol as {@link valueWithUnit} writes it; the dash alone for
+ * anything that is not a finite number.
  */
 export function numberWithUnit(value: number, unit: DisplayUnit): string {
-  return Number.isFinite(value) ? valueWithUnit(formatNumber(unit.fromSi(value)), unit) : copy.notAvailable;
+  return Number.isFinite(value) ? valueWithUnit(numberInUnit(value, unit), unit) : copy.notAvailable;
 }

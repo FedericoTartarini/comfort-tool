@@ -10,6 +10,7 @@ import { palette } from "$lib/core/palette";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
+  import InputCalculators from "$lib/ui/inputs/InputCalculators.svelte";
   import InputPanel, { type SlotColumn } from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
@@ -104,6 +105,12 @@ import { palette } from "$lib/core/palette";
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
         entryModeSetters={session}
+      />
+      <InputCalculators
+        model={session.model}
+        {columns}
+        unitSystem={session.unitSystem}
+        atmosphericPressure={session.atmosphericPressure}
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}

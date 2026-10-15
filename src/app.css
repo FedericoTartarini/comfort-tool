@@ -297,6 +297,86 @@
 	max-height: calc(100dvh - 2rem);
 	overflow-y: auto;
 }
+/* The Input calculators dialog (decision 75, rule 6 (b)): centred like every dialog and of one height, so switching a
+   tab moves no control. The title and the tab list stand at the top; under them a tab's settings, the one region that
+   scrolls, padded so focus rings are not clipped; then the result dock and the footer, held at the bottom. Every tab
+   is mounted, the inactive ones hidden by the primitive. */
+[data-slot="dialog-content"].dialog-fixed {
+	display: flex;
+	flex-direction: column;
+	height: min(46rem, calc(100dvh - 2rem));
+	overflow: hidden;
+}
+.dialog-fixed > [data-slot="tabs"] {
+	flex: 1;
+	min-height: 0;
+}
+.dialog-fixed [data-slot="tabs-content"][data-state="active"] {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+.dialog-fixed .calculator-settings {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	margin-inline: -4px;
+	padding: 4px;
+}
+/* The result dock: a band across the dialog's width, tinted as the footer under it and ruled off from the settings
+   above, so where the choosing ends and what Apply will write begins is drawn, not left to a gap. */
+.result-dock {
+	margin: var(--space-page) -1rem 0;
+	padding: var(--space-page) 1rem;
+	border-top: 1px solid var(--border);
+	background: color-mix(in oklab, var(--muted) 50%, transparent);
+}
+.result-dock + [data-slot="dialog-footer"] {
+	margin-top: 0;
+}
+/* A row's value after Apply outside the row's bound, with the bound: the colour an out-of-range box's edge takes. */
+.result-dock .out-of-range {
+	color: var(--destructive);
+}
+/* Restore defaults stands at the title's right, before the close button, which the primitive puts at the corner
+   (`top-2 right-2`, `icon-sm`); it is drawn after the footer, so the keyboard reaches it after Apply. */
+.dialog-fixed .restore-defaults {
+	position: absolute;
+	top: 0.5rem;
+	right: calc(0.5rem + 1.75rem + 0.25rem);
+}
+/* A form calculator's cells stretch to their row, and each cell's label takes the room a longer neighbour's second
+   line makes, standing at its foot: the boxes of a row stand level. */
+.calculator-form > * > [data-slot="field"] > :first-child {
+	flex: 1;
+	display: flex;
+	align-items: flex-end;
+}
+/* The input calculators' entry at the Inputs card's foot: one full-width button on two lines, its title over the
+   calculators' names, the chevron muted at its end (decision 75, rule 6 (a)). */
+.calculator-entry {
+	width: 100%;
+	height: auto;
+	justify-content: space-between;
+	padding-block: 0.5rem;
+	white-space: normal;
+	text-align: start;
+}
+.calculator-entry svg {
+	color: var(--muted-foreground);
+}
+.calculator-entry-text {
+	display: grid;
+	gap: 0.125rem;
+}
+.calculator-entry-title {
+	font-weight: 500;
+}
+.calculator-entry-names {
+	font-weight: 400;
+	font-size: var(--font-size-caption);
+	color: var(--muted-foreground);
+}
 /* A sidebar menu item is a link drawn as a button: hovered, the primitive fills it, so the base rule's underline does
    not reach it; a link in text keeps its underline (the shell's spec, "The frame"). */
 [data-slot="sidebar-menu-button"]:hover {
