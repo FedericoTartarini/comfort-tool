@@ -17,10 +17,10 @@
   import type { Preset } from "$lib/core/presets";
   import type { DisplayUnit } from "$lib/core/units";
   import { copy } from "$lib/text/copy";
-  import * as Command from "$lib/ui/primitives/command";
   import * as InputGroup from "$lib/ui/primitives/input-group";
   import * as Popover from "$lib/ui/primitives/popover";
   import * as Tooltip from "$lib/ui/primitives/tooltip";
+  import ValueList from "./ValueList.svelte";
 
   interface Props {
     presets: readonly Preset[];
@@ -52,6 +52,28 @@
     open = false;
     onopen(calculator);
   }
+
+  // An entry's key is its position here, the presets then the calculators.
+  const listGroups = $derived([
+    {
+      heading: grouped ? copy.presetGroup : undefined,
+      items: presets.map((preset, index) => ({
+        key: String(index),
+        label: preset.label,
+        value: formatNumber(unit.fromSi(preset.value)),
+      })),
+    },
+    {
+      heading: grouped ? copy.calculatorGroup : undefined,
+      items: calculators.map((calculator, index) => ({ key: String(presets.length + index), label: calculator.label })),
+    },
+  ]);
+
+  function pick(key: string) {
+    const index = Number(key);
+    if (index < presets.length) commitPreset(presets[index]);
+    else openCalculator(calculators[index - presets.length]);
+  }
 </script>
 
 <Popover.Root bind:open>
@@ -78,35 +100,5 @@
     </Tooltip.Trigger>
     <Tooltip.Content>{word}</Tooltip.Content>
   </Tooltip.Root>
-  <Popover.Content class="list-popover">
-    <!--
-      No initial scroll: on mount the list scrolls its first item into view
-      while the popover is still unpositioned far above the page, which
-      scrolled the whole window to the top.
-    -->
-    <Command.Root disableInitialScroll>
-      <Command.Input placeholder={copy.presetSearchPlaceholder} />
-      <Command.List>
-        <Command.Empty>{copy.presetEmpty}</Command.Empty>
-        <!-- The items inside a Group, as every generated example has them: the group's inset parts them from the search box. -->
-        {#if presets.length > 0}
-          <Command.Group heading={grouped ? copy.presetGroup : undefined}>
-            {#each presets as preset (preset.label)}
-              <Command.Item value={preset.label} onSelect={() => commitPreset(preset)}>
-                <span>{preset.label}</span>
-                <span class="item-value">{formatNumber(unit.fromSi(preset.value))}</span>
-              </Command.Item>
-            {/each}
-          </Command.Group>
-        {/if}
-        {#if calculators.length > 0}
-          <Command.Group heading={grouped ? copy.calculatorGroup : undefined}>
-            {#each calculators as calculator (calculator)}
-              <Command.Item value={calculator.label} onSelect={() => openCalculator(calculator)}>{calculator.label}</Command.Item>
-            {/each}
-          </Command.Group>
-        {/if}
-      </Command.List>
-    </Command.Root>
-  </Popover.Content>
+  <ValueList groups={listGroups} search={{ placeholder: copy.presetSearchPlaceholder, empty: copy.presetEmpty }} onpick={pick} />
 </Popover.Root>

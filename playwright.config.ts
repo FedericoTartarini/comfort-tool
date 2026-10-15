@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseUrl = "http://127.0.0.1:5173";
+// A port of the tests' own, held strictly and never shared: on Vite's default
+// another project's dev server could answer and be the app tested.
+const PORT = 5191;
+const baseUrl = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -37,9 +40,9 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
   },
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 5173",
+    command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: baseUrl,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

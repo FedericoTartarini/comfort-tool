@@ -22,7 +22,7 @@
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import { Label } from "$lib/ui/primitives/label";
-  import * as Select from "$lib/ui/primitives/select";
+  import ChoiceSelect from "./ChoiceSelect.svelte";
 
   interface Props {
     /**
@@ -40,40 +40,24 @@
 
   const id = $props.id();
 
-  // An item's value is its position here, across the groups.
+  // An option's key is its position here, across the groups.
   const models = $derived(choices.flatMap((group) => group.models));
+
+  const groups = $derived(
+    choices.map((group) => ({
+      heading: choices.length > 1 ? (group.standard?.displayName ?? copy.otherModels) : undefined,
+      options: group.models.map((choice) => ({ key: String(models.indexOf(choice)), label: choice.info.label })),
+    })),
+  );
 </script>
 
 <Inline gap="2" align="center">
   <Label for="{id}-model">{copy.model}</Label>
-  <!--
-    A function binding, not a value plus a change handler: the session, not
-    the select, decides which model is current, and a switch the person
-    declines has to leave the select where it was. With a one-way `value` the
-    select would keep the model it had offered, disagree with the page behind
-    the dialog, and refuse to offer that model a second time.
-  -->
-  <Select.Root
-    type="single"
-    bind:value={() => String(models.indexOf(model)), (value) => onchoose(models[Number(value)])}
-  >
-    <Select.Trigger id="{id}-model">{model.info.label}</Select.Trigger>
-    <Select.Content>
-      <!--
-        The items inside a Group, as every generated example has them: the
-        group carries the list's inset, and its heading names it to a screen
-        reader. Headings are not items, so the keyboard passes over them.
-      -->
-      {#each choices as group (group.standard)}
-        <Select.Group>
-          {#if choices.length > 1}
-            <Select.GroupHeading>{group.standard?.displayName ?? copy.otherModels}</Select.GroupHeading>
-          {/if}
-          {#each group.models as choice (choice)}
-            <Select.Item value={String(models.indexOf(choice))} label={choice.info.label} />
-          {/each}
-        </Select.Group>
-      {/each}
-    </Select.Content>
-  </Select.Root>
+  <!-- The session, not the select, decides which model is current: a switch the person declines leaves it where it was. -->
+  <ChoiceSelect
+    id="{id}-model"
+    {groups}
+    chosen={String(models.indexOf(model))}
+    onchoose={(key) => onchoose(models[Number(key)])}
+  />
 </Inline>
