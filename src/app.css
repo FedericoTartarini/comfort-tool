@@ -276,6 +276,11 @@
 	.calculator-entry-names {
 		font-weight: 400;
 	}
+	/* A garment row's name labels it as the panel's labels do, the label's weight, level with the row's list button. */
+	.garment-row-name {
+		line-height: 1.75rem;
+		font-weight: 500;
+	}
 }
 
 /* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2, as decision 73
@@ -362,9 +367,10 @@
 .result-dock + [data-slot="dialog-footer"] {
 	margin-top: 0;
 }
-/* Restore defaults stands at the title's right, before the close button, which the primitive puts at the corner
-   (`top-2 right-2`, `icon-sm`); it is drawn after the footer, so the keyboard reaches it after Apply. */
-.dialog-fixed .restore-defaults {
+/* A tab's action on its settings, Restore defaults or Clear, stands at the title's right, before the close button, which
+   the primitive puts at the corner (`top-2 right-2`, `icon-sm`); it is drawn after the footer, so the keyboard reaches
+   it after Apply. */
+.dialog-fixed .dialog-title-action {
 	position: absolute;
 	top: 0.5rem;
 	right: calc(0.5rem + 1.75rem + 0.25rem);
@@ -404,10 +410,45 @@
 .list-popover [data-slot="command-item"]:has(> .item-value) > svg {
 	display: none;
 }
-/* A list whose items are checked, Custom ensemble's garments: the check mark keeps its width whether shown or not, at
-   the item's end after the value, so the values stand in one column. */
-.checklist [data-slot="command-item"] > svg {
+/* Custom ensemble's search: its results float over the garment rows below it, so typing a query moves no row, and its
+   box's edges stand in line with the rows'. */
+.garment-search[data-slot="command"] {
+	position: relative;
+	overflow: visible;
+	height: auto;
+	padding: 0;
+}
+.garment-search [data-slot="command-input-wrapper"] {
+	padding: 0;
+}
+.garment-search [data-slot="command-list"] {
+	position: absolute;
+	inset-inline: 0;
+	top: calc(100% + 0.25rem);
+	z-index: 10;
+	max-height: 16rem;
+	padding: 0.25rem;
+	/* The generated popover's radius, ring at 10 % ink and theme shadow, as a row's list has them. */
+	border-radius: var(--radius-lg);
+	background: var(--popover);
+	box-shadow:
+		0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent),
+		var(--shadow-md);
+}
+/* A result's check mark, shown on a garment worn, keeps its width whether shown or not, at the item's end after the
+   value, so the values stand in one column. */
+.garment-search [data-slot="command-item"] > svg {
 	margin-left: 0;
+}
+/* A garment row's list button reads as the panel's select does, at one width in every row so it stands in one column:
+   the text's regular weight, the chevron muted at its end. */
+.garment-list-trigger {
+	width: 6.5rem;
+	justify-content: space-between;
+	font-weight: 400;
+}
+.garment-list-trigger svg {
+	color: var(--muted-foreground);
 }
 /* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
    (decision 72, rule 2), which wrap at 24rem. */

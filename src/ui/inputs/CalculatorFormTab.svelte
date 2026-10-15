@@ -97,7 +97,7 @@
   </Stack>
 </div>
 {@render dock(result, lines)}
-<Button variant="ghost" size="sm" class="restore-defaults" disabled={!changed} onclick={() => keptInputs.delete(calculator)}>
+<Button variant="ghost" size="sm" class="dialog-title-action" disabled={!changed} onclick={() => keptInputs.delete(calculator)}>
   {copy.restoreDefaults}
 </Button>
 

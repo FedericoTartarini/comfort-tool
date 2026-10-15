@@ -89,10 +89,12 @@ export interface FormCalculator extends CommonCalculator {
   readonly garments?: never;
 }
 
-/** A calculator whose dialog is a checklist of the library's garments. */
+/** A calculator whose tab wears the library's garments, group by group. */
 export interface GarmentCalculator extends CommonCalculator {
   /** The garment keys under their headings, in the library's order. */
   readonly groups: typeof CLO_INDIVIDUAL_GARMENT_GROUPS;
+  /** The group of the chairs, of which one is worn at a time (ASHRAE 55 Table 5.2.2.2C). */
+  readonly chairs: GarmentGroup;
   /** Each garment's insulation in clo, by key. */
   readonly garments: typeof clo_individual_garments;
   /** The ensemble of the chosen garment keys. */
@@ -102,6 +104,9 @@ export interface GarmentCalculator extends CommonCalculator {
   readonly postures?: never;
   readonly outputs?: never;
 }
+
+/** One of the library's garment groups: its heading and its garment keys, in the library's order. */
+export type GarmentGroup = (typeof CLO_INDIVIDUAL_GARMENT_GROUPS)[number];
 
 export type Calculator = FormCalculator | GarmentCalculator;
 
@@ -116,12 +121,30 @@ export const customEnsemble: GarmentCalculator = {
   meets: meeting.replaces,
   output: q.clo,
   groups: CLO_INDIVIDUAL_GARMENT_GROUPS,
+  chairs: requireGroup("Chairs"),
   garments: clo_individual_garments,
   compute: (garments) => {
     const sum = garments.reduce((total, garment) => total + requireGarment(garment), 0);
     return { outputs: new Map([[q.clo, sum]]), warnings: [] };
   },
 };
+
+/** The library's garment group headed `heading`, or a throw naming a heading it lacks. */
+function requireGroup(heading: string): GarmentGroup {
+  const group = CLO_INDIVIDUAL_GARMENT_GROUPS.find((candidate) => candidate.group === heading);
+  if (group === undefined) {
+    throw new Error(`The library has no garment group ${heading}`);
+  }
+  return group;
+}
+
+/** The garments worn after `garment` is put on: it joins those worn once, and a chair takes the place of the chair worn. */
+export function wearGarment(calculator: GarmentCalculator, worn: readonly string[], garment: string): readonly string[] {
+  if (calculator.chairs.garments.includes(garment)) {
+    return [...worn.filter((other) => !calculator.chairs.garments.includes(other)), garment];
+  }
+  return worn.includes(garment) ? worn : [...worn, garment];
+}
 
 /** The library's insulation of `garment` in clo, or a throw naming a key its table lacks. */
 export function requireGarment(garment: string): number {

@@ -28,13 +28,15 @@
     groups: readonly ValueListGroup[];
     /** The search box's placeholder and the words for no match; no search box without them. */
     search?: { readonly placeholder: string; readonly empty: string };
+    /** Which edge of the trigger the list stands at, its centre where none is given. */
+    align?: "start" | "center";
     onpick: (key: string) => void;
   }
 
-  let { groups, search, onpick }: Props = $props();
+  let { groups, search, align, onpick }: Props = $props();
 </script>
 
-<Popover.Content class="list-popover">
+<Popover.Content class="list-popover" {align}>
   <!--
     No initial scroll: on mount the list scrolls its first item into view
     while the popover is still unpositioned far above the page, which

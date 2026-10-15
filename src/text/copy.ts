@@ -103,10 +103,16 @@ export const copy = {
   // 2026-10-15).
   calculatorChangeJoiner: " → ",
   calculatorBrokenBound: (after: string, bound: string) => `${after} (limit ${bound})`,
-  // Custom ensemble's checklist: its search box, its empty list, a chosen garment's remove button, and the sum.
+  // Custom ensemble's rows: the search box above them and its empty list; a row's list button, "Change" on Chairs
+  // while a chair is worn; a worn garment's remove button; the caption under Chairs quoting the standard's condition
+  // (ASHRAE 55 §5.2.2.2(d), "permitted, but not required"); Clear at the title's right; and the sum.
   ensembleSearchPlaceholder: "Search garments…",
   ensembleEmpty: "No garment matches.",
+  ensembleAdd: "Add",
+  ensembleChange: "Change",
   ensembleRemove: (garment: string) => `Remove ${garment}`,
+  ensembleChairsCaption: "ASHRAE 55 Table 5.2.2.2C: for ensembles of 0.5 to 1.2 clo; optional",
+  ensembleClear: "Clear",
   ensembleInsulation: "Ensemble insulation",
   // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.
   rowCaption: (preset: string, bound: string) => `${preset} · ${bound}`,

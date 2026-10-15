@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { clo_dynamic_ashrae, clo_tout, solar_gain, Standard, t_o } from "jsthermalcomfort";
+import { CLO_INDIVIDUAL_GARMENT_GROUPS, clo_dynamic_ashrae, clo_individual_garments, clo_tout, solar_gain, Standard, t_o } from "jsthermalcomfort";
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
@@ -337,6 +337,207 @@ test.describe("Clothing from outdoor temperature", () => {
     await page.reload();
     dialog = await openDialog(page, CLOTHING);
     await expect(dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE })).toHaveValue("20");
+  });
+});
+
+test.describe("Custom ensemble", () => {
+  const SUM_LINE = "Ensemble insulation (clo)";
+  const CLOTHING_LINE = "Clothing insulation (clo)";
+
+  /** The sum of the library's values of `garments`, as the dock shows it. */
+  function sumOf(...garments: string[]) {
+    return formatNumber(garments.reduce((total, garment) => total + clo_individual_garments[garment], 0));
+  }
+
+  /** The library's garments of the group headed `heading`. */
+  function garmentsOf(heading: string) {
+    return CLO_INDIVIDUAL_GARMENT_GROUPS.find(({ group }) => group === heading)!.garments;
+  }
+
+  /** The row of the garment group headed `group`. */
+  function rowOf(panel: Locator, group: string) {
+    return panel.getByRole("group", { name: group, exact: true });
+  }
+
+  /** Wears `garment` from its row's list, the row headed `group`, whose button reads `word`. */
+  async function wearFromRow(page: Page, panel: Locator, group: string, garment: string, word = "Add") {
+    await rowOf(panel, group).getByRole("button", { name: `${word} ${group}` }).click();
+    await page.getByRole("listbox").getByRole("option", { name: new RegExp(`^${garment.replace(/[()]/g, "\\$&")}`) }).click();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+  }
+
+  test("is a row per garment group in the library's order, Chairs last with the standard's caption under it", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    await expect(panel.getByText("The sum of the garments' and the chair's insulation (ASHRAE 55 §5.2.2.2(c) and (d)).")).toBeVisible();
+    const groups = CLO_INDIVIDUAL_GARMENT_GROUPS.map(({ group }) => group);
+    expect(groups[groups.length - 1]).toBe("Chairs");
+    let above = -Infinity;
+    for (const group of groups) {
+      const box = await rowOf(panel, group).boundingBox();
+      expect(box!.y).toBeGreaterThan(above);
+      above = box!.y;
+    }
+    // The standard's condition stands in the Chairs row, under its list button.
+    const chairsList = await rowOf(panel, "Chairs").getByRole("button", { name: "Add Chairs" }).boundingBox();
+    const caption = await rowOf(panel, "Chairs").getByText("ASHRAE 55 Table 5.2.2.2C: for ensembles of 0.5 to 1.2 clo; optional").boundingBox();
+    expect(caption!.y).toBeGreaterThanOrEqual(chairsList!.y + chairsList!.height);
+
+    // Every row's list button stands at one x and one width.
+    const buttons = await Promise.all(groups.map((group) => rowOf(panel, group).getByRole("button", { name: `Add ${group}` }).boundingBox()));
+    for (const button of buttons) {
+      expect([button!.x, button!.width]).toEqual([buttons[0]!.x, buttons[0]!.width]);
+    }
+  });
+
+  test("a row's list holds its garments not worn with their clo; choosing one wears it as a chip and closes the list; its × takes it off", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    await expect(dockLine(dialog, SUM_LINE)).toHaveText(DASH);
+    await expect(dockLine(dialog, CLOTHING_LINE)).toHaveText(`0.5 → ${DASH}`);
+    await expect(panel.getByRole("button", { name: "Apply" })).toBeDisabled();
+
+    const footwear = rowOf(panel, "Footwear");
+    await footwear.getByRole("button", { name: "Add Footwear" }).click();
+    const list = page.getByRole("listbox");
+    await expect(list.getByRole("option")).toHaveCount(garmentsOf("Footwear").length);
+    await expect(list.getByRole("option", { name: /^Ankle socks/ })).toContainText("0.02");
+    await list.getByRole("option", { name: /^Ankle socks/ }).click();
+    await expect(list).toHaveCount(0);
+    await expect(footwear.getByRole("button", { name: "Remove Ankle socks" })).toBeVisible();
+    await wearFromRow(page, panel, "Footwear", "Shoes or sandals");
+    await expect(dockLine(dialog, SUM_LINE)).toHaveText(sumOf("Ankle socks", "Shoes or sandals"));
+    await expect(panel.getByRole("button", { name: "Apply" })).toBeEnabled();
+
+    await footwear.getByRole("button", { name: "Add Footwear" }).click();
+    await expect(list.getByRole("option")).toHaveCount(garmentsOf("Footwear").length - 2);
+    await expect(list.getByRole("option", { name: /^Ankle socks/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(list).toHaveCount(0);
+
+    await footwear.getByRole("button", { name: "Remove Ankle socks" }).click();
+    await expect(footwear.getByRole("button", { name: "Remove Ankle socks" })).toHaveCount(0);
+    await expect(dockLine(dialog, SUM_LINE)).toHaveText(sumOf("Shoes or sandals"));
+  });
+
+  test("the search's results float over the rows, mark a worn garment, and Enter wears one and clears the query", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    await wearFromRow(page, panel, "Footwear", "Calf length socks");
+    const search = panel.getByPlaceholder("Search garments…");
+    await expect(panel.getByRole("option")).toHaveCount(0);
+
+    const before = await rowOf(panel, "Underwear").boundingBox();
+    await search.fill("sock");
+    const results = panel.getByRole("option");
+    await expect(results).toHaveCount(Object.keys(clo_individual_garments).filter((garment) => garment.includes("sock")).length);
+    await expect(results.first()).toContainText("Ankle socks");
+    await expect(panel.getByRole("option", { name: /^Calf length socks/ })).toHaveAttribute("aria-checked", "true");
+    await expect(results.first()).toHaveAttribute("aria-checked", "false");
+    expect(await rowOf(panel, "Underwear").boundingBox()).toEqual(before);
+    // The results stand over the rows, drawn above them: the point at a result's centre is the result's.
+    const list = await panel.getByRole("listbox").boundingBox();
+    expect(list!.y).toBeLessThan(before!.y + before!.height);
+    const onTop = await results.first().evaluate((result) => {
+      const { x, y, width, height } = result.getBoundingClientRect();
+      return result.contains(document.elementFromPoint(x + width / 2, y + height / 2));
+    });
+    expect(onTop).toBe(true);
+
+    await page.keyboard.press("Enter");
+    await expect(search).toHaveValue("");
+    await expect(panel.getByRole("option")).toHaveCount(0);
+    await expect(rowOf(panel, "Footwear").getByRole("button", { name: "Remove Ankle socks" })).toBeVisible();
+    await expect(dockLine(dialog, SUM_LINE)).toHaveText(sumOf("Calf length socks", "Ankle socks"));
+  });
+
+  test("Chairs holds one chair, a second replacing the first, and its button reads Change while one is worn", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    const chairs = rowOf(panel, "Chairs");
+    await wearFromRow(page, panel, "Chairs", "Executive chair");
+    await expect(chairs.getByRole("button", { name: "Change Chairs" })).toHaveText("Change");
+    await wearFromRow(page, panel, "Chairs", "Wooden stool", "Change");
+    await expect(chairs.getByRole("button", { name: /^Remove / })).toHaveCount(1);
+    await expect(chairs.getByRole("button", { name: "Remove Wooden stool" })).toBeVisible();
+    await expect(dockLine(dialog, SUM_LINE)).toHaveText(sumOf("Wooden stool"));
+
+    // A chair found by the search replaces the chair worn too.
+    await panel.getByPlaceholder("Search garments…").fill("office");
+    await panel.getByRole("option", { name: /^Standard office chair/ }).click();
+    await expect(chairs.getByRole("button", { name: /^Remove / })).toHaveCount(1);
+    await expect(chairs.getByRole("button", { name: "Remove Standard office chair" })).toBeVisible();
+
+    await chairs.getByRole("button", { name: "Remove Standard office chair" }).click();
+    await expect(chairs.getByRole("button", { name: "Add Chairs" })).toHaveText("Add");
+  });
+
+  test("Clear is disabled with nothing worn and empties every row", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    const clear = panel.getByRole("button", { name: "Clear" });
+    await expect(clear).toBeDisabled();
+    await wearFromRow(page, panel, "Underwear", "T-shirt");
+    await wearFromRow(page, panel, "Chairs", "Metal chair");
+    await expect(clear).toBeEnabled();
+    await clear.click();
+    await expect(panel.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+    await expect(clear).toBeDisabled();
+    await expect(panel.getByRole("button", { name: "Apply" })).toBeDisabled();
+  });
+
+  test("Apply writes the sum into the clothing box and closes", async ({ page }) => {
+    await open(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    const outfit = ["Men's underwear", "Long-sleeve dress shirt", "Thick trousers", "Standard office chair"];
+    await wearFromRow(page, panel, "Underwear", outfit[0]);
+    await wearFromRow(page, panel, "Shirts and Blouses", outfit[1]);
+    await wearFromRow(page, panel, "Trousers and Coveralls", outfit[2]);
+    await wearFromRow(page, panel, "Chairs", outfit[3]);
+    await expect(dockLine(dialog, CLOTHING_LINE)).toHaveText(`0.5 → ${sumOf(...outfit)}`);
+    await panel.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("spinbutton", { name: /^Clothing insulation/ })).toHaveValue(sumOf(...outfit));
+  });
+
+  test("scrolls nothing at 1440 × 900 with three slots chosen and a garment in every row", async ({ page }) => {
+    await open(page);
+    await compareThreeSlots(page);
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    for (const name of ["Input 2", "Input 3"]) {
+      await panel.getByRole("checkbox", { name }).click();
+    }
+    for (const { group, garments } of CLO_INDIVIDUAL_GARMENT_GROUPS) {
+      await wearFromRow(page, panel, group, garments[0]);
+    }
+    const settings = panel.locator(".calculator-settings");
+    expect(await settings.evaluate((region) => region.scrollHeight - region.clientHeight)).toBeLessThanOrEqual(0);
+  });
+
+  test("keeps what is worn across models, and a reload starts it empty", async ({ page }) => {
+    await open(page);
+    let dialog = await openDialog(page, ENSEMBLE);
+    await wearFromRow(page, dialog.getByRole("tabpanel"), "Footwear", "Boots");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    const standards = page.getByRole("navigation").getByRole("group", { name: "Standard" });
+    await standards.getByRole("link", { name: "ISO 7730" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+    dialog = await openDialog(page);
+    await expect(dialog.getByRole("button", { name: "Remove Boots" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await page.reload();
+    dialog = await openDialog(page);
+    await expect(dialog.getByRole("button", { name: /^Remove / })).toHaveCount(0);
   });
 });
 

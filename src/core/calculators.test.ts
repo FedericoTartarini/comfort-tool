@@ -23,6 +23,7 @@ import {
   shownRow,
   solarGainOnOccupants,
   startingInputs,
+  wearGarment,
   withCalculatorResult,
   type Calculator,
   type CalculatorResult,
@@ -58,6 +59,24 @@ describe("customEnsemble", () => {
 
   it("throws naming a garment the library's table lacks", () => {
     expect(() => customEnsemble.compute(["Spacesuit"])).toThrow("Spacesuit");
+  });
+
+  it("holds one chair, the library's last group, Chairs", () => {
+    expect(customEnsemble.chairs).toBe(CLO_INDIVIDUAL_GARMENT_GROUPS[CLO_INDIVIDUAL_GARMENT_GROUPS.length - 1]);
+    expect(customEnsemble.chairs.group).toBe("Chairs");
+  });
+});
+
+describe("wearGarment", () => {
+  it("adds a garment after those worn, once", () => {
+    const worn = wearGarment(customEnsemble, ["Ankle socks"], "Shoes or sandals");
+    expect(worn).toEqual(["Ankle socks", "Shoes or sandals"]);
+    expect(wearGarment(customEnsemble, worn, "Ankle socks")).toEqual(worn);
+  });
+
+  it("puts a chair in place of the chair worn, the garments kept", () => {
+    const worn = wearGarment(customEnsemble, ["Executive chair", "Ankle socks"], "Wooden stool");
+    expect(worn).toEqual(["Ankle socks", "Wooden stool"]);
   });
 });
 
