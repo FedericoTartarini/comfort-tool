@@ -9,22 +9,28 @@ import {
   SOLAR_GAIN_INFO,
   t_o,
 } from "jsthermalcomfort";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
-import { calculatorBound, outOfRangeCalculatorInputs } from "./applicability";
+import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { calculatorBound, enteredBound, outOfRangeCalculatorInputs } from "./applicability";
 import {
   clothingFromOutdoorTemperature,
   customEnsemble,
   meeting,
   outputOf,
+  panelCalculators,
+  shownRow,
   solarGainOnOccupants,
   startingInputs,
   withCalculatorResult,
   writtenRow,
+  type Calculator,
   type CalculatorResult,
 } from "./calculators";
-import { enteredSlotFor } from "./declarationTestSlots";
+import { enteredSlotFor, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { clothingMode, humidityMode, temperatureMode } from "./entryModes";
-import { optionsOf } from "./modelDeclaration";
+import { optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { startingSlot, withClothingMode, withHumidityMode, withOption, withTemperatureMode, type Slot } from "./slot";
 
@@ -297,5 +303,79 @@ describe("writtenRow", () => {
   it("is what the next one starts from once written", () => {
     const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
     expect(writtenRow(once, solarGainOnOccupants, increase, pmvPpdAshrae).before).toBeCloseTo(27 + 4.2, 9);
+  });
+});
+
+describe("panelCalculators", () => {
+  const expected: [RegisteredModel, Calculator[]][] = [
+    [pmvPpdAshrae, [solarGainOnOccupants, customEnsemble, clothingFromOutdoorTemperature]],
+    [pmvPpdIso, [customEnsemble]],
+    [adaptiveAshrae, []],
+    [heatIndexRothfusz, []],
+  ];
+
+  for (const [model, calculators] of expected) {
+    it(`gives ${model.info.label}'s calculators in row order, the same under operative and dynamic clothing entry`, () => {
+      const starting = startingSlot(model);
+      expect(panelCalculators(model, starting)).toEqual(calculators);
+      expect(panelCalculators(model, { ...starting, ...entryModesWithTemperature(temperatureMode.operative) })).toEqual(calculators);
+      expect(panelCalculators(model, { ...starting, ...entryModesWithClothing(clothingMode.corrected) })).toEqual(calculators);
+    });
+  }
+});
+
+describe("shownRow", () => {
+  const P = DEFAULT_ATMOSPHERIC_PRESSURE;
+
+  it("is the clothing insulation under clothing entry, the result after", () => {
+    const row = shownRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae, P);
+    expect(row.quantity).toBe(q.clo);
+    expect(row.before).toBe(room.values.get(q.clo));
+    expect(row.after).toBeCloseTo(0.83, 2);
+  });
+
+  it("is the dynamic clothing insulation under dynamic clothing entry, the standard's correction of the result after", () => {
+    const dynamic = withClothingMode(room, clothingMode.corrected, pmvPpdAshrae);
+    const row = shownRow(dynamic, customEnsemble, clothing, pmvPpdAshrae, P);
+    expect(row.quantity).toBe(q.clo_dynamic);
+    expect(row.before).toBe(dynamic.values.get(q.clo_dynamic));
+    expect(row.after).toBeCloseTo(clo_dynamic_ashrae(0.83, 1.5), 2);
+  });
+
+  it("is the mean radiant temperature under separate entry, raised by the increase after", () => {
+    const row = shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    expect([row.quantity, row.before]).toEqual([q.tr, 27]);
+    expect(row.after).toBeCloseTo(27 + 4.2, 2);
+  });
+
+  it("is the operative temperature under operative entry, folded at the model's standard after", () => {
+    const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
+    const entered = operative.values.get(q.operative_tmp)!;
+    const row = shownRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    expect(row.quantity).toBe(q.operative_tmp);
+    expect(row.before).toBe(entered);
+    expect(row.after).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, pmvPpdAshrae.standard), 2);
+  });
+
+  it("has an after that is not a number while there is no result", () => {
+    const row = shownRow(room, solarGainOnOccupants, undefined, pmvPpdAshrae, P);
+    expect([row.quantity, row.before, row.after]).toEqual([q.tr, 27, Number.NaN]);
+    expect(row.brokenBound).toBeUndefined();
+  });
+
+  it("carries the row's bound where the after is outside it, as the panel marks it, and none inside it", () => {
+    const past = resultOf(q.delta_mrt, 20);
+    const raised = shownRow(room, solarGainOnOccupants, past, pmvPpdAshrae, P);
+    expect(raised.brokenBound).toBeDefined();
+    expect(raised.brokenBound).toEqual(enteredBound(pmvPpdAshrae, q.tr, room, P));
+    expect(shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P).brokenBound).toBeUndefined();
+  });
+
+  it("carries the operative row's bound under operative entry, where the folded after is outside it", () => {
+    // The fold weighs the raise by 0.4 at this air speed, so 20 K moves it 8 K and stays inside: 50 K is needed.
+    const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
+    const raised = shownRow(operative, solarGainOnOccupants, resultOf(q.delta_mrt, 50), pmvPpdAshrae, P);
+    expect(raised.brokenBound).toBeDefined();
+    expect(raised.brokenBound).toEqual(enteredBound(pmvPpdAshrae, q.operative_tmp, operative, P));
   });
 });

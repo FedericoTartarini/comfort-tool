@@ -19,9 +19,10 @@ import {
   type SolarGainParams,
 } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
+import { outOfRangeRows, type Bound } from "./applicability";
 import { inputsOf, type DeclaredQuantity, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { defaultEntryModes, requireValue, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
+import { defaultEntryModes, enteredValue, panelRows, requireValue, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -203,6 +204,66 @@ export function startingInputs(calculator: FormCalculator): CalculatorInputs {
 /** The output of `result` that meets `calculator`'s row. */
 export function outputOf(calculator: Calculator, result: CalculatorResult): number {
   return requireValue(result.outputs, calculator.output);
+}
+
+/**
+ * The calculators `model`'s panel offers for `slot`: the distinct ones over
+ * its {@link panelRows} in row order, a row folded into another's included,
+ * so the one list the entry names and the dialog's tabs follow (ADR-0002
+ * decision 75 rule 6). A row stands for the quantities of its entry group,
+ * so the list is the same under every entry mode.
+ */
+export function panelCalculators(model: RegisteredModel, slot: Slot): Calculator[] {
+  return [...new Set(panelRows(model, slot).flatMap((row) => ("option" in row ? [] : row.calculators)))];
+}
+
+/** The row a slot's panel shows for a calculator, its entered value before and after Apply. */
+export interface ShownRow {
+  readonly quantity: Quantity;
+  readonly before: number;
+  /** Not a number while there is no result. */
+  readonly after: number;
+  /** The row's bound where the after is outside it, as the panel would mark it; absent otherwise. */
+  readonly brokenBound?: Bound;
+}
+
+/**
+ * The row `slot`'s panel shows for `calculator` under `model`, in the slot's
+ * own entry modes, with what it holds before and after Apply of `result`
+ * ({@link withCalculatorResult}), each read as the panel reads it
+ * (`enteredValue`) (ADR-0002 decision 75 rule 6 (d)). So under dynamic
+ * clothing entry it is the dynamic clothing insulation, the standard's
+ * correction of the result after, and under operative entry the operative
+ * temperature, folded from the raised mean radiant temperature after. With no
+ * result the after is not a number. Whether the after is out of range is
+ * the gate's `outOfRangeRows` over the written slot, the panel's own reader.
+ */
+export function shownRow(
+  slot: Slot,
+  calculator: Calculator,
+  result: CalculatorResult | undefined,
+  model: RegisteredModel,
+  atmosphericPressure: number,
+): ShownRow {
+  const row = panelRows(model, slot).find((entry) => !("option" in entry) && entry.calculators.includes(calculator));
+  if (!row || "option" in row) {
+    throw new Error(`${model.info.label} offers ${calculator.label} on no row`);
+  }
+  const { quantity } = row;
+  const valueIn = (held: Slot) => {
+    const value = enteredValue(held, quantity, model, atmosphericPressure);
+    if (value === undefined) {
+      throw new Error(`Slot has no value for ${quantity.label}`);
+    }
+    return value;
+  };
+  const before = valueIn(slot);
+  if (!result) {
+    return { quantity, before, after: Number.NaN };
+  }
+  const written = withCalculatorResult(slot, calculator, result, model);
+  const broken = outOfRangeRows(written, model, atmosphericPressure).find((row) => row.quantity === quantity);
+  return { quantity, before, after: valueIn(written), ...(broken && { brokenBound: broken.bound }) };
 }
 
 /** The row Apply writes: its value as the slot holds it in the entry group's first mode, and after the result meets it. */
