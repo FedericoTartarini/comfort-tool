@@ -82,8 +82,8 @@
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="calculator-entry">
           <span class="calculator-entry-text">
-            <span class="calculator-entry-title">{copy.inputCalculators}</span>
-            <span class="calculator-entry-names">{copy.calculatorNames(calculators.map((calculator) => calculator.label))}</span>
+            <span>{copy.inputCalculators}</span>
+            <span class="caption calculator-entry-names">{copy.calculatorNames(calculators.map((calculator) => calculator.label))}</span>
           </span>
           <ChevronRightIcon />
         </Button>
@@ -94,8 +94,9 @@
         <Dialog.Title>{copy.inputCalculators}</Dialog.Title>
       </Dialog.Header>
       <!--
-        Every tab stays mounted, the inactive ones hidden, so a tab's settings
-        survive a switch; a tab's value is its calculator's position.
+        Every tab stays mounted, the inactive ones hidden, so a tab keeps its
+        scroll and the ensemble its search across a switch; its settings are
+        kept by the tab's module. A tab's value is its calculator's position.
       -->
       <Tabs.Root bind:value={() => String(calculators.indexOf(current)), (value) => (lastUsed = calculators[Number(value)])}>
         <Tabs.List variant="line">

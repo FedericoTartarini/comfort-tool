@@ -8,7 +8,7 @@
   footer follow, handed the result, which is none while a box is out of range.
   Restore defaults, at the title's right, is enabled once the settings differ
   from where they start; it is drawn last, so the keyboard reaches it after
-  Apply, as the eye does.
+  Apply and before the dialog's Close.
 -->
 <script module lang="ts">
   import { SvelteMap } from "svelte/reactivity";

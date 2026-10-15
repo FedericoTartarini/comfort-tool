@@ -289,17 +289,6 @@ export function shownRow(
  * gates what is written as it gates a typed value.
  */
 export function withCalculatorResult(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): Slot {
-  const { quantity, after, group, entered } = writeOf(slot, calculator, result, model);
-  const written = withEnteredValues(entered, new Map([[quantity, after]]));
-  return group ? group.convert(written, group.modeOf(slot), model) : written;
-}
-
-/**
- * What Apply does on `slot`: the row `calculator` writes in `model`, before
- * and after `result` meets it, its entry group, and `slot` put into that
- * group's first mode, where the row is read and written.
- */
-function writeOf(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel) {
   const row = inputsOf(model).find((entry) => entry.calculators?.includes(calculator));
   if (!row) {
     throw new Error(`${model.info.label} declares ${calculator.label} on no row`);
@@ -307,6 +296,7 @@ function writeOf(slot: Slot, calculator: Calculator, result: CalculatorResult, m
   const { quantity } = row;
   const group = valueEntryGroups.find((candidate) => candidate.modes.some((mode) => mode.panel.includes(quantity)));
   const entered = group ? group.convert(slot, group.modeOf(defaultEntryModes), model) : slot;
-  const before = requireValue(entered.values, quantity);
-  return { quantity, before, after: calculator.meets(before, outputOf(calculator, result)), group, entered };
+  const after = calculator.meets(requireValue(entered.values, quantity), outputOf(calculator, result));
+  const written = withEnteredValues(entered, new Map([[quantity, after]]));
+  return group ? group.convert(written, group.modeOf(slot), model) : written;
 }

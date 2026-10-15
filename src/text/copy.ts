@@ -97,7 +97,7 @@ export const copy = {
   clothingFromOutdoorTemperatureMethod:
     "The clothing of the day predicted from the outdoor air temperature at 6 a.m. (ASHRAE 55 §5.2.2.2(f)).",
   // The result dock's line for a slot: the row's value before and after Apply, and an after outside the row's bound
-  // with that bound named as its limit, "84.93 (limit 10 – 40)" (decision 75, rule 6 (d); worded by the user,
+  // with that bound named as its limit, "44.98 (limit 10 – 40)" (decision 75, rule 6 (d); worded by the user,
   // 2026-10-15).
   calculatorChangeJoiner: " → ",
   calculatorBrokenBound: (after: string, bound: string) => `${after} (limit ${bound})`,
