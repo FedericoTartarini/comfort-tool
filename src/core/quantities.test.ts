@@ -166,6 +166,30 @@ describe("the input calculators' quantities", () => {
     }
   });
 
+  it("label the solar ones in the deployed tool's words, less their ranges and symbols", () => {
+    expect([
+      quantities.sol_altitude,
+      quantities.sharp,
+      quantities.sol_radiation_dir,
+      quantities.sol_transmittance,
+      quantities.f_svv,
+      quantities.f_bes,
+      quantities.asw,
+      quantities.erf,
+      quantities.delta_mrt,
+    ].map((quantity) => quantity.label)).toEqual([
+      "Solar altitude above horizon",
+      "Solar horizontal angle relative to front of person (SHARP)",
+      "Direct beam (normal) solar radiation",
+      "Total solar transmittance",
+      "Sky vault view fraction",
+      "Fraction of body exposed to sun",
+      "Average shortwave absorptivity",
+      "ERF",
+      "Mean radiant temperature delta",
+    ]);
+  });
+
   it("show an angle in degrees in both systems, stepped by 1", () => {
     for (const system of Object.values(unitSystem)) {
       const degrees = displayUnitFor(quantities.sol_altitude, system);

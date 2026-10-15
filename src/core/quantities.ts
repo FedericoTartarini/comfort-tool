@@ -117,17 +117,19 @@ export const quantities = {
   acceptability_90: { key: "acceptability_90", kind: "yesNo", label: "90% acceptability" },
   compliance: { key: "compliance", kind: "yesNo", label: "ASHRAE 55 compliance" },
   // The input calculators' quantities, named by `CLO_TOUT_INFO` and
-  // `SOLAR_GAIN_INFO` (ADR-0002 decision 75).
+  // `SOLAR_GAIN_INFO` (ADR-0002 decision 75). The labels are the deployed
+  // tool's words less their ranges and symbols, SHARP kept as the standard's
+  // acronym (decision 75's note of 2026-10-15).
   tout: { key: "tout", kind: "temperature", label: "Outdoor air temperature at 6 a.m." },
-  sol_altitude: { key: "sol_altitude", kind: "angle", label: "Solar altitude" },
-  sharp: { key: "sharp", kind: "angle", label: "Solar horizontal angle (SHARP)" },
-  sol_radiation_dir: { key: "sol_radiation_dir", kind: "irradiance", label: "Direct-beam solar radiation" },
-  sol_transmittance: { key: "sol_transmittance", kind: "fraction", label: "Window transmittance" },
-  f_svv: { key: "f_svv", kind: "fraction", label: "Sky-vault view fraction" },
+  sol_altitude: { key: "sol_altitude", kind: "angle", label: "Solar altitude above horizon" },
+  sharp: { key: "sharp", kind: "angle", label: "Solar horizontal angle relative to front of person (SHARP)" },
+  sol_radiation_dir: { key: "sol_radiation_dir", kind: "irradiance", label: "Direct beam (normal) solar radiation" },
+  sol_transmittance: { key: "sol_transmittance", kind: "fraction", label: "Total solar transmittance" },
+  f_svv: { key: "f_svv", kind: "fraction", label: "Sky vault view fraction" },
   f_bes: { key: "f_bes", kind: "fraction", label: "Fraction of body exposed to sun" },
-  asw: { key: "asw", kind: "fraction", label: "Short-wave absorptivity" },
-  erf: { key: "erf", kind: "irradiance", label: "Effective radiant field" },
-  delta_mrt: { key: "delta_mrt", kind: "temperatureDifference", label: "Mean radiant temperature increase" },
+  asw: { key: "asw", kind: "fraction", label: "Average shortwave absorptivity" },
+  erf: { key: "erf", kind: "irradiance", label: "ERF" },
+  delta_mrt: { key: "delta_mrt", kind: "temperatureDifference", label: "Mean radiant temperature delta" },
 } as const satisfies Record<string, Quantity>;
 
 const byKey: Readonly<Record<string, Quantity>> = quantities;
