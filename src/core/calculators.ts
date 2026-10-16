@@ -4,8 +4,10 @@
  * referred to by identity, as an option is (decision 36), and declared on the
  * row it writes (`DeclaredQuantity.calculators`); and the one rule by which
  * a result is written into a slot. Each computes by calling the library in
- * SI; the app holds no formula and no bound of its own. A dialog's bounds are
- * `core/applicability.ts`'s `calculatorBound`.
+ * SI, except for the ensemble's plain sum of the library's garment values
+ * (ASHRAE 55 §5.2.2.2(c)), which no library function takes garment names
+ * for. A dialog's bounds are `core/applicability.ts`'s `calculatorBound`: the
+ * library's model info, within the kind's own range.
  */
 import {
   CLO_INDIVIDUAL_GARMENT_GROUPS,

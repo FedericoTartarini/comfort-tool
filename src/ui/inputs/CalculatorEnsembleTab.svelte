@@ -1,17 +1,17 @@
 <!--
   Custom ensemble's tab in the Input calculators dialog (ADR-0002 decision
-  75, rule 7 as noted 2026-10-15): the line naming the standard's method; a
-  search box, whose results float over the rows while a query is typed; then
-  one row per garment group of the library's, in its order, the chairs last,
-  each garment the key as the library prints it with its value in clo
-  (decision 20). A row is its group's name, a list button at one width in
-  every row, the Presets list (`ValueList`) of the group's garments not yet
-  worn, then the worn garments as chips, each taken off by one click. Chairs
-  holds one, a chosen chair replacing it, and carries the standard's condition
-  under it. These settings are the one region that scrolls. The dialog's dock
-  and footer follow, handed the sum, which is none while nothing is worn;
-  Clear, at the title's right, is drawn last, so the keyboard reaches it after
-  Apply and before the dialog's Close.
+  75, rule 7 as noted 2026-10-15 and 2026-10-16): the line naming the
+  standard's method, with the chair table's condition; a search box, whose
+  results float over the rows while a query is typed; then one row per
+  garment group of the library's, in its order, the chairs last, each garment
+  the key as the library prints it with its value in clo (decision 20). A row
+  is its group's name, a list button at one width in every row, the Presets
+  list (`ValueList`) of the group's garments not yet worn, then the worn
+  garments as chips, each taken off by one click. Chairs holds one, a chosen
+  chair replacing it. These settings are the one region that scrolls. The
+  dialog's dock and footer follow, handed the sum, which is none while
+  nothing is worn; Clear, at the title's right, is drawn last, so the
+  keyboard reaches it after Apply and before the dialog's Close.
 
   Its look is the shared `.garment-search`, `.garment-row-name` and
   `.garment-list-trigger` rules.

@@ -418,11 +418,12 @@
 [data-slot="sidebar-menu-button"]:hover {
 	text-decoration: none;
 }
-/* A popover that holds a searchable list, a row's Presets: the list reaches the popover's edges. */
+/* A popover that holds a list of values (`ValueList`), a row's Presets or a garment row's list: the list reaches the
+   popover's edges. */
 [data-slot="popover-content"].list-popover {
 	padding: 0;
 }
-/* An item that ends in a value, a row's Presets: the generated item's check mark goes, since no preset is ever checked.
+/* An item that ends in a value, in such a list: the generated item's check mark goes, since no entry is ever checked.
    Hidden, it still took its width and an auto margin, so the values ended short of the right edge, each at an x of its
    own, and stood further from it than the names from the left. */
 .list-popover [data-slot="command-item"]:has(> .item-value) > svg {

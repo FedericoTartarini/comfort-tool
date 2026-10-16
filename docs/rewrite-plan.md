@@ -269,6 +269,23 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > #477 and #478 are filed and open. Decision 75 is noted the same day, and rule 5's Table C-2 wording and reason are
 > corrected in place. **Next: the user's `/to-spec` and `/to-tickets` in `.scratch/input-calculators/`.**
 
+> **2026-10-16 — position, Phase 5b done**: `.scratch/input-calculators/` landed on `rewrite/v1` and the folder is
+> closed: 01 `abbca8f` the ten quantities and three kinds, 02 `436b834` the calculators in core and the write rule,
+> 03 to 05 `3f325bb`, `5ced383`, `bd16e17` the first entry and dialogs, then, after the prototype on
+> `prototype/calculator-entry` and decision 75's revision of 2026-10-15, 07 `b454778` the browser tests' own port
+> and `ChoiceSelect` and `ValueList`, 08 `20f310f` and `26bd421` the deployed labels and the core readers, 09
+> `501bf8c` (with `d77503d` and `70dc9e9`) one button at the Inputs card's foot opening one tabbed dialog with a result
+> dock, 10 `224f095` Apply to, 11 `6d4a692` the ensemble's grouped rows, 12 `4d6f6df` decision 76's switches and
+> edges, `3f70329` the chair table's condition moved into the method line (decision 75's revision of 2026-10-16), and
+> 06 the documents. Decisions 75 and 76 carry notes of this date naming the commits and the sentences that said more
+> or other than the code (the defaults' order of sources, the direct beam in W/m² under IP, `erf` and `delta_mrt` as
+> quantities, one set of settings per calculator for the loaded app's life, the panel row standing for its declared
+> quantities, the bound's words "(limit 10 – 40)", the 768 px window measured by the walk rather than a test),
+> decision 12 a note of the lint exception, ADR-0001 §4.1.5 and §5 notes of what landed. `.scratch/open-points.md`
+> marks B13 and D1 held and built, B17 done, and B16 the one point of the phase left, still deferred. `npm test`
+> passes at 1045 tests and `npm run test:browser` at 70. **Next: step 5 of the table above, the Time-series
+> grilling (decision 57 rule 6).**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1354,6 +1371,9 @@ lock moved to it; the app's spec and tickets in `.scratch/input-calculators/`. E
 is a quantity in `core/quantities.ts`, landed ahead (rule 4).
 **Done 2026-10-13** (decision 75's note): the library's three tickets are resolved at `535bf48`; the upstream issues
 are pythermalcomfort#476 to #478.
+**Done 2026-10-16** (decisions 75 and 76's notes; the position note of that date): `.scratch/input-calculators/`
+landed, `abbca8f` to `3f70329`. The three calculators are entered from one button at the Inputs card's foot and
+written by one Apply into each slot "Apply to" checks. B16, the window helper for `f_svv`, stays deferred.
 **Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
 into when it is applied. **Decided 2026-10-12** (decision 75 rule 6): the slot is the one whose box opened the
 dialog, named in its title; no picker. **Revised 2026-10-14** (decision 75's note): the calculators are one "Input

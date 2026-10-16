@@ -25,8 +25,9 @@ icons, cream grounds with warm accents, display fonts.
    pressed toggle; red marks an entry out of range, a refused Edge and a kept row's note; a kept result is greyed,
    never coloured.
 2. **Structure is information.** The modules are white panels on a faint ground, each bounded by a ring at 10 % ink;
-   no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows) and in the sidebar (above
-   Session). The header and the footer are bands of the brand. A boundary encodes a boundary that exists.
+   no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the Inputs card's under the
+   model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above Copy
+   link). The header and the footer are bands of the brand. A boundary encodes a boundary that exists.
 3. **Instrument density.** Body text at 14 px; numbers in tabular figures so decimals align; labels in sentence case,
    never upper case. Line length under 80 characters in any prose the page carries.
 4. **No motion that nobody asked for.** Dialogs and sheets keep the primitive's; nothing else animates.
@@ -95,25 +96,29 @@ meets the cards' top.
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
 │ [CBE] │ CBE Thermal Comfort Tool     [notice, when there is one]     Documentation       │  brand band, 3.5rem
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ Standard   ┌─ Inputs ──────────────────────┐ ┌─ Results ───────────────────────────────┐ │
+│ Standard   ┌─ Inputs ──────────── ◉ Compare┐ ┌─ Results ───────────────────────────────┐ │
 │ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Compliance     PMV    PPD  …            │ │
-│  ISO 7730  │                   [Compare]   │ │ ▢ Neutral    −0.24  6.15 %              │ │
+│  ISO 7730  │ ───────────────────────────── │ │ ▢ Neutral    −0.24  6.15 %              │ │
 │            │ Air temp (°C) [Temperature ▾] │ │ ASHRAE 55:2023                          │ │
 │ Tools      │ [25                       ]   │ └─────────────────────────────────────────┘ │
 │  Explore   │ 10 – 40                       │ ┌─ Chart ────────────────── [Export image]┐ │
 │            │ Mean radiant temp (°C)        │ │ [Psychro|Dynamic] [X axis ▾] [Y axis ▾] │ │
 │ ────────── │ [25                       ]   │ │ ┌──────────────┐                        │ │
-│ Session    │ 10 – 40                       │ │ │   plot 4:3   │   ─ Relative humidity  │ │
+│ Settings   │ 10 – 40                       │ │ │   plot 4:3   │   ─ Relative humidity  │ │
 │ Units      │ Air speed (m/s) [Air speed ▾] │ │ │  ≤ 24rem tall│   ■ Comfort zone       │ │
 │ [SI|IP]    │ [0.1                      ]   │ │ │              │   ● Input              │ │
 │ Pressure   │ 0 – 1.97                      │ │ │              │                        │ │
-│ [101325]   │ ☐ Occupants control…          │ │ └──────────────┘                        │ │
+│ [101325]   │ ◉ Occupants have local contr… │ │ └──────────────┘                        │ │
 │ 30000 – …  │ Relative humidity (%) [… ▾]   │ └─────────────────────────────────────────┘ │
-│ [Copy link]│ [50                       ]   │                                             │
-│ [Reset]    │ Metabolic rate (met)          │                                             │
-│            │ [1.1              Presets]    │                                             │
+│ ────────── │ [50                       ]   │                                             │
+│ [Copy link]│ Metabolic rate (met)          │                                             │
+│ [Reset]    │ [1.1              Presets]    │                                             │
 │            │ Typing · 1 – 4                │                                             │
 │            │ …                             │                                             │
+│            │ ┌───────────────────────────┐ │                                             │
+│            │ │Input calculators         ›│ │                                             │
+│            │ │Solar gain · Custom ensem… │ │                                             │
+│            │ └───────────────────────────┘ │                                             │
 │            └───────────────────────────────┘                                             │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ CBE Thermal Comfort Tool 0.1.0 · jsthermalcomfort 1.4.0 · Licence · Code [CBE] [Berkeley]│  brand band
@@ -128,20 +133,24 @@ the room between; Documentation. Below `md` the sidebar's trigger stands before 
 link's yes lands on the `h1`.
 
 **Sidebar.** The `sidebar-16` block's menu on the ground, no icons, items `gap-1`. Groups: Standard, one item per
-standard; Tools, Explore (Time-series joins as one item when it exists, no placeholder); a separator; Session, the
-unit system as a toggle-group, the atmospheric pressure's input with its bound text, Copy link and Reset, standing
-on the group labels' line, 20 px in, text against text; the pressure's box is the paper, since a box takes the other
-colour of the surface it stands on. The current address is drawn as current; a standard's link on another of its
-models too (decision 67, rule 2).
+standard; Tools, Explore (Time-series joins as one item when it exists, no placeholder); a separator; Settings, the
+unit system as a toggle-group, the atmospheric pressure's input with its bound text, a separator, Copy link and Reset,
+standing on the group labels' line, 20 px in, text against text; the pressure's box is the paper, since a box takes
+the other colour of the surface it stands on. The current address is drawn as current; a standard's link on another of
+its models too (decision 67, rule 2).
 
-**Inputs.** A card: the model select, Compare, the quantity rows. A row is a label with its unit, the entry group's
-menu button beside it where the row belongs to a group (decision 72), the box with its Presets menu button inside it
-where the row has presets (decision 67, rule 3), and the caption line, `preset · bound`. The Presets button reads
-"Presets"; with Compare on it is the list icon with "Presets" as its tooltip, and its list's values end at one x. An
-option's checkbox stands where its model lists it among the rows, PMV (ASHRAE 55)'s after the air speed (decision
-36). The box is tinted `ground`; a select's trigger is not. With Compare on, the three slot buttons head three
-columns of the same `24rem` (decision 50); every pressed toggle is filled with the brand. The applicability hints, a
-default `Alert`, stand at the card's foot.
+**Inputs.** A card: Compare, a switch with its label, at the heading row's right end on Standard (decision 76); the
+model select, a rule, the quantity rows, and the Input calculators button. A row is a label with its unit, the entry
+group's menu button beside it where the row belongs to a group (decision 72), the box with its Presets menu button
+inside it where the row has presets (decision 67, rule 3), and the caption line, `preset · bound`. The Presets button
+reads "Presets"; with Compare on it is the list icon with "Presets" as its tooltip, and its list's values end at one
+x. An option is a switch with its label, tucked under the row it qualifies at the field gap, PMV (ASHRAE 55)'s under
+the air speed (decision 36); with Compare on, one switch per slot column, "On" or "Off" beside it. The box is tinted
+`ground`; a select's trigger is not. With Compare on, the three slot buttons head three columns of the same `24rem`
+(decision 50); every pressed toggle is filled with the brand. The applicability hints, a default `Alert`, stand after
+the rows. The card ends with the Input calculators button, full width, outline, "Input calculators" over the names of
+the calculators the model declares, which opens one tabbed dialog of one fixed height (decision 75); a model that
+declares none has no button.
 
 **Results.** A card: the Results heading, the table (decision 70: headings wrap, numbers right-aligned, the first
 column sticky, the region scrolls sideways with its clipped edge faded), then the standard's caption and the kept
@@ -178,7 +187,7 @@ module gap, the chart card's padding, the plot at its cap, its gap to the legend
 measured against the main area, so 1344 px of window with the sidebar; narrower, the input card stands above the other
 two, every card taking the main area's width, the legend beside the plot down to 944 px. Below `md`, at 767 px and
 narrower by the primitive's own check, the sidebar is the primitive's `Sheet`, the one device breakpoint, its trigger in
-the header before the mark, with the Session group inside it; at 768 px it is still fixed. Compare's three slot columns
+the header before the mark, with the Settings group inside it; at 768 px it is still fixed. Compare's three slot columns
 stay side by side at every width (decision 50). Wider than the content needs, the page stops growing: the sidebar and
 the main area are one frame, the sidebar's `14rem` and the main area's `76rem`, its width at 1440 px, centred in the
 window, so the chart card, the table's columns and the legend's room keep the 1440 px proportions on a wide monitor; the

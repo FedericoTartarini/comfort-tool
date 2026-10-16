@@ -193,6 +193,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 > **Noted 2026-10-01** ([ADR-0002](0002-library-interface-model-info.md) decision 54's note of the same day; `.scratch/activity-adjusted-inputs/`): Done. The two entry groups and their controls landed as `150fae9` to `60f088f`, the correction derived by `relativeAirSpeedOf` and `dynamicClothingOf` in `core/slot.ts`, the clothing rule read from the table in `core/clothingCorrection.ts`. No option carries either. The `clo_tout` calculator is Phase 5b item 2's and is not built.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 75** (2026-10-12): the paragraph below's `Create custom ensemble / Dynamic predictive clothing / Solar gain` are v1's three input calculators and its only ones: the ensemble, the sum of the library's garment values, and `clo_tout` write `clo`; "Solar gain" writes `tr`, the mean radiant temperature raised by the library's `delta_mrt`. Each is declared on the row it writes and applied once, as the paragraph says; its own inputs are quantities whose bounds the library's `_INFO` publishes. `Globe temp` stays out of v1; `Set pressure` is decision 49's.
+>
+> **Noted 2026-10-16** ([ADR-0002](0002-library-interface-model-info.md) decision 75's note of the same day; `.scratch/input-calculators/` ticket 06): Done. The three calculators are `core/calculators.ts` (`436b834`), each declared on the row it writes; they are entered from one button at the Inputs card's foot, which opens one tabbed dialog (`501bf8c`), and Apply writes each slot "Apply to" checks while the slots are named, slot 1 otherwise (`224f095`). Their inputs are in no session, link or kept tab: module state, for as long as the app is loaded. `core/calculators.ts` imports `clo_tout` and `solar_gain`, the one exception lint allows to §3's convention outside `src/models/` and `src/temporary-library/`.
 
 Where the old tool's input-panel button group belongs: `Create custom ensemble / Dynamic predictive clothing / Solar gain / Globe temp / Set pressure` → app-side input calculators whose formulas call the library; `Relative air speed / Local control` → options in the declaration file; `Local discomfort` (ankle draft, vertical temperature difference) only produces outputs and does not change inputs → enters the library as an ordinary small model, available in Explore; `Reset / Save / Reload / Share / SI-IP / Documentation` → app actions. The semantics of an input calculator are a **one-shot Apply**: the user fills in the calculator's own small inputs, clicks Apply, and the result is written into the target input; calculators do not enter the session state or the share link.
 
@@ -595,6 +597,12 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > registry by standard, `modelGroupsOf` (`1f139d1`), whose group type, `ModelGroup`, is declared in
 > `ui/inputs/ModelSelect.svelte`'s module script. `core/standard.ts` gains `isSameStandard` (`42e6d0b`), the one
 > reader of whether two editions are of one standard.
+>
+> **Noted 2026-10-16** ([ADR-0002](0002-library-interface-model-info.md) decisions 75 and 76, as noted the same day;
+> `.scratch/input-calculators/` ticket 06): the tree gains `core/calculators.ts`, the input calculators and the rule
+> that writes a result into a slot (`436b834`); `ui/primitives/` gains `tabs` and `switch`, generated (`501bf8c`,
+> `4d6f6df`); `tests/browser/` gains `calculators.behaviour.ts`. The 2026-10-09 note's `PresetMenuButton.svelte` is
+> `RowMenuButton.svelte` (`3f325bb`), left out with the calculators' components by the 2026-09-28 marker's rule.
 
 ```
 src/

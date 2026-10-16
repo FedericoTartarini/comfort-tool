@@ -69,7 +69,7 @@ A named reference value the library publishes for a quantity (a typical task for
 _Avoid_: default, option, template
 
 **Input calculator**:
-A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slots chosen for it, converted into the entry mode each slot is in. The three are offered together, apart from the rows they write, each in its own tab of one dialog. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
+A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slots chosen for it, converted into the entry mode each slot is in. Those a model declares are offered together, apart from the rows they write, each in its own tab of one dialog. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
 _Avoid_: modifier, tool, wizard, helper
 
 **Option**:
