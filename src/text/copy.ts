@@ -96,7 +96,8 @@ export const copy = {
   // The line each calculator's tab opens with, naming the standard's method, its citation last (decision 75,
   // rule 6 (b); the wording the user's, 2026-10-15).
   solarGainMethod: "The mean radiant temperature increase equivalent to the solar gain (ASHRAE 55 Normative Appendix C).",
-  customEnsembleMethod: "The sum of the garments' and the chair's insulation (ASHRAE 55 §5.2.2.2(c) and (d)).",
+  customEnsembleMethod:
+    "The sum of the garments' insulation, plus a chair's for ensembles of 0.5 to 1.2 clo standing (ASHRAE 55 §5.2.2.2(c) and (d)).",
   clothingFromOutdoorTemperatureMethod:
     "The clothing of the day predicted from the outdoor air temperature at 6 a.m. (ASHRAE 55 §5.2.2.2(f)).",
   // The result dock's line for a slot: the row's value before and after Apply, and an after outside the row's bound
@@ -105,14 +106,12 @@ export const copy = {
   calculatorChangeJoiner: " → ",
   calculatorBrokenBound: (after: string, bound: string) => `${after} (limit ${bound})`,
   // Custom ensemble's rows: the search box above them and its empty list; a row's list button, "Change" on Chairs
-  // while a chair is worn; a worn garment's remove button; the caption under Chairs quoting the standard's condition
-  // (ASHRAE 55 §5.2.2.2(d), "permitted, but not required"); Clear at the title's right; and the sum.
+  // while a chair is worn; a worn garment's remove button; Clear at the title's right; and the sum.
   ensembleSearchPlaceholder: "Search garments…",
   ensembleEmpty: "No garment matches.",
   ensembleAdd: "Add",
   ensembleChange: "Change",
   ensembleRemove: (garment: string) => `Remove ${garment}`,
-  ensembleChairsCaption: "ASHRAE 55 Table 5.2.2.2C: for ensembles of 0.5 to 1.2 clo; optional",
   ensembleClear: "Clear",
   ensembleInsulation: "Ensemble insulation",
   // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.

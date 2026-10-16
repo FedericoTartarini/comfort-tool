@@ -147,7 +147,7 @@
 <!--
   A group's row, named by the group: its list first, at one width in every row, so wearing a garment moves it not;
   the worn garments follow as chips, wrapping, the list and the chips at the panel's small-control height. Chairs' button reads "Change" while a
-  chair is worn, and the standard's condition stands under its chips.
+  chair is worn.
 -->
 {#snippet garmentRow(group: GarmentGroup, rowId: string)}
   {@const wornHere = worn.filter((garment) => group.garments.includes(garment))}
@@ -155,25 +155,20 @@
   <div role="group" aria-labelledby="{rowId}-name">
     <Grid columns="10rem minmax(0, 1fr)" gap="2">
       <span id="{rowId}-name" class="garment-row-name">{group.group}</span>
-      <Stack gap="1">
-        <Inline gap="1">
-          {@render garmentList(
-            group,
-            rowId,
-            isChairs && wornHere.length > 0 ? copy.ensembleChange : copy.ensembleAdd,
-            group.garments.filter((garment) => !wornHere.includes(garment)),
-          )}
-          {#each wornHere as garment (garment)}
-            <Button variant="secondary" size="sm" aria-label={copy.ensembleRemove(garment)} onclick={() => takeOff(garment)}>
-              {garment}
-              <XIcon />
-            </Button>
-          {/each}
-        </Inline>
-        {#if isChairs}
-          <p class="caption">{copy.ensembleChairsCaption}</p>
-        {/if}
-      </Stack>
+      <Inline gap="1">
+        {@render garmentList(
+          group,
+          rowId,
+          isChairs && wornHere.length > 0 ? copy.ensembleChange : copy.ensembleAdd,
+          group.garments.filter((garment) => !wornHere.includes(garment)),
+        )}
+        {#each wornHere as garment (garment)}
+          <Button variant="secondary" size="sm" aria-label={copy.ensembleRemove(garment)} onclick={() => takeOff(garment)}>
+            {garment}
+            <XIcon />
+          </Button>
+        {/each}
+      </Inline>
     </Grid>
   </div>
 {/snippet}

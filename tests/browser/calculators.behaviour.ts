@@ -366,11 +366,14 @@ test.describe("Custom ensemble", () => {
     await expect(page.getByRole("listbox")).toHaveCount(0);
   }
 
-  test("is a row per garment group in the library's order, Chairs last with the standard's caption under it", async ({ page }) => {
+  test("is a row per garment group in the library's order, Chairs last, the chair table's condition in the method line", async ({ page }) => {
     await open(page);
     const dialog = await openDialog(page, ENSEMBLE);
     const panel = dialog.getByRole("tabpanel");
-    await expect(panel.getByText("The sum of the garments' and the chair's insulation (ASHRAE 55 §5.2.2.2(c) and (d)).")).toBeVisible();
+    // The method line carries the chair table's condition; no row carries a caption.
+    await expect(
+      panel.getByText("The sum of the garments' insulation, plus a chair's for ensembles of 0.5 to 1.2 clo standing (ASHRAE 55 §5.2.2.2(c) and (d))."),
+    ).toBeVisible();
     const groups = CLO_INDIVIDUAL_GARMENT_GROUPS.map(({ group }) => group);
     expect(groups[groups.length - 1]).toBe("Chairs");
     let above = -Infinity;
@@ -379,10 +382,6 @@ test.describe("Custom ensemble", () => {
       expect(box!.y).toBeGreaterThan(above);
       above = box!.y;
     }
-    // The standard's condition stands in the Chairs row, under its list button.
-    const chairsList = await rowOf(panel, "Chairs").getByRole("button", { name: "Add Chairs" }).boundingBox();
-    const caption = await rowOf(panel, "Chairs").getByText("ASHRAE 55 Table 5.2.2.2C: for ensembles of 0.5 to 1.2 clo; optional").boundingBox();
-    expect(caption!.y).toBeGreaterThanOrEqual(chairsList!.y + chairsList!.height);
 
     // Every row's list button stands at one x and one width.
     const buttons = await Promise.all(groups.map((group) => rowOf(panel, group).getByRole("button", { name: `Add ${group}` }).boundingBox()));
