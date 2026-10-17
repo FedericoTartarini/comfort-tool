@@ -97,7 +97,7 @@ The pressure of the air every slot of a session describes: one value per session
 _Avoid_: environment, barometric pressure, altitude, pressure (alone, which may be the vapour pressure)
 
 **Comfort zone**:
-A region of a chart inside one limit a standard draws: what it accepts, a yes or no. A standard with several limits has one zone per limit, nested. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
+A region of a chart where a standard accepts the conditions: inside one limit it draws, with no bound the run is checked against broken, a yes or no. A standard with several limits has one zone per limit, nested. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
 _Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
 
 **Band**:

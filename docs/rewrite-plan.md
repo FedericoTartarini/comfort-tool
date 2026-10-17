@@ -286,6 +286,33 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > passes at 1045 tests and `npm run test:browser` at 70. **Next: step 5 of the table above, the Time-series
 > grilling (decision 57 rule 6).**
 
+> **2026-10-17 — position, the charts audited and the order revised**: ahead of the Time-series grilling, the charts
+> of the four registered models were audited against the library, pythermalcomfort and the deployed tool, by reading
+> both codes and by driving both tools in a browser (`.scratch/chart-verification/audit.md`, F1 to F16, evidence in
+> `evidence/`). The lead finding was the user's own: PMV (ASHRAE 55)'s "no local control" caps the deployed air-speed
+> chart's zone and left the app's unchanged, because the library reads the option into `warnings` rows alone. The
+> grilling gave ADR-0002 decision 77 (a Comfort zone is what the standard accepts: a scanned chart leaves out every
+> cell whose run breaks a bound, the compliance column reads "—" under a violation, Adaptive's bands are the
+> library's acceptable set, Heat Index's axis starts at 27 °C), amendments to decisions 8, 61 and 62, notes under
+> decisions 5, 31, 51, 57, 59 and 61, a corrected sentence in ADR-0001 §4.4, GLOSSARY.md's Comfort zone, the
+> Verification section's tolerances read from decision 61, and three corrected code comments (`5744f86`). Four
+> upstream issues are drafted in `.scratch/chart-verification/upstream/` for the user to file. The order of what
+> remains changes: the chart fixes come first, since they reshape what the shared builders draw before more models
+> land on them; the deployed `/ranges` page, in no phase, is scheduled after the remaining models (decision 57's
+> note). Whether the remaining models are v1 stays open. **Next: the user's `/to-spec` and `/to-tickets` for
+> decision 77 in `.scratch/chart-verification/`, and the library's ISO 7730 bins per edition (decision 31's note).**
+>
+> | # | Step | Process | After |
+> |---|---|---|---|
+> | 1 | Library: ISO 7730 category bins per edition (decision 31's note of 2026-10-17) | a library ticket | — |
+> | 2 | The chart fixes: decision 77 and the notes of 2026-10-17 | spec, tickets | — |
+> | 3 | The Time-series grilling (decision 57 rule 6) | the grilling itself | 2 |
+> | 4 | Library: PHS in TypeScript with `PHS_INFO`; `B12`, `D17`, `T22` | tickets in Phase 5d's folder | 3 |
+> | 5 | Phase 5d, Time-series with PHS | spec, tickets | 3, 4 |
+> | 6 | The remaining models, the most differently shaped first | one ticket each | 5 |
+> | 7 | The Ranges page | grilling, spec, tickets | 6 |
+> | 8 | Phase 6: the UTCI acceptance's final run, gtag, the freeze test, the visual close-out, the merge | tickets as a checklist | 1, 7 |
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -1657,8 +1684,9 @@ Behaviour comparison (from Phase 3 on):
 cd ../comfort-tool-old && npm i && npm run dev   # the old tool runs on another port
 ```
 
-Compare item by item under the same inputs: result-table values, psychrometric chart comfort-zone vertices (per model:
-≤ 0.01 °C for PMV (ISO 7730), ≤ 0.02 °C for PMV (ASHRAE 55)), Adaptive band boundaries, SI/IP round trip. The ASHRAE 55
+Compare item by item under the same inputs: result-table values, psychrometric chart comfort-zone vertices (per model,
+against the deployed tool's fixture: ≤ 0.02 °C for PMV (ISO 7730), ≤ 0.03 °C for PMV (ASHRAE 55), ADR-0002 decision 61
+rule 6, on the fixture's conditions only; corrected 2026-10-17 from the older 0.01 and 0.02 °C), Adaptive band boundaries, SI/IP round trip. The ASHRAE 55
 bound is needed against the deployed tool's published vertices (`chart-online.json`), whose cooling effect is unrounded;
 the library rounds it to two decimals, as pythermalcomfort does, and so does the old tool's vendored copy. Over the
 fixture's four ASHRAE 55 zones the worst vertex is 0.0143 °C off, and the worst is 0.0093 °C with only that rounding

@@ -355,11 +355,13 @@ Axis rules (2026-09-04):
   applicability range and left `rh` — which no standard limits — unable to carry an axis at all.
 - **One `axisRanges` table per model, not per chart** (revised 2026-09-05). `RegisteredModel.axisRanges` is a list of
   `[quantity, min, max]` in SI, and both chart types read it through `axisRangeFor(model, quantity)`; the defaults are
-  the extents the deployed CBE tool draws (temperatures 10–40 °C, humidity ratio 0–0.03, v 0–2, rh 0–100, met 1–4,
-  clo 0–2), and the psychrometric chart samples its isolines at 121 points across the temperature range. Per-chart
-  ranges were tried first, as this section originally specified, and bought nothing: the deployed tool feeds one
-  constant to every chart it draws, so the only thing the extra level produced was `10, 40` written four times in one
-  declaration. Model level also makes the psychrometric x range follow the temperature entry mode for free, since it is
+  temperatures 10–40 °C, humidity ratio 0–0.03, v 0–2, rh 0–100, met 1–4 and clo 0–2, and the psychrometric chart
+  samples its isolines at 121 points across the temperature range. *(Corrected 2026-10-17, chart audit F5 and F6:
+  this read "the extents the deployed CBE tool draws". The temperatures and `v` are ASHRAE 55's applicability; the
+  deployed tool draws 10–36 °C on its psychrometric and temperature–humidity charts and 20–34 °C × 0–1.2 m/s on its
+  air-speed chart, and samples its isolines every 0.5 °C (ADR-0002 decision 5's note).)* Per-chart ranges were tried
+  first, as this section originally specified, and bought nothing: the only thing the extra level produced was
+  `10, 40` written four times in one declaration. Model level also makes the psychrometric x range follow the temperature entry mode for free, since it is
   the range of whichever quantity the mode puts on the axis. Should two charts of one model ever need different extents,
   an optional per-chart override is a purely additive change.
 - The dynamic chart offers **every entered quantity** on both axes, and each axis excludes the quantity the other one holds:
