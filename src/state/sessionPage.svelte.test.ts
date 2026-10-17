@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, PointTrace, Trace } from "$lib/core/charts/chartSpec";
+import type { ScannedField } from "$lib/core/charts/specParts";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
@@ -33,6 +34,15 @@ function markedPositions(chart: ChartSpec | null): SlotPosition[] {
 /** The fills among `traces`, a Comfort zone's or a Band's, in drawing order. */
 function fillsOf(traces: readonly Trace[]): ContourFillTrace[] {
   return traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+}
+
+/**
+ * Each row of `z` at the cells where `scan` breaks no bound, where a Comfort
+ * zone carries the magnitude of the scan's own number; it leaves out every
+ * other cell (ADR-0002 decision 77, rule 1).
+ */
+function insideApplicabilityOf(z: ContourFillTrace["z"], scan: ScannedField): (number | null)[][] {
+  return z.map((row, yIndex) => row.filter((_, xIndex) => !scan.outsideApplicability[yIndex][xIndex]));
 }
 
 /** The lines among `traces`, a Comfort zone's outline or a Band's Edge, in drawing order. */
@@ -103,8 +113,9 @@ describe("The page in the session", () => {
       expect(fills).toHaveLength(3 * outputs.slots.length);
       expect(lines).toHaveLength(3 * outputs.slots.length);
       outputs.slots.forEach((slot, position) => {
-        expect(fills.slice(3 * position, 3 * position + 3).map((fill) => fill.z)).toEqual([slot.scan, slot.scan, slot.scan]);
-        expect(lines.slice(3 * position, 3 * position + 3).map((line) => line.z)).toEqual([slot.scan, slot.scan, slot.scan]);
+        const own = insideApplicabilityOf(slot.scan.values.map((row) => row.map(Math.abs)), slot.scan);
+        expect(fills.slice(3 * position, 3 * position + 3).map((fill) => insideApplicabilityOf(fill.z, slot.scan))).toEqual([own, own, own]);
+        expect(lines.slice(3 * position, 3 * position + 3).map((line) => insideApplicabilityOf(line.z, slot.scan))).toEqual([own, own, own]);
       });
       expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
       expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
@@ -154,9 +165,9 @@ describe("The page in the session", () => {
         const bands = fillsOf(traces);
         expect(list).toEqual(bandListOf(pmvPpdIso.scan.classifier));
         expect(bands.map((band) => [band.label, band.color])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
-        expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan));
+        expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan.values));
         expect(linesOf(traces).map((line) => [line.color, line.upper, line.z])).toEqual(
-          list?.edges.map((edge) => [chartInk.bandLine, edge, outputs.slots[0].scan]),
+          list?.edges.map((edge) => [chartInk.bandLine, edge, outputs.slots[0].scan.values]),
         );
         expect(markedPositions(outputs.chart)).toEqual([0]);
       }
@@ -176,7 +187,7 @@ describe("The page in the session", () => {
       const list = session.chart.bands;
       const bands = fillsOf(outputs.chart?.traces ?? []);
       expect(bands.map((band) => [band.label, band.color])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
-      expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan));
+      expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan.values));
       expect(bands[0].z.flat()).not.toContain(null);
       expect(zones()).toHaveLength(0);
       expect(linesOf(outputs.chart?.traces ?? []).map((line) => line.upper)).toEqual(list?.edges);

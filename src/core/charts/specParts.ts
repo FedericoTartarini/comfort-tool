@@ -9,7 +9,7 @@ import { classifyFromBins } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import type { BandList } from "$lib/core/bands";
 import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, runOn } from "$lib/core/modelRun";
+import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import type { SlotBadge } from "$lib/core/slotBadge";
@@ -58,10 +58,19 @@ export interface ScanFrame {
 }
 
 /**
- * One slot's scan: the model's own number for the frame's output at every cell of
- * the `GRID × GRID` field, `[yIndex][xIndex]`, in the output's SI unit.
+ * One slot's scan, two facts per cell of the `GRID × GRID` field, each
+ * `[yIndex][xIndex]` and both read off the cell's one run.
  */
-export type ScannedField = readonly (readonly number[])[];
+export interface ScannedField {
+  /** The model's own number for the frame's output, in the output's SI unit. */
+  readonly values: readonly (readonly number[])[];
+  /**
+   * Whether the run broke a bound the library checks it against: any row of
+   * its `warnings`, a swept value out of range or a derived one a violation
+   * (ADR-0002 decision 77, rule 1). Only the Comfort zones read it.
+   */
+  readonly outsideApplicability: readonly (readonly boolean[])[];
+}
 
 /**
  * `slot` scanned in `frame`: converted into the frame's entry modes first, by
@@ -70,22 +79,26 @@ export type ScannedField = readonly (readonly number[])[];
  * entered over the two swept quantities, as the person enters a value, and
  * the model run. A swept humidity quantity puts the cell in that humidity's
  * entry mode, so the slot's own conversion gives the cell its relative
- * humidity and the scan converts nothing itself. Every cell is run: one the
- * model has no number for is `NaN`.
+ * humidity and the scan converts nothing itself. Every cell is run once: one
+ * the model has no number for is `NaN`.
  */
 export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
   const { model, output, x, y, atmosphericPressure } = frame;
   const converted = withEntryModes(slot, frame.entryModes, model);
   const xValues = samples(x.range, GRID);
-  return samples(y.range, GRID).map((yValue) =>
+  const results = samples(y.range, GRID).map((yValue) =>
     xValues.map((xValue) => {
       const cell = withEnteredValues(converted, new Map([
         [x.quantity, xValue],
         [y.quantity, yValue],
       ]));
-      return resultNumber(runOn(cell, model, atmosphericPressure), output);
+      return runOn(cell, model, atmosphericPressure);
     }),
   );
+  return {
+    values: results.map((row) => row.map((result) => resultNumber(result, output))),
+    outsideApplicability: results.map((row) => row.map((result) => resultWarnings(model, result).length > 0)),
+  };
 }
 
 /**
@@ -121,7 +134,9 @@ export interface FieldPaint {
  * {@link zoneInkFor} says: filled in the slot's hue with the opacity rising
  * inwards and outlined in it, however many slots are drawn (ADR-0002
  * decisions 50, 58 and 71). Never the thermal-sensation palette for a zone:
- * it is diverging, and nested zones are levels of one thing.
+ * it is diverging, and nested zones are levels of one thing. A zone leaves
+ * out every cell whose run breaks a bound ({@link zoneSurfaceOf}); a band
+ * paints over it (ADR-0002 decision 77, rule 1).
  *
  * Either way one hover grid reads both swept values and every slot's number,
  * labelled by its slot while there are several, and with a list the band the
@@ -138,7 +153,6 @@ export function fieldPaintFor(
   const { bands, unitSystem } = request;
   const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
   const outputUnit = displayUnitFor(frame.output, unitSystem);
-  const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
   const drawn = displayedSamplesOf(frame.x, frame.y, unitSystem);
   const fills: ContourFillTrace[] = [];
   const outlines: ContourLineTrace[] = [];
@@ -152,7 +166,7 @@ export function fieldPaintFor(
   };
 
   if (bands) {
-    for (const region of bandsFor(bands, { ...drawn, z: surfaces[0] })) {
+    for (const region of bandsFor(bands, { ...drawn, z: fields[0].values.map((row) => row.map(contouredNumber)) })) {
       lay(region);
       if (region.fill) {
         bandLegend.push({ label: region.fill.label, swatch: "fill", color: region.fill.color });
@@ -162,9 +176,10 @@ export function fieldPaintFor(
     const zones = contouredZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
-        const interval = { lower: -zone.limit, upper: zone.limit };
+        // The zone's surface is |number|, so the zone is everything below its limit.
+        const interval = { upper: zone.limit };
         const ink = zoneInkFor(charted, copy.zoneLegend(zone), index, zones.length);
-        lay(paintedRegionFor(ink.legendEntry.label, { ...drawn, z: surfaces[position] }, {
+        lay(paintedRegionFor(ink.legendEntry.label, { ...drawn, z: zoneSurfaceOf(fields[position], zone.limit) }, {
           fill: { interval, color: ink.fill },
           line: interval,
           lineColor: ink.line,
@@ -178,7 +193,7 @@ export function fieldPaintFor(
   const hoverGrid = hoverGridFor(frame.x, frame.y, unitSystem, ({ x, y, xIndex, yIndex }) => {
     const masked = isMasked(x, y);
     return request.slots.flatMap((charted, position) => {
-      const value = masked ? Number.NaN : fields[position][yIndex][xIndex];
+      const value = masked ? Number.NaN : fields[position].values[yIndex][xIndex];
       const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
       return lines.map((line) => labelFor(charted, line));
     });
@@ -195,6 +210,32 @@ export function fieldPaintFor(
  */
 function contouredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
   return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
+}
+
+/** A scanned number as a contour reads it: `null`, in no region, where the model gave none. */
+function contouredNumber(value: number): number | null {
+  return Number.isNaN(value) ? null : value;
+}
+
+/**
+ * `field` as the Comfort zone of |number| ≤ `limit` contours it: each cell's
+ * |number|, which crosses the limit where the number crosses ±`limit`, and
+ * which leaves out every cell whose run breaks a bound (ADR-0002 decision 77,
+ * rule 1). A left cell inside the limit carries its |number| reflected
+ * through it, `2 · limit − |number|`: outside the zone by as much as it was
+ * inside, so between it and a kept neighbour of about the same number the
+ * contour crosses the limit halfway, at most half a cell from the bound the
+ * library reported, and the zone's outline closes along the cut. Every left
+ * cell lies at or above the limit, so no contour between two of them crosses
+ * into the zone. No bound's value is read here.
+ */
+function zoneSurfaceOf(field: ScannedField, limit: number): (number | null)[][] {
+  return field.values.map((row, yIndex) =>
+    row.map((value, xIndex) => {
+      const magnitude = Math.abs(value);
+      return contouredNumber(field.outsideApplicability[yIndex][xIndex] && magnitude <= limit ? 2 * limit - magnitude : magnitude);
+    }),
+  );
 }
 
 /** One cell of a `GRID × GRID` grid: its two values in SI, and where it sits. */

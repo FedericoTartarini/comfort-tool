@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { chartInk } from "$lib/core/bandPalette";
+import { bandListOf } from "$lib/core/bands";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
@@ -51,7 +52,11 @@ function last<T>(row: readonly T[]): T {
   return row[row.length - 1];
 }
 
-/** The largest Comfort zone's fill a scanned chart cuts from its one slot's field: it carries the field itself. */
+/**
+ * The first fill of a scanned chart of one slot: the largest Comfort zone's,
+ * whose field is the magnitude of the slot's number, or, given a Band list,
+ * the first band's, whose field is the number itself.
+ */
 function surfaceOf(spec: ChartSpec): ContourFillTrace {
   const trace = spec.traces.find((entry): entry is ContourFillTrace => entry.kind === "contourFill");
   if (!trace) {
@@ -115,7 +120,8 @@ describe("dynamicSpec", () => {
   });
 
   it("puts a lower number at a cold still point than at a warm one", () => {
-    const surface = surfaceOf(dynamicSpec(request, isoChart.axes));
+    // A Band list paints the scan's own number, signed.
+    const surface = surfaceOf(dynamicSpec({ ...request, bands: bandListOf(pmvPpdIso.scan.classifier) }, isoChart.axes));
     // Cold and still at the bottom left, warm and still at the bottom right.
     const coldest = surface.z[0][0];
     const warmest = last(surface.z[0]);
@@ -156,7 +162,7 @@ describe("the scanned dynamic chart of one slot", () => {
 
   it("paints PMV (ISO 7730)'s three Comfort zones, nested, largest first, and one marker", () => {
     expect(fillsOf(spec).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
-      declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
+      declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), undefined, zone.limit]),
     );
     expect(fillsOf(spec)).toHaveLength(3);
     expect(spec.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
@@ -168,7 +174,7 @@ describe("the scanned dynamic chart of one slot", () => {
     expect(contourKindsOf(spec)).toEqual([...zones.map(() => "contourFill"), ...zones.map(() => "contourLine")]);
     expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
     expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
-      zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit, chartInk.zoneLine(hue), chartInk.zoneLineWidth]),
+      zones.map((zone) => [copy.zoneLegend(zone), undefined, zone.limit, chartInk.zoneLine(hue), chartInk.zoneLineWidth]),
     );
     linesOf(spec).forEach((line, index) => {
       expect(line.z).toBe(fillsOf(spec)[index].z);
@@ -187,7 +193,7 @@ describe("the scanned dynamic chart of one slot", () => {
     const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, startingSlot(pmvPpdAshrae)), ashrae.axes);
     expect(contourKindsOf(drawn)).toEqual(["contourFill", "contourLine"]);
     expect(fillsOf(drawn).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
-      declaredZonesOf(pmvPpdAshrae).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
+      declaredZonesOf(pmvPpdAshrae).map((zone) => [copy.zoneLegend(zone), undefined, zone.limit]),
     );
     expect(fillsOf(drawn)).toHaveLength(1);
     expect(drawn.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
@@ -224,10 +230,10 @@ describe("the scanned dynamic chart of one slot", () => {
 describe("a model's own number in the scanned field", () => {
   const chart = dynamicOf(pmvPpdIso);
 
-  /** The scan of a model whose PMV is `value` at every point of the field. */
+  /** The scan of a model whose PMV is `value` at every point of the field, painted by a Band list, which carries the number signed. */
   function flat(value: number): ChartSpec {
-    const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
-    return dynamicSpec({ ...request, model }, chart.axes);
+    const model = { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies RegisteredModel;
+    return dynamicSpec({ ...request, model, bands: bandListOf(pmvPpdIso.scan.classifier) }, chart.axes);
   }
 
   function numberAt(value: number): number | null {

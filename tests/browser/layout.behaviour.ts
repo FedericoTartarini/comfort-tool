@@ -677,3 +677,47 @@ test.describe("the header's mark", () => {
     await expect(metabolicRate(page)).toHaveValue("0.9");
   });
 });
+
+/**
+ * A Comfort zone is what the standard accepts (ADR-0002 decision 77, rule 1): on PMV (ASHRAE 55)'s air-speed chart,
+ * switching local control of the air speed off caps the zone where the library's air-speed rule breaks, and switching
+ * it on lifts the cap. The zone is read off the chart's own traces, as Plotly was handed them.
+ */
+test.describe("the air-speed chart's Comfort zone", () => {
+  const OPTION = "Occupants have local control of the air speed";
+
+  /**
+   * How many cells the drawn zone fills: the cells of each zone fill that its constraint paints, between a pair of
+   * values or below a single one (`ui/charts/plotlyFigure.ts`).
+   */
+  function zoneCells(page: Page): Promise<number> {
+    return page.locator(".chart-plot.js-plotly-plot").evaluate((node) => {
+      interface ContourData {
+        type: string;
+        z: (number | null)[][];
+        contours: { showlines: boolean; value: number | [number, number] };
+      }
+      const fills = (node as unknown as { data: ContourData[] }).data.filter((trace) => trace.type === "contour" && !trace.contours.showlines);
+      return fills.reduce((count, { z, contours: { value } }) => {
+        const [lower, upper] = Array.isArray(value) ? value : [Number.NEGATIVE_INFINITY, value];
+        return count + z.flat().filter((cell) => cell !== null && cell >= lower && cell <= upper).length;
+      }, 0);
+    });
+  }
+
+  test("at PMV (ASHRAE 55)'s defaults, follows local control of the air speed off, on and off again", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name: "Dynamic" }).click();
+    await expect(page.getByLabel("X axis")).toBeVisible();
+    const option = page.getByRole("switch", { name: OPTION, exact: true });
+    await expect(option).toHaveAttribute("aria-checked", "false");
+    const capped = await zoneCells(page);
+    expect(capped).toBeGreaterThan(0);
+
+    await option.click();
+    await expect.poll(() => zoneCells(page)).toBeGreaterThan(capped);
+
+    await option.click();
+    await expect.poll(() => zoneCells(page)).toBe(capped);
+  });
+});

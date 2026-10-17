@@ -285,7 +285,10 @@ describe("the psychrometric chart given a Band list", () => {
 
   it("paints the scan it is handed rather than scanning again", () => {
     const handed = trace.z.map((row) => row.map(() => 0.1));
-    const drawn = psychrometricSpec({ ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: isoBands }, [handed]);
+    const drawn = psychrometricSpec(
+      { ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: isoBands },
+      [{ values: handed, outsideApplicability: handed.map((row) => row.map(() => true)) }],
+    );
     expect(fillsOf(drawn).map((fill) => fill.z)).toEqual(isoBands.labels.map(() => handed));
   });
 
@@ -296,7 +299,18 @@ describe("the psychrometric chart given a Band list", () => {
     expect(zones.map((zone) => zone.label)).toEqual(zoneLabels);
     expect(linesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
     expect(linesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
-    expect(zones[0].z).toEqual(trace.z);
+    // Over the same scan: every cell the zone holds carries the magnitude of the scan's own number.
+    const [outermost] = zones;
+    let held = 0;
+    outermost.z.forEach((row, yIndex) =>
+      row.forEach((value, xIndex) => {
+        if (value !== null && value <= outermost.upper) {
+          held += 1;
+          expect(value).toBe(Math.abs(Number(trace.z[yIndex][xIndex])));
+        }
+      }),
+    );
+    expect(held).toBeGreaterThan(0);
     expect(coverOf(drawn)).toEqual(coverOf(spec));
   });
 });

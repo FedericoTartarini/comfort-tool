@@ -342,11 +342,12 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     for (const zone of zones) {
       expect(zone.y[zone.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
       // Column 25 is the slot's own 25 °C; a cell's number is the slot's at the
-      // relative humidity its humidity ratio has at that pressure.
+      // relative humidity its humidity ratio has at that pressure, and a zone
+      // contours its magnitude.
       expect(zone.x[25]).toBeCloseTo(TDB, 9);
       for (const yIndex of [0, 10, 20]) {
         const rh = hr_to_rh(hrUnit.toSi(zone.y[yIndex]), TDB, LOWER_PRESSURE);
-        expect(zone.z[yIndex][25]).toBeCloseTo(Number(pmvAtRelativeHumidity(rh)), 2);
+        expect(zone.z[yIndex][25]).toBeCloseTo(Math.abs(Number(pmvAtRelativeHumidity(rh))), 2);
       }
     }
   });

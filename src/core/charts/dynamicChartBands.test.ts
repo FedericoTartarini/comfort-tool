@@ -210,7 +210,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
 
   /** The spec of a model whose PMV is `value` at every point of the field, painting `bands`. */
   function flat(value: number, bands: BandList = uneven, system = unitSystem.si): ChartSpec {
-    const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
+    const model = { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies RegisteredModel;
     return dynamicSpec({ ...isoRequest, model, unitSystem: system, bands }, isoChart.axes);
   }
 
@@ -258,7 +258,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
     const model = {
       ...pmvPpdIso,
       scan: { ...pmvPpdIso.scan, output: q.operative_tmp },
-      run: () => ({ operative_tmp: 30 }),
+      run: () => ({ operative_tmp: 30, warnings: [] }),
     } satisfies RegisteredModel;
     const fills = fillsOf(dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: uneven }, isoChart.axes));
     // 30 °C reads as 86 °F on an axis; here it stays 30.

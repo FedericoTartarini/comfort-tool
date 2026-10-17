@@ -56,6 +56,16 @@ function request(
   return chartRequestFor(pmvPpdIso, slot(mode), system);
 }
 
+/**
+ * The first fill of `drawn` painted by PMV (ISO 7730)'s Band list: it carries
+ * the scan's own number, signed, at every cell, where a zone carries its
+ * magnitude and leaves out a cell whose run breaks a bound.
+ */
+function scannedSurfaceOf(drawn: ChartRequest): ContourFillTrace {
+  const [band] = fillsOf(psychrometricSpec({ ...drawn, bands: bandListOf(pmvPpdIso.scan.classifier) }));
+  return band;
+}
+
 /** The ISO declaration's zones, largest first: the order the chart draws them in. */
 function isoZonesLargestFirst() {
   return [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit);
@@ -216,14 +226,13 @@ function covers(box: LabelBox, point: PlotPoint): boolean {
 describe("psychrometricSpec", () => {
   const spec = psychrometricSpec(request(temperatureMode.separate));
 
-  it("paints one fill per declared limit, largest first, over the slot's field, each with its limit as its interval", () => {
+  it("paints one fill per declared limit, largest first, each with its limit as its interval", () => {
     const zones = isoZonesLargestFirst();
     const drawn = fillsOf(spec);
     expect(zones).toHaveLength(3);
     expect(drawn.map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
-      zones.map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
+      zones.map((zone) => [copy.zoneLegend(zone), undefined, zone.limit]),
     );
-    expect(new Set(drawn.map((zone) => zone.z)).size).toBe(1);
   });
 
   it("fills them in the slot's hue, the opacity rising inwards, and traces no polygon", () => {
@@ -250,7 +259,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("numbers a cell with the model's own output at its temperature and the library's relative humidity, the supersaturated ones too", () => {
-    const [zone] = fillsOf(spec);
+    const zone = scannedSurfaceOf(request(temperatureMode.separate));
     // The last cell is supersaturated, run at its true relative humidity above 100.
     expect(isSupersaturated(zone, 0, 50)).toBe(true);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40], [40, 50], [50, 0]]) {
@@ -259,7 +268,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("hands the model the slot's own inputs: tr as entered, vr derived, clothing corrected", () => {
-    const [zone] = fillsOf(spec);
+    const zone = scannedSurfaceOf(request(temperatureMode.separate));
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
       const db = zone.x[xIndex];
       expect(zone.z[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(zone.y[yIndex]), db, p), 24), PMV_DIGITS);
@@ -268,7 +277,7 @@ describe("psychrometricSpec", () => {
 
   it("scans the operative temperature under operative entry, with tr following it", () => {
     const drawn = psychrometricSpec(request(temperatureMode.operative));
-    const [zone] = fillsOf(drawn);
+    const zone = scannedSurfaceOf(request(temperatureMode.operative));
     expect(drawn.layout.x.title).toContain(q.operative_tmp.label);
     expect(fillsOf(drawn)).toHaveLength(3);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
@@ -289,7 +298,7 @@ describe("psychrometricSpec", () => {
 
   it("paints the scan it is handed rather than scanning again", () => {
     const handed = fillsOf(spec)[0].z.map((row) => row.map(() => 0.1));
-    const drawn = psychrometricSpec(request(temperatureMode.separate), [handed]);
+    const drawn = psychrometricSpec(request(temperatureMode.separate), [{ values: handed, outsideApplicability: handed.map((row) => row.map(() => false)) }]);
     expect(fillsOf(drawn).map((zone) => zone.z)).toEqual([handed, handed, handed]);
   });
 
@@ -418,7 +427,8 @@ describe("psychrometricSpec", () => {
 describe("the psychrometric chart's hover readout on the Standard page", () => {
   const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
   const { hoverText } = hoverGridOf(spec);
-  const [zone] = fillsOf(spec);
+  /** The same scan as a Band list paints it, which carries the cell's own number wherever a zone leaves the cell out. */
+  const [zone] = fillsOf(psychrometricSpec({ ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: bandListOf(pmvPpdIso.scan.classifier) }));
   const pmvUnit = displayUnitFor(q.pmv, unitSystem.si);
 
   it("is read off the hover grid alone", () => {

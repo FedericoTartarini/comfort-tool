@@ -5,14 +5,20 @@
  * 3b, oracle: the same contour, of the model of the deployed tool's standard
  * at the deployed tool's inputs, sits on the deployed tool's own vertices
  * (`chart-online.json`, the deployed tool's record).
+ *
+ * Both compare the contour where a zone is the number's alone: where the run
+ * breaks no bound. A zone leaves out a cell whose run breaks one (ADR-0002
+ * decision 77, rule 1), and the deployed tool draws no such cut, so 3a skips a
+ * crossing beside such a cell and 3b a vertex whose run breaks one;
+ * `zoneBounds.test.ts` holds the cut itself.
  */
 import { describe, expect, it } from "vitest";
 import { hr_to_rh } from "jsthermalcomfort";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { psychrometricChartOf, requireScan, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, runOn } from "$lib/core/modelRun";
+import { optionsOf, psychrometricChartOf, requireScan, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
-import { withEnteredValues, type Slot } from "$lib/core/slot";
+import { withEnteredValues, withOption, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { registeredModels } from "$lib/models";
@@ -76,10 +82,16 @@ const oracleBounds = {
  */
 const SIDE_VERTICES = 11;
 
+const [airSpeedControl] = optionsOf(pmvPpdAshrae);
+
 /** The record's distinct conditions as a person enters them; it draws each under both standards. */
 const conditions = [...new Map(record.zones.map((zone) => [JSON.stringify(zone.conditions), zone.conditions])).values()];
 
-/** A drawn Comfort zone's contour in SI: the temperatures of its columns, the humidity ratios of its rows, and its scan. */
+/**
+ * A drawn Comfort zone's contour in SI: the temperatures of its columns, the
+ * humidity ratios of its rows, and its field, the scan's |number|, which
+ * crosses the zone's limit on both sides.
+ */
 interface Contour {
   readonly temperatures: readonly number[];
   readonly humidityRatios: readonly number[];
@@ -99,46 +111,59 @@ function contourOf(model: RegisteredModel, slot: Slot, limit: number): Contour {
 /**
  * The temperatures at which grid row `yIndex` of `contour` crosses `level`:
  * between the two bracketing cells, linearly, as the contour draws a cell's
- * edge.
+ * edge. With `isKept`, only where it keeps both cells, by their columns.
  */
-function crossingsOnRow(contour: Contour, yIndex: number, level: number): number[] {
+function crossingsOnRow(contour: Contour, yIndex: number, level: number, isKept: (xIndex: number) => boolean = () => true): number[] {
   const row = contour.z[yIndex];
   const { temperatures } = contour;
   return row.slice(0, -1).flatMap((left, xIndex) => {
     const right = row[xIndex + 1];
-    if (left === null || right === null || left < level === right < level) {
+    if (left === null || right === null || left < level === right < level || !isKept(xIndex) || !isKept(xIndex + 1)) {
       return [];
     }
     return [temperatures[xIndex] + ((level - left) / (right - left)) * (temperatures[xIndex + 1] - temperatures[xIndex])];
   });
 }
 
+/** A zone's two sides on a row: the cool one, its first crossing, and the warm one, its last. */
+type Side = "cool" | "warm";
+
 /**
- * The temperature at which `contour` crosses `level` at the humidity ratio
- * `hr`: the crossings on the two grid rows around it, joined by the straight
- * segment the contour draws between them.
+ * The temperature at which `contour` crosses `level` on its `side` at the
+ * humidity ratio `hr`: that side's crossings on the two grid rows around it,
+ * joined by the straight segment the contour draws between them.
  */
-function crossingAt(contour: Contour, hr: number, level: number): number {
+function crossingAt(contour: Contour, hr: number, level: number, side: Side): number {
   const { humidityRatios } = contour;
   const above = humidityRatios.findIndex((rowHr) => rowHr > hr);
   const below = above === -1 ? humidityRatios.length - 2 : Math.max(above - 1, 0);
   const [lower, upper] = [below, below + 1].map((yIndex) => {
     const crossings = crossingsOnRow(contour, yIndex, level);
-    if (crossings.length !== 1) {
+    if (crossings.length !== 2) {
       throw new Error(`row ${yIndex} crosses ${level} ${crossings.length} times`);
     }
-    return crossings[0];
+    return side === "cool" ? crossings[0] : crossings[1];
   });
   return lower + ((hr - humidityRatios[below]) / (humidityRatios[below + 1] - humidityRatios[below])) * (upper - lower);
 }
 
-/** `model`'s own scanned number for `slot` at `temperature` and the humidity ratio `hr`, in SI. */
-function numberAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): number {
+/** `model` run on `slot` at `temperature` and the humidity ratio `hr`, in SI. */
+function runAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number) {
   const cell = withEnteredValues(slot, new Map([
     [slot.temperature.mode.axis, temperature],
     [q.rh, hr_to_rh(hr, temperature, p)],
   ]));
-  return resultNumber(runOn(cell, model, p), requireScan(model).output);
+  return runOn(cell, model, p);
+}
+
+/** `model`'s own scanned number for `slot` at `temperature` and the humidity ratio `hr`, in SI. */
+function numberAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): number {
+  return resultNumber(runAt(model, slot, temperature, hr), requireScan(model).output);
+}
+
+/** Whether `model`'s run on `slot` at `temperature` and the humidity ratio `hr` breaks a bound: its `warnings` has a row. */
+function isOutsideApplicabilityAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): boolean {
+  return resultWarnings(model, runAt(model, slot, temperature, hr)).length > 0;
 }
 
 describe("criterion 3a: the psychrometric chart's contour against the library", () => {
@@ -156,23 +181,23 @@ describe("criterion 3a: the psychrometric chart's contour against the library", 
         const slot = enteredSlotFor(model, { tr: entered.tr, v: entered.vel, met: entered.met, clo: entered.clo });
         for (const zone of requireScan(model).comfortZones ?? []) {
           const contour = contourOf(model, slot, zone.limit);
-          for (const level of [-zone.limit, zone.limit]) {
-            contour.humidityRatios.forEach((hr, yIndex) => {
-              for (const temperature of crossingsOnRow(contour, yIndex, level)) {
-                // Above saturation the contour runs on under the cover, unseen,
-                // and PMV (ASHRAE 55)'s cooling effect jumps there by up to
-                // 0.1 PMV per 0.01 °C (measured 2026-10-02, from 105 %).
-                if (hr_to_rh(hr, temperature, p) > 100) {
-                  continue;
-                }
-                compared += 1;
-                const residual = Math.abs(numberAt(model, slot, temperature, hr) - level);
-                if (residual > worst.residual) {
-                  worst = { residual, at: `${JSON.stringify(entered)}, level ${level}, row ${yIndex}` };
-                }
+          const level = zone.limit;
+          contour.humidityRatios.forEach((hr, yIndex) => {
+            const isKept = (xIndex: number) => !isOutsideApplicabilityAt(model, slot, contour.temperatures[xIndex], hr);
+            for (const temperature of crossingsOnRow(contour, yIndex, level, isKept)) {
+              // Above saturation the contour runs on under the cover, unseen,
+              // and PMV (ASHRAE 55)'s cooling effect jumps there by up to
+              // 0.1 PMV per 0.01 °C (measured 2026-10-02, from 105 %).
+              if (hr_to_rh(hr, temperature, p) > 100) {
+                continue;
               }
-            });
-          }
+              compared += 1;
+              const residual = Math.abs(Math.abs(numberAt(model, slot, temperature, hr)) - level);
+              if (residual > worst.residual) {
+                worst = { residual, at: `${JSON.stringify(entered)}, level ${level}, row ${yIndex}` };
+              }
+            }
+          });
         }
       }
       expect(compared, model.info.label).toBeGreaterThan(0);
@@ -186,20 +211,25 @@ describe("criterion 3b: the psychrometric chart's contour against the deployed t
     const { model, bound } = oracleBounds[zone.standard as keyof typeof oracleBounds];
     // The record's inputs are those the deployed tool's tracer was called on,
     // the air speed and the clothing already corrected, so they are entered
-    // as such.
-    const slot = enteredSlotFor(model, { tr: zone.tr, vr: zone.vr, met: zone.met, clo_dynamic: zone.clo });
+    // as such. The deployed psychrometric chart ignores local control of the
+    // air speed (audit A8), so PMV (ASHRAE 55) is drawn with it on, where the
+    // air-speed rule cuts nothing.
+    const entered = enteredSlotFor(model, { tr: zone.tr, vr: zone.vr, met: zone.met, clo_dynamic: zone.clo });
+    const slot = model === pmvPpdAshrae ? withOption(entered, airSpeedControl, true) : entered;
     const contour = contourOf(model, slot, zone.pmvLimit);
     const sides = [
-      { vertices: zone.boundary.slice(0, SIDE_VERTICES), level: -zone.pmvLimit },
-      { vertices: zone.boundary.slice(-SIDE_VERTICES).reverse(), level: zone.pmvLimit },
+      { vertices: zone.boundary.slice(0, SIDE_VERTICES), side: "cool" as const },
+      { vertices: zone.boundary.slice(-SIDE_VERTICES).reverse(), side: "warm" as const },
     ];
-    for (const { vertices, level } of sides) {
+    for (const { vertices, side } of sides) {
       // Each side is the deployed tool's 0, 10, …, 100 % rows, so no
       // saturation-line vertex is compared: the cover's edge is the library's
       // saturation line.
       expect(vertices.map((vertex) => Math.round(hr_to_rh(vertex.hr, vertex.db, p) / 10))).toEqual(Array.from({ length: SIDE_VERTICES }, (_, step) => step));
-      const off = vertices.flatMap((expected) => {
-        const crossing = crossingAt(contour, expected.hr, level);
+      const compared = vertices.filter((vertex) => !isOutsideApplicabilityAt(model, slot, vertex.db, vertex.hr));
+      expect(compared.length).toBeGreaterThan(0);
+      const off = compared.flatMap((expected) => {
+        const crossing = crossingAt(contour, expected.hr, zone.pmvLimit, side);
         return Math.abs(crossing - expected.db) <= bound ? [] : [{ expected, crossing }];
       });
       expect(off).toEqual([]);
