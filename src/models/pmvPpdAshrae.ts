@@ -25,8 +25,8 @@ const ASHRAE_55 = Standard.ashrae_55_2023;
 // on `vr`, at ISO 7726's air-speed-weighted operative temperature, applied
 // only below 0.7 clo and 1.3 met, and shown on the entered `v`. The deployed
 // tool checks the entered `v` against one limit clamped to 0.2–0.8 m/s, at
-// `(tdb + tr) / 2`, at every clothing and activity level. The difference is
-// not ported.
+// `(tdb + tr) / 2`, at 0.7 clo and 1.3 met or below, where alone it offers the
+// option. The difference is not ported.
 const airSpeedControl: OptionSpec = {
   key: "airspeed_control",
   label: "Occupants have local control of the air speed",

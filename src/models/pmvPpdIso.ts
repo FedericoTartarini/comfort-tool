@@ -47,9 +47,10 @@ export const pmvPpdIso = {
     { quantity: q.met, value: 1.1 },
     { quantity: q.clo, value: 0.5, calculators: [customEnsemble] },
   ],
-  // The ranges the deployed CBE tool draws, not ISO 7730's applicability
-  // bounds (ADR §4.4) — the charts show what the field looks like around the
-  // standard, and `info`'s applicability says which of it the user may enter.
+  // The ranges ASHRAE 55's applicability spans (temperatures 10–40 °C, `vr`
+  // 0–2 m/s), as PMV (ASHRAE 55)'s, not ISO 7730's narrower bounds (ADR §4.4)
+  // — the charts show what the field looks like around the standard, and
+  // `info`'s applicability says which of it the user may enter.
   axisRanges: [
     { quantity: q.tdb, min: 10, max: 40 },
     { quantity: q.tr, min: 10, max: 40 },

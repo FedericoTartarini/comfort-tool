@@ -22,7 +22,7 @@ const ISOLINE_STEP = 10;
 const LABEL_STEP = 2 * ISOLINE_STEP;
 /**
  * Samples along each isoline, across the declared temperature range. 121 over
- * 10–40 °C is the resolution the CBE tool draws these curves at.
+ * 10–40 °C is one every 0.25 °C, finer than the CBE tool's one every 0.5 °C.
  */
 const ISOLINE_SAMPLES = 121;
 
