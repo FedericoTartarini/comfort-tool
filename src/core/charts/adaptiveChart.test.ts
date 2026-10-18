@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADAPTIVE_ASHRAE_INFO, t_o } from "jsthermalcomfort";
+import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, t_o } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
@@ -14,7 +14,9 @@ import { adaptive_ashrae_zone, type AdaptivePoint } from "$lib/temporary-library
 import { adaptiveSpec } from "./adaptiveChart";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
+import { containsPoint } from "./polygon";
 import { psychrometricSpec } from "./psychrometricChart";
+import { labelFor } from "./specParts";
 
 const q = quantities;
 
@@ -234,9 +236,33 @@ function runsDownAt(path: PathTrace, x: number): boolean {
   return path.x.some((value, index) => index > 0 && value === x && path.x[index - 1] === x);
 }
 
-/** Whether `path` has two consecutive vertices at one x: a step. */
-function holdsStep(path: PathTrace): boolean {
-  return path.x.some((value, index) => index > 0 && value === path.x[index - 1]);
+/** Whether `path` has a segment with both ends at `y`: a run along it. */
+function runsAlongAt(path: PathTrace, y: number): boolean {
+  return path.y.some((value, index) => index > 0 && value === y && path.y[index - 1] === y);
+}
+
+/** The vertices of `path` at `x`, by their y. */
+function verticesAt(path: PathTrace, x: number): number[] {
+  return path.x.flatMap((value, index) => (value === x ? [path.y[index]] : []));
+}
+
+/**
+ * The innermost acceptability `adaptive_ashrae` itself answers at `airSpeed`,
+ * a running mean and an operative temperature, as its label: 90 % where it
+ * accepts that, else 80 %, else none.
+ */
+function libraryBandAt(airSpeed: number, runningMean: number, operative: number): string | undefined {
+  const run = adaptive_ashrae({
+    tdb: operative,
+    tr: operative,
+    t_running_mean: runningMean,
+    v: airSpeed,
+    limit_inputs: false,
+    round_output: false,
+  });
+  if (run.acceptability_90) return q.acceptability_90.label;
+  if (run.acceptability_80) return q.acceptability_80.label;
+  return undefined;
 }
 
 /** Which layer of the one drawing order a trace is laid in: a fill, an outline, or its own kind. */
@@ -277,7 +303,7 @@ describe("Adaptive's acceptability zones", () => {
     );
   });
 
-  it.each([0, startingAirSpeed, 0.9])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
+  it.each([0, startingAirSpeed])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
     const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed)));
     for (const line of linesOf(drawn)) {
       expect(line.x[0]).toBe(min);
@@ -289,11 +315,28 @@ describe("Adaptive's acceptability zones", () => {
     }
   });
 
-  it("strokes the step in each upper limit at 0.9 m/s, and none in still air", () => {
+  it("strokes each upper limit up the lowest end at 0.9 m/s only between 25 °C and its shifted limit", () => {
+    // The shifted lines are past 25 °C there already, so the strip reaches
+    // the end; the one line per limit is stroked up it (ticket 08's paths of
+    // several pieces leave it out).
+    const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0.9)));
+    const [upper80, lower80, upper90, lower90] = linesOf(drawn);
+    const [band80, band90] = libraryBandsAt(0.9);
+    for (const [upper, band] of [[upper80, band80], [upper90, band90]] as const) {
+      expect(runsDownAt(upper!, max)).toBe(false);
+      expect(verticesAt(upper!, min)).toEqual([band!.upper_limit[0]!.operative_tmp, 25, band!.upper_limit[3]!.operative_tmp]);
+    }
+    for (const lower of [lower80, lower90]) {
+      expect(runsDownAt(lower!, min) || runsDownAt(lower!, max)).toBe(false);
+    }
+  });
+
+  it("strokes each upper limit back along 25 °C at 0.9 m/s, and straight in still air", () => {
     const moving = linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0.9))));
     const uppers = libraryBandsAt(0.9).map((band) => pathOf(band.upper_limit));
-    expect(moving.filter(holdsStep).map((line) => ({ x: line.x, y: line.y }))).toEqual(uppers);
-    expect(linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0)))).filter(holdsStep)).toEqual([]);
+    expect(moving.filter((line) => runsAlongAt(line, 25)).map((line) => ({ x: line.x, y: line.y }))).toEqual(uppers);
+    const still = linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0))));
+    expect(still.map((line) => line.x.length)).toEqual([2, 2, 2, 2]);
   });
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
@@ -402,4 +445,50 @@ describe("the adaptive chart's hover grid", () => {
       expect(grid.hoverText.map((row) => row[column]?.[2])).toEqual(innermost);
     },
   );
+});
+
+describe("Adaptive's chart against adaptive_ashrae", () => {
+  it.each([0.3, 0.6, 0.9, 1.2])("names, over every cell at %s m/s, the band the library answers for it", (airSpeed) => {
+    const grid = hoverGridOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed))));
+    const cells = grid.y.flatMap((y, row) => grid.x.map((x, column) => ({ x, y, named: grid.hoverText[row]?.[column]?.[2] })));
+    const mismatches = cells.filter((cell) => cell.named !== libraryBandAt(airSpeed, cell.x, cell.y));
+    expect(mismatches).toEqual([]);
+    expect(new Set(cells.map((cell) => cell.named))).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
+  });
+
+  it("marks the audit's example inside the 80 % band the table answers Yes for", () => {
+    // A running mean of 11 °C, 25.5 °C and 0.6 m/s: the 80 % base line is at
+    // 24.71 °C there, the shifted one at 25.91 °C.
+    const entered = enteredSlotFor(adaptiveAshrae, { tdb: 25.5, tr: 25.5, t_running_mean: 11, v: 0.6 });
+    const spec = adaptiveSpec(chartRequestFor(adaptiveAshrae, entered));
+    const marker = markerOf(spec);
+    const [fill80, fill90] = fillsOf(spec);
+    expect({ x: marker?.x, y: marker?.y }).toEqual({ x: 11, y: 25.5 });
+    expect(adaptiveAshrae.run(valuesReader(entered.values)).acceptability_80).toBe(true);
+    expect(containsPoint(fill80!, 11, 25.5)).toBe(true);
+    expect(containsPoint(fill90!, 11, 25.5)).toBe(false);
+  });
+
+  it("traces each compared slot's bands at its own air speed, strip included", () => {
+    const airSpeeds = [0.3, 1.2];
+    const request = chartRequestForSlots(adaptiveAshrae, airSpeeds.map(adaptiveAt));
+    const spec = adaptiveSpec(request);
+    expect(fillsOf(spec).map((fill) => ({ x: fill.x, y: fill.y }))).toEqual(
+      airSpeeds.flatMap((airSpeed) =>
+        libraryBandsAt(airSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
+      ),
+    );
+    const grid = hoverGridOf(spec);
+    const mismatches = grid.y.flatMap((y, row) =>
+      grid.x.flatMap((x, column) => {
+        const named = grid.hoverText[row]?.[column]?.slice(2);
+        const expected = request.slots.flatMap((charted, position) => {
+          const label = libraryBandAt(airSpeeds[position]!, x, y);
+          return label === undefined ? [] : [labelFor(charted, label)];
+        });
+        return JSON.stringify(named) === JSON.stringify(expected) ? [] : [{ x, y, named, expected }];
+      }),
+    );
+    expect(mismatches).toEqual([]);
+  });
 });

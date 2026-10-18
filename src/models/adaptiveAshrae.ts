@@ -68,13 +68,15 @@ export const adaptiveAshrae = {
     // run's two answers are read, and not at the plain mean the deployed tool
     // puts it at.
     //
-    // The bands step where the deployed tool steps them: each upper edge once
-    // its own base line reaches 25 °C, whatever was entered. The run's upper
-    // limits are shifted where the library shifts them: when its `t_o` of the
-    // entered temperatures, the air-speed-weighted one the answers are read
-    // at, is 25 °C or more. So at an air speed of 0.6 m/s or
-    // more the table's upper limits and the chart's upper edge above the
-    // marker can differ by the cooling effect; each follows its own source.
+    // The bands follow the library: each is the region where
+    // `adaptive_ashrae` answers its acceptability true, whose upper limit is
+    // shifted by the cooling effect wherever the operative temperature is
+    // 25 °C or more. So at 0.6 m/s or more a band also holds the strip from
+    // 25 °C up to its shifted limit where its base limit lies below 25 °C,
+    // and a marker the table answers Yes for is inside its band. The deployed
+    // tool steps each upper limit where its own base line reaches 25 °C
+    // instead, and leaves that strip out (`comfort_tool` PR #90, `163abcd`,
+    // `static/js/comfort-models.js`).
     {
       type: chartType.adaptive,
       axes: { x: q.t_running_mean, y: q.operative_tmp },

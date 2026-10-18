@@ -101,7 +101,11 @@ export interface ZoneLimits {
   readonly label: string;
   /** The lower limit line, in SI along the chart's axes, in ascending x. */
   readonly lower: readonly { readonly x: number; readonly y: number }[];
-  /** The upper limit line, likewise. */
+  /**
+   * The upper limit line, in SI along the chart's axes, from the lowest x to
+   * the highest, not always ascending between: it may run back, and up an end
+   * of the x range.
+   */
   readonly upper: readonly { readonly x: number; readonly y: number }[];
 }
 

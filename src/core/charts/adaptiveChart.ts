@@ -19,7 +19,9 @@ import { axisFor, hoverGridFor, labelFor, markerFor, zoneInkFor } from "./specPa
  * two lines close, however many slots are drawn (ADR-0002 decision 71), and
  * the two lines stroked in the hue's zone line, so the sides that close the
  * region at the ends of the x range, where the chart stops and the model sets
- * no limit, are not drawn.
+ * no limit, are not drawn, except where an upper line itself runs up an end
+ * ({@link ZoneLimits}), until lines of several pieces leave it out
+ * (`.scratch/chart-verification/` ticket 08).
  * Neither reads the pointer, so a hover grid over the same `GRID × GRID`
  * field reads for them: both axis values, and the innermost zone of each slot
  * the cell is in. Laid in the one drawing order: every slot's fills, every
