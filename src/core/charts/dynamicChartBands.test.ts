@@ -188,6 +188,15 @@ describe("the scanned dynamic chart given a Band list", () => {
     expect(bandRead(hoverGridOf(drawn).hoverText[2][26])).toBe("Neutral");
   });
 
+  it("names a coloured band with an empty label as unlabelled in its legend entry and on hover, a labelled one unchanged", () => {
+    const drawn = bandedSpec(setLabel(isoBands, 3, ""));
+    expect(drawn.legend.slice(0, isoBands.labels.length).map((entry) => entry.label)).toEqual(
+      isoBands.labels.map((label, index) => (index === 3 ? "Unlabelled band" : label)),
+    );
+    expect(bandRead(hoverGridOf(drawn).hoverText[2][26])).toBe("Unlabelled band");
+    expect(bandRead(hoverGridOf(drawn).hoverText[2][0])).toBe(bandRead(hoverGridOf(spec).hoverText[2][0]));
+  });
+
   it("paints Comfort zones and no band when given nothing", () => {
     const drawn = dynamicSpec(isoRequest, isoChart.axes);
     const zoneLabels = [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone));

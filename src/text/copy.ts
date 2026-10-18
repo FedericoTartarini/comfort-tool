@@ -212,6 +212,9 @@ export const copy = {
   bandNoColor: "No colour",
   bandAdd: "Add",
   bandRemove: "Remove",
+  // A band's legend entry and hover line while its label is empty, as Add leaves it (ADR-0002 decision 59's note of
+  // 2026-10-17); the Band list keeps the empty label.
+  unlabelledBand: "Unlabelled band",
   // A control's name for assistive technology: a band is named by its place, since its label may be empty.
   bandControl: (control: string, index: number) => `${control}, band ${index + 1}`,
 } as const;

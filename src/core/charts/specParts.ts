@@ -412,7 +412,7 @@ function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint
 function bandsFor(list: BandList, field: ContourField): readonly PaintedRegion[] {
   return list.labels.map((label, index) => {
     const color = list.colors[index];
-    return paintedRegionFor(label, field, {
+    return paintedRegionFor(shownBandLabel(label), field, {
       fill: color === undefined
         ? undefined
         : { interval: { lower: index === 0 ? undefined : list.edges[index - 1], upper: contiguousTopOf(list, index) }, color },
@@ -434,11 +434,17 @@ function contiguousTopOf(list: BandList, index: number): number {
 
 /**
  * The band the library itself puts `value` in on `list`, so the inclusivity
- * is the list's: one label, or none past the last Edge or without a number.
+ * is the list's: one label, as the chart names it ({@link shownBandLabel}),
+ * or none past the last Edge or without a number.
  */
 export function bandLabels(value: number, list: BandList): readonly string[] {
   const band = classifyFromBins(value, list);
-  return typeof band === "string" ? [band] : [];
+  return typeof band === "string" ? [shownBandLabel(band)] : [];
+}
+
+/** A band's `label` as the chart names it: an empty one, as Add leaves it, reads "Unlabelled band". */
+function shownBandLabel(label: string): string {
+  return label === "" ? copy.unlabelledBand : label;
 }
 
 /**

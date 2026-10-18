@@ -36,9 +36,14 @@ function strokedEdges(outputs: Outputs) {
     .map(({ label, upper }) => ({ label, upper }));
 }
 
+/** A band's `label` as the chart names it: an empty one, as Add leaves it, reads "Unlabelled band". */
+function shownLabel(label: string): string {
+  return label === "" ? copy.unlabelledBand : label;
+}
+
 /** The Edges `list` strokes: every band's own upper Edge, painted or not. */
 function edgesOf(list: BandList) {
-  return list.labels.map((label, index) => ({ label, upper: list.edges[index] }));
+  return list.labels.map((label, index) => ({ label: shownLabel(label), upper: list.edges[index] }));
 }
 
 /** The fills the chart paints: each one's label, colour and interval. */
@@ -58,7 +63,7 @@ function fillsOf(list: BandList) {
     const color = list.colors[index];
     const closing = list.colors.findIndex((above, position) => position > index && above === undefined);
     const top = closing === -1 ? list.edges.length - 1 : closing - 1;
-    return color === undefined ? [] : [{ label, color, lower: list.edges[index - 1], upper: list.edges[top] }];
+    return color === undefined ? [] : [{ label: shownLabel(label), color, lower: list.edges[index - 1], upper: list.edges[top] }];
   });
 }
 
