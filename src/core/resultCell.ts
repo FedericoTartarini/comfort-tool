@@ -1,4 +1,5 @@
 import { copy } from "$lib/text/copy";
+import type { ViolationRow } from "./applicability";
 import { colorForBand } from "./bandPalette";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultValue } from "./modelRun";
@@ -10,10 +11,21 @@ import type { UnitSystem } from "./unitSystem";
  * What the results table shows for `quantity`: a boolean as "Yes" or "No",
  * the same in both unit systems; a finite number in its display unit; a dash
  * for anything else — a category is read in the Compliance column, not here.
+ * `violations` are the rows the result shows broken: while there is one, a
+ * boolean reads the dash too, as pythermalcomfort's NaN under its own gate
+ * (ADR-0002 decision 77, rule 2).
  */
-export function formatResultCell(result: ModelResult | null, quantity: Quantity, system: UnitSystem): string {
+export function formatResultCell(
+  result: ModelResult | null,
+  quantity: Quantity,
+  system: UnitSystem,
+  violations: readonly ViolationRow[],
+): string {
   const value = result ? resultValue(result, quantity) : undefined;
   if (typeof value === "boolean") {
+    if (violations.length > 0) {
+      return copy.notAvailable;
+    }
     return value ? copy.yes : copy.no;
   }
   if (typeof value !== "number") {

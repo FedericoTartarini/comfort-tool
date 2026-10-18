@@ -3,10 +3,11 @@ import { PMV_CATEGORY_BINS_ISO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsth
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { violationRows, type ViolationRow } from "./applicability";
 import { bandColors } from "./bandPalette";
 import type { RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { classifiedOutputs, formatResultCell } from "./resultCell";
 import { startingSlot, withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
@@ -20,34 +21,69 @@ const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model,
 const atTdb = (model: RegisteredModel, tdb: number) =>
   runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
+const noViolations: readonly ViolationRow[] = [];
+// A run that broke its air-speed row, as `violationRows` reports one.
+const brokenAirSpeed: readonly ViolationRow[] = [{ quantity: q.v, bounded: q.vr, role: "derived", value: 1, bound: { max: 0.8 } }];
+
 describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {
     const result = { acceptability_80: true, compliance: false };
     for (const system of [unitSystem.si, unitSystem.ip]) {
-      expect(formatResultCell(result, q.acceptability_80, system)).toBe("Yes");
-      expect(formatResultCell(result, q.compliance, system)).toBe("No");
+      expect(formatResultCell(result, q.acceptability_80, system, noViolations)).toBe("Yes");
+      expect(formatResultCell(result, q.compliance, system, noViolations)).toBe("No");
     }
   });
 
   it("reads PMV (ASHRAE 55)'s compliance, a column of its table, as Yes inside the interval and No outside", () => {
     expect(pmvPpdAshrae.table).toContain(q.compliance);
-    expect(formatResultCell(atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si)).toBe("Yes");
-    expect(formatResultCell(atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si)).toBe("No");
+    expect(formatResultCell(atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si, noViolations)).toBe("Yes");
+    expect(formatResultCell(atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si, noViolations)).toBe("No");
+  });
+
+  it("shows every boolean result as a dash beside a violation row, whatever its value", () => {
+    const result = { acceptability_80: true, compliance: false };
+    for (const system of [unitSystem.si, unitSystem.ip]) {
+      expect(formatResultCell(result, q.acceptability_80, system, brokenAirSpeed)).toBe("—");
+      expect(formatResultCell(result, q.compliance, system, brokenAirSpeed)).toBe("—");
+    }
+  });
+
+  it("formats a number the same beside a violation row as without one", () => {
+    const result = { tmp_cmf: 24.567, pmv: 0.5 };
+    expect(formatResultCell(result, q.tmp_cmf, unitSystem.ip, brokenAirSpeed)).toBe(formatResultCell(result, q.tmp_cmf, unitSystem.ip, noViolations));
+    expect(formatResultCell(result, q.pmv, unitSystem.si, brokenAirSpeed)).toBe("0.5");
+  });
+
+  // ADR-0002 decision 77 rule 2: as pythermalcomfort's NaN under its own gate, the row says why.
+  it("reads PMV (ASHRAE 55)'s compliance as a dash, and PMV and PPD as numbers, at 28 °C and 1.0 m/s without local control", () => {
+    const slot = withEnteredValues(
+      startingSlot(pmvPpdAshrae),
+      new Map<Quantity, number>([[q.tdb, 28], [q.tr, 28], [q.v, 1], [q.met, 1], [q.clo, 0.61]]),
+    );
+    const result = runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+    const rows = violationRows(pmvPpdAshrae, result, slot);
+    expect(rows.map((row) => row.bounded)).toEqual([q.vr]);
+    expect(formatResultCell(result, q.compliance, unitSystem.si, rows)).toBe("—");
+    expect(formatResultCell(result, q.compliance, unitSystem.si, noViolations)).toBe("Yes");
+    for (const quantity of [q.pmv, q.ppd]) {
+      expect(formatResultCell(result, quantity, unitSystem.si, rows)).toBe(formatResultCell(result, quantity, unitSystem.si, noViolations));
+      expect(formatResultCell(result, quantity, unitSystem.si, rows)).not.toBe("—");
+    }
   });
 
   it("formats a number in the display unit", () => {
     const result = { tmp_cmf: 24.567, pmv: 0.5 };
-    expect(formatResultCell(result, q.tmp_cmf, unitSystem.si)).toBe("24.57 °C");
-    expect(formatResultCell(result, q.tmp_cmf, unitSystem.ip)).toBe("76.22 °F");
-    expect(formatResultCell(result, q.pmv, unitSystem.si)).toBe("0.5");
+    expect(formatResultCell(result, q.tmp_cmf, unitSystem.si, noViolations)).toBe("24.57 °C");
+    expect(formatResultCell(result, q.tmp_cmf, unitSystem.ip, noViolations)).toBe("76.22 °F");
+    expect(formatResultCell(result, q.pmv, unitSystem.si, noViolations)).toBe("0.5");
   });
 
   it("shows a dash for a category, a non-finite number, a missing key and no result", () => {
     const result = { tsv: "Neutral", pmv: Number.NaN };
-    expect(formatResultCell(result, q.tsv, unitSystem.si)).toBe("—");
-    expect(formatResultCell(result, q.pmv, unitSystem.si)).toBe("—");
-    expect(formatResultCell(result, q.ppd, unitSystem.si)).toBe("—");
-    expect(formatResultCell(null, q.pmv, unitSystem.si)).toBe("—");
+    expect(formatResultCell(result, q.tsv, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(result, q.pmv, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(result, q.ppd, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(null, q.pmv, unitSystem.si, noViolations)).toBe("—");
   });
 });
 

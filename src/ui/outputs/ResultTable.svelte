@@ -102,7 +102,7 @@
               </Table.Cell>
             {/if}
             {#each model.table as quantity (quantity)}
-              <Table.Cell class="value">{formatResultCell(row.result, quantity, unitSystem)}</Table.Cell>
+              <Table.Cell class="value">{formatResultCell(row.result, quantity, unitSystem, row.violations)}</Table.Cell>
             {/each}
           </Table.Row>
         {/each}
