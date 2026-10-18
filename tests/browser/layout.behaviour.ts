@@ -687,21 +687,35 @@ test.describe("the air-speed chart's Comfort zone", () => {
   const OPTION = "Occupants have local control of the air speed";
 
   /**
-   * How many cells the drawn zone fills: the cells of each zone fill that its constraint paints, between a pair of
-   * values or below a single one (`ui/charts/plotlyFigure.ts`).
+   * The area the drawn zone fills, in the axes' units: each named filled scatter's rings, separated by `null`
+   * (`ui/charts/plotlyFigure.ts`), by the shoelace formula, a hole wound opposite counting against its outer ring. The
+   * cover above saturation is unnamed, and this chart draws none.
    */
-  function zoneCells(page: Page): Promise<number> {
+  function zoneArea(page: Page): Promise<number> {
     return page.locator(".chart-plot.js-plotly-plot").evaluate((node) => {
-      interface ContourData {
+      interface PathData {
         type: string;
-        z: (number | null)[][];
-        contours: { showlines: boolean; value: number | [number, number] };
+        fill?: string;
+        name?: string;
+        x: (number | null)[];
+        y: (number | null)[];
       }
-      const fills = (node as unknown as { data: ContourData[] }).data.filter((trace) => trace.type === "contour" && !trace.contours.showlines);
-      return fills.reduce((count, { z, contours: { value } }) => {
-        const [lower, upper] = Array.isArray(value) ? value : [Number.NEGATIVE_INFINITY, value];
-        return count + z.flat().filter((cell) => cell !== null && cell >= lower && cell <= upper).length;
-      }, 0);
+      const fills = (node as unknown as { data: PathData[] }).data.filter((trace) => trace.type === "scatter" && trace.fill === "toself" && trace.name);
+      let area = 0;
+      for (const { x, y } of fills) {
+        let start = 0;
+        for (let end = 0; end <= x.length; end += 1) {
+          if (end < x.length && x[end] !== null) {
+            continue;
+          }
+          for (let index = start; index < end; index += 1) {
+            const next = index + 1 < end ? index + 1 : start;
+            area += (Number(x[index]) * Number(y[next]) - Number(x[next]) * Number(y[index])) / 2;
+          }
+          start = end + 1;
+        }
+      }
+      return area;
     });
   }
 
@@ -711,13 +725,13 @@ test.describe("the air-speed chart's Comfort zone", () => {
     await expect(page.getByLabel("X axis")).toBeVisible();
     const option = page.getByRole("switch", { name: OPTION, exact: true });
     await expect(option).toHaveAttribute("aria-checked", "false");
-    const capped = await zoneCells(page);
+    const capped = await zoneArea(page);
     expect(capped).toBeGreaterThan(0);
 
     await option.click();
-    await expect.poll(() => zoneCells(page)).toBeGreaterThan(capped);
+    await expect.poll(() => zoneArea(page)).toBeGreaterThan(capped);
 
     await option.click();
-    await expect.poll(() => zoneCells(page)).toBe(capped);
+    await expect.poll(() => zoneArea(page)).toBe(capped);
   });
 });

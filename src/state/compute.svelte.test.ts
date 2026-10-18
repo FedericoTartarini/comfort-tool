@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
+import { zoneFillsOf } from "$lib/core/charts/chartTestPaths";
 import { chartType } from "$lib/core/chartType";
 import { temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
@@ -241,7 +242,7 @@ describe("Outputs", () => {
     readEverything(outputs);
     const before = runs();
     // A zone's fill is cut from the scan, so `before` counts a whole scan.
-    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourFill")).toBe(true);
+    expect(zoneFillsOf({ traces: outputs.chart?.traces ?? [] })).not.toEqual([]);
     expect(before).toBeGreaterThan(0);
 
     session.slots[0].setEntered(q.tdb, 35);

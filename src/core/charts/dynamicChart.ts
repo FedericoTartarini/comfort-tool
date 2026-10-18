@@ -44,7 +44,7 @@ export function dynamicScanFrameFor(
  * It scans the model's scanned output over `GRID × GRID` cells of two entered
  * quantities, once per slot, and paints it as the psychrometric chart paints
  * its own ({@link fieldPaintFor}): the Band list over the first slot's scan,
- * or each slot's Comfort zones as contours of its own, with one hover grid
+ * or each slot's Comfort zones traced from its own, with one hover grid
  * reading both axis values and every slot's number (ADR §4.4's hover rules),
  * every outline over every fill. Then each slot's marker; no other chrome.
  * `scans`, one per slot in the request's order, are the slots' scans in the

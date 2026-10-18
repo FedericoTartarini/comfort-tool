@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { chartInk } from "$lib/core/bandPalette";
-import type { ChartSpec, ContourLineTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame } from "$lib/core/charts/scan";
@@ -240,18 +240,14 @@ describe("the outputs of the compared slots", () => {
   });
 });
 
-/** A zone's line of either kind: a limit line, or a contour line of a scanned field. */
-type ZoneLine = PathTrace | ContourLineTrace;
-
 /** The zones slot `position`'s hue outlines on `chart`, in drawing order, as shapes a comparison can be made against. */
 function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
   return (chart?.traces ?? [])
     .filter(
-      (trace): trace is ZoneLine =>
-        (trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined)) &&
-        trace.color === chartInk.zoneLine(palette.slots[position]),
+      (trace): trace is PathTrace =>
+        trace.kind === "path" && trace.fill === undefined && trace.color === chartInk.zoneLine(palette.slots[position]),
     )
-    .map((zone) => (zone.kind === "path" ? { pieces: zone.pieces } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
+    .map((zone) => ({ pieces: zone.pieces }));
 }
 
 /** Where slot `position`'s marker is on `chart`, or `undefined` for none. */
@@ -401,10 +397,16 @@ describe("the charts of the compared slots", () => {
   });
 
   describe("on the dynamic chart", () => {
-    /** The model runs a session on `model` makes to show one slot, its result and its scan, from nothing. */
-    function onePassOf(model: RegisteredModel, runs: () => number): number {
+    /**
+     * The model runs a session on `model` makes to show one slot, its result
+     * and its scan, from nothing, after `prepare` has set it up. A scan's
+     * runs depend on its slot, the zones' boundaries asking for more runs
+     * where a bound ends them, so a pass is counted of the slot it is for.
+     */
+    function onePassOf(model: RegisteredModel, runs: () => number, prepare: (session: Session) => void = () => {}): number {
       const session = new Session(model);
       session.chart.type = chartType.dynamic;
+      prepare(session);
       const before = runs();
       const outputs = new Outputs(session);
       void outputs.slots[0].result;
@@ -424,18 +426,19 @@ describe("the charts of the compared slots", () => {
         void outputs.chart;
       };
       readEverything();
-      return { session, outputs, runs, onePass, readEverything };
+      return { model, session, outputs, runs, onePass, readEverything };
     }
 
     it("scan once for an edit to one slot", () => {
-      const { session, outputs, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
+      const { model, session, outputs, runs, readEverything } = twoSlotsOnTheDynamicChart();
       const first = zoneShapesOf(outputs.chart, 0);
+      const edited = onePassOf(model, runs, (alone) => alone.slots[0].setEntered(q.clo, 1));
       const before = runs();
 
       heldSlot(session, 1).setEntered(q.clo, 1);
       readEverything();
 
-      expect(runs()).toBe(before + onePass);
+      expect(runs()).toBe(before + edited);
       expect(zoneShapesOf(outputs.chart, 0)).toEqual(first);
       expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(first);
     });
@@ -451,13 +454,16 @@ describe("the charts of the compared slots", () => {
     });
 
     it("scan once per compared slot for an edit to the atmospheric pressure", () => {
-      const { session, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
+      const { model, session, runs, readEverything } = twoSlotsOnTheDynamicChart();
+      const atPressure = onePassOf(model, runs, (alone) => {
+        alone.atmosphericPressure = 90_000;
+      });
       const before = runs();
 
       session.atmosphericPressure = 90_000;
       readEverything();
 
-      expect(runs()).toBe(before + 2 * onePass);
+      expect(runs()).toBe(before + 2 * atPressure);
     });
 
     it("scan nothing for a change of unit system", () => {

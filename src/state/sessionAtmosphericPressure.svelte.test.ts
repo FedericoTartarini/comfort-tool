@@ -12,8 +12,8 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import type { ChartSpec, ContourFillTrace, PathPiece, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
-import { onlyPieceOf } from "$lib/core/charts/chartTestPaths";
+import type { ChartSpec, PathPiece, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import { insideAtSamples, onlyPieceOf, zoneFillsOf } from "$lib/core/charts/chartTestPaths";
 import { humidityMode } from "$lib/core/entryModes";
 import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
@@ -304,9 +304,9 @@ function isolinesOf(chart: ChartSpec | null): { rh: number; line: PathPiece }[] 
     .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), line: onlyPieceOf(trace) }));
 }
 
-/** The comfort zones' fills of a chart, contours of its scan, largest first. */
-function zonesOf(chart: ChartSpec | null): ContourFillTrace[] {
-  return (chart?.traces ?? []).filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+/** The comfort zones' fills of a chart, traced from its scan, largest first. */
+function zonesOf(chart: ChartSpec | null): PathTrace[] {
+  return zoneFillsOf({ traces: chart?.traces ?? [] });
 }
 
 /** The slot's marker on a chart. */
@@ -338,19 +338,26 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
   it("cuts each comfort zone from a scan at that pressure, over the taller axis", () => {
     const chart = chartAt(LOWER_PRESSURE);
     const zones = zonesOf(chart);
+    const grid = chart?.traces.find((trace) => trace.kind === "hoverGrid");
+    if (!grid) {
+      throw new Error("the chart has no hover grid");
+    }
 
     expect(zones).toHaveLength(3);
-    for (const zone of zones) {
-      expect(zone.y[zone.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
-      // Column 25 is the slot's own 25 °C; a cell's number is the slot's at the
-      // relative humidity its humidity ratio has at that pressure, and a zone
-      // contours its magnitude.
-      expect(zone.x[25]).toBeCloseTo(TDB, 9);
+    expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
+    // Column 25 is the slot's own 25 °C; a grid point's number is the slot's at
+    // the relative humidity its humidity ratio has at that pressure, and a zone
+    // holds it where its magnitude is within the zone's limit.
+    expect(grid.x[25]).toBeCloseTo(TDB, 9);
+    const limits = [...pmvPpdIso.scan.comfortZones].map((zone) => zone.limit).sort((a, b) => b - a);
+    zones.forEach((zone, position) => {
+      const region = insideAtSamples(zone, grid.x, grid.y);
       for (const yIndex of [0, 10, 20]) {
-        const rh = hr_to_rh(hrUnit.toSi(zone.y[yIndex]), TDB, LOWER_PRESSURE);
-        expect(zone.z[yIndex][25]).toBeCloseTo(Math.abs(Number(pmvAtRelativeHumidity(rh))), 2);
+        const rh = hr_to_rh(hrUnit.toSi(grid.y[yIndex]), TDB, LOWER_PRESSURE);
+        expect(region[yIndex][25]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh))) < limits[position]);
       }
-    }
+    });
+    expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][25])).toBe(true);
   });
 
   it("ends the humidity-ratio axis at the declared upper end times the default pressure over the pressure", () => {

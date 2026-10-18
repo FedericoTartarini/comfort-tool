@@ -1,10 +1,24 @@
 /**
  * How a test reads a drawn path: a region by whether a point lies inside a
  * filled path by the rule Plotly fills it by, so a test asserts what a person
- * sees rather than how the region was found; and a path drawn in one piece by
- * that piece.
+ * sees rather than how the region was found; a chart's Comfort zones by their
+ * fills and lines; and a path drawn in one piece by that piece.
  */
-import type { PathPiece, PathTrace } from "./chartSpec";
+import type { ChartSpec, HoverGridTrace, PathPiece, PathTrace } from "./chartSpec";
+
+/**
+ * `spec`'s filled paths that carry a name, in drawing order: its Comfort
+ * zones' fills, or Adaptive's bands'. The cover above saturation has none.
+ */
+export function zoneFillsOf(spec: Pick<ChartSpec, "traces">): PathTrace[] {
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.label !== undefined);
+}
+
+/** `spec`'s unfilled paths named as one of its {@link zoneFillsOf} is, in drawing order: each zone's line. */
+export function zoneLinesOf(spec: Pick<ChartSpec, "traces">): PathTrace[] {
+  const labels = new Set(zoneFillsOf(spec).map((fill) => fill.label));
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined && labels.has(trace.label));
+}
 
 /** `trace`'s one piece; throws if there is no trace, or it has any other number of pieces. */
 export function onlyPieceOf(trace: PathTrace | undefined): PathPiece {
@@ -40,4 +54,32 @@ export function isInsideFill(trace: Pick<PathTrace, "pieces">, x: number, y: num
     }
   }
   return winding !== 0;
+}
+
+/**
+ * Whether each grid point (`x[i]`, `y[j]`) lies inside `trace`'s rings
+ * ({@link isInsideFill}), `[j][i]`: the region a test reads at the points a
+ * scan ran. A point on the grid's frame lies on any ring that runs along the
+ * frame, so it is read a millionth of a step inside it.
+ */
+export function insideAtSamples(trace: Pick<PathTrace, "pieces">, x: readonly number[], y: readonly number[]): boolean[][] {
+  const inward = (samples: readonly number[], index: number) => {
+    const last = samples.length - 1;
+    const nudge = 1e-6 * (samples[1] - samples[0]);
+    return samples[index] + (index === 0 ? nudge : index === last ? -nudge : 0);
+  };
+  return y.map((_, j) => x.map((_, i) => isInsideFill(trace, inward(x, i), inward(y, j))));
+}
+
+/**
+ * Every grid point of `spec`'s scan that `fill` holds ({@link insideAtSamples}),
+ * `[yIndex][xIndex]`, read at the points of its hover grid, which lies over
+ * the scan's grid in display units.
+ */
+export function regionOf(spec: Pick<ChartSpec, "traces">, fill: Pick<PathTrace, "pieces">): boolean[][] {
+  const grid = spec.traces.find((trace): trace is HoverGridTrace => trace.kind === "hoverGrid");
+  if (!grid) {
+    throw new Error("spec has no hover grid");
+  }
+  return insideAtSamples(fill, grid.x, grid.y);
 }

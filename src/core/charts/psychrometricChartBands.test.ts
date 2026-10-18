@@ -4,8 +4,8 @@
  * axis and the humidity ratio, every cell run, cut by the list, each Edge
  * stroked over the isolines (decision 62), under the cover above saturation
  * (decision 61), with the isolines and the marker as on Standard and no
- * Comfort zone. Handed none it paints Comfort zones as
- * contours of the same scan (`psychrometricChart.test.ts`).
+ * Comfort zone. Handed none it paints Comfort zones traced
+ * from the same scan (`psychrometricChart.test.ts`).
  */
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
@@ -24,7 +24,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace } from "./chartSpec";
-import { onlyPieceOf } from "./chartTestPaths";
+import { insideAtSamples, onlyPieceOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -289,7 +289,7 @@ describe("the psychrometric chart given a Band list", () => {
     const handed = trace.z.map((row) => row.map(() => 0.1));
     const drawn = psychrometricSpec(
       { ...chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), bands: isoBands },
-      [{ values: handed, outsideApplicability: handed.map((row) => row.map(() => true)) }],
+      [{ values: handed, zones: [] }],
     );
     expect(fillsOf(drawn).map((fill) => fill.z)).toEqual(isoBands.labels.map(() => handed));
   });
@@ -297,18 +297,20 @@ describe("the psychrometric chart given a Band list", () => {
   it("paints Comfort zones and no band when given nothing, under the same cover, over the same scan", () => {
     const drawn = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
     const zoneLabels = [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone));
-    const zones = fillsOf(drawn);
+    const zones = zoneFillsOf(drawn);
     expect(zones.map((zone) => zone.label)).toEqual(zoneLabels);
-    expect(linesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
-    expect(linesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
-    // Over the same scan: every cell the zone holds carries the magnitude of the scan's own number.
+    expect(zoneLinesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
+    expect(zoneLinesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
+    expect(fillsOf(drawn)).toEqual([]);
+    // Over the same scan: every grid point the zone holds has the scan's own number within the zone's limit.
     const [outermost] = zones;
+    const limit = Math.max(...pmvPpdIso.scan.comfortZones.map((zone) => zone.limit));
     let held = 0;
-    outermost.z.forEach((row, yIndex) =>
-      row.forEach((value, xIndex) => {
-        if (value !== null && value <= outermost.upper) {
+    insideAtSamples(outermost, trace.x, trace.y).forEach((row, yIndex) =>
+      row.forEach((inside, xIndex) => {
+        if (inside) {
           held += 1;
-          expect(value).toBe(Math.abs(Number(trace.z[yIndex][xIndex])));
+          expect(Math.abs(Number(trace.z[yIndex][xIndex]))).toBeLessThan(limit);
         }
       }),
     );

@@ -7,6 +7,7 @@ import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   requireAxisRange,
+  requireScan,
   type ComfortZone,
   type DeclaredDynamicChart,
   type RegisteredModel,
@@ -14,12 +15,15 @@ import {
 import { palette } from "$lib/core/palette";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot } from "$lib/core/slot";
+import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PointTrace } from "./chartSpec";
+import type { ChartRequest } from "./chartRequest";
+import type { ChartSpec, ContourFillTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import { regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 
@@ -53,9 +57,8 @@ function last<T>(row: readonly T[]): T {
 }
 
 /**
- * The first fill of a scanned chart of one slot: the largest Comfort zone's,
- * whose field is the magnitude of the slot's number, or, given a Band list,
- * the first band's, whose field is the number itself.
+ * The first fill of a scanned chart of one slot given a Band list: the first
+ * band's, whose field is the slot's number itself.
  */
 function surfaceOf(spec: ChartSpec): ContourFillTrace {
   const trace = spec.traces.find((entry): entry is ContourFillTrace => entry.kind === "contourFill");
@@ -65,17 +68,15 @@ function surfaceOf(spec: ChartSpec): ContourFillTrace {
   return trace;
 }
 
-function fillsOf(spec: ChartSpec): ContourFillTrace[] {
-  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+/** `drawn` on `axes` painting its model's own Band list, so {@link surfaceOf} reads the scanned number. */
+function bandedSpec(drawn: ChartRequest, axes: Parameters<typeof dynamicSpec>[1]): ChartSpec {
+  return dynamicSpec({ ...drawn, bands: bandListOf(requireScan(drawn.model).classifier) }, axes);
 }
 
-function linesOf(spec: ChartSpec): ContourLineTrace[] {
-  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
-}
-
-/** The kinds of the traces that paint the field, in drawing order. */
-function contourKindsOf(spec: ChartSpec): string[] {
-  return spec.traces.map((trace) => trace.kind).filter((kind) => kind === "contourFill" || kind === "contourLine");
+/** Whether every vertex of `line` is a vertex of `fill`'s rings: the line runs along the fill's boundary. */
+function runsAlong(line: PathTrace, fill: PathTrace): boolean {
+  const vertices = new Set(fill.pieces.flatMap((ring) => ring.x.map((x, index) => `${x} ${ring.y[index]}`)));
+  return line.pieces.every((piece) => piece.x.every((x, index) => vertices.has(`${x} ${piece.y[index]}`)));
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
@@ -103,25 +104,22 @@ function declaredZonesOf(model: RegisteredModel): ComfortZone[] {
 describe("dynamicSpec", () => {
   it("scans a square field across the declared axis ranges", () => {
     const spec = dynamicSpec(request, isoChart.axes);
-    const surface = surfaceOf(spec);
-    const { hoverText } = hoverGridOf(spec);
-    // One grid count for both axes, whatever it is; the surface and its hover
-    // text follow the axes rather than a number restated here.
-    const grid = surface.x.length;
-    expect(surface.y).toHaveLength(grid);
-    expect(surface.z).toHaveLength(grid);
-    expect(surface.z[0]).toHaveLength(grid);
+    const { x, y, hoverText } = hoverGridOf(spec);
+    // One grid count for both axes, whatever it is; the hover text follows
+    // the axes rather than a number restated here.
+    const grid = x.length;
+    expect(y).toHaveLength(grid);
     expect(hoverText).toHaveLength(grid);
     expect(hoverText[0]).toHaveLength(grid);
     // The declared ranges, which are what the deployed tool draws, not
     // ISO 7730's applicability limits.
-    expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.tdb));
-    expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.v));
+    expect([x[0], last(x)]).toEqual(declaredRangeOf(q.tdb));
+    expect([y[0], last(y)]).toEqual(declaredRangeOf(q.v));
   });
 
   it("puts a lower number at a cold still point than at a warm one", () => {
     // A Band list paints the scan's own number, signed.
-    const surface = surfaceOf(dynamicSpec({ ...request, bands: bandListOf(pmvPpdIso.scan.classifier) }, isoChart.axes));
+    const surface = surfaceOf(bandedSpec(request, isoChart.axes));
     // Cold and still at the bottom left, warm and still at the bottom right.
     const coldest = surface.z[0][0];
     const warmest = last(surface.z[0]);
@@ -138,64 +136,75 @@ describe("dynamicSpec", () => {
   });
 
   it("sweeps a swapped axis just as well", () => {
-    const surface = surfaceOf(dynamicSpec(request, { x: q.clo, y: q.met }));
-    expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.clo));
-    expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.met));
+    const { x, y } = hoverGridOf(dynamicSpec(request, { x: q.clo, y: q.met }));
+    expect([x[0], last(x)]).toEqual(declaredRangeOf(q.clo));
+    expect([y[0], last(y)]).toEqual(declaredRangeOf(q.met));
   });
 
-  it("converts both axes to the displayed unit", () => {
+  it("converts both axes to the displayed unit, every zone's vertex the SI vertex converted", () => {
     const spec = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, isoChart.axes);
-    const surface = surfaceOf(spec);
-    expect(surface.x[0]).toBeCloseTo(50, 10);
-    expect(last(surface.y)).toBeCloseTo(393.7, 2);
+    const { x, y } = hoverGridOf(spec);
+    expect(x[0]).toBeCloseTo(50, 10);
+    expect(last(y)).toBeCloseTo(393.7, 2);
     expect(spec.layout.y.title).toContain("fpm");
+    const [xUnit, yUnit] = [displayUnitFor(q.tdb, unitSystem.ip), displayUnitFor(q.v, unitSystem.ip)];
+    const si = zoneFillsOf(dynamicSpec(request, isoChart.axes));
+    const ip = zoneFillsOf(spec);
+    expect(ip).toHaveLength(si.length);
+    ip.forEach((zone, position) => {
+      expect(zone.pieces).toEqual(si[position].pieces.map((ring) => ({ x: ring.x.map((value) => xUnit.fromSi(value)), y: ring.y.map((value) => yUnit.fromSi(value)) })));
+    });
   });
 });
 
 /**
  * One slot and no Band list, as the Standard page asks with Compare off
- * (ADR-0002 decision 58): the slot's Comfort zones as contours of its scan,
+ * (ADR-0002 decision 58): the slot's Comfort zones traced from its scan,
  * exactly as each of two slots paints its own, and no band.
  */
 describe("the scanned dynamic chart of one slot", () => {
   const spec = dynamicSpec(request, isoChart.axes);
 
   it("paints PMV (ISO 7730)'s three Comfort zones, nested, largest first, and one marker", () => {
-    expect(fillsOf(spec).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
-      declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), undefined, zone.limit]),
-    );
-    expect(fillsOf(spec)).toHaveLength(3);
+    const fills = zoneFillsOf(spec);
+    expect(fills.map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdIso).map((zone) => copy.zoneLegend(zone)));
+    expect(fills).toHaveLength(3);
+    const regions = fills.map((fill) => regionOf(spec, fill));
+    regions.slice(1).forEach((inner, level) => {
+      const outer = regions[level];
+      expect(inner.every((row, yIndex) => row.every((held, xIndex) => !held || outer[yIndex][xIndex]))).toBe(true);
+    });
     expect(spec.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
   });
 
-  it("paints each zone as a fill in the slot's hue by its level, and after every fill its line over the same interval", () => {
+  it("paints each zone as a fill in the slot's hue by its level, and after every fill its line along the fill's boundary", () => {
     const zones = declaredZonesOf(pmvPpdIso);
     const hue = palette.slots[0];
-    expect(contourKindsOf(spec)).toEqual([...zones.map(() => "contourFill"), ...zones.map(() => "contourLine")]);
-    expect(fillsOf(spec).map((fill) => fill.color)).toEqual(zones.map((_, level) => chartInk.zoneFill(hue, level, zones.length)));
-    expect(linesOf(spec).map((line) => [line.label, line.lower, line.upper, line.color, line.width])).toEqual(
-      zones.map((zone) => [copy.zoneLegend(zone), undefined, zone.limit, chartInk.zoneLine(hue), chartInk.zoneLineWidth]),
+    const fills = zoneFillsOf(spec);
+    const lines = zoneLinesOf(spec);
+    expect(spec.traces.slice(0, 2 * zones.length)).toEqual([...fills, ...lines]);
+    expect(fills.map((fill) => [fill.color, fill.fill])).toEqual(zones.map((_, level) => Array(2).fill(chartInk.zoneFill(hue, level, zones.length))));
+    expect(lines.map((line) => [line.label, line.color, line.width, line.fill])).toEqual(
+      zones.map((zone) => [copy.zoneLegend(zone), chartInk.zoneLine(hue), chartInk.zoneLineWidth, undefined]),
     );
-    linesOf(spec).forEach((line, index) => {
-      expect(line.z).toBe(fillsOf(spec)[index].z);
+    lines.forEach((line, index) => {
+      expect(line.pieces.length).toBeGreaterThan(0);
+      expect(runsAlong(line, fills[index])).toBe(true);
     });
   });
 
   it("paints them as the first of two slots paints its own, named without the slot", () => {
     const two = dynamicSpec(chartRequestForSlots(pmvPpdIso, [slot, slot]), isoChart.axes);
-    const unnamed = ({ label: _label, ...zone }: ContourFillTrace | ContourLineTrace) => zone;
-    expect(fillsOf(spec).map(unnamed)).toEqual(fillsOf(two).slice(0, 3).map(unnamed));
-    expect(linesOf(spec).map(unnamed)).toEqual(linesOf(two).slice(0, 3).map(unnamed));
+    const unnamed = ({ label: _label, ...zone }: PathTrace) => zone;
+    expect(zoneFillsOf(spec).map(unnamed)).toEqual(zoneFillsOf(two).slice(0, 3).map(unnamed));
+    expect(zoneLinesOf(spec).map(unnamed)).toEqual(zoneLinesOf(two).slice(0, 3).map(unnamed));
   });
 
   it("paints PMV (ASHRAE 55)'s one Comfort zone and one marker", () => {
     const ashrae = dynamicOf(pmvPpdAshrae);
     const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, startingSlot(pmvPpdAshrae)), ashrae.axes);
-    expect(contourKindsOf(drawn)).toEqual(["contourFill", "contourLine"]);
-    expect(fillsOf(drawn).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
-      declaredZonesOf(pmvPpdAshrae).map((zone) => [copy.zoneLegend(zone), undefined, zone.limit]),
-    );
-    expect(fillsOf(drawn)).toHaveLength(1);
+    expect(zoneFillsOf(drawn).map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdAshrae).map((zone) => copy.zoneLegend(zone)));
+    expect(zoneLinesOf(drawn).map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdAshrae).map((zone) => copy.zoneLegend(zone)));
     expect(drawn.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
   });
 
@@ -219,7 +228,7 @@ describe("the scanned dynamic chart of one slot", () => {
     const drawn = dynamicSpec(chartRequestForSlots(pmvPpdIso, Array.from({ length: count }, () => slot)), isoChart.axes);
     const markers = drawn.traces.filter((trace) => trace.kind === "point");
     expect(markers).toHaveLength(count);
-    expect(drawn.traces).toEqual([...fillsOf(drawn), ...linesOf(drawn), hoverGridOf(drawn), ...markers]);
+    expect(drawn.traces).toEqual([...zoneFillsOf(drawn), ...zoneLinesOf(drawn), hoverGridOf(drawn), ...markers]);
   });
 
   it("reads both axis values and the slot's number in every cell, and no band", () => {
@@ -293,10 +302,11 @@ describe("dynamicAxisQuantities", () => {
 describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
     // isoChart.axes.x is tdb, which the slot no longer holds.
-    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })), isoChart.axes);
+    const drawn = chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }));
+    const spec = dynamicSpec(drawn, isoChart.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one number if the sweep were being discarded.
-    const surface = surfaceOf(spec);
+    const surface = surfaceOf(bandedSpec(drawn, isoChart.axes));
     expect(new Set(surface.z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.x).toBe(26);
   });
@@ -327,9 +337,10 @@ describe("axes across an air-speed entry mode switch", () => {
 
   it("sweeps the relative air speed when a remembered air-speed axis no longer exists, and marks the entry", () => {
     // isoChart.axes.y is v, which the slot no longer holds.
-    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 })), isoChart.axes);
+    const drawn = chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 }));
+    const spec = dynamicSpec(drawn, isoChart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
-    expect(new Set(surfaceOf(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(surfaceOf(bandedSpec(drawn, isoChart.axes)).z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.4);
   });
 
@@ -341,10 +352,10 @@ describe("axes across an air-speed entry mode switch", () => {
 
   it("gives the model the swept relative air speed unchanged, so the field is the one the air speed gives at the same vr", () => {
     // At met 1 the activity adds nothing, so v and vr are one number and the two fields one field.
-    const still = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
-    const entered = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
-    const moving = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
-    const atMetOne = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
+    const still = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
+    const entered = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
+    const moving = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
+    const atMetOne = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
     expect(surfaceOf(atMetOne).z).toEqual(surfaceOf(still).z);
     expect(surfaceOf(entered).z).not.toEqual(surfaceOf(moving).z);
   });
@@ -362,10 +373,11 @@ describe("axes across a clothing entry mode switch", () => {
   });
 
   it("sweeps the dynamic clothing insulation when a remembered clothing axis no longer exists, as far as it drew the clothing, and marks the entry", () => {
-    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8 })), clothingAxes);
+    const drawn = chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8 }));
+    const spec = dynamicSpec(drawn, clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
     expect(spec.layout.y.range).toEqual(declaredRangeOf(q.clo));
-    expect(new Set(surfaceOf(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(surfaceOf(bandedSpec(drawn, clothingAxes)).z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.8);
   });
 
@@ -374,7 +386,7 @@ describe("axes across a clothing entry mode switch", () => {
   // clothing insulation is corrected in every cell and the dynamic one is not.
   it("gives the model the swept dynamic clothing insulation unchanged, and the swept clothing insulation corrected", () => {
     const fieldOf = (entered: Parameters<typeof enteredSlotFor>[1]) =>
-      surfaceOf(dynamicSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), clothingAxes)).z;
+      surfaceOf(bandedSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), clothingAxes)).z;
     expect(fieldOf({ clo_dynamic: 0.5, met: 1.2 })).toEqual(fieldOf({ clo: 0.5, met: 1.2 }));
     expect(fieldOf({ clo_dynamic: 0.5, met: 2 })).not.toEqual(fieldOf({ clo: 0.5, met: 2 }));
   });

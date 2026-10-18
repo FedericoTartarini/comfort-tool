@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import type { ContourFillTrace, ContourLineTrace } from "$lib/core/charts/chartSpec";
+import { zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { chartType, type ChartType } from "$lib/core/chartType";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -113,10 +114,11 @@ describe("The Bands panel's edits through the session", () => {
     session.setAddress({ page: page.standard, model: pmvPpdIso });
     const traces = outputs.chart?.traces ?? [];
 
-    expect(paintedFills(outputs).map((fill) => fill.label)).toEqual(
+    expect(zoneFillsOf({ traces }).map((fill) => fill.label)).toEqual(
       [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone)),
     );
-    expect(traces.filter((trace) => trace.kind === "contourLine")).toHaveLength(3);
+    expect(zoneLinesOf({ traces })).toHaveLength(3);
+    expect(paintedFills(outputs)).toEqual([]);
     expect(strokedEdges(outputs)).toEqual([]);
   });
 

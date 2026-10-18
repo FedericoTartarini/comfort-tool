@@ -87,9 +87,6 @@ export interface PointTrace {
  * `lower`. Handing the number over rather than a region index is what lets a
  * boundary fall where the value really crosses it instead of at the nearest
  * grid line, however unevenly the values are spaced (ADR-0002 decision 27).
- * A Comfort zone's field is the number's magnitude, below its limit, and a
- * cell whose run breaks a bound carries one above it (`fieldPaint.ts`, ADR-0002
- * decision 77).
  *
  * `null` is "the model gave no number here" and lies in no region. The
  * interval is in `z`'s unit (see the note at the top of this file).
@@ -103,8 +100,8 @@ interface ContourRegion {
 }
 
 /**
- * A {@link ContourRegion} filled in one colour, with no stroke: a Comfort
- * zone's or a Band's paint (ADR-0002 decision 62). A fill cannot say where
+ * A {@link ContourRegion} filled in one colour, with no stroke: a Band's
+ * paint (ADR-0002 decision 62). A fill cannot say where
  * the pointer is, so a {@link HoverGridTrace} reads for it.
  */
 export interface ContourFillTrace extends ContourRegion {
@@ -117,8 +114,7 @@ export interface ContourFillTrace extends ContourRegion {
 /**
  * The boundary of a {@link ContourRegion} stroked in one colour at one width,
  * with no fill: where the field crosses `lower` and `upper`, or `upper` alone
- * where there is no `lower`. A Comfort zone's outline, or a Band's Edge
- * (ADR-0002 decision 62).
+ * where there is no `lower`. A Band's Edge (ADR-0002 decision 62).
  */
 export interface ContourLineTrace extends ContourRegion {
   readonly kind: "contourLine";

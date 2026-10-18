@@ -60,7 +60,7 @@ export function psychrometricScanFrameFor(
  * {@link psychrometricScanFrameFor}'s frame ({@link fieldPaintFor}), as the
  * dynamic chart paints its own (ADR-0002 decision 61): given a Band list
  * ({@link ChartRequest.bands}), the list over the first slot's scan; given
- * none, each slot's Comfort zones as contours of its own scan, a lone slot
+ * none, each slot's Comfort zones traced from its own scan, a lone slot
  * exactly as each of several (ADR-0002 decisions 50 and 71).
  * Either way one hover grid reads the temperature, the humidity ratio and
  * each slot's number, and with a list the band. `scans`, one per slot in the

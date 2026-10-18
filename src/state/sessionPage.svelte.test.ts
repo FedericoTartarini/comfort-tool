@@ -8,13 +8,16 @@
 import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, PointTrace, Trace } from "$lib/core/charts/chartSpec";
-import type { ScannedField } from "$lib/core/charts/scan";
+import type { ChartSpec, ContourFillTrace, ContourLineTrace, PathPiece, PointTrace, Trace } from "$lib/core/charts/chartSpec";
+import { zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
+import { traceRegion } from "$lib/core/charts/regionTracer";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
+import { displayUnitFor } from "$lib/core/units";
+import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -24,6 +27,8 @@ import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import { heldSlot, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
+/** Humidity ratio as the SI chart draws it, in g/kg. */
+const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 
 /** The positions of the slots whose markers `chart` draws, in slot order. */
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
@@ -31,37 +36,35 @@ function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   return slotPositions.filter((position) => markers.some((marker) => marker.color === chartInk.marker(palette.slots[position])));
 }
 
-/** The fills among `traces`, a Comfort zone's or a Band's, in drawing order. */
+/** A Band's fills among `traces`, in drawing order. */
 function fillsOf(traces: readonly Trace[]): ContourFillTrace[] {
   return traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
 }
 
-/**
- * Each row of `z` at the cells where `scan` breaks no bound, where a Comfort
- * zone carries the magnitude of the scan's own number; it leaves out every
- * other cell (ADR-0002 decision 77, rule 1).
- */
-function insideApplicabilityOf(z: ContourFillTrace["z"], scan: ScannedField): (number | null)[][] {
-  return z.map((row, yIndex) => row.filter((_, xIndex) => !scan.outsideApplicability[yIndex][xIndex]));
-}
-
-/** The lines among `traces`, a Comfort zone's outline or a Band's Edge, in drawing order. */
+/** A Band's Edges among `traces`, in drawing order. */
 function linesOf(traces: readonly Trace[]): ContourLineTrace[] {
   return traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
 }
 
 /**
  * The layers of the psychrometric chart's `traces` in drawing order, each run
- * of one layer named once: a trace's kind, or for a path, which of the
- * isolines, the cover and the saturation line it is.
+ * of one layer named once: a region's fill or line, a Comfort zone's path or a
+ * Band's contour alike; the isolines, the cover and the saturation line; or
+ * a trace's kind.
  */
 function psychrometricLayersOf(traces: readonly Trace[]): string[] {
   const layerOf = (trace: Trace) => {
+    if (trace.kind === "contourFill" || trace.kind === "contourLine") {
+      return trace.kind === "contourFill" ? "fill" : "line";
+    }
     if (trace.kind !== "path") {
       return trace.kind;
     }
     if (trace.fill === chartInk.ground) {
       return "cover";
+    }
+    if (!trace.label?.startsWith(q.rh.label)) {
+      return trace.fill === undefined ? "line" : "fill";
     }
     return trace.color === chartInk.saturationLine ? "saturationLine" : "isoline";
   };
@@ -95,8 +98,9 @@ describe("The page in the session", () => {
     const traces = new Outputs(session).chart?.traces ?? [];
 
     expect(session.page).toBe(page.standard);
-    expect(fillsOf(traces)).toHaveLength(3);
-    expect(traces.filter((trace) => trace.kind === "contourLine")).toHaveLength(3);
+    expect(zoneFillsOf({ traces })).toHaveLength(3);
+    expect(zoneLinesOf({ traces })).toHaveLength(3);
+    expect(fillsOf(traces)).toEqual([]);
   });
 
   it("paints each drawn slot's Comfort zones on the Standard page's psychrometric chart over its own scan, Compare off and on, read by a hover grid", () => {
@@ -108,14 +112,16 @@ describe("The page in the session", () => {
     for (const compare of [false, true]) {
       session.setCompare(compare);
       const traces = outputs.chart?.traces ?? [];
-      const fills = fillsOf(traces);
-      const lines = linesOf(traces);
+      const fills = zoneFillsOf({ traces });
+      const lines = zoneLinesOf({ traces });
       expect(fills).toHaveLength(3 * outputs.slots.length);
       expect(lines).toHaveLength(3 * outputs.slots.length);
       outputs.slots.forEach((slot, position) => {
-        const own = insideApplicabilityOf(slot.scan.values.map((row) => row.map(Math.abs)), slot.scan);
-        expect(fills.slice(3 * position, 3 * position + 3).map((fill) => insideApplicabilityOf(fill.z, slot.scan))).toEqual([own, own, own]);
-        expect(lines.slice(3 * position, 3 * position + 3).map((line) => insideApplicabilityOf(line.z, slot.scan))).toEqual([own, own, own]);
+        // Each zone is its own scan's traced, the humidity ratio shown in g/kg.
+        const shown = (piece: PathPiece) => ({ x: piece.x, y: piece.y.map((hr) => hrUnit.fromSi(hr)) });
+        const own = slot.scan.zones.map(traceRegion);
+        expect(fills.slice(3 * position, 3 * position + 3).map((fill) => fill.pieces)).toEqual(own.map((zone) => zone.rings.map(shown)));
+        expect(lines.slice(3 * position, 3 * position + 3).map((line) => line.pieces)).toEqual(own.map((zone) => zone.lines.map(shown)));
       });
       expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
       expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
@@ -128,9 +134,9 @@ describe("The page in the session", () => {
     const outputs = new Outputs(session);
 
     expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
-      "contourFill",
+      "fill",
       "isoline",
-      "contourLine",
+      "line",
       "hoverGrid",
       "cover",
       "saturationLine",
@@ -140,9 +146,9 @@ describe("The page in the session", () => {
 
     openAt(session, page.explore);
     expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
-      "contourFill",
+      "fill",
       "isoline",
-      "contourLine",
+      "line",
       "hoverGrid",
       "cover",
       "saturationLine",
@@ -177,8 +183,7 @@ describe("The page in the session", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
-      // A zone strokes its outline in its slot's zone line, a band its Edge in the band line.
-      const zones = () => linesOf(outputs.chart?.traces ?? []).filter((line) => line.color !== chartInk.bandLine);
+      const zones = () => zoneLinesOf({ traces: outputs.chart?.traces ?? [] });
       const covers = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
       expect(zones()).toHaveLength(9);
       expect(covers()).toHaveLength(1);

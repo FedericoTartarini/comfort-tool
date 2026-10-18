@@ -179,7 +179,7 @@ const SAMPLES_ALONG_THE_AXIS = 25;
  * applies would leave. The first table column by default, because every model declares one, whatever
  * its chart scans or draws, and what the table shows is what must be
  * unrounded (ADR-0002 decision 38); the scan's output beside it, which every
- * scanned chart contours (decision 61). A count over the whole sample rather
+ * scanned chart draws its regions from (decision 61). A count over the whole sample rather
  * than an assertion per value: an unrounded kernel still returns a value on
  * the grid now and then, and one such value says nothing.
  */

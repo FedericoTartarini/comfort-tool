@@ -6,14 +6,14 @@
 import { classifyFromBins } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import type { BandList } from "$lib/core/bands";
-import type { ComfortZone, RegisteredModel } from "$lib/core/modelDeclaration";
 import { displayUnitFor } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout, LegendEntry } from "./chartSpec";
-import { GRID, scannedField, type ScanFrame, type ScannedField, type Sweep } from "./scan";
-import { labelFor, readoutLine, samples, zoneInkFor } from "./specParts";
+import type { ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout, LegendEntry, PathPiece, PathTrace } from "./chartSpec";
+import { traceRegion, type RegionGrid } from "./regionTracer";
+import { comfortZonesOf, GRID, scannedField, type ScanFrame, type ScannedField, type Sweep } from "./scan";
+import { labelFor, readoutLine, samples, zoneInkFor, type ZoneInk } from "./specParts";
 
 /**
  * What a chart paints of its slots' scans, written once for both scanned
@@ -23,9 +23,9 @@ import { labelFor, readoutLine, samples, zoneInkFor } from "./specParts";
  */
 export interface FieldPaint {
   /** Every region's fill: the slots in the request's order, each slot's zones largest first; or the bands in the list's. */
-  readonly fills: readonly ContourFillTrace[];
+  readonly fills: readonly (PathTrace | ContourFillTrace)[];
   /** Every region's line, in the regions' order: each zone's outline, or every band's Edge, an unpainted band's too. */
-  readonly outlines: readonly ContourLineTrace[];
+  readonly outlines: readonly (PathTrace | ContourLineTrace)[];
   /** The one grid that reads every slot's number for the regions, whose traces cannot. */
   readonly hoverGrid: HoverGridTrace;
   /** The Band list's legend entries, one per painted band; none without a list. */
@@ -44,13 +44,13 @@ export interface FieldPaint {
  * Given a Band list ({@link ChartRequest.bands}), its bands over the first
  * slot's scan, each over its interval of the number in its own colour, a
  * band without one nowhere, and every Edge stroked. Given none, each slot's
- * Comfort zones as contours of its own scan, largest first, painted as
- * {@link zoneInkFor} says: filled in the slot's hue with the opacity rising
- * inwards and outlined in it, however many slots are drawn (ADR-0002
- * decisions 50, 58 and 71). Never the thermal-sensation palette for a zone:
- * it is diverging, and nested zones are levels of one thing. A zone leaves
- * out every cell whose run breaks a bound ({@link zoneSurfaceOf}); a band
- * paints over it (ADR-0002 decision 77, rule 1).
+ * Comfort zones traced from its own scan ({@link zonePathsFor}), largest
+ * first, painted as {@link zoneInkFor} says: filled in the slot's hue with
+ * the opacity rising inwards and outlined in it, however many slots are drawn
+ * (ADR-0002 decisions 50, 58 and 71). Never the thermal-sensation palette for
+ * a zone: it is diverging, and nested zones are levels of one thing. A zone
+ * leaves out wherever a run breaks a bound ({@link ScannedField.zones}); a
+ * band paints over it (ADR-0002 decision 77, rule 1).
  *
  * Either way one hover grid reads both swept values and every slot's number,
  * labelled by its slot while there are several, and with a list the band the
@@ -68,11 +68,11 @@ export function fieldPaintFor(
   const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
   const outputUnit = displayUnitFor(frame.output, unitSystem);
   const drawn = displayedSamplesOf(frame.x, frame.y, unitSystem);
-  const fills: ContourFillTrace[] = [];
-  const outlines: ContourLineTrace[] = [];
+  const fills: (PathTrace | ContourFillTrace)[] = [];
+  const outlines: (PathTrace | ContourLineTrace)[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
-  const lay = ({ line, fill }: PaintedRegion) => {
+  const lay = ({ line, fill }: { readonly line: PathTrace | ContourLineTrace; readonly fill?: PathTrace | ContourFillTrace }) => {
     if (fill) {
       fills.push(fill);
     }
@@ -87,18 +87,11 @@ export function fieldPaintFor(
       }
     }
   } else {
-    const zones = contouredZonesOf(frame.model);
+    const zones = comfortZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
-        // The zone's surface is |number|, so the zone is everything below its limit.
-        const interval = { upper: zone.limit };
         const ink = zoneInkFor(charted, copy.zoneLegend(zone), index, zones.length);
-        lay(paintedRegionFor(ink.legendEntry.label, { ...drawn, z: zoneSurfaceOf(fields[position], zone.limit) }, {
-          fill: { interval, color: ink.fill },
-          line: interval,
-          lineColor: ink.line,
-          lineWidth: ink.lineWidth,
-        }));
+        lay(zonePathsFor(fields[position].zones[index], frame, unitSystem, ink));
         zoneLegendOfSlot[position].push(ink.legendEntry);
       });
     });
@@ -116,40 +109,29 @@ export function fieldPaintFor(
 }
 
 /**
- * The Comfort zones a scanned chart cuts from each slot's scan, largest
- * first: the model's scan's own (`core/comfortZones`), each where |PMV| is
- * inside its limit. None for a model whose scan declares none; a model
- * declaring the psychrometric chart has some, which a registry-wide test holds
- * (`core/modelDeclaration.test.ts`).
+ * A Comfort zone of a slot's scan, `region` ({@link ScannedField.zones}),
+ * traced (`regionTracer.ts`) and painted in `ink`: its rings filled, and its
+ * limit and every bound that ends it stroked, never the plot's frame
+ * (ADR-0002 decision 78, rule 4). The tracer works in the scan's SI; each
+ * vertex is shown in `unitSystem` as the axes show it, and every axis's
+ * conversion is affine, so a straight run stays straight. Neither path can
+ * say where the pointer is, so neither captures it.
  */
-function contouredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
-  return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
+function zonePathsFor(region: RegionGrid, frame: ScanFrame, unitSystem: UnitSystem, ink: ZoneInk): { readonly line: PathTrace; readonly fill: PathTrace } {
+  const xUnit = displayUnitFor(frame.x.quantity, unitSystem);
+  const yUnit = displayUnitFor(frame.y.quantity, unitSystem);
+  const displayed = (piece: PathPiece): PathPiece => ({ x: piece.x.map((x) => xUnit.fromSi(x)), y: piece.y.map((y) => yUnit.fromSi(y)) });
+  const { rings, lines } = traceRegion(region);
+  const label = ink.legendEntry.label;
+  return {
+    fill: { kind: "path", pieces: rings.map(displayed), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label },
+    line: { kind: "path", pieces: lines.map(displayed), color: ink.line, width: ink.lineWidth, hover: "off", label },
+  };
 }
 
 /** A scanned number as a contour reads it: `null`, in no region, where the model gave none. */
 function contouredNumber(value: number): number | null {
   return Number.isNaN(value) ? null : value;
-}
-
-/**
- * `field` as the Comfort zone of |number| ≤ `limit` contours it: each cell's
- * |number|, which crosses the limit where the number crosses ±`limit`, and
- * which leaves out every cell whose run breaks a bound (ADR-0002 decision 77,
- * rule 1). A left cell inside the limit carries its |number| reflected
- * through it, `2 · limit − |number|`: outside the zone by as much as it was
- * inside, so between it and a kept neighbour of about the same number the
- * contour crosses the limit halfway, at most half a cell from the bound the
- * library reported, and the zone's outline closes along the cut. Every left
- * cell lies at or above the limit, so no contour between two of them crosses
- * into the zone. No bound's value is read here.
- */
-function zoneSurfaceOf(field: ScannedField, limit: number): (number | null)[][] {
-  return field.values.map((row, yIndex) =>
-    row.map((value, xIndex) => {
-      const magnitude = Math.abs(value);
-      return contouredNumber(field.outsideApplicability[yIndex][xIndex] && magnitude <= limit ? 2 * limit - magnitude : magnitude);
-    }),
-  );
 }
 
 /** One cell of a `GRID × GRID` grid: its two values in SI, and where it sits. */

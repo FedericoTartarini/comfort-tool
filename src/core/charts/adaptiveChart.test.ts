@@ -12,8 +12,8 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { adaptive_ashrae_zone, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 import { adaptiveSpec } from "./adaptiveChart";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
-import { onlyPieceOf } from "./chartTestPaths";
+import type { ChartSpec, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
+import { onlyPieceOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { containsPoint } from "./polygon";
 import { psychrometricSpec } from "./psychrometricChart";
@@ -57,16 +57,6 @@ function fillsOf(spec: ChartSpec): PathTrace[] {
 /** Its limit lines: its stroked paths, which fill nothing. */
 function linesOf(spec: ChartSpec): PathTrace[] {
   return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined);
-}
-
-/** A scanned chart's zone fills. */
-function contourFillsOf(spec: ChartSpec): ContourFillTrace[] {
-  return spec.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
-}
-
-/** A scanned chart's zone lines. */
-function contourLinesOf(spec: ChartSpec): ContourLineTrace[] {
-  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
 }
 
 function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
@@ -284,8 +274,8 @@ describe("Adaptive's acceptability zones", () => {
   const fills = fillsOf(spec);
   const lines = linesOf(spec);
   const psychrometric = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
-  const psychrometricFills = contourFillsOf(psychrometric);
-  const psychrometricLines = contourLinesOf(psychrometric);
+  const psychrometricFills = zoneFillsOf(psychrometric);
+  const psychrometricLines = zoneLinesOf(psychrometric);
   const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
 
   it("gives each zone one fill of no stroke, closed from the upper limit out and the lower limit back", () => {

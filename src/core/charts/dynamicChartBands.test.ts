@@ -20,6 +20,7 @@ import { copy } from "$lib/text/copy";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout } from "./chartSpec";
+import { zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 
@@ -200,9 +201,10 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("paints Comfort zones and no band when given nothing", () => {
     const drawn = dynamicSpec(isoRequest, isoChart.axes);
     const zoneLabels = [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone));
-    expect(fillsOf(drawn).map((fill) => fill.label)).toEqual(zoneLabels);
-    expect(linesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
-    expect(linesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
+    expect(zoneFillsOf(drawn).map((fill) => fill.label)).toEqual(zoneLabels);
+    expect(zoneLinesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
+    expect(zoneLinesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
+    expect(drawn.traces.some((trace) => trace.kind === "contourFill" || trace.kind === "contourLine")).toBe(false);
   });
 });
 

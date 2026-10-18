@@ -40,26 +40,13 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { adaptiveSpec } from "./adaptiveChart";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import { zoneFillsOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
-
-/** A zone's fill of either kind: a filled path between two limit lines, or a contour fill of a scanned field. */
-type ZoneFill = PathTrace | ContourFillTrace;
-
-/** A zone's stroke of either kind: a limit line, or a contour line of a scanned field. */
-type ZoneLine = PathTrace | ContourLineTrace;
-
-/** The zones' fills: the contour fills and the filled paths but the cover in the plot's ground. */
-function zoneFillsOf(spec: ChartSpec): ZoneFill[] {
-  return spec.traces.filter(
-    (trace): trace is ZoneFill =>
-      trace.kind === "contourFill" || (trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground),
-  );
-}
 
 /** The relative-humidity curves: the paths in the isolines' and the saturation line's ink. */
 function isolinesOf(spec: ChartSpec): PathTrace[] {
@@ -69,32 +56,24 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
   );
 }
 
-/** What strokes a zone: a contour line, or a limit line, a stroked path but an isoline. */
-function outlinesOf(spec: ChartSpec): ZoneLine[] {
+/** What strokes a zone: a stroked path but an isoline, a traced zone's line or a limit line. */
+function outlinesOf(spec: ChartSpec): PathTrace[] {
   const isolines = isolinesOf(spec);
-  return spec.traces.filter(
-    (trace): trace is ZoneLine =>
-      trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined && !isolines.includes(trace)),
-  );
-}
-
-/** A scanned chart's zone outlines, one contour line per zone, with no Band list. */
-function contourLinesOf(spec: ChartSpec): ContourLineTrace[] {
-  return spec.traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined && !isolines.includes(trace));
 }
 
 function markersOf(spec: ChartSpec): PointTrace[] {
   return spec.traces.filter((trace): trace is PointTrace => trace.kind === "point");
 }
 
-/** A zone's fill colour, whichever kind it is. */
-function fillColorOf(zone: ZoneFill): string | undefined {
-  return zone.kind === "path" ? zone.fill : zone.color;
+/** A zone's fill colour. */
+function fillColorOf(zone: PathTrace): string | undefined {
+  return zone.fill;
 }
 
-/** A zone's shape, whichever kind its fill or line is: its path, or its field and interval. */
-function shapeOf(zone: ZoneFill | ZoneLine) {
-  return zone.kind === "path" ? { pieces: zone.pieces } : { x: zone.x, y: zone.y, z: zone.z, lower: zone.lower, upper: zone.upper };
+/** A zone's shape: its fill's or its line's pieces. */
+function shapeOf(zone: PathTrace) {
+  return { pieces: zone.pieces };
 }
 
 function alphaOf(fill: string | undefined): number {
@@ -336,7 +315,7 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
       dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), dynamic.axes),
     ]) {
       expect(zoneFillsOf(spec)).toHaveLength(9);
-      expect(contourLinesOf(spec)).toHaveLength(9);
+      expect(outlinesOf(spec)).toHaveLength(9);
     }
   });
 
@@ -345,14 +324,14 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
     const largest = [...declaredZonesOf(pmvPpdIso)].sort((a, b) => b.limit - a.limit)[0];
     const label = copy.slotEntry("Input 2", copy.zoneLegend(largest));
     expect(zoneFillsOf(spec)[3].label).toBe(label);
-    expect(contourLinesOf(spec)[3].label).toBe(label);
+    expect(outlinesOf(spec)[3].label).toBe(label);
   });
 
   it("is drawn in the Image as on the screen, the same traces of the same kinds", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
     const image = imageDescription({ chart: spec, title: "", summaryAndFooter: null, size: imageSize.doubleColumn });
     expect(image.chart.traces.map((trace) => trace.kind)).toEqual(spec.traces.map((trace) => trace.kind));
-    expect(image.chart.traces.filter((trace) => trace.kind === "contourFill")).toHaveLength(9);
+    expect(zoneFillsOf(image.chart)).toHaveLength(9);
     expect(image.chart.legend).toEqual(spec.legend);
   });
 });
@@ -371,17 +350,17 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
   }
 
   it("paints no band, every fill and line being a slot's zone", () => {
-    const regions = [...zoneFillsOf(spec), ...contourLinesOf(spec)];
+    const regions = [...zoneFillsOf(spec), ...outlinesOf(spec)];
     expect(regions.every((region) => namedSlots.some((name) => region.label?.startsWith(name)))).toBe(true);
   });
 
   it("cuts each slot's zones from the field the slot alone is scanned on", () => {
     const fills = zoneFillsOf(spec);
-    const lines = contourLinesOf(spec);
+    const lines = outlinesOf(spec);
     slots.forEach((slot, position) => {
       const alone = dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes);
       expect(shapeOf(fills[position * 3])).toEqual(shapeOf(zoneFillsOf(alone)[0]));
-      expect(lines[position * 3].z).toEqual(contourLinesOf(alone)[0].z);
+      expect(shapeOf(lines[position * 3])).toEqual(shapeOf(outlinesOf(alone)[0]));
     });
   });
 
