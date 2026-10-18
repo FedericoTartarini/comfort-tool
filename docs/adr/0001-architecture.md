@@ -609,6 +609,16 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > that writes a result into a slot (`436b834`); `ui/primitives/` gains `tabs` and `switch`, generated (`501bf8c`,
 > `4d6f6df`); `tests/browser/` gains `calculators.behaviour.ts`. The 2026-10-09 note's `PresetMenuButton.svelte` is
 > `RowMenuButton.svelte` (`3f325bb`), left out with the calculators' components by the 2026-09-28 marker's rule.
+>
+> **Noted 2026-10-19** ([ADR-0002](0002-library-interface-model-info.md) decision 78, as noted the same day;
+> `.scratch/chart-verification/` ticket 06): `core/charts/` gains `scan.ts`, the scan (`GRID`, `ScanFrame`,
+> `scannedField`), and `fieldPaint.ts`, the painting of Comfort zones and Bands and the hover grid (`fieldPaintFor`,
+> `hoverGridFor`), both drawn out of `specParts.ts` (`456434b`); and `regionTracer.ts`, the region tracer
+> (`traceRegion`, `64a1f8b`). `scan.ts` gains the bisection and `comfortZonesOf`, `fieldPaint.ts`'s
+> `contouredZonesOf` renamed and moved (`8c7da08`). `specParts.ts` keeps the small parts every builder shares, among
+> them `labelFor`, `zoneInkFor`, `markerFor` and `axisFor`. The 2026-10-02 and 2026-10-06 notes' glosses of
+> `specParts.ts` (`scannedField`, `contouredZonesOf`, `bandsFor`, `paintedRegionFor`) are read through this one;
+> `bandsFor` and `paintedRegionFor` are gone with the contour (`f93a1c1`).
 
 ```
 src/

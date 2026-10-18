@@ -323,6 +323,25 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > and `/to-tickets` for decision 78 in `.scratch/chart-verification/`; tickets 02 to 05 first, then the zones, the
 > Bands, and 06.**
 
+> **2026-10-19 — position, the chart fixes done**: `.scratch/chart-verification/` landed on `rewrite/v1` and the
+> folder is closed: 01 `fe1cdac` a Comfort zone leaves out the cells whose run breaks a bound, 02 `578a49d` a yes-or-no
+> output reads "—" under a violation row, 03 `e0d427e` Adaptive's bands the library's acceptable set, 04 `8baec17`
+> Heat Index's axis from 27 °C, 05 `5e2906c` "Unlabelled band", then, under decision 78, 07 `456434b` the scan and the
+> field paint in modules of their own, 08 `64a1f8b` the region tracer and paths of several pieces, 09 `8c7da08` the
+> Comfort zones traced and a bound bisected, 10 `f93a1c1` the Bands traced and the contour gone, and 06 the documents.
+> Decisions 77 and 78 carry notes of this date naming the commits and the sentences that said more or other than the
+> code (every yes-or-no output dashed, not compliance alone; Adaptive's run up the range's end, unstroked; the tracer
+> in `regionTracer.ts`; a Band's region answered when asked; a Band's line stroking where its number ends, open for
+> the user; the scan time, the air-speed chart about 12 ms further past the 300 ms line; the boundary 0.0006 to 0.0020
+> cell from the bound), and ADR-0001 §5 a note of the three modules. Step 2 of the order of 2026-10-17 is done. Walking
+> the charts after ticket 10, the user checked three findings against ASHRAE 55-2023 and ISO 7730:2025 and agreed
+> decisions on 2026-10-19 that are not yet in the ADR (`.scratch/chart-verification/standard-check-notes.md`;
+> `.scratch/open-points.md` B20 to B22): Adaptive's bands to the deployed step, ISO 7730's four categories, the
+> air-speed rule's checks in the library. Step 1 of the order of 2026-10-17, the library's ISO bins, is now step 3 of
+> `standard-check-notes.md`'s order. `npm test` passes at 1128 tests and `npm run test:browser` at 71. **Next: the
+> order in `standard-check-notes.md` (the ADR edits, the library's spec and tickets, the upstream issues, the app),
+> then the Time-series grilling (decision 57 rule 6).**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
