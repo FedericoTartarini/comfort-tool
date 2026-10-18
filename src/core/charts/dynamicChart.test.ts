@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { chartInk } from "$lib/core/bandPalette";
-import { bandListOf } from "$lib/core/bands";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   requireAxisRange,
-  requireScan,
   type ComfortZone,
   type DeclaredDynamicChart,
   type RegisteredModel,
@@ -22,10 +20,11 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, ContourFillTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
-import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
+import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes } from "./dynamicChart";
+import { scannedField } from "./scan";
 
 const q = quantities;
 
@@ -56,21 +55,10 @@ function last<T>(row: readonly T[]): T {
   return row[row.length - 1];
 }
 
-/**
- * The first fill of a scanned chart of one slot given a Band list: the first
- * band's, whose field is the slot's number itself.
- */
-function surfaceOf(spec: ChartSpec): ContourFillTrace {
-  const trace = spec.traces.find((entry): entry is ContourFillTrace => entry.kind === "contourFill");
-  if (!trace) {
-    throw new Error("spec has no contour fill");
-  }
-  return trace;
-}
-
-/** `drawn` on `axes` painting its model's own Band list, so {@link surfaceOf} reads the scanned number. */
-function bandedSpec(drawn: ChartRequest, axes: Parameters<typeof dynamicSpec>[1]): ChartSpec {
-  return dynamicSpec({ ...drawn, bands: bandListOf(requireScan(drawn.model).classifier) }, axes);
+/** Slot 1's scanned number in `drawn`'s dynamic chart on `axes`, `[yIndex][xIndex]`, in SI: the field every region is traced from. */
+function scannedValuesOf(drawn: ChartRequest, axes: Parameters<typeof dynamicSpec>[1]): readonly (readonly number[])[] {
+  const frame = dynamicScanFrameFor(drawn.model, axes, drawn.entryModes, drawn.atmosphericPressure);
+  return scannedField(frame, drawn.slots[0].slot).values;
 }
 
 /** Whether every vertex of `line` is a vertex of `fill`'s rings: the line runs along the fill's boundary. */
@@ -118,14 +106,10 @@ describe("dynamicSpec", () => {
   });
 
   it("puts a lower number at a cold still point than at a warm one", () => {
-    // A Band list paints the scan's own number, signed.
-    const surface = surfaceOf(bandedSpec(request, isoChart.axes));
+    // The scan's own number, signed.
+    const values = scannedValuesOf(request, isoChart.axes);
     // Cold and still at the bottom left, warm and still at the bottom right.
-    const coldest = surface.z[0][0];
-    const warmest = last(surface.z[0]);
-    expect(coldest).not.toBeNull();
-    expect(warmest).not.toBeNull();
-    expect(coldest).toBeLessThan(Number(warmest));
+    expect(values[0][0]).toBeLessThan(last(values[0]));
   });
 
   it("marks the value the user entered, not the derived one", () => {
@@ -248,14 +232,17 @@ describe("the scanned dynamic chart of one slot", () => {
 describe("a model's own number in the scanned field", () => {
   const chart = dynamicOf(pmvPpdIso);
 
-  /** The scan of a model whose PMV is `value` at every point of the field, painted by a Band list, which carries the number signed. */
-  function flat(value: number): ChartSpec {
-    const model = { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies RegisteredModel;
-    return dynamicSpec({ ...request, model, bands: bandListOf(pmvPpdIso.scan.classifier) }, chart.axes);
+  /** A model whose PMV is `value` at every point of the field. */
+  function flatModel(value: number): RegisteredModel {
+    return { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies RegisteredModel;
   }
 
-  function numberAt(value: number): number | null {
-    return surfaceOf(flat(value)).z[0][0];
+  function flat(value: number): ChartSpec {
+    return dynamicSpec({ ...request, model: flatModel(value) }, chart.axes);
+  }
+
+  function numberAt(value: number): number {
+    return scannedValuesOf({ ...request, model: flatModel(value) }, chart.axes)[0][0];
   }
 
   it("is handed on, wherever it falls", () => {
@@ -265,8 +252,8 @@ describe("a model's own number in the scanned field", () => {
     expect(numberAt(250)).toBe(250);
   });
 
-  it("empties only the cell where the model gives no number", () => {
-    expect(numberAt(Number.NaN)).toBeNull();
+  it("keeps no number only where the model gives none", () => {
+    expect(numberAt(Number.NaN)).toBeNaN();
   });
 
   it("reads a dash for the output where the model gives no number, as the results table does", () => {
@@ -306,8 +293,7 @@ describe("axes across a temperature entry mode switch", () => {
     const spec = dynamicSpec(drawn, isoChart.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one number if the sweep were being discarded.
-    const surface = surfaceOf(bandedSpec(drawn, isoChart.axes));
-    expect(new Set(surface.z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(scannedValuesOf(drawn, isoChart.axes).flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.x).toBe(26);
   });
 
@@ -340,7 +326,7 @@ describe("axes across an air-speed entry mode switch", () => {
     const drawn = chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 }));
     const spec = dynamicSpec(drawn, isoChart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
-    expect(new Set(surfaceOf(bandedSpec(drawn, isoChart.axes)).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(scannedValuesOf(drawn, isoChart.axes).flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.4);
   });
 
@@ -352,12 +338,10 @@ describe("axes across an air-speed entry mode switch", () => {
 
   it("gives the model the swept relative air speed unchanged, so the field is the one the air speed gives at the same vr", () => {
     // At met 1 the activity adds nothing, so v and vr are one number and the two fields one field.
-    const still = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
-    const entered = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
-    const moving = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 })), { x: q.tdb, y: q.clo });
-    const atMetOne = bandedSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 1 })), { x: q.tdb, y: q.clo });
-    expect(surfaceOf(atMetOne).z).toEqual(surfaceOf(still).z);
-    expect(surfaceOf(entered).z).not.toEqual(surfaceOf(moving).z);
+    const fieldOf = (entered: Parameters<typeof enteredSlotFor>[1]) =>
+      scannedValuesOf(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, entered)), { x: q.tdb, y: q.clo });
+    expect(fieldOf({ vr: 0.4, met: 1 })).toEqual(fieldOf({ v: 0.4, met: 1 }));
+    expect(fieldOf({ vr: 0.4, met: 2 })).not.toEqual(fieldOf({ v: 0.4, met: 2 }));
   });
 });
 
@@ -377,7 +361,7 @@ describe("axes across a clothing entry mode switch", () => {
     const spec = dynamicSpec(drawn, clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
     expect(spec.layout.y.range).toEqual(declaredRangeOf(q.clo));
-    expect(new Set(surfaceOf(bandedSpec(drawn, clothingAxes)).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(scannedValuesOf(drawn, clothingAxes).flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.8);
   });
 
@@ -386,7 +370,7 @@ describe("axes across a clothing entry mode switch", () => {
   // clothing insulation is corrected in every cell and the dynamic one is not.
   it("gives the model the swept dynamic clothing insulation unchanged, and the swept clothing insulation corrected", () => {
     const fieldOf = (entered: Parameters<typeof enteredSlotFor>[1]) =>
-      surfaceOf(bandedSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), clothingAxes)).z;
+      scannedValuesOf(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), clothingAxes);
     expect(fieldOf({ clo_dynamic: 0.5, met: 1.2 })).toEqual(fieldOf({ clo: 0.5, met: 1.2 }));
     expect(fieldOf({ clo_dynamic: 0.5, met: 2 })).not.toEqual(fieldOf({ clo: 0.5, met: 2 }));
   });

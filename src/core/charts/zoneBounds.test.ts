@@ -21,8 +21,8 @@ import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { ChartSpec, ContourFillTrace, HoverGridTrace, PathTrace } from "./chartSpec";
-import { isInsideFill, regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
+import type { ChartSpec, HoverGridTrace, PathTrace } from "./chartSpec";
+import { bandFillsOf, isInsideFill, regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicScanFrameFor, dynamicSpec } from "./dynamicChart";
 import { psychrometricScanFrameFor, psychrometricSpec } from "./psychrometricChart";
@@ -72,12 +72,6 @@ function hoverGridOf(spec: ChartSpec): HoverGridTrace {
 function samplesOf(spec: ChartSpec): { readonly x: readonly number[]; readonly y: readonly number[] } {
   const { x, y } = hoverGridOf(spec);
   return { x, y };
-}
-
-/** Whether a Band's contour fill holds the cell at (`xIndex`, `yIndex`): its number lies inside the band's interval. */
-function bandHolds(band: ContourFillTrace, xIndex: number, yIndex: number): boolean {
-  const value = band.z[yIndex][xIndex];
-  return value !== null && value <= band.upper && (band.lower === undefined || value >= band.lower);
 }
 
 function countOf(region: readonly (readonly boolean[])[]): number {
@@ -215,9 +209,9 @@ describe("PMV (ASHRAE 55)'s air-speed chart", () => {
     const [without, within] = [regionOf(off, zoneOf(off)), regionOf(on, zoneOf(on))];
     const left = speeds.map((_, yIndex) => yIndex).filter((yIndex) => !without[yIndex][column] && within[yIndex][column]);
     expect(left.length).toBeGreaterThan(0);
-    const bandFills = banded.traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+    const bandRegions = bandFillsOf(banded).map((band) => regionOf(banded, band));
     for (const yIndex of left) {
-      expect(bandFills.some((band) => bandHolds(band, column, yIndex))).toBe(true);
+      expect(bandRegions.some((region) => region[yIndex][column])).toBe(true);
     }
   });
 });

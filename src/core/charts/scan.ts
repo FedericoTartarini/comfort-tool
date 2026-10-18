@@ -1,8 +1,9 @@
 /**
  * A slot's scan: the grid every scanned chart sweeps, the frame a chart's
  * slots share and the field a slot's scan gives, read cell by cell off the
- * model's own runs, with each Comfort zone's membership and boundary
- * crossings found on those runs and on the few more a boundary asks for.
+ * model's own runs, with each region's membership and boundary crossings,
+ * a Comfort zone's or a Band's, found on those runs and on the few more a
+ * boundary asks for.
  */
 import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
@@ -64,6 +65,29 @@ export interface ScannedField {
    * value is read here: the bisection asks the run.
    */
   readonly zones: readonly RegionGrid[];
+  /**
+   * The region whose number is finite and in `interval`, as the region
+   * tracer reads it over the frame's samples in SI: a Band's fill or the
+   * region below its Edge (ADR-0002 decision 78, rule 1). Between a member
+   * and a point that is not, the boundary crosses where the number crosses
+   * the Edge between the two, interpolated in the two numbers, or where the
+   * runs stop giving a number, bisected on the run itself; a saddle cell's
+   * centre is run. Those runs are made the first time any region asks for
+   * them and kept, so an edit to a Band list scans nothing again.
+   */
+  readonly regionWithin: (interval: NumberInterval) => RegionGrid;
+}
+
+/**
+ * An interval of a scan's number: the numbers it holds, and its Edges, where
+ * a crossing out of it lies. `holds` is asked of finite numbers alone, and
+ * holds those from `lower` to `upper`, or below `upper` without `lower`, at
+ * whatever inclusivity its caller reads them with.
+ */
+export interface NumberInterval {
+  readonly holds: (value: number) => boolean;
+  readonly lower?: number;
+  readonly upper: number;
 }
 
 /**
@@ -85,7 +109,7 @@ export function comfortZonesOf(model: RegisteredModel): readonly ComfortZone[] {
  * the model run. A swept humidity quantity puts the cell in that humidity's
  * entry mode, so the slot's own conversion gives the cell its relative
  * humidity and the scan converts nothing itself. Every cell is run once: one
- * the model has no number for is `NaN`. A zone's boundary runs the same
+ * the model has no number for is `NaN`. A region's boundary runs the same
  * converted slot at points between the cells, where it bisects a crossing
  * and at a saddle cell's centre.
  */
@@ -106,6 +130,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
   return {
     values: readings.map((row) => row.map((reading) => reading.value)),
     zones: comfortZonesOf(model).map((zone) => zoneGridOf(zone, grid, readings, asked)),
+    regionWithin: (interval) => intervalGridOf(interval, grid, readings, asked),
   };
 }
 
@@ -137,7 +162,7 @@ function isApplicable(reading: Reading): boolean {
   return reading.withinBounds && Number.isFinite(reading.value);
 }
 
-/** The runs a zone's boundary asks for beyond the grid's, each made once for all the zones of a scan. */
+/** The runs a region's boundary asks for beyond the grid's, each made once for all the regions of a scan. */
 interface AskedRuns {
   /**
    * Where, as a fraction of the way from `from` to `to`, two neighbouring
@@ -145,25 +170,32 @@ interface AskedRuns {
    * them stop being applicable.
    */
   readonly endOfApplicability: (from: GridIndex, to: GridIndex) => number;
+  /** The same of two neighbours the first with a finite number and the second without: where the runs stop giving one. */
+  readonly endOfNumber: (from: GridIndex, to: GridIndex) => number;
   /** The run at the centre of the cell whose lower-left corner is (`i`, `j`). */
   readonly centre: (corner: GridIndex) => Reading;
 }
 
-/** The runs `run` makes beyond `grid`'s points when a zone asks for them, each kept for the next zone that asks. */
+/** The runs `run` makes beyond `grid`'s points when a region asks for them, each kept for the next region that asks. */
 function askedRunsOf(grid: Samples, run: (point: Point) => Reading): AskedRuns {
   const point = ({ i, j }: GridIndex): Point => ({ x: grid.x[i], y: grid.y[j] });
-  const ends = new Map<string, number>();
-  const centres = new Map<string, Reading>();
-  return {
-    endOfApplicability(from, to) {
+  /** Where the runs from one grid point to its neighbour stop being what `holds` says, bisected once per pair. */
+  const endOf = (holds: (reading: Reading) => boolean) => {
+    const ends = new Map<string, number>();
+    return (from: GridIndex, to: GridIndex): number => {
       const key = `${from.i} ${from.j} ${to.i} ${to.j}`;
       let fraction = ends.get(key);
       if (fraction === undefined) {
-        fraction = bisected(point(from), point(to), (at) => isApplicable(run(at)));
+        fraction = bisected(point(from), point(to), (at) => holds(run(at)));
         ends.set(key, fraction);
       }
       return fraction;
-    },
+    };
+  };
+  const centres = new Map<string, Reading>();
+  return {
+    endOfApplicability: endOf(isApplicable),
+    endOfNumber: endOf((reading) => Number.isFinite(reading.value)),
     centre(corner) {
       const key = `${corner.i} ${corner.j}`;
       let reading = centres.get(key);
@@ -200,7 +232,6 @@ function bisected(from: Point, to: Point, holds: (at: Point) => boolean): number
 function zoneGridOf(zone: ComfortZone, grid: Samples, readings: readonly (readonly Reading[])[], asked: AskedRuns): RegionGrid {
   const withinLimit = (value: number) => (zone.inclusive ? Math.abs(value) <= zone.limit : Math.abs(value) < zone.limit);
   const isMember = (reading: Reading) => isApplicable(reading) && withinLimit(reading.value);
-  const inside = readings.map((row) => row.map(isMember));
 
   /**
    * Where the boundary crosses from the member `from` to its neighbour `to`,
@@ -221,6 +252,48 @@ function zoneGridOf(zone: ComfortZone, grid: Samples, readings: readonly (readon
     }
     return Math.min(...crossings);
   };
+  return regionGridOf(grid, readings, asked, isMember, crossingFrom);
+}
+
+/** The region of `interval` over the scan's `readings` as the region tracer reads it ({@link ScannedField.regionWithin}). */
+function intervalGridOf(interval: NumberInterval, grid: Samples, readings: readonly (readonly Reading[])[], asked: AskedRuns): RegionGrid {
+  const isMember = ({ value }: Reading) => Number.isFinite(value) && interval.holds(value);
+
+  /**
+   * Where the boundary crosses from the member `from` to its neighbour `to`,
+   * which is not, as a fraction of the way: where the number crosses the
+   * Edge between the two, or where the runs stop giving one.
+   */
+  const crossingFrom = (from: GridIndex, to: GridIndex): number => {
+    const member = readings[from.j][from.i].value;
+    const other = readings[to.j][to.i].value;
+    if (!Number.isFinite(other)) {
+      return asked.endOfNumber(from, to);
+    }
+    const edge = other > member ? interval.upper : interval.lower;
+    if (edge === undefined) {
+      throw new Error(`The interval below ${interval.upper} holds ${member} and not ${other}, which is below it`);
+    }
+    return (edge - member) / (other - member);
+  };
+  return regionGridOf(grid, readings, asked, isMember, crossingFrom);
+}
+
+/**
+ * The region of `grid` whose points `isMember` reads off their runs, as the
+ * region tracer reads it: each point's membership; between a member and a
+ * neighbour that is not, the crossing `crossingFrom` gives as a fraction of
+ * the way from the member; and in a saddle cell, whether the run at its
+ * centre is a member.
+ */
+function regionGridOf(
+  grid: Samples,
+  readings: readonly (readonly Reading[])[],
+  asked: AskedRuns,
+  isMember: (reading: Reading) => boolean,
+  crossingFrom: (from: GridIndex, to: GridIndex) => number,
+): RegionGrid {
+  const inside = readings.map((row) => row.map(isMember));
   /** The crossing between the neighbours `lower` and `upper`, as a fraction from `lower`, where one is a member and the other not. */
   const crossingBetween = (lower: GridIndex, upper: GridIndex): number | undefined => {
     if (inside[lower.j][lower.i] === inside[upper.j][upper.i]) {

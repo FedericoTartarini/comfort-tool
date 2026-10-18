@@ -95,7 +95,6 @@ describe("a declared limits source", () => {
 
   it("fills between the lines it is handed and strokes them, with no grid scan", () => {
     const spec = adaptiveSpec(request);
-    expect(spec.traces.find((trace) => trace.kind === "contourFill" || trace.kind === "contourLine")).toBeUndefined();
     const [fill] = fillsOf(spec);
     const [upper, lower] = linesOf(spec);
     expect(fill?.label).toBe("80% acceptability");

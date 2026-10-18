@@ -2,21 +2,16 @@
  * The restricted chart description `ui/charts/` consumes (ADR §4.4). Every
  * number is already in display units and every colour is already resolved, so
  * the chart component converts nothing and imports no model.
- *
- * The one exception is a contour's field and its interval ({@link
- * ContourFillTrace}, {@link ContourLineTrace}), which stay in the scanned
- * output's own SI unit: they are never displayed, only compared with each
- * other, so converting them would change nothing but the arithmetic.
  */
 
 /**
  * What the pointer reads on a trace (ADR §4.4). `"off"` never captures the
  * pointer: chrome — the relative-humidity isolines, the zone outlines, a
- * Band's Edges, the slot markers — and the zones themselves, whose fills cannot say where the
- * pointer is, so a {@link HoverGridTrace} reads for them. `"field"` reports
- * whatever is under the cursor without snapping to a drawn datum. Snapping is
- * reserved for the line charts added later, where the drawn point *is* the
- * reading.
+ * Band's Edges, the slot markers — and the zones and Bands themselves, whose
+ * fills cannot say where the pointer is, so a {@link HoverGridTrace} reads
+ * for them. `"field"` reports whatever is under the cursor without snapping
+ * to a drawn datum. Snapping is reserved for the line charts added later,
+ * where the drawn point *is* the reading.
  */
 export type HoverMode = "off" | "field";
 
@@ -64,8 +59,8 @@ export interface PathTrace {
   readonly fill?: string;
   readonly hover: HoverMode;
   /**
-   * The path's name (a zone's or an isoline's), handed to Plotly as its trace
-   * name; no path takes the pointer today, so nothing shows it.
+   * The path's name (a zone's, a Band's or an isoline's), handed to Plotly as
+   * its trace name; no path takes the pointer today, so nothing shows it.
    */
   readonly label?: string;
 }
@@ -76,50 +71,6 @@ export interface PointTrace {
   readonly x: number;
   readonly y: number;
   readonly color: string;
-  readonly hover: HoverMode;
-  readonly label: string;
-}
-
-/**
- * A region of a scalar field: `z[yIndex][xIndex]` is the model's own number at
- * that cell, over the samples `x` and `y`, and the region is the cells whose
- * number lies between `lower` and `upper`, or below `upper` where there is no
- * `lower`. Handing the number over rather than a region index is what lets a
- * boundary fall where the value really crosses it instead of at the nearest
- * grid line, however unevenly the values are spaced (ADR-0002 decision 27).
- *
- * `null` is "the model gave no number here" and lies in no region. The
- * interval is in `z`'s unit (see the note at the top of this file).
- */
-interface ContourRegion {
-  readonly x: readonly number[];
-  readonly y: readonly number[];
-  readonly z: readonly (readonly (number | null)[])[];
-  readonly upper: number;
-  readonly lower?: number;
-}
-
-/**
- * A {@link ContourRegion} filled in one colour, with no stroke: a Band's
- * paint (ADR-0002 decision 62). A fill cannot say where
- * the pointer is, so a {@link HoverGridTrace} reads for it.
- */
-export interface ContourFillTrace extends ContourRegion {
-  readonly kind: "contourFill";
-  readonly color: string;
-  readonly hover: HoverMode;
-  readonly label: string;
-}
-
-/**
- * The boundary of a {@link ContourRegion} stroked in one colour at one width,
- * with no fill: where the field crosses `lower` and `upper`, or `upper` alone
- * where there is no `lower`. A Band's Edge (ADR-0002 decision 62).
- */
-export interface ContourLineTrace extends ContourRegion {
-  readonly kind: "contourLine";
-  readonly color: string;
-  readonly width: number;
   readonly hover: HoverMode;
   readonly label: string;
 }
@@ -138,7 +89,7 @@ export interface HoverGridTrace {
 }
 
 /** Drawn in order, so the first trace is at the bottom. */
-export type Trace = PathTrace | PointTrace | ContourFillTrace | ContourLineTrace | HoverGridTrace;
+export type Trace = PathTrace | PointTrace | HoverGridTrace;
 
 /** Text placed at a point of the plot — the isoline labels, and nothing else so far. */
 export interface Annotation {

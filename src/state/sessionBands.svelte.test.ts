@@ -7,9 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
-import { chartInk } from "$lib/core/bandPalette";
-import type { ContourFillTrace, ContourLineTrace } from "$lib/core/charts/chartSpec";
-import { zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
+import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { chartType, type ChartType } from "$lib/core/chartType";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -30,11 +28,16 @@ function exploreSession(type: ChartType = chartType.dynamic): { session: Session
   return { session, outputs: new Outputs(session) };
 }
 
-/** Where the chart strokes an Edge: each band line's label and value. */
-function strokedEdges(outputs: Outputs) {
-  return (outputs.chart?.traces ?? [])
-    .filter((trace): trace is ContourLineTrace => trace.kind === "contourLine" && trace.color === chartInk.bandLine)
-    .map(({ label, upper }) => ({ label, upper }));
+/**
+ * Where the chart strokes an Edge: each band line's label, and whether it
+ * runs where slot 1's scanned number crosses `list`'s Edge of the same band.
+ */
+function strokedEdges(outputs: Outputs, list: BandList) {
+  const spec = { traces: outputs.chart?.traces ?? [] };
+  return bandLinesOf(spec).map((line, index) => ({
+    label: line.label,
+    onEdge: numbersAlong(spec, line, outputs.slots[0].scan.values).every((number) => Math.abs(number - list.edges[index]) < 1e-9),
+  }));
 }
 
 /** A band's `label` as the chart names it: an empty one, as Add leaves it, reads "Unlabelled band". */
@@ -44,27 +47,29 @@ function shownLabel(label: string): string {
 
 /** The Edges `list` strokes: every band's own upper Edge, painted or not. */
 function edgesOf(list: BandList) {
-  return list.labels.map((label, index) => ({ label: shownLabel(label), upper: list.edges[index] }));
+  return list.labels.map((label) => ({ label: shownLabel(label), onEdge: true }));
 }
 
-/** The fills the chart paints: each one's label, colour and interval. */
+/** The fills the chart paints: each one's label, colour, and the grid points of the scan it holds. */
 function paintedFills(outputs: Outputs) {
-  return (outputs.chart?.traces ?? [])
-    .filter((trace): trace is ContourFillTrace => trace.kind === "contourFill")
-    .map(({ label, color, lower, upper }) => ({ label, color, lower, upper }));
+  const spec = { traces: outputs.chart?.traces ?? [] };
+  return bandFillsOf(spec).map((fill) => ({ label: fill.label, color: fill.fill, held: regionOf(spec, fill) }));
 }
 
 /**
- * The fills `list` implies: a coloured band from the Edge below it up to the
- * Edge of the last band of the coloured run it starts, which an uncoloured
- * band or the list's end closes.
+ * The fills `list` implies over slot 1's scan in `outputs`: a coloured band
+ * from the Edge below it up to the Edge of the last band of the coloured run
+ * it starts, which an uncoloured band or the list's end closes, holding the
+ * grid points whose number lies in that interval.
  */
-function fillsOf(list: BandList) {
+function fillsOf(list: BandList, outputs: Outputs) {
+  const { values } = outputs.slots[0].scan;
   return list.labels.flatMap((label, index) => {
     const color = list.colors[index];
     const closing = list.colors.findIndex((above, position) => position > index && above === undefined);
     const top = closing === -1 ? list.edges.length - 1 : closing - 1;
-    return color === undefined ? [] : [{ label: shownLabel(label), color, lower: list.edges[index - 1], upper: list.edges[top] }];
+    const held = heldBetween(values, { lower: list.edges[index - 1], upper: list.edges[top] }, list.right);
+    return color === undefined ? [] : [{ label: shownLabel(label), color, held }];
   });
 }
 
@@ -90,15 +95,15 @@ describe("The Bands panel's edits through the session", () => {
     for (const { name, edit, expected } of edits) {
       it(`${name} in the current model's Band list and the ${type.title} chart's spec at once, rescanning nothing`, () => {
         const { session, outputs } = exploreSession(type);
-        expect(paintedFills(outputs)).toEqual(fillsOf(defaultList));
-        expect(strokedEdges(outputs)).toEqual(edgesOf(defaultList));
+        expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
+        expect(strokedEdges(outputs, defaultList)).toEqual(edgesOf(defaultList));
         const { result, scan } = outputs.slots[0];
 
         edit(session.chart);
 
         expect(session.chart.bands).toEqual(expected);
-        expect(paintedFills(outputs)).toEqual(fillsOf(expected));
-        expect(strokedEdges(outputs)).toEqual(edgesOf(expected));
+        expect(paintedFills(outputs)).toEqual(fillsOf(expected, outputs));
+        expect(strokedEdges(outputs, expected)).toEqual(edgesOf(expected));
         expect(outputs.slots[0].scan).toBe(scan);
         // The result table reads the kernel's own category, never the list.
         expect(outputs.slots[0].result).toEqual(result);
@@ -119,7 +124,7 @@ describe("The Bands panel's edits through the session", () => {
     );
     expect(zoneLinesOf({ traces })).toHaveLength(3);
     expect(paintedFills(outputs)).toEqual([]);
-    expect(strokedEdges(outputs)).toEqual([]);
+    expect(strokedEdges(outputs, defaultList)).toEqual([]);
   });
 
   it("refuses an Edge at or beyond a neighbour, leaving the list and the spec as they were", () => {
@@ -145,7 +150,7 @@ describe("The Bands panel's edits through the session", () => {
     session.chart.resetBands();
 
     expect(session.chart.bands).toEqual(defaultList);
-    expect(paintedFills(outputs)).toEqual(fillsOf(defaultList));
+    expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
   });
 
   it("keeps an edited list across a model switch and back, and the other model's list its own", () => {

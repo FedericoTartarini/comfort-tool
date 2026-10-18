@@ -10,8 +10,8 @@ import { displayUnitFor } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ContourFillTrace, ContourLineTrace, HoverGridTrace, HoverReadout, LegendEntry, PathPiece, PathTrace } from "./chartSpec";
-import { traceRegion, type RegionGrid } from "./regionTracer";
+import type { HoverGridTrace, HoverReadout, LegendEntry, PathPiece, PathTrace } from "./chartSpec";
+import { traceRegion, type RegionGrid, type TracedRegion } from "./regionTracer";
 import { comfortZonesOf, GRID, scannedField, type ScanFrame, type ScannedField, type Sweep } from "./scan";
 import { labelFor, readoutLine, samples, zoneInkFor, type ZoneInk } from "./specParts";
 
@@ -23,9 +23,9 @@ import { labelFor, readoutLine, samples, zoneInkFor, type ZoneInk } from "./spec
  */
 export interface FieldPaint {
   /** Every region's fill: the slots in the request's order, each slot's zones largest first; or the bands in the list's. */
-  readonly fills: readonly (PathTrace | ContourFillTrace)[];
+  readonly fills: readonly PathTrace[];
   /** Every region's line, in the regions' order: each zone's outline, or every band's Edge, an unpainted band's too. */
-  readonly outlines: readonly (PathTrace | ContourLineTrace)[];
+  readonly outlines: readonly PathTrace[];
   /** The one grid that reads every slot's number for the regions, whose traces cannot. */
   readonly hoverGrid: HoverGridTrace;
   /** The Band list's legend entries, one per painted band; none without a list. */
@@ -37,17 +37,18 @@ export interface FieldPaint {
 /**
  * The paint of `scans`, one per slot of `request` in its order, each the
  * slot's scan in `frame` ({@link scannedField}); without them every slot is
- * scanned here. Each cell keeps the model's own number, so a drawn boundary
- * falls where the value crosses it rather than half a cell away (ADR-0002
- * decision 27); a cell with no number is painted nowhere.
+ * scanned here. Every region is traced from the scan (`regionTracer.ts`),
+ * so a drawn boundary falls where the value crosses it rather than half a
+ * cell away (ADR-0002 decisions 27 and 78); a point with no number is
+ * painted nowhere.
  *
- * Given a Band list ({@link ChartRequest.bands}), its bands over the first
- * slot's scan, each over its interval of the number in its own colour, a
- * band without one nowhere, and every Edge stroked. Given none, each slot's
- * Comfort zones traced from its own scan ({@link zonePathsFor}), largest
- * first, painted as {@link zoneInkFor} says: filled in the slot's hue with
- * the opacity rising inwards and outlined in it, however many slots are drawn
- * (ADR-0002 decisions 50, 58 and 71). Never the thermal-sensation palette for
+ * Given a Band list ({@link ChartRequest.bands}), its bands traced over the
+ * first slot's scan ({@link bandPathsFor}), each over its interval of the
+ * number in its own colour, a band without one nowhere, and every Edge
+ * stroked. Given none, each slot's Comfort zones traced from its own scan
+ * ({@link zonePathsFor}), largest first, painted as {@link zoneInkFor} says:
+ * filled in the slot's hue with the opacity rising inwards and outlined in
+ * it, however many slots are drawn (ADR-0002 decisions 50, 58 and 71). Never the thermal-sensation palette for
  * a zone: it is diverging, and nested zones are levels of one thing. A zone
  * leaves out wherever a run breaks a bound ({@link ScannedField.zones}); a
  * band paints over it (ADR-0002 decision 77, rule 1).
@@ -67,12 +68,12 @@ export function fieldPaintFor(
   const { bands, unitSystem } = request;
   const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
   const outputUnit = displayUnitFor(frame.output, unitSystem);
-  const drawn = displayedSamplesOf(frame.x, frame.y, unitSystem);
-  const fills: (PathTrace | ContourFillTrace)[] = [];
-  const outlines: (PathTrace | ContourLineTrace)[] = [];
+  const traced = tracedIn(frame, unitSystem);
+  const fills: PathTrace[] = [];
+  const outlines: PathTrace[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
-  const lay = ({ line, fill }: { readonly line: PathTrace | ContourLineTrace; readonly fill?: PathTrace | ContourFillTrace }) => {
+  const lay = ({ line, fill }: RegionPaths) => {
     if (fill) {
       fills.push(fill);
     }
@@ -80,10 +81,10 @@ export function fieldPaintFor(
   };
 
   if (bands) {
-    for (const region of bandsFor(bands, { ...drawn, z: fields[0].values.map((row) => row.map(contouredNumber)) })) {
-      lay(region);
-      if (region.fill) {
-        bandLegend.push({ label: region.fill.label, swatch: "fill", color: region.fill.color });
+    for (const band of bandPathsFor(bands, fields[0], traced)) {
+      lay(band);
+      if (band.legendEntry) {
+        bandLegend.push(band.legendEntry);
       }
     }
   } else {
@@ -91,7 +92,7 @@ export function fieldPaintFor(
     request.slots.forEach((charted, position) => {
       zones.forEach((zone, index) => {
         const ink = zoneInkFor(charted, copy.zoneLegend(zone), index, zones.length);
-        lay(zonePathsFor(fields[position].zones[index], frame, unitSystem, ink));
+        lay(zonePathsFor(traced(fields[position].zones[index]), ink));
         zoneLegendOfSlot[position].push(ink.legendEntry);
       });
     });
@@ -108,30 +109,39 @@ export function fieldPaintFor(
   return { fills, outlines, hoverGrid, bandLegend, zoneLegendOfSlot };
 }
 
+/** A region's line, and its fill where it is filled. */
+interface RegionPaths {
+  readonly line: PathTrace;
+  readonly fill?: PathTrace;
+}
+
 /**
- * A Comfort zone of a slot's scan, `region` ({@link ScannedField.zones}),
- * traced (`regionTracer.ts`) and painted in `ink`: its rings filled, and its
- * limit and every bound that ends it stroked, never the plot's frame
- * (ADR-0002 decision 78, rule 4). The tracer works in the scan's SI; each
- * vertex is shown in `unitSystem` as the axes show it, and every axis's
- * conversion is affine, so a straight run stays straight. Neither path can
- * say where the pointer is, so neither captures it.
+ * How a region of `frame`'s scan is drawn: traced (`regionTracer.ts`) in the
+ * scan's SI, then each vertex shown in `unitSystem` as the axes show it.
+ * Every axis's conversion is affine, so a straight run stays straight.
  */
-function zonePathsFor(region: RegionGrid, frame: ScanFrame, unitSystem: UnitSystem, ink: ZoneInk): { readonly line: PathTrace; readonly fill: PathTrace } {
+function tracedIn(frame: ScanFrame, unitSystem: UnitSystem): (region: RegionGrid) => TracedRegion {
   const xUnit = displayUnitFor(frame.x.quantity, unitSystem);
   const yUnit = displayUnitFor(frame.y.quantity, unitSystem);
   const displayed = (piece: PathPiece): PathPiece => ({ x: piece.x.map((x) => xUnit.fromSi(x)), y: piece.y.map((y) => yUnit.fromSi(y)) });
-  const { rings, lines } = traceRegion(region);
-  const label = ink.legendEntry.label;
-  return {
-    fill: { kind: "path", pieces: rings.map(displayed), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label },
-    line: { kind: "path", pieces: lines.map(displayed), color: ink.line, width: ink.lineWidth, hover: "off", label },
+  return (region) => {
+    const { rings, lines } = traceRegion(region);
+    return { rings: rings.map(displayed), lines: lines.map(displayed) };
   };
 }
 
-/** A scanned number as a contour reads it: `null`, in no region, where the model gave none. */
-function contouredNumber(value: number): number | null {
-  return Number.isNaN(value) ? null : value;
+/**
+ * A Comfort zone `traced` from a slot's scan ({@link ScannedField.zones}) and
+ * painted in `ink`: its rings filled, and its limit and every bound that ends
+ * it stroked, never the plot's frame (ADR-0002 decision 78, rule 4). Neither
+ * path can say where the pointer is, so neither captures it.
+ */
+function zonePathsFor({ rings, lines }: TracedRegion, ink: ZoneInk): Required<RegionPaths> {
+  const label = ink.legendEntry.label;
+  return {
+    fill: { kind: "path", pieces: rings, color: ink.fill, width: 0, fill: ink.fill, hover: "off", label },
+    line: { kind: "path", pieces: lines, color: ink.line, width: ink.lineWidth, hover: "off", label },
+  };
 }
 
 /** One cell of a `GRID × GRID` grid: its two values in SI, and where it sits. */
@@ -181,54 +191,20 @@ function displayedSamplesOf(x: Sweep, y: Sweep, unitSystem: UnitSystem): { reado
   return { x: displayed(x), y: displayed(y) };
 }
 
-/** A scanned field over two axes' samples, already in display units, its number in its own unit. */
-type ContourField = Pick<ContourFillTrace, "x" | "y" | "z">;
-
-/** An interval of a scanned field's number: from `lower` to `upper`, or everything below `upper` without `lower`. */
-type FieldInterval = Pick<ContourFillTrace, "upper" | "lower">;
-
-/**
- * How a {@link paintedRegionFor} region is painted: the interval it fills and
- * the fill's colour, if it is filled at all, and the interval it strokes and
- * the line's colour and width.
- */
-interface RegionPaint {
-  readonly fill?: { readonly interval: FieldInterval; readonly color: string };
-  readonly line: FieldInterval;
-  readonly lineColor: string;
-  readonly lineWidth: number;
-}
-
-/** A region's line, and its fill where it is filled. */
-interface PaintedRegion {
-  readonly line: ContourLineTrace;
-  readonly fill?: ContourFillTrace;
+/** A band's line, and its fill and legend entry where it is painted. */
+interface BandPaths extends RegionPaths {
+  readonly legendEntry?: LegendEntry;
 }
 
 /**
- * A region of the scanned `field` named `label`, painted as `paint` says: a
- * line over one interval and, where `paint` fills it, a fill over another
- * (ADR-0002 decision 62). A Comfort zone fills and strokes the same interval;
- * a Band strokes its own upper Edge, and one left unpainted is that line
- * alone. Neither trace can say where the pointer is, so neither captures it.
- */
-function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint): PaintedRegion {
-  const line: ContourLineTrace = { kind: "contourLine", ...field, ...paint.line, color: paint.lineColor, width: paint.lineWidth, hover: "off", label };
-  if (!paint.fill) {
-    return { line };
-  }
-  const { interval, color } = paint.fill;
-  return { line, fill: { kind: "contourFill", ...field, ...interval, color, hover: "off", label } };
-}
-
-/**
- * `list` painted over the scanned `field`, one region per band in the list's
- * order: a fill for a band with a colour, and a line at its own upper Edge
- * for every band, painted or not, so n bands stroke the n Edges once each
- * (ADR-0002 decision 62). The first band is open below, as
- * every library classifier is; the last Edge is where the list stops
- * answering, and a number past it falls in no band, so that Edge is drawn by
- * interpolation like any other boundary.
+ * `list` traced over `field` ({@link ScannedField.regionWithin}), one region
+ * per band in the list's order: a fill for a band with a colour, and a line
+ * at its own upper Edge for every band, painted or not, so n bands stroke the
+ * n Edges once each (ADR-0002 decisions 62 and 78, rule 4). The line is the
+ * boundary of the numbers in that band or below it, less the plot's frame.
+ * The first band is open below, as every library classifier is; the last
+ * Edge is where the list stops answering, and a number past it falls in no
+ * band, so that Edge is drawn by interpolation like any other boundary.
  *
  * A band fills from its lower Edge, or from below for the first, up to the
  * top of the painted bands contiguous above it ({@link contiguousTopOf}), and
@@ -236,29 +212,55 @@ function paintedRegionFor(label: string, field: ContourField, paint: RegionPaint
  * fill's edge laid over the next fill's interior: two fills meeting edge to
  * edge can show a seam, a fill over an interior cannot. A band left
  * unpainted ends the run, so its interval stays unpainted rather than showing
- * the fill below it.
+ * the fill below it. Which band a number is in is the library's answer on the
+ * list ({@link bandIndexOf}), so no inclusivity rule is written here. Neither
+ * path can say where the pointer is, so neither captures it.
  */
-function bandsFor(list: BandList, field: ContourField): readonly PaintedRegion[] {
-  return list.labels.map((label, index) => {
+function bandPathsFor(list: BandList, field: ScannedField, traced: (region: RegionGrid) => TracedRegion): readonly BandPaths[] {
+  const indexOf = bandIndexOf(list);
+  const inBands = (first: number, last: number) => (value: number) => {
+    const index = indexOf(value);
+    return index !== undefined && first <= index && index <= last;
+  };
+  return list.labels.map((name, index) => {
+    const label = shownBandLabel(name);
     const color = list.colors[index];
-    return paintedRegionFor(shownBandLabel(label), field, {
-      fill: color === undefined
-        ? undefined
-        : { interval: { lower: index === 0 ? undefined : list.edges[index - 1], upper: contiguousTopOf(list, index) }, color },
-      line: { upper: list.edges[index] },
-      lineColor: chartInk.bandLine,
-      lineWidth: chartInk.bandLineWidth,
-    });
+    const { lines } = traced(field.regionWithin({ holds: inBands(0, index), upper: list.edges[index] }));
+    const line: PathTrace = { kind: "path", pieces: lines, color: chartInk.bandLine, width: chartInk.bandLineWidth, hover: "off", label };
+    if (color === undefined) {
+      return { line };
+    }
+    const top = contiguousTopOf(list, index);
+    const lower = index === 0 ? undefined : list.edges[index - 1];
+    const { rings } = traced(field.regionWithin({ holds: inBands(index, top), lower, upper: list.edges[top] }));
+    return {
+      line,
+      fill: { kind: "path", pieces: rings, color, width: 0, fill: color, hover: "off", label },
+      legendEntry: { label, swatch: "fill", color },
+    };
   });
 }
 
-/** The upper Edge of the last band from band `index` up that is painted with every band between. */
+/** The last band from band `index` up that is painted with every band between, by its index. */
 function contiguousTopOf(list: BandList, index: number): number {
   let top = index;
   while (list.colors[top + 1] !== undefined) {
     top += 1;
   }
-  return list.edges[top];
+  return top;
+}
+
+/**
+ * Which band of `list` the library's `classifyFromBins` puts a number in, by
+ * its index, or `undefined` past the last Edge: the list's own Edges and
+ * inclusivity, each band labelled by its index.
+ */
+function bandIndexOf(list: BandList): (value: number) => number | undefined {
+  const indexed = { edges: list.edges, labels: list.labels.map((_, index) => String(index)), right: list.right };
+  return (value) => {
+    const band = classifyFromBins(value, indexed);
+    return typeof band === "string" ? Number(band) : undefined;
+  };
 }
 
 /**

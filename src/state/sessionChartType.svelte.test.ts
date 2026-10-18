@@ -133,9 +133,11 @@ describe("a session on a model with a scan", () => {
     expect(session.chart.type).toBe(chartType.dynamic);
     expect(outputs.chart).toEqual(dynamicSpec(requestOf(session, outputs), axes));
     const [last] = requestOf(session, outputs).slots;
-    expect(outputs.slots[0].scan).toEqual(
-      scannedField(dynamicScanFrameFor(heatIndexRothfusz, axes, session.entryModes, session.atmosphericPressure), last.slot),
-    );
+    // The same scan, whose reader of a Band's region is its own.
+    expect(outputs.slots[0].scan).toEqual({
+      ...scannedField(dynamicScanFrameFor(heatIndexRothfusz, axes, session.entryModes, session.atmosphericPressure), last.slot),
+      regionWithin: expect.any(Function),
+    });
     // The two quantities Heat Index takes, both with an axis range.
     expect(outputs.drawnAxes?.choices).toEqual([q.tdb, q.rh]);
   });

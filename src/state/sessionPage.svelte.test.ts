@@ -6,10 +6,10 @@
  * `compute.svelte.test.ts` gives. The page is set as the address sets it.
  */
 import { describe, expect, it } from "vitest";
-import { bandListOf } from "$lib/core/bands";
+import { bandListOf, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
-import type { ChartSpec, ContourFillTrace, ContourLineTrace, PathPiece, PointTrace, Trace } from "$lib/core/charts/chartSpec";
-import { zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
+import type { ChartSpec, PathPiece, PointTrace, Trace } from "$lib/core/charts/chartSpec";
+import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { traceRegion } from "$lib/core/charts/regionTracer";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -37,26 +37,46 @@ function markedPositions(chart: ChartSpec | null): SlotPosition[] {
 }
 
 /** A Band's fills among `traces`, in drawing order. */
-function fillsOf(traces: readonly Trace[]): ContourFillTrace[] {
-  return traces.filter((trace): trace is ContourFillTrace => trace.kind === "contourFill");
+function fillsOf(traces: readonly Trace[]) {
+  return bandFillsOf({ traces });
 }
 
 /** A Band's Edges among `traces`, in drawing order. */
-function linesOf(traces: readonly Trace[]): ContourLineTrace[] {
-  return traces.filter((trace): trace is ContourLineTrace => trace.kind === "contourLine");
+function linesOf(traces: readonly Trace[]) {
+  return bandLinesOf({ traces });
+}
+
+/**
+ * Whether `traces`' Band fills hold, at every grid point, the points whose
+ * scanned number `values` lies from each band's lower Edge of `list` up to
+ * its last, every band of `list` coloured.
+ */
+function expectContiguousFills(traces: readonly Trace[], list: BandList, values: readonly (readonly number[])[]): void {
+  const top = list.edges[list.edges.length - 1];
+  expect(fillsOf(traces).map((fill) => regionOf({ traces }, fill))).toEqual(
+    list.edges.map((_, index) => heldBetween(values, { lower: list.edges[index - 1], upper: top }, list.right)),
+  );
+}
+
+/** Whether each of `traces`' Band lines, in the band line, runs where the scanned number `values` crosses its band's Edge of `list`. */
+function expectEdgesCrossed(traces: readonly Trace[], list: BandList, values: readonly (readonly number[])[]): void {
+  const lines = linesOf(traces);
+  expect(lines).toHaveLength(list.edges.length);
+  lines.forEach((line, index) => {
+    for (const number of numbersAlong({ traces }, line, values)) {
+      expect(number).toBeCloseTo(list.edges[index], 9);
+    }
+  });
 }
 
 /**
  * The layers of the psychrometric chart's `traces` in drawing order, each run
- * of one layer named once: a region's fill or line, a Comfort zone's path or a
- * Band's contour alike; the isolines, the cover and the saturation line; or
- * a trace's kind.
+ * of one layer named once: a region's fill or line, a Comfort zone's or a
+ * Band's alike; the isolines, the cover and the saturation line; or a trace's
+ * kind.
  */
 function psychrometricLayersOf(traces: readonly Trace[]): string[] {
   const layerOf = (trace: Trace) => {
-    if (trace.kind === "contourFill" || trace.kind === "contourLine") {
-      return trace.kind === "contourFill" ? "fill" : "line";
-    }
     if (trace.kind !== "path") {
       return trace.kind;
     }
@@ -170,11 +190,11 @@ describe("The page in the session", () => {
         const traces = outputs.chart?.traces ?? [];
         const bands = fillsOf(traces);
         expect(list).toEqual(bandListOf(pmvPpdIso.scan.classifier));
-        expect(bands.map((band) => [band.label, band.color])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
-        expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan.values));
-        expect(linesOf(traces).map((line) => [line.color, line.upper, line.z])).toEqual(
-          list?.edges.map((edge) => [chartInk.bandLine, edge, outputs.slots[0].scan.values]),
-        );
+        expect(bands.map((band) => [band.label, band.fill])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
+        if (list) {
+          expectContiguousFills(traces, list, outputs.slots[0].scan.values);
+          expectEdgesCrossed(traces, list, outputs.slots[0].scan.values);
+        }
         expect(markedPositions(outputs.chart)).toEqual([0]);
       }
     });
@@ -190,13 +210,16 @@ describe("The page in the session", () => {
       openAt(session, page.explore);
 
       const list = session.chart.bands;
-      const bands = fillsOf(outputs.chart?.traces ?? []);
-      expect(bands.map((band) => [band.label, band.color])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
-      expect(bands.map((band) => band.z)).toEqual(bands.map(() => outputs.slots[0].scan.values));
-      expect(bands[0].z.flat()).not.toContain(null);
-      expect(zones()).toHaveLength(0);
-      expect(linesOf(outputs.chart?.traces ?? []).map((line) => line.upper)).toEqual(list?.edges);
       const traces = outputs.chart?.traces ?? [];
+      const bands = fillsOf(traces);
+      const { values } = outputs.slots[0].scan;
+      expect(bands.map((band) => [band.label, band.fill])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
+      expect(values.flat().every((value) => Number.isFinite(value))).toBe(true);
+      if (list) {
+        expectContiguousFills(traces, list, values);
+        expectEdgesCrossed(traces, list, values);
+      }
+      expect(zones()).toHaveLength(0);
       expect(traces.indexOf(covers()[0])).toBeGreaterThan(traces.indexOf(bands[bands.length - 1]));
       expect(markedPositions(outputs.chart)).toEqual([0]);
     });
@@ -209,9 +232,12 @@ describe("The page in the session", () => {
       const scan = outputs.slots[0].scan;
 
       expect(session.chart.moveBandEdge(2, -0.1)).toBe(true);
-      const edges = session.chart.bands?.edges ?? [];
-      expect(fillsOf(outputs.chart?.traces ?? []).map((band) => band.lower)).toEqual([undefined, ...edges.slice(0, -1)]);
-      expect(linesOf(outputs.chart?.traces ?? []).map((line) => line.upper)).toEqual(edges);
+      const list = session.chart.bands;
+      expect(list?.edges[2]).toBe(-0.1);
+      if (list) {
+        expectContiguousFills(outputs.chart?.traces ?? [], list, scan.values);
+        expectEdgesCrossed(outputs.chart?.traces ?? [], list, scan.values);
+      }
       expect(outputs.slots[0].scan).toBe(scan);
     });
 
@@ -220,7 +246,9 @@ describe("The page in the session", () => {
       openAt(session, page.explore, adaptiveAshrae);
 
       expect(session.chart.bands).toBeNull();
-      expect(new Outputs(session).chart?.traces.some((trace) => trace.kind === "contourFill" || trace.kind === "contourLine")).toBe(false);
+      const traces = new Outputs(session).chart?.traces ?? [];
+      expect(zoneFillsOf({ traces }).length).toBeGreaterThan(0);
+      expect(linesOf(traces)).toEqual([]);
     });
 
     it("keeps each model's Band list, the same object, across a switch and back", () => {

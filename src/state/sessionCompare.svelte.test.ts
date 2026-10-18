@@ -724,7 +724,8 @@ describe("the compared slots' scans", () => {
       if (!last) {
         throw new Error(`The slot at position ${slot.position} has no run`);
       }
-      expect(slot.scan).toEqual(scannedField(frameOf(entryModesOf(last.slot), last.atmosphericPressure), last.slot));
+      // The same scan, whose reader of a Band's region is its own.
+      expect(slot.scan).toEqual({ ...scannedField(frameOf(entryModesOf(last.slot), last.atmosphericPressure), last.slot), regionWithin: expect.any(Function) });
     }
   }
 
