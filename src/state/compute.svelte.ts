@@ -10,7 +10,7 @@ import type { ChartSpec } from "$lib/core/charts/chartSpec";
 import { adaptiveSpec } from "$lib/core/charts/adaptiveChart";
 import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor, psychrometricSpec } from "$lib/core/charts/psychrometricChart";
-import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/specParts";
+import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import type { DrawnRun } from "$lib/core/inputSummary";
 import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";

@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, PointTrace, Trace } from "$lib/core/charts/chartSpec";
-import type { ScannedField } from "$lib/core/charts/specParts";
+import type { ScannedField } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";

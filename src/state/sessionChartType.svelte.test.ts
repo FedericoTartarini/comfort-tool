@@ -14,7 +14,7 @@ import type { PathTrace } from "$lib/core/charts/chartSpec";
 import { chartRequestForSlots } from "$lib/core/charts/chartTestRequests";
 import { dynamicAxisQuantities, dynamicScanFrameFor, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
-import { scannedField } from "$lib/core/charts/specParts";
+import { scannedField } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import type { ChartAxes } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";

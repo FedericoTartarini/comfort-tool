@@ -7,7 +7,9 @@ import { requireValue, withEntryModes, type ValueEntryModes } from "$lib/core/sl
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
 import type { Annotation, ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
-import { axisFor, fieldPaintFor, markerFor, samples, type ScanFrame, type ScannedField } from "./specParts";
+import { fieldPaintFor } from "./fieldPaint";
+import type { ScanFrame, ScannedField } from "./scan";
+import { axisFor, markerFor, samples } from "./specParts";
 
 const q = quantities;
 

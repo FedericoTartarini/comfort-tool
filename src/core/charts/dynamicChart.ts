@@ -10,7 +10,9 @@ import { enteredQuantities, enteredValue, underEntryModes, withEntryModes, type 
 import { displayUnitFor } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, fieldPaintFor, markerFor, type ScanFrame, type ScannedField } from "./specParts";
+import { fieldPaintFor } from "./fieldPaint";
+import type { ScanFrame, ScannedField } from "./scan";
+import { axisFor, markerFor } from "./specParts";
 
 /**
  * The frame `model`'s dynamic chart is scanned in: the model's scan's

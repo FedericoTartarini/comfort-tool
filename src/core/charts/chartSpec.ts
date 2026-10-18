@@ -76,7 +76,7 @@ export interface PointTrace {
  * boundary fall where the value really crosses it instead of at the nearest
  * grid line, however unevenly the values are spaced (ADR-0002 decision 27).
  * A Comfort zone's field is the number's magnitude, below its limit, and a
- * cell whose run breaks a bound carries one above it (`specParts.ts`, ADR-0002
+ * cell whose run breaks a bound carries one above it (`fieldPaint.ts`, ADR-0002
  * decision 77).
  *
  * `null` is "the model gave no number here" and lies in no region. The

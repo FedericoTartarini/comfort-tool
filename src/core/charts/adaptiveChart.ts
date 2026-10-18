@@ -4,8 +4,9 @@ import { enteredValue, withEntryModes } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
+import { hoverGridFor } from "./fieldPaint";
 import { containsPoint, type Polygon } from "./polygon";
-import { axisFor, hoverGridFor, labelFor, markerFor, zoneInkFor } from "./specParts";
+import { axisFor, labelFor, markerFor, zoneInkFor } from "./specParts";
 
 /**
  * The adaptive chart of every slot of the request (ADR-0002 decisions 50 and

@@ -14,7 +14,7 @@ import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, ContourLineTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
-import { scannedField, type ScanFrame } from "$lib/core/charts/specParts";
+import { scannedField, type ScanFrame } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { optionsOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
