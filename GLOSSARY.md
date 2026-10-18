@@ -97,8 +97,8 @@ The pressure of the air every slot of a session describes: one value per session
 _Avoid_: environment, barometric pressure, altitude, pressure (alone, which may be the vapour pressure)
 
 **Comfort zone**:
-A region of a chart where a standard accepts the conditions: inside one limit it draws, with no bound the run is checked against broken, a yes or no. A standard with several limits has one zone per limit, nested. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
-_Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
+A region of a chart where a standard accepts the conditions: inside one limit it draws, with no bound the run is checked against broken, a yes or no. A standard with several limits has one zone per limit, nested. Where a zone stops, at its limit or where a bound ends it, is its boundary. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
+_Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering); edge for its boundary (an Edge is a band's)
 
 **Band**:
 One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library Classifier's; on the Explore page the user may edit them. A band may have no colour, and is then filled nowhere but still names what falls in it; its upper Edge is drawn either way.
@@ -125,7 +125,7 @@ One of the app's screens, each with its own address: Standard (a model under its
 _Avoid_: workspace, surface, view, tab, mode
 
 **Scan**:
-A model's output computed over a grid of two quantities, from which a chart contours its Bands or its Comfort zones. The dynamic chart and the psychrometric chart are scans; the adaptive chart is not: its Comfort zones are the limit lines the model itself returns, drawn across the chart.
+A model's output computed over a grid of two quantities, from which a chart traces its Bands or its Comfort zones. The dynamic chart and the psychrometric chart are scans; the adaptive chart is not: its Comfort zones are the limit lines the model itself returns, drawn across the chart.
 _Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
 **Image**:

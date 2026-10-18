@@ -313,6 +313,16 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > | 7 | The Ranges page | grilling, spec, tickets | 6 |
 > | 8 | Phase 6: the UTCI acceptance's final run, gtag, the freeze test, the visual close-out, the merge | tickets as a checklist | 1, 7 |
 
+> **2026-10-18 — position, the region engine grilled**: ticket 01 (`fe1cdac`) drew decision 77's cut as a contour of
+> an encoded field, on average a quarter to a half of a cell from the library's bound and two thirds at worst. The
+> grilling of `.scratch/chart-verification/region-engine-notes.md` gave ADR-0002 decision 78: a scan's Comfort zones
+> and Bands are traced in `core/charts/` by marching squares, a limit or an Edge interpolated and a bound bisected on
+> the run, and Plotly draws paths, no contour; with amendments to decisions 27, 61, 62, 71 and 77 and to the
+> Consequences' root-finder rule, markers in ADR-0001 §2, §3, §4.4 and §7 (criterion 3 gains 3c), and GLOSSARY.md's
+> Comfort zone (its boundary) and Scan. The work stays in step 2 of the order above. **Next: the user's `/to-spec`
+> and `/to-tickets` for decision 78 in `.scratch/chart-verification/`; tickets 02 to 05 first, then the zones, the
+> Bands, and 06.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
