@@ -5,6 +5,11 @@ import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
 
+const tdbMin = HEAT_INDEX_ROTHFUSZ_INFO.inputs.tdb?.applicability?.min;
+if (tdbMin === undefined) {
+  throw new Error("HEAT_INDEX_ROTHFUSZ_INFO no longer bounds tdb from below");
+}
+
 export const heatIndexRothfusz = {
   info: HEAT_INDEX_ROTHFUSZ_INFO,
   // No `standard`: `HEAT_INDEX_ROTHFUSZ_INFO.standards` is empty. The Rothfusz
@@ -22,8 +27,11 @@ export const heatIndexRothfusz = {
   ],
   // Both quantities declared, because the applicability fallback can answer for
   // neither: `rh` has no bound at all and `tdb`'s is `min`-only (ADR §4.4).
+  // `tdb` starts at that minimum, 27 °C, because below it the regression does
+  // not hold: at 20 °C and 100 % it answers 15 °C, colder than the air, and
+  // Explore would paint bands from it (ADR-0002 decision 77 rule 4).
   axisRanges: [
-    { quantity: q.tdb, min: 20, max: 50 },
+    { quantity: q.tdb, min: tdbMin, max: 50 },
     { quantity: q.rh, min: 0, max: 100 },
   ],
   table: [q.hi],

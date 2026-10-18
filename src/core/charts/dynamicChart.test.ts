@@ -206,6 +206,15 @@ describe("the scanned dynamic chart of one slot", () => {
     expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["marker"]);
   });
 
+  it("starts Heat Index's temperature axis where the regression holds", () => {
+    const heat = dynamicOf(heatIndexRothfusz);
+    const heatRequest = chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz));
+    expect(dynamicSpec(heatRequest, heat.axes).layout.x.range).toEqual([27, 50]);
+    const [ipMin, ipMax] = dynamicSpec({ ...heatRequest, unitSystem: unitSystem.ip }, heat.axes).layout.x.range;
+    expect(ipMin).toBeCloseTo(80.6, 2);
+    expect(ipMax).toBeCloseTo(122, 2);
+  });
+
   it.each([1, 3])("draws the fills, the outlines, the hover grid, then the markers, of %i slot(s)", (count) => {
     const drawn = dynamicSpec(chartRequestForSlots(pmvPpdIso, Array.from({ length: count }, () => slot)), isoChart.axes);
     const markers = drawn.traces.filter((trace) => trace.kind === "point");
