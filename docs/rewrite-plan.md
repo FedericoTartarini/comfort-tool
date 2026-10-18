@@ -342,6 +342,26 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > order in `standard-check-notes.md` (the ADR edits, the library's spec and tickets, the upstream issues, the app),
 > then the Time-series grilling (decision 57 rule 6).**
 
+> **2026-10-19 — position, the standard check in the ADR**: the decisions agreed on 2026-10-19 are ADR-0002
+> decisions 79 to 81: where the library, pythermalcomfort and the deployed tool disagree, the pinned edition's text
+> decides, then the chronology, and where all three agree against it nothing is fixed for now (79); ISO 7730's
+> category bins per edition, four zones I to IV for 2025 (80); ASHRAE 55's air-speed rule without local control
+> checks the average air speed, at exactly 0.7 clo and 1.3 met too, and `pmv_ppd_ashrae` takes it as `v` (81).
+> Decision 77 rule 3 is amended to Adaptive's step and decision 62's amendment of 2026-10-17 goes; decision 77 notes
+> the three sub-rules left under decision 79; the Consequences' air-speed bullet is amended; decisions 4, 31 and 54
+> and ADR-0001 §4.4's marker of decision 31 are noted. GLOSSARY.md is unchanged. The order of 2026-10-17 resumes at
+> its step 4 after steps 1 to 5 below, as row 6 says. **Next: the user's `/to-spec` and `/to-tickets` for the library in
+> `../jsthermalcomfort/.scratch/standard-check/`.**
+>
+> | # | Step | Process | After |
+> |---|---|---|---|
+> | 1 | Library: ISO 7730 bins per edition (decision 80), Adaptive's step (decision 77 rule 3 as amended), the air-speed check with `v` (decision 81) | spec, tickets in `../jsthermalcomfort/.scratch/standard-check/`, in that order | — |
+> | 2 | Upstream issues to pythermalcomfort (decisions 77 and 81) | filed by the user, blocking nothing | 1 |
+> | 3 | App: the lock moved once; the ISO declaration per edition; Adaptive's zone function to the step; `v` passed; the tests that pin the old numbers | spec, tickets in `.scratch/standard-check/` | 1 |
+> | 4 | The four scripts, `npm run test:browser`, a browser walk of the three charts, the docs' close-out | the last ticket of step 3 | 3 |
+> | 5 | The Time-series grilling (decision 57 rule 6) | the grilling itself | 4 |
+> | 6 | Steps 4 to 8 of the order of 2026-10-17 | as written there | 5 |
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /

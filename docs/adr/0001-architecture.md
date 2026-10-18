@@ -320,7 +320,7 @@ Result table (`table`):
 >
 > **The dynamic chart's surface is amended by ADR-0002 decisions 27, 28 and 31** (2026-09-21): a 51×51 grid of the numeric output; Standard draws the comfort zone, Explore the bands.
 >
-> **The psychrometric chart's compliance zone is amended by [ADR-0002](0002-library-interface-model-info.md) decision 31** (2026-09-25): it draws the declaration's `zones`, nested Comfort zones largest first in one hue (categories A, B and C for ISO 7730), each at a limit read off a library object.
+> **The psychrometric chart's compliance zone is amended by [ADR-0002](0002-library-interface-model-info.md) decision 31** (2026-09-25): it draws the declaration's `zones`, nested Comfort zones largest first in one hue (categories A, B and C for ISO 7730), each at a limit read off a library object. **Amended 2026-10-19 (ADR-0002 decision 80):** ISO 7730:2025's are categories I to IV, read off the library's bins for that edition.
 >
 > **The dynamic chart is amended by [ADR-0002](0002-library-interface-model-info.md) decision 37** (2026-09-27): it is declared in one of two shapes, scanned (`axes`, `output`, `bands`) or polygons (`axes`, `zones`), rather than as a scan with an optional `zones` source. A polygons chart's axes are locked: never offered to the picker and never mapped to the entry mode, so an operative axis marks a slot in separate entry at the plain mean of `tdb` and `tr`.
 >
