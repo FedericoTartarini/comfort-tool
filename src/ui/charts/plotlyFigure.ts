@@ -73,12 +73,21 @@ function dataOf(trace: Trace): PlotlyData {
   }
 }
 
+/**
+ * A path's pieces as one scatter, joined by `null`, which Plotly draws as a
+ * gap. A filled one closes each ring and fills them together by the nonzero
+ * rule, so a ring wound opposite to the one around it is a hole (measured on
+ * plotly.js 4.0.0: one SVG path, each ring closed, `fill-rule: nonzero`;
+ * `.scratch/chart-verification/evidence/scripts-01/holes.html`).
+ */
 function pathData(trace: PathTrace): PlotlyData {
+  const joined = (axis: "x" | "y") =>
+    trace.pieces.flatMap((piece, index): (number | null)[] => (index === 0 ? [...piece[axis]] : [null, ...piece[axis]]));
   return {
     type: "scatter",
     mode: "lines",
-    x: trace.x,
-    y: trace.y,
+    x: joined("x"),
+    y: joined("y"),
     line: { color: trace.color, width: trace.width },
     fill: trace.fill ? "toself" : "none",
     fillcolor: trace.fill,

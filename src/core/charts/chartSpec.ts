@@ -42,11 +42,23 @@ export interface AxisSpec {
   readonly range: readonly [number, number];
 }
 
-/** A polyline, closed and filled when `fill` is set. */
-export interface PathTrace {
-  readonly kind: "path";
+/**
+ * One piece of a {@link PathTrace}: a polyline, or a closed ring whose last
+ * vertex joins its first.
+ */
+export interface PathPiece {
   readonly x: readonly number[];
   readonly y: readonly number[];
+}
+
+/**
+ * A path of one or more pieces. With `fill` set they are closed rings, filled
+ * by the nonzero rule, so a ring wound opposite to the ring around it is a
+ * hole; without, they are polylines.
+ */
+export interface PathTrace {
+  readonly kind: "path";
+  readonly pieces: readonly PathPiece[];
   readonly color: string;
   readonly width: number;
   readonly fill?: string;

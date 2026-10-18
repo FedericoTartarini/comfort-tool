@@ -12,7 +12,8 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import type { ChartSpec, ContourFillTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, ContourFillTrace, PathPiece, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import { onlyPieceOf } from "$lib/core/charts/chartTestPaths";
 import { humidityMode } from "$lib/core/entryModes";
 import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
@@ -296,11 +297,11 @@ function drawnHrMax(pressure: number, unit = hrUnit): number {
   return unit.fromSi((DECLARED_HR_MAX * DEFAULT_ATMOSPHERIC_PRESSURE) / pressure);
 }
 
-/** The relative-humidity isolines of a chart, each with the relative humidity its label names. */
-function isolinesOf(chart: ChartSpec | null): { rh: number; trace: PathTrace }[] {
+/** The relative-humidity isolines of a chart, each its one line with the relative humidity its label names. */
+function isolinesOf(chart: ChartSpec | null): { rh: number; line: PathPiece }[] {
   return (chart?.traces ?? [])
     .filter((trace): trace is PathTrace => trace.kind === "path" && Boolean(trace.label?.startsWith(q.rh.label)))
-    .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), trace }));
+    .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), line: onlyPieceOf(trace) }));
 }
 
 /** The comfort zones' fills of a chart, contours of its scan, largest first. */
@@ -318,9 +319,9 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     const isolines = isolinesOf(chartAt(LOWER_PRESSURE));
 
     expect(isolines.map((isoline) => isoline.rh)).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
-    for (const { rh, trace } of isolines) {
-      expect(trace.y).toEqual(trace.x.map((db) => hrUnit.fromSi(psy_ta_rh(db, rh, LOWER_PRESSURE).hr)));
-      expect(trace.y[0]).not.toBe(hrUnit.fromSi(psy_ta_rh(trace.x[0], rh).hr));
+    for (const { rh, line } of isolines) {
+      expect(line.y).toEqual(line.x.map((db) => hrUnit.fromSi(psy_ta_rh(db, rh, LOWER_PRESSURE).hr)));
+      expect(line.y[0]).not.toBe(hrUnit.fromSi(psy_ta_rh(line.x[0], rh).hr));
     }
   });
 
@@ -366,7 +367,7 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
   });
 
   it("cuts each isoline where it leaves the axis as drawn, not as declared", () => {
-    const highest = (chart: ChartSpec | null) => Math.max(...isolinesOf(chart).flatMap(({ trace }) => trace.y));
+    const highest = (chart: ChartSpec | null) => Math.max(...isolinesOf(chart).flatMap(({ line }) => line.y));
 
     const high = chartAt(HIGHEST_PRESSURE);
     expect(highest(high)).toBeLessThanOrEqual(drawnHrMax(HIGHEST_PRESSURE));

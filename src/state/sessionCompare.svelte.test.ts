@@ -251,7 +251,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
         (trace.kind === "contourLine" || (trace.kind === "path" && trace.fill === undefined)) &&
         trace.color === chartInk.zoneLine(palette.slots[position]),
     )
-    .map((zone) => (zone.kind === "path" ? { x: zone.x, y: zone.y } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
+    .map((zone) => (zone.kind === "path" ? { pieces: zone.pieces } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
 }
 
 /** Where slot `position`'s marker is on `chart`, or `undefined` for none. */

@@ -1,9 +1,9 @@
 import { toLibraryInputs } from "$lib/core/libraryInputs";
-import { adaptiveChartOf, requireAxisRange, type ZoneLimits } from "$lib/core/modelDeclaration";
+import { adaptiveChartOf, requireAxisRange, type Range, type ZoneLimits } from "$lib/core/modelDeclaration";
 import { enteredValue, withEntryModes } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
+import type { ChartSpec, LegendEntry, PathPiece, PathTrace, Trace } from "./chartSpec";
 import { hoverGridFor } from "./fieldPaint";
 import { containsPoint, type Polygon } from "./polygon";
 import { axisFor, labelFor, markerFor, zoneInkFor } from "./specParts";
@@ -20,9 +20,9 @@ import { axisFor, labelFor, markerFor, zoneInkFor } from "./specParts";
  * two lines close, however many slots are drawn (ADR-0002 decision 71), and
  * the two lines stroked in the hue's zone line, so the sides that close the
  * region at the ends of the x range, where the chart stops and the model sets
- * no limit, are not drawn, except where an upper line itself runs up an end
- * ({@link ZoneLimits}), until lines of several pieces leave it out
- * (`.scratch/chart-verification/` ticket 08).
+ * no limit, are not drawn; where an upper line itself runs up an end
+ * ({@link ZoneLimits}), its line is broken there (ADR-0002 decision 78
+ * rule 4).
  * Neither reads the pointer, so a hover grid over the same `GRID × GRID`
  * field reads for them: both axis values, and the innermost zone of each slot
  * the cell is in. Laid in the one drawing order: every slot's fills, every
@@ -41,8 +41,8 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   const yRange = requireAxisRange(model, y);
   const xUnit = displayUnitFor(x, unitSystem);
   const yUnit = displayUnitFor(y, unitSystem);
-  /** A path given in SI, converted to display units. */
-  const displayed = (path: Path): Path => ({
+  /** A path's piece given in SI, converted to display units. */
+  const displayed = (path: PathPiece): PathPiece => ({
     x: path.x.map((value) => xUnit.fromSi(value)),
     y: path.y.map((value) => yUnit.fromSi(value)),
   });
@@ -63,9 +63,10 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
       const ink = zoneInkFor(charted, zone.label, index, zones.length);
       const { label } = ink.legendEntry;
       // Neither the fill nor a line captures the pointer, so the hover grid below reads for them.
-      fills.push({ kind: "path", ...displayed(regionsOfSlot[position][index]), color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
+      fills.push({ kind: "path", pieces: [displayed(regionsOfSlot[position][index])], color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
       for (const limit of [zone.upper, zone.lower]) {
-        lines.push({ kind: "path", ...displayed(coordinatesOf(limit)), color: ink.line, width: ink.lineWidth, hover: "off", label });
+        const pieces = strokedPiecesOf(limit, xRange).map((points) => displayed(coordinatesOf(points)));
+        lines.push({ kind: "path", pieces, color: ink.line, width: ink.lineWidth, hover: "off", label });
       }
       legendOfSlot[position].push(ink.legendEntry);
     }
@@ -98,11 +99,8 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   };
 }
 
-/** A path's two coordinate lists, open or closed. */
-interface Path {
-  readonly x: readonly number[];
-  readonly y: readonly number[];
-}
+/** A vertex of a limit line, in SI. */
+type LimitPoint = ZoneLimits["upper"][number];
 
 /** A Comfort zone named by its label: the region its limit lines close. */
 interface ZoneRegion extends Polygon {
@@ -110,8 +108,25 @@ interface ZoneRegion extends Polygon {
 }
 
 /** `points` as a path's two coordinate lists. */
-function coordinatesOf(points: ZoneLimits["upper"]): Path {
+function coordinatesOf(points: readonly LimitPoint[]): PathPiece {
   return { x: points.map((point) => point.x), y: points.map((point) => point.y) };
+}
+
+/**
+ * `points` as the pieces its line strokes: broken at every run between two
+ * vertices on the same end of `xRange`, which is where the chart stops, not a
+ * limit.
+ */
+function strokedPiecesOf(points: readonly LimitPoint[], xRange: Range): LimitPoint[][] {
+  const pieces: LimitPoint[][] = [[]];
+  points.forEach((point, index) => {
+    const previous = points[index - 1];
+    if (previous?.x === point.x && (point.x === xRange.min || point.x === xRange.max)) {
+      pieces.push([]);
+    }
+    pieces[pieces.length - 1].push(point);
+  });
+  return pieces.filter((piece) => piece.length > 1);
 }
 
 /**

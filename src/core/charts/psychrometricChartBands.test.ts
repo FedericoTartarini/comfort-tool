@@ -24,6 +24,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace } from "./chartSpec";
+import { onlyPieceOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -161,11 +162,12 @@ describe("the psychrometric chart given a Band list", () => {
   );
 
   it("covers the chart above the saturation line in the ground colour, read by nothing and named nowhere", () => {
-    const cover = coverOf(spec);
+    const trace = coverOf(spec);
+    const cover = onlyPieceOf(trace);
     const [xMin, xMax] = spec.layout.x.range;
     const top = spec.layout.y.range[1];
-    expect(cover).toMatchObject({ fill: chartInk.ground, color: chartInk.ground, hover: "off" });
-    expect(cover.label).toBeUndefined();
+    expect(trace).toMatchObject({ fill: chartInk.ground, color: chartInk.ground, hover: "off" });
+    expect(trace.label).toBeUndefined();
     expect(spec.legend.map((entry) => entry.color)).not.toContain(chartInk.ground);
     // Along the saturation line from the lowest temperature, every point on it.
     const along = cover.x.length - 2;
@@ -184,7 +186,7 @@ describe("the psychrometric chart given a Band list", () => {
   it("covers the taller range at a lower pressure, along that pressure's saturation line", () => {
     const pressure = 80000;
     const thin = bandedSpec(isoBands, startingSlot(pmvPpdIso), { atmosphericPressure: pressure });
-    const cover = coverOf(thin);
+    const cover = onlyPieceOf(coverOf(thin));
     const top = thin.layout.y.range[1];
     expect(top).toBeGreaterThan(spec.layout.y.range[1]);
     expect(cover.y[1]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(cover.x[1], 100, pressure).hr), 10);

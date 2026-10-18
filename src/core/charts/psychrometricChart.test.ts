@@ -28,6 +28,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { Annotation, ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import { onlyPieceOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -489,10 +490,10 @@ describe("the relative-humidity labels at the plot's size", () => {
     ({ model, system, frame }) => {
       const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model), system));
       const boxes = spec.annotations.map((annotation) => labelBoxOf(annotation, spec, frame));
-      const ends = isolinesOf(spec).map((isoline) => ({
-        label: isoline.label,
-        point: plotPointOf(isoline.x[isoline.x.length - 1], isoline.y[isoline.y.length - 1], spec, frame),
-      }));
+      const ends = isolinesOf(spec).map((isoline) => {
+        const { x, y } = onlyPieceOf(isoline);
+        return { label: isoline.label, point: plotPointOf(x[x.length - 1], y[y.length - 1], spec, frame) };
+      });
       boxes.forEach((box, index) => {
         const text = spec.annotations[index].text;
         boxes.forEach((other, otherIndex) => {

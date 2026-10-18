@@ -94,7 +94,7 @@ function fillColorOf(zone: ZoneFill): string | undefined {
 
 /** A zone's shape, whichever kind its fill or line is: its path, or its field and interval. */
 function shapeOf(zone: ZoneFill | ZoneLine) {
-  return zone.kind === "path" ? { x: zone.x, y: zone.y } : { x: zone.x, y: zone.y, z: zone.z, lower: zone.lower, upper: zone.upper };
+  return zone.kind === "path" ? { pieces: zone.pieces } : { x: zone.x, y: zone.y, z: zone.z, lower: zone.lower, upper: zone.upper };
 }
 
 function alphaOf(fill: string | undefined): number {

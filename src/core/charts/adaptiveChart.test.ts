@@ -13,6 +13,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { adaptive_ashrae_zone, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 import { adaptiveSpec } from "./adaptiveChart";
 import type { ChartSpec, ContourFillTrace, ContourLineTrace, HoverGridTrace, PathTrace, PointTrace, Trace } from "./chartSpec";
+import { onlyPieceOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { containsPoint } from "./polygon";
 import { psychrometricSpec } from "./psychrometricChart";
@@ -109,12 +110,13 @@ describe("a declared limits source", () => {
     const [upper, lower] = linesOf(spec);
     expect(fill?.label).toBe("80% acceptability");
     const [min, max] = declaredRangeOf(q.operative_tmp);
-    expect(fill?.x).toEqual([min, max, max, min]);
-    expect(upper?.x).toEqual([min, max]);
-    expect(lower?.y).toEqual([0, 0]);
+    const [region, upperLine] = [onlyPieceOf(fill), onlyPieceOf(upper)];
+    expect(region.x).toEqual([min, max, max, min]);
+    expect(upperLine.x).toEqual([min, max]);
+    expect(onlyPieceOf(lower).y).toEqual([0, 0]);
     // The slot's entered v = 0.1 at met = 1.1 reaches the source as vr.
-    expect(fill?.y[0]).toBeCloseTo(0.13, 12);
-    expect(upper?.y[0]).toBeCloseTo(0.13, 2);
+    expect(region.y[0]).toBeCloseTo(0.13, 12);
+    expect(upperLine.y[0]).toBeCloseTo(0.13, 2);
   });
 
   it("carries every zone into the one legend, ahead of the slot marker", () => {
@@ -155,12 +157,13 @@ describe("a declared limits source", () => {
     const spec = adaptiveSpec(chartRequestFor(model, apart, unitSystem.ip));
     const [fill] = fillsOf(spec);
     const [upper] = linesOf(spec);
-    expect(fill?.x[0]).toBeCloseTo(50, 10);
-    expect(fill?.x[1]).toBeCloseTo(104, 10);
-    expect(upper?.x[1]).toBeCloseTo(104, 10);
+    const [region, upperLine] = [onlyPieceOf(fill), onlyPieceOf(upper)];
+    expect(region.x[0]).toBeCloseTo(50, 10);
+    expect(region.x[1]).toBeCloseTo(104, 10);
+    expect(upperLine.x[1]).toBeCloseTo(104, 10);
     // 0.13 m/s of vr is 25.6 fpm.
-    expect(fill?.y[0]).toBeCloseTo(25.59, 2);
-    expect(upper?.y[0]).toBeCloseTo(25.59, 2);
+    expect(region.y[0]).toBeCloseTo(25.59, 2);
+    expect(upperLine.y[0]).toBeCloseTo(25.59, 2);
     const marker = markerOf(spec);
     expect(marker?.x).toBeCloseTo(80.6, 10);
     expect(marker?.y).toBeCloseTo(19.69, 2);
@@ -231,19 +234,19 @@ function pathOf(points: readonly AdaptivePoint[]): { x: number[]; y: number[] } 
   return { x: points.map((point) => point.t_running_mean), y: points.map((point) => point.operative_tmp) };
 }
 
-/** Whether `path` has a segment with both ends at `x`: a side running down it. */
+/** Whether a piece of `path` has a segment with both ends at `x`: a side running down it. */
 function runsDownAt(path: PathTrace, x: number): boolean {
-  return path.x.some((value, index) => index > 0 && value === x && path.x[index - 1] === x);
+  return path.pieces.some((piece) => piece.x.some((value, index) => index > 0 && value === x && piece.x[index - 1] === x));
 }
 
-/** Whether `path` has a segment with both ends at `y`: a run along it. */
+/** Whether a piece of `path` has a segment with both ends at `y`: a run along it. */
 function runsAlongAt(path: PathTrace, y: number): boolean {
-  return path.y.some((value, index) => index > 0 && value === y && path.y[index - 1] === y);
+  return path.pieces.some((piece) => piece.y.some((value, index) => index > 0 && value === y && piece.y[index - 1] === y));
 }
 
-/** The vertices of `path` at `x`, by their y. */
+/** The vertices of `path` at `x`, by their y, piece by piece. */
 function verticesAt(path: PathTrace, x: number): number[] {
-  return path.x.flatMap((value, index) => (value === x ? [path.y[index]] : []));
+  return path.pieces.flatMap((piece) => piece.x.flatMap((value, index) => (value === x ? [piece.y[index]] : [])));
 }
 
 /**
@@ -290,13 +293,13 @@ describe("Adaptive's acceptability zones", () => {
       { label: q.acceptability_80.label, width: 0 },
       { label: q.acceptability_90.label, width: 0 },
     ]);
-    expect(fills.map((fill) => ({ x: fill.x, y: fill.y }))).toEqual(
+    expect(fills.map(onlyPieceOf)).toEqual(
       libraryBandsAt(startingAirSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
     );
   });
 
   it("strokes each zone's upper and lower limit as two open paths, the temporary library's own", () => {
-    expect(lines.map((line) => ({ label: line.label, x: line.x, y: line.y }))).toEqual(
+    expect(lines.map((line) => ({ label: line.label, ...onlyPieceOf(line) }))).toEqual(
       libraryBandsAt(startingAirSpeed).flatMap((band, index) =>
         [band.upper_limit, band.lower_limit].map((limit) => ({ label: fills[index]?.label, ...pathOf(limit) })),
       ),
@@ -306,8 +309,9 @@ describe("Adaptive's acceptability zones", () => {
   it.each([0, startingAirSpeed])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
     const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed)));
     for (const line of linesOf(drawn)) {
-      expect(line.x[0]).toBe(min);
-      expect(line.x[line.x.length - 1]).toBe(max);
+      const { x } = onlyPieceOf(line);
+      expect(x[0]).toBe(min);
+      expect(x[x.length - 1]).toBe(max);
       expect(runsDownAt(line, min) || runsDownAt(line, max)).toBe(false);
     }
     for (const fill of fillsOf(drawn)) {
@@ -315,28 +319,30 @@ describe("Adaptive's acceptability zones", () => {
     }
   });
 
-  it("strokes each upper limit up the lowest end at 0.9 m/s only between 25 °C and its shifted limit", () => {
+  it("strokes no run up the lowest end at 0.9 m/s, where the strip reaches it, breaking each upper limit there", () => {
     // The shifted lines are past 25 °C there already, so the strip reaches
-    // the end; the one line per limit is stroked up it (ticket 08's paths of
-    // several pieces leave it out).
+    // the end and the fill closes up it from 25 °C to the shifted limit: the
+    // chart's end, not a limit (ADR-0002 decision 78 rule 4).
     const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0.9)));
     const [upper80, lower80, upper90, lower90] = linesOf(drawn);
     const [band80, band90] = libraryBandsAt(0.9);
     for (const [upper, band] of [[upper80, band80], [upper90, band90]] as const) {
-      expect(runsDownAt(upper!, max)).toBe(false);
+      expect(upper!.pieces).toHaveLength(2);
+      expect(runsDownAt(upper!, min) || runsDownAt(upper!, max)).toBe(false);
       expect(verticesAt(upper!, min)).toEqual([band!.upper_limit[0]!.operative_tmp, 25, band!.upper_limit[3]!.operative_tmp]);
     }
     for (const lower of [lower80, lower90]) {
+      expect(lower!.pieces).toHaveLength(1);
       expect(runsDownAt(lower!, min) || runsDownAt(lower!, max)).toBe(false);
     }
   });
 
   it("strokes each upper limit back along 25 °C at 0.9 m/s, and straight in still air", () => {
     const moving = linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0.9))));
-    const uppers = libraryBandsAt(0.9).map((band) => pathOf(band.upper_limit));
-    expect(moving.filter((line) => runsAlongAt(line, 25)).map((line) => ({ x: line.x, y: line.y }))).toEqual(uppers);
+    const uppers = libraryBandsAt(0.9).map((band) => [pathOf(band.upper_limit.slice(0, 3)), pathOf(band.upper_limit.slice(3))]);
+    expect(moving.filter((line) => runsAlongAt(line, 25)).map((line) => line.pieces)).toEqual(uppers);
     const still = linesOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(0))));
-    expect(still.map((line) => line.x.length)).toEqual([2, 2, 2, 2]);
+    expect(still.map((line) => line.pieces.map((piece) => piece.x.length))).toEqual([[2], [2], [2], [2]]);
   });
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
@@ -465,15 +471,15 @@ describe("Adaptive's chart against adaptive_ashrae", () => {
     const [fill80, fill90] = fillsOf(spec);
     expect({ x: marker?.x, y: marker?.y }).toEqual({ x: 11, y: 25.5 });
     expect(adaptiveAshrae.run(valuesReader(entered.values)).acceptability_80).toBe(true);
-    expect(containsPoint(fill80!, 11, 25.5)).toBe(true);
-    expect(containsPoint(fill90!, 11, 25.5)).toBe(false);
+    expect(containsPoint(onlyPieceOf(fill80), 11, 25.5)).toBe(true);
+    expect(containsPoint(onlyPieceOf(fill90), 11, 25.5)).toBe(false);
   });
 
   it("traces each compared slot's bands at its own air speed, strip included", () => {
     const airSpeeds = [0.3, 1.2];
     const request = chartRequestForSlots(adaptiveAshrae, airSpeeds.map(adaptiveAt));
     const spec = adaptiveSpec(request);
-    expect(fillsOf(spec).map((fill) => ({ x: fill.x, y: fill.y }))).toEqual(
+    expect(fillsOf(spec).map(onlyPieceOf)).toEqual(
       airSpeeds.flatMap((airSpeed) =>
         libraryBandsAt(airSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
       ),

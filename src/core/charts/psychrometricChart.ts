@@ -120,8 +120,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       // hover grid under it reads for the cell, "—" as it does above the line.
       cover = {
         kind: "path",
-        x: boundary.map((point) => xUnit.fromSi(point.temperature)),
-        y: boundary.map((point) => hrUnit.fromSi(point.hr)),
+        pieces: [{ x: boundary.map((point) => xUnit.fromSi(point.temperature)), y: boundary.map((point) => hrUnit.fromSi(point.hr)) }],
         color: chartInk.ground,
         width: 0,
         fill: chartInk.ground,
@@ -131,8 +130,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const rhText = numberWithUnit(rh, rhUnit);
     const isoline: PathTrace = {
       kind: "path",
-      x: curve.map((point) => xUnit.fromSi(point.temperature)),
-      y: curve.map((point) => hrUnit.fromSi(point.hr)),
+      pieces: [{ x: curve.map((point) => xUnit.fromSi(point.temperature)), y: curve.map((point) => hrUnit.fromSi(point.hr)) }],
       color: saturation ? chartInk.saturationLine : chartInk.isoline,
       width: saturation ? chartInk.saturationLineWidth : chartInk.isolineWidth,
       // Chrome: the isolines carry the humidity reading in their label, not on
