@@ -38,6 +38,11 @@ function vrWarning(bound: string, system: UnitSystem): string {
   return copy.applicabilityWarning(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
 }
 
+/** The sentence for a bound on the air speed, built as {@link vrWarning} is. */
+function vWarning(bound: string, system: UnitSystem): string {
+  return copy.applicabilityWarning(q.v.label, valueWithUnit(bound, displayUnitFor(q.v, system)));
+}
+
 /** `slot` with its humidity entered as `value` in `mode`. */
 function withHumidity(slot: Slot, mode: HumidityMode, value: number): Slot {
   return { ...slot, humidity: { mode, value } };
@@ -479,6 +484,48 @@ describe("violationRows", () => {
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded, value }) => [quantity, bounded, value])).toEqual([[q.vr, q.vr, 0.237]]);
     expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+  });
+
+  // PMV (ASHRAE 55)'s air-speed rule is keyed `v`, the average air speed (decision 81): reported where
+  // the person entered an air speed, bounded by `v` either way, decision 4's note mirrored.
+  it("reports a v row on the entered air speed under either entry mode, its sentence naming the air speed", () => {
+    const warnings = [{ key: "v", role: "input", value: 0.9, bound: { max: 0.8 } }];
+    const airSpeedEntry = violationRows(pmvPpdIso, { warnings }, defaultEntryModes);
+    expect(airSpeedEntry).toEqual([{ quantity: q.v, bounded: q.v, role: "input", value: 0.9, bound: { max: 0.8 } }]);
+    const relativeEntry = violationRows(pmvPpdIso, { warnings }, entryModesWithAirSpeed(airSpeedMode.corrected));
+    expect(relativeEntry).toEqual([{ quantity: q.vr, bounded: q.v, role: "input", value: 0.9, bound: { max: 0.8 } }]);
+    for (const rows of [airSpeedEntry, relativeEntry]) {
+      expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be ≤ 0.8 m/s"]);
+      expect(rows.map((row) => warningFor(row, unitSystem.ip))).toEqual([vWarning("≤ 157.48", unitSystem.ip)]);
+    }
+  });
+
+  it("keeps a range row on vr and a rule row on v apart under either entry mode, each with its own sentence", () => {
+    const warnings = [
+      { key: "vr", role: "input", value: 2.5, bound: { min: 0, max: 2 } },
+      { key: "v", role: "input", value: 2.4, bound: { max: 0.8 } },
+    ];
+    for (const [modes, reportedOn] of [
+      [defaultEntryModes, q.v],
+      [entryModesWithAirSpeed(airSpeedMode.corrected), q.vr],
+    ] as const) {
+      const rows = violationRows(pmvPpdIso, { warnings }, modes);
+      expect(rows.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([
+        [reportedOn, q.vr],
+        [reportedOn, q.v],
+      ]);
+      expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Relative air speed must be 0 – 2 m/s", "Air speed must be ≤ 0.8 m/s"]);
+    }
+  });
+
+  it("merges two v rows reported on the entered vr into one sentence over their narrowest bound", () => {
+    const warnings = [
+      { key: "v", role: "input", value: 0.9, bound: { max: 0.8 } },
+      { key: "v", role: "input", value: 0.9, bound: { max: 0.2 } },
+    ];
+    const rows = violationRows(pmvPpdIso, { warnings }, entryModesWithAirSpeed(airSpeedMode.corrected));
+    expect(rows).toEqual([{ quantity: q.vr, bounded: q.v, role: "input", value: 0.9, bound: { max: 0.2 } }]);
+    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be ≤ 0.2 m/s"]);
   });
 
   // The gate holds the clothing to the model's bound converted into the entry, so a run is given
