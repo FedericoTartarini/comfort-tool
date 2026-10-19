@@ -3,11 +3,11 @@ import { clo_dynamic_ashrae, clo_dynamic_iso, v_relative } from "jsthermalcomfor
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredSlotFor } from "./declarationTestSlots";
-import { humidityMode, type HumidityMode } from "./entryModes";
+import { airSpeedMode, humidityMode, type HumidityMode } from "./entryModes";
 import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { relativeHumidityOf, startingSlot, type Slot } from "./slot";
+import { relativeHumidityOf, startingSlot, withAirSpeedMode, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -75,6 +75,42 @@ describe("resolveQuantities", () => {
     const resolved = resolveQuantities(startingSlot(pmvPpdIso), withoutRelative, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.get(q.v)).toBe(v);
     expect(resolved.has(q.vr)).toBe(false);
+  });
+
+  describe("for a model whose info names both the relative air speed and the air speed", () => {
+    // No registered model names both yet; PMV (ASHRAE 55) at the library's
+    // standard-check commit does, with `v` unbounded beside `vr`.
+    const bothSpeeds = {
+      ...pmvPpdAshrae,
+      info: { ...pmvPpdAshrae.info, inputs: { ...pmvPpdAshrae.info.inputs, v: { unit: "m/s" } } },
+    };
+    const speedsOf = (slot: Slot) => {
+      const resolved = resolveQuantities(slot, bothSpeeds, DEFAULT_ATMOSPHERIC_PRESSURE);
+      return { v: resolved.get(q.v), vr: resolved.get(q.vr) };
+    };
+
+    it("gives the entered air speed beside the relative air speed under air speed entry", () => {
+      expect(speedsOf(enteredSlotFor(pmvPpdAshrae, { v: 0.4, met: 2 }))).toEqual({ v: 0.4, vr: v_relative(0.4, 2) });
+    });
+
+    it("gives the air speed that gives the entered relative air speed under relative air speed entry", () => {
+      expect(speedsOf(enteredSlotFor(pmvPpdAshrae, { vr: 0.7, met: 2 }))).toEqual({ v: 0.4, vr: 0.7 });
+    });
+
+    // An entry finer than `v_relative`'s 0.001 comes back rounded across the
+    // switch (`withAirSpeedMode`), so these entries are not.
+    it("gives both speeds unchanged across a switch of entry mode, either way", () => {
+      for (const slot of [enteredSlotFor(pmvPpdAshrae, { v: 0.4, met: 2 }), enteredSlotFor(pmvPpdAshrae, { v: 0.25, met: 1.6 })]) {
+        expect(speedsOf(slot).v).toBeTypeOf("number");
+        expect(speedsOf(withAirSpeedMode(slot, airSpeedMode.corrected))).toEqual(speedsOf(slot));
+      }
+      const relative = enteredSlotFor(pmvPpdAshrae, { vr: 0.55, met: 1.3 });
+      expect(speedsOf(withAirSpeedMode(relative, airSpeedMode.uncorrected))).toEqual(speedsOf(relative));
+    });
+
+    it("gives a negative air speed as it comes for a relative air speed below the activity's share", () => {
+      expect(speedsOf(enteredSlotFor(pmvPpdAshrae, { vr: 0.1, met: 2 }))).toEqual({ v: -0.2, vr: 0.1 });
+    });
   });
 
   it("expands operative temperature to tdb = tr", () => {

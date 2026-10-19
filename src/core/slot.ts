@@ -266,6 +266,21 @@ export function relativeAirSpeedOf(slot: Slot): number {
 }
 
 /**
+ * The slot's air speed, which a model that takes `vr` and `v` is given as `v`:
+ * the entry itself under air speed entry, else the air speed that gives the
+ * entered relative air speed at the slot's metabolic rate, the value the
+ * switch into air speed entry stores ({@link withAirSpeedMode}). The mirror of
+ * {@link relativeAirSpeedOf}. Below zero for a relative air speed below the
+ * activity's share, and kept so: the app adjusts no value of its own.
+ */
+export function airSpeedOf(slot: Slot): number {
+  if (slot.airSpeed.mode === airSpeedMode.corrected) {
+    return airSpeedGiving(requireValue(slot.values, q.vr), slot);
+  }
+  return requireValue(slot.values, q.v);
+}
+
+/**
  * The slot's dynamic clothing insulation, which a model with the clothing
  * entry group is given as the library's `clo`: the entry itself under dynamic
  * clothing entry, else the entered clothing insulation corrected by the rule
@@ -579,7 +594,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     values.set(q.vr, relativeAirSpeedOf(slot));
     values.delete(q.v);
   } else {
-    values.set(q.v, airSpeedGiving(requireValue(values, q.vr), slot));
+    values.set(q.v, airSpeedOf(slot));
     values.delete(q.vr);
   }
   return changedSlot(slot, { values, airSpeed: { mode } });
