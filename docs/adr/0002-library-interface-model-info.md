@@ -3560,13 +3560,17 @@ notes under decisions 51 and 53:
     `_internal/adaptive_cooling_effect.py:33-35`), the deployed tool the band's base upper limit, and pythermalcomfort's
     own `AdaptivePlot` draws the step. ASHRAE 55-2023 §5.4.2.4 reads either way, so the chronology decides:
     pythermalcomfort's model was written against 55-2017 (2020-02-12, `dd23cd6`) and the JS port followed it (2023-09);
-    in `comfort_tool` #89 (2026-04-17) Schiavon asked for 55-2023 §5.4.2.4 applied strictly and approved the
-    step chart, which PR #90 merged (2026-04-24); pythermalcomfort's `AdaptivePlot` drew the step (`d840d2b`, PR #321
-    merged 2026-05-14), and its model refactor of 2026-05-08 (`60b8d0d`) kept the room gate with no discussion. An
-    issue to pythermalcomfort says its model and its `AdaptivePlot` disagree, and
+    in `comfort_tool` #89 Schiavon cited 55-2023 §5.4.2.4 and asked for it applied strictly (2026-04-17), and called
+    the reporter's step implementation of 2026-04-20 "the right implementation" (2026-04-21), which PR #90 merged
+    (2026-04-24); pythermalcomfort added `AdaptivePlot` in `d840d2b` and gated it on each band's base line in `528f319`
+    the same day (2026-05-07; PR #321 merged 2026-05-14), and its model refactor of 2026-05-08 (`60b8d0d`) kept the
+    room gate with no discussion. pythermalcomfort#486 says its model and its `AdaptivePlot` disagree, and
     `.scratch/chart-verification/upstream/04` is withdrawn. Rule 3's rejection of "the deployed tool's step, which the
     table cannot follow without a library change pythermalcomfort does not have" is withdrawn: the library changes
     first, as decision 79 rule 2 orders.
+    *Corrected in place 2026-10-20 (`../jsthermalcomfort/.scratch/standard-check/` ticket 06; #89's comments read
+    through the GitHub API): the approval was 2026-04-21, not 04-17; the step came in `528f319`, not `d840d2b`; the
+    issue is #486.*
     **Noted 2026-10-19 (decision 79 rule 3).** Three sub-rules where the library, pythermalcomfort and the deployed tool
     agree and ASHRAE 55-2023 differs, left as they are: the cooling effect's gate includes 25 °C in all three (`>=`;
     `comfort-models.js:37`) where §5.4.2.4's condition is strict; the air-speed rule's exemption covers all three
@@ -3707,37 +3711,41 @@ notes under decisions 51 and 53:
     temperature, and exempts only above 0.7 clo or 1.3 met; `pmv_ppd_ashrae` takes the average air speed as `v`.**
     Taken 2026-10-19 with the user under decision 79 (`standard-check-notes.md`, finding 3). Amends the Consequences'
     air-speed bullet; decisions 4, 54 and 77 noted. Facts. Without local control three sub-rules differ between the
-    libraries and the deployed tool, and ASHRAE 55-2023 sides with the deployed tool on each. At exactly 0.7 clo or
-    1.3 met the libraries exempt (`src/_internal/ashrae55.ts:70-77`; pythermalcomfort `ashrae55.py:41, 56-62, 74-79`)
-    and the deployed tool applies the limits (`global.js:765-772`), as §5.3.4.2 does, its exceptions lying above those
-    values. The libraries check the relative air speed `vr` (`src/models/pmv_ppd.ts:400-408`;
-    `pmv_ppd_ashrae.py:203-209`) and the deployed tool the entered air speed (`ashrae.js:709-724`), which is §3's Va,
-    the average air speed around a representative occupant. The libraries compute the operative temperature of the 23 and 25.5 °C limits by ISO 7726
-    with `vr` (`ashrae55.ts:82`; `ashrae55.py:53`, `operative_tmp.py:13, 38-39`) and the deployed tool as
-    `(tdb + tr) / 2` (`ashrae.js:711`), where Appendix A weighs the air and radiant temperatures by Va. Chronology: the
-    deployed tool checked Va from 2015-06-23 (`d47d22e`) and gained the exemption 2019-07-16 (`be91523`);
-    pythermalcomfort's rule passed `vr` from its first commit (2022-04-20, `d6786f3`, closing its #32), and the JS port
-    followed it (2023-08-31); no later discussion reaches these sub-rules (pythermalcomfort #391 is of a missing `v`,
-    not of which speed). The deployed toggle "Include activity-generated air speed" (`comfort_tool` #100, 2026-08)
-    changes the PMV alone; its compliance still reads the entered speed. Rules. (1) In `_check_ashrae55_compliance`'s
-    branch without local control (`ashrae55.ts:70-90`), and nowhere else: the limits apply at exactly 0.7 clo and
-    1.3 met, exempt only above; the speed checked is Va; the operative temperature is
-    `t_o(tdb, tr, v, Standard.ashrae_55_2023)` (`src/psychrometrics/t_o.js:63-66`), its weight chosen by Va. The general
-    0–2 m/s range check keeps reading `vr`. (2) `pmv_ppd_ashrae` gains an optional `v`, the average air speed, required
-    when `airspeed_control` is false. The library never derives it from `vr`, since a caller may pass a measured `vr`.
-    (3) Neither changes PMV or PPD: they change `warnings` rows, and what reads them, `compliance` and the mask under
-    `limit_inputs` (`pmv_ppd.ts:448, 453-456`). (4) The app's PMV (ASHRAE 55) declaration passes the slot's air speed
-    as `v`: the entry under air speed entry, and under relative air speed entry `v_relative_inverse(vr, met)`, the
-    number the switch back to air speed entry stores (decision 54 as revised), so both modes give the library one Va.
-    A relative air speed below the activity's share inverts to a negative `v`, by at most 0.09 m/s at or below 1.3 met,
-    where the rule applies (inference, from `v = vr − 0.3·(met − 1)`); how that reaches the library is the app
-    ticket's. (5) An issue to pythermalcomfort, rewritten from `.scratch/chart-verification/upstream/01`, raises the
-    three fixed sub-rules alone. (6) The two sub-rules where all three agree against 55-2023, the exemption's reach and
-    the 0.8 m/s cap, are noted on decision 77 and left under decision 79 rule 3. Where the libraries are right and the
-    deployed tool is not, the curve below 0.2 m/s from 23.0 to about 23.19 °C, which the deployed tool clamps to 0.2,
-    nothing changes. Rejected: the library deriving `v` from `vr`, which a caller passing a measured `vr` would get
-    wrong; checking `vr`, which §3's Va contradicts; the app passing the entered `vr` as `v` under relative air speed
-    entry, which gives one slot two average air speeds across a switch of entry mode.
+    libraries and the deployed tool; ASHRAE 55-2023 sides with the deployed tool on the first two, and on the third with
+    neither. At exactly 0.7 clo or 1.3 met the libraries exempt (`src/_internal/ashrae55.ts:70-77`; pythermalcomfort
+    `ashrae55.py:41, 56-62, 74-79`) and the deployed tool applies the limits (`global.js:765-772`), as §5.3.4.2 does,
+    its exceptions lying above those values. The libraries check the relative air speed `vr`
+    (`src/models/pmv_ppd.ts:400-408`; `pmv_ppd_ashrae.py:203-209`) and the deployed tool the entered air speed
+    (`ashrae.js:709-724`), which is §3's Va, the average air speed around a representative occupant. The libraries
+    compute the operative temperature of the 23 and 25.5 °C limits by ISO 7726 with `vr` (`ashrae55.ts:82`;
+    `ashrae55.py:53`, `operative_tmp.py:13, 38-39`) and the deployed tool as `(tdb + tr) / 2` (`ashrae.js:711`), where
+    Appendix A weighs the air and radiant temperatures by Va, which the deployed tool's mean equals only below 0.2 m/s,
+    where A is 0.5; so all three differ there. Chronology: the deployed tool checked Va from 2015-06-23 (`d47d22e`) and
+    gained the exemption 2019-07-16 (`be91523`); pythermalcomfort's rule passed `vr` from its first commit (2022-04-20,
+    `d6786f3`, closing its #32), and the JS port followed it (2023-08-31); no later discussion reaches these sub-rules
+    (pythermalcomfort #391 is of a missing `v`, not of which speed). The deployed toggle "Include activity-generated air
+    speed" (`comfort_tool` #100, 2026-08) changes the PMV alone; its compliance still reads the entered speed. Rules.
+    (1) In `_check_ashrae55_compliance`'s branch without local control (`ashrae55.ts:70-90`), and nowhere else: the
+    limits apply at exactly 0.7 clo and 1.3 met, exempt only above; the speed checked is Va; the operative temperature
+    is `t_o(tdb, tr, v, Standard.ashrae_55_2023)` (`src/psychrometrics/t_o.js:63-66`), its weight chosen by Va. The
+    general 0–2 m/s range check keeps reading `vr`. (2) `pmv_ppd_ashrae` gains an optional `v`, the average air speed,
+    required when `airspeed_control` is false. The library never derives it from `vr`, since a caller may pass a
+    measured `vr`. (3) Neither changes PMV or PPD: they change `warnings` rows, and what reads them, `compliance` and
+    the mask under `limit_inputs` (`pmv_ppd.ts:448, 453-456`). (4) The app's PMV (ASHRAE 55) declaration passes the
+    slot's air speed as `v`: the entry under air speed entry, and under relative air speed entry
+    `v_relative_inverse(vr, met)`, the number the switch back to air speed entry stores (decision 54 as revised), so
+    both modes give the library one Va. A relative air speed below the activity's share inverts to a negative `v`, by at
+    most 0.09 m/s at or below 1.3 met, where the rule applies (inference, from `v = vr − 0.3·(met − 1)`); how that
+    reaches the library is the app ticket's. (5) pythermalcomfort#487, rewritten from
+    `.scratch/chart-verification/upstream/01`, raises the three fixed sub-rules alone. (6) The two sub-rules where all
+    three agree against 55-2023, the exemption's reach and the 0.8 m/s cap, are noted on decision 77 and left under
+    decision 79 rule 3. Where the libraries are right and the deployed tool is not, the curve below 0.2 m/s from 23.0 to
+    about 23.19 °C, which the deployed tool clamps to 0.2, nothing changes. Rejected: the library deriving `v` from
+    `vr`, which a caller passing a measured `vr` would get wrong; checking `vr`, which §3's Va contradicts; the app
+    passing the entered `vr` as `v` under relative air speed entry, which gives one slot two average air speeds across a
+    switch of entry mode.
+    *Corrected in place 2026-10-20 (`../jsthermalcomfort/.scratch/standard-check/` ticket 06): the Facts said 55-2023
+    sides with the deployed tool on all three sub-rules; on the third it sides with neither. Rule 5 names #487.*
 
 ## Consequences
 
@@ -3758,11 +3766,13 @@ notes under decisions 51 and 53:
   limit clamped to 0.2–0.8 m/s at `(tdb + tr) / 2`; the app follows the library, pythermalcomfort's rule, and the
   difference is recorded rather than ported. Phase 4b decides only the display: rows sharing a quantity read as one
   sentence over their intersected bound.
-  **Amended 2026-10-19 (decisions 79 and 81).** The difference is no longer only recorded: on three of its sub-rules
-  ASHRAE 55-2023 sides with the deployed tool, and the library is to check the average air speed `v`, at that speed's
-  operative temperature, at exactly 0.7 clo and 1.3 met too (decision 81). Its rows are then on `v`. The deployed
-  tool's clamp of the curve to 0.2 m/s is still not ported, the libraries being right there; the 0.8 m/s cap and the
-  exemption's reach stay as all three have them (decision 77's note of that day).
+  **Amended 2026-10-19 (decisions 79 and 81).** The difference is no longer only recorded: on two of its sub-rules
+  ASHRAE 55-2023 sides with the deployed tool and on a third with neither, and the library is to check the average air
+  speed `v`, at that speed's operative temperature, at exactly 0.7 clo and 1.3 met too (decision 81). Its rows are then
+  on `v`. The deployed tool's clamp of the curve to 0.2 m/s is still not ported, the libraries being right there; the
+  0.8 m/s cap and the exemption's reach stay as all three have them (decision 77's note of that day).
+  *Corrected in place 2026-10-20 (`../jsthermalcomfort/.scratch/standard-check/` ticket 06): it said 55-2023 sides with
+  the deployed tool on all three sub-rules.*
 - The experimental shape can move. Every read of `_INFO` goes through `core/quantities.ts`,
   `core/applicability.ts` and the declaration files, so a shape change is confined to those.
   **Amended 2026-09-28 (review after Phase 4b, Proposal 15; `S097`, `P024`).** The sentence above is narrowed to reads
