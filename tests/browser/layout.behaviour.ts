@@ -746,7 +746,7 @@ test.describe("the applicability summary", () => {
 
     await airSpeed.fill("5");
 
-    await expect(summary).toContainText("Not calculated");
+    await expect(summary).toContainText("Not calculated, outside these limits:");
     await expect(summary).toContainText(/Air speed must be .* m\/s/);
     await expect(summary).toContainText("Showing the last valid result.");
     await expect(airSpeed).toBeFocused();
@@ -761,6 +761,49 @@ test.describe("the applicability summary", () => {
     await expect(summary).toHaveCount(0);
   });
 
+  test("at 1440 px, two entries out of range over a kept result are one list under Not calculated, outside these limits:, the sentence on the result after it, every line at the heading's left edge", async ({ page }) => {
+    await openStandard(page, 1440);
+    const summary = card(page, "Results").getByRole("alert");
+
+    await page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ }).fill("50");
+    await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("5");
+
+    const title = summary.locator('[data-slot="alert-title"]');
+    await expect(title).toHaveText("Not calculated, outside these limits:");
+    const items = summary.getByRole("listitem");
+    await expect(items).toHaveText([/Dry-bulb air temperature must be /, /Air speed must be /]);
+    const sentence = summary.getByText("Showing the last valid result.", { exact: true });
+    await expect(items.filter({ hasText: "Showing" })).toHaveCount(0);
+    const left = (await boxOf(title)).x;
+    for (const line of [...(await items.all()), sentence]) {
+      expect((await boxOf(line)).x).toBe(left);
+    }
+    const list = await boxOf(summary.getByRole("list"));
+    expect((await boxOf(sentence)).y).toBeGreaterThanOrEqual(list.y + list.height);
+  });
+
+  test("at 1440 px under Compare, two slots out of range are one list holding both slots' lines, a sentence on the result per slot after it", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    await expect(page.getByRole("row", { name: /^Input 2/ })).toBeVisible();
+    const summary = card(page, "Results").getByRole("alert");
+
+    for (const slot of ["Input 1", "Input 2"]) {
+      await page.getByRole("spinbutton", { name: new RegExp(`^Air speed.*, ${slot}$`) }).fill("5");
+    }
+
+    await expect(summary.getByRole("list")).toHaveCount(1);
+    await expect(summary.getByRole("listitem")).toHaveText([/Input 1: Air speed must be /, /Input 2: Air speed must be /]);
+    const sentences = summary.getByText(/Input \d: Showing the last valid result\./);
+    await expect(sentences).toHaveText(["Input 1: Showing the last valid result.", "Input 2: Showing the last valid result."]);
+    // Every line and every sentence carries its slot's swatch.
+    await expect(summary.locator(".swatch")).toHaveCount(4);
+    const list = await boxOf(summary.getByRole("list"));
+    for (const sentence of await sentences.all()) {
+      expect((await boxOf(sentence)).y).toBeGreaterThanOrEqual(list.y + list.height);
+    }
+  });
+
   test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control shows the ink part between the Results heading and the table, and the Inputs card holds no status alert, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
@@ -769,7 +812,7 @@ test.describe("the applicability summary", () => {
       await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("0.9");
 
       await expect(summary, address).toContainText("Calculated, but outside these limits:");
-      await expect(summary, address).toContainText(/Relative air speed must be ≤ .* m\/s/);
+      await expect(summary.getByRole("listitem"), address).toHaveText([/Relative air speed must be ≤ .* m\/s/]);
       // Lettered in ink, the page's text colour, its lines too: no hue and not the muted caption grey.
       const ink = await page.locator("body").evaluate((body) => getComputedStyle(body).color);
       await expect(summary.locator('[data-slot="alert-description"]'), address).toHaveCSS("color", ink);

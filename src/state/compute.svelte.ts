@@ -5,7 +5,7 @@ import {
   type OutOfRangeRow,
   type ViolationRow,
 } from "$lib/core/applicability";
-import { notCalculatedLines, outsideLimitsLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
+import { notCalculatedPart, outsideLimitsLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
@@ -310,7 +310,7 @@ export class SlotOutputs {
     const panel = panelQuantities(this.#session.model, this.#slot);
     const unitSystem = this.#session.unitSystem;
     return {
-      notCalculated: notCalculatedLines(this.#stoppedRows, panel, this.#lastValid !== null, unitSystem),
+      notCalculated: notCalculatedPart(this.#stoppedRows, panel, this.#lastValid !== null, unitSystem),
       outsideLimits: outsideLimitsLines(this.#violations, panel, unitSystem),
     };
   });
