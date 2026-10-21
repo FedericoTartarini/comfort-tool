@@ -154,8 +154,9 @@ the calculators the model declares, which opens one tabbed dialog of one fixed h
 declares none has no button.
 
 **Results.** A card: the Results heading; the applicability summary when there is something to say (decision 83):
-"Not calculated", an `Alert` in the `destructive` variant with a triangle-alert icon, then "Calculated, but outside
-these limits:", a default `Alert` in ink with the same icon, a line per slot, its swatch under Compare; then the table
+"Not calculated, outside these limits:", an `Alert` in the `destructive` variant with a triangle-alert icon, its
+bound lines a list and the sentence on the result after it, then "Calculated, but outside these limits:", a default
+`Alert` in ink with the same icon, its lines a list, a line per slot, its swatch under Compare; then the table
 (decision 70: headings wrap, numbers right-aligned, the first column sticky, the region scrolls sideways with its
 clipped edge faded), a "—" a violation causes carrying the same icon; then the standard's caption. A kept row's
 numbers are muted.
