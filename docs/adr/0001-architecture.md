@@ -620,6 +620,13 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > them `labelFor`, `zoneInkFor`, `markerFor` and `axisFor`. The 2026-10-02 and 2026-10-06 notes' glosses of
 > `specParts.ts` (`scannedField`, `contouredZonesOf`, `bandsFor`, `paintedRegionFor`) are read through this one;
 > `bandsFor` and `paintedRegionFor` are gone with the contour (`f93a1c1`).
+>
+> **Noted 2026-10-22** ([ADR-0002](0002-library-interface-model-info.md) decision 83, as noted the same day;
+> `.scratch/applicability-display/` ticket 07): the tree gains `core/applicabilitySummary.ts`, the applicability
+> summary's two parts from a slot's out-of-range rows and violation rows (`c170f00`, `c1f8445`, `6e7e469`).
+> `core/resultCell.ts` also says whether a cell's "—" stands for a violation (`31a5f5a`), and `core/charts/chartSpec.ts`
+> gains `ChartNote`, a line under the plot (`4f6595f`). The 2026-10-09 note's `ui/layout/SlotColumns.svelte` no longer
+> lays out hints: `ui/inputs/InputPanel.svelte` draws no applicability alert (`c1f8445`).
 
 ```
 src/

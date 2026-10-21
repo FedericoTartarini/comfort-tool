@@ -390,6 +390,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > gains **Applicability summary**; `docs/design.md` follows. **Next: the user's `/to-spec` and `/to-tickets` in
 > `.scratch/applicability-display/`, then the Time-series grilling (decision 57 rule 6).**
 
+> **2026-10-22 — position, the applicability display done**: `.scratch/applicability-display/` landed on `rewrite/v1`
+> and the folder is closed: 01 `c170f00` the summary's "Not calculated" level, 02 `c1f8445` its "Calculated, but
+> outside these limits:" level and the Inputs card's hints gone, 08 `6e7e469` one list per alert, 03 `31a5f5a` the icon
+> on a "—" a violation causes, 05 `4f6595f` "No comfort zone at these inputs." under a Standard chart's plot; 04 (a
+> line leads to its entry) and 06 (the Image carries the line) are wontfix, by decision 83's notes of 2026-10-22, and 06
+> is `.scratch/open-points.md` B26. Decision 83 carries a close-out note naming the commits and five places where the
+> code says more than the rules; decision 64's note of 2026-10-21 is withdrawn and decision 77's corrected in place;
+> ADR-0001 §5 notes `core/applicabilitySummary.ts`. Beside it, decision 5's note (`8660334`) and the axis ranges it
+> describes (`a907f79`) landed. `npm test` passes at 1147 tests and `npm run test:browser` at 78. **Next: the
+> Time-series grilling (decision 57 rule 6).**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
