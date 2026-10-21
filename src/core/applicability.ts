@@ -40,8 +40,7 @@ export interface OutOfRangeRow {
  * evaluation. `quantity` is the row it is reported on; `bounded` is the
  * quantity the bound and value belong to, which the sentence names. The two
  * differ for `vr` under air speed entry, reported on the entered `v`
- * (ADR-0002 decision 4), and for `v` under relative air speed entry, reported
- * on the entered `vr`.
+ * (ADR-0002 decision 4).
  */
 export interface ViolationRow extends OutOfRangeRow {
   readonly bounded: Quantity;
@@ -322,20 +321,18 @@ export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosph
  * The rows a completed run broke, as the library reports them on the result's
  * `warnings` (ADR-0002 decision 23) — the app finds no row of its own. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
- * lacks is dropped. When the model takes `vr`, a `vr` or `v` row is reported
- * on the air-speed quantity entered under `modes` (ADR-0002 decision 54), the
- * row the person sees, staying `bounded` by its key, so its sentence names the
- * speed its bound is on: a `vr` row on the entered `v` (decision 4 and its
- * note), and a `v` row, PMV (ASHRAE 55)'s air-speed rule on the average air
- * speed (decision 81), on the entered `vr`, that note mirrored. The gate
- * holds the entry to the info's own `vr` row, so what arrives here beyond it
- * is the rule's limits. No `clo` row arrives from a model with the clothing entry group,
- * whose entry the gate holds to that row, so none is mapped. Rows reported on
- * one quantity, bounded by one quantity, in one role merge into one row over
- * the narrowest bound, so the person reads one sentence; the individual
- * bounds are not kept. Rows bounded by different quantities keep their own
- * sentences, as `vr`'s range row and a `v` rule row reported on one entry. A
- * row is only a value shown outside its bound, as the gate judges an entry.
+ * lacks is dropped. When the model takes `vr`, its row is reported on the
+ * air-speed quantity entered under `modes`, the row the person sees: the
+ * entered `v`, staying `bounded` by `vr`, or the entered `vr` itself, with no
+ * mapping (ADR-0002 decision 54): the gate holds the entry to the info's own
+ * `vr` row, so what arrives here is PMV (ASHRAE 55)'s limits at the operative
+ * temperature. No `clo` row arrives from a model with the clothing entry
+ * group, whose entry the gate holds to that row, so none is mapped. A
+ * quantity can break several limits in one role (PMV (ASHRAE 55)'s fixed
+ * air-speed row plus its no-control rows): those merge into one row over the
+ * narrowest bound, so the person reads one sentence; the individual bounds
+ * are not kept. A row is only a value shown outside its bound, as the gate
+ * judges an entry.
  */
 export function violationRows(model: RegisteredModel, result: ModelResult, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
@@ -351,10 +348,11 @@ export function violationRows(model: RegisteredModel, result: ModelResult, modes
     if (!breaksBound(bounded, bound, value)) {
       continue;
     }
-    const index = rows.findIndex((row) => row.quantity === quantity && row.bounded === bounded && row.role === role);
+    const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
     if (index === -1) {
       rows.push({ quantity, bounded, role, value, bound });
     } else {
+      // Keeps the first row's `bounded`: a model that takes `vr` reports `vr` rows and no `v` rows.
       rows[index] = { ...rows[index], bound: intersect([rows[index].bound, bound]) };
     }
   }
@@ -363,12 +361,11 @@ export function violationRows(model: RegisteredModel, result: ModelResult, modes
 
 /**
  * Where the library's row for `keyed` is reported under `modes`, and the
- * quantity its bound and value are of: both `keyed` itself, but for either
- * air speed of a model that takes the relative air speed, reported on the one
- * entered and still bounded by `keyed`.
+ * quantity its bound and value are of: both `keyed` itself, but for the
+ * relative air speed of a model that takes it.
  */
 function reportedRow(model: RegisteredModel, keyed: Quantity, modes: ValueEntryModes): Pick<ViolationRow, "quantity" | "bounded"> {
-  if ((keyed === q.vr || keyed === q.v) && takesRelativeAirSpeed(model)) {
+  if (keyed === q.vr && takesRelativeAirSpeed(model)) {
     return { quantity: modes.airSpeed.mode.axis, bounded: keyed };
   }
   return { quantity: keyed, bounded: keyed };
