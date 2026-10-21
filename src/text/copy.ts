@@ -126,7 +126,8 @@ export const copy = {
   notCalculated: "Not calculated",
   notCalculatedKeptResult: "Showing the last valid result.",
   notCalculatedNoResult: "This model has no earlier result to show.",
-  applicabilityHint: "Outside the model's applicability:",
+  // The summary's second part (decision 83, rules 2 and 5): "limits", the standards' word for both kinds of bound.
+  outsideLimits: "Calculated, but outside these limits:",
   // One broken applicability row: `bound` already carries its unit.
   applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column

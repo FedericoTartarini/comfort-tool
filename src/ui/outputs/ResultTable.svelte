@@ -1,6 +1,7 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { splitViolations, warningFor } from "$lib/core/applicability";
+  import type { ApplicabilitySummary, SummaryLine } from "$lib/core/applicabilitySummary";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
@@ -39,7 +40,8 @@
   );
   const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
   const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
-  const notCalculatedRows = $derived(rows.filter((row) => row.notCalculated));
+  const notCalculatedRows = $derived(rows.filter((row) => row.applicabilitySummary.notCalculated.length > 0));
+  const outsideLimitsRows = $derived(rows.filter((row) => row.applicabilitySummary.outsideLimits.length > 0));
   const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 
   function slotLine(row: SlotOutputs, text: string): string {
@@ -52,26 +54,40 @@
   <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(row.badge.hue)}></span>
 {/snippet}
 
+<!-- One part's lines: every listed slot's, in slot order, each with its slot's swatch while the slots are named. -->
+{#snippet summaryLines(partRows: readonly SlotOutputs[], linesOf: (summary: ApplicabilitySummary) => readonly SummaryLine[])}
+  {#each partRows as row (row)}
+    {#each linesOf(row.applicabilitySummary) as line (line)}
+      <Alert.Description>
+        <span class="swatch-label">
+          {#if row.badge.name !== undefined}
+            {@render slotSwatch(row)}
+          {/if}
+          {slotLine(row, line.text)}
+        </span>
+      </Alert.Description>
+    {/each}
+  {/each}
+{/snippet}
+
 <Stack gap="2">
-  <!-- The applicability summary, under the Results heading and above the table (ADR-0002 decision 83, rule 2). Its
-       "Not calculated" part is the one place the page asks the person to act: the generated alert in its destructive
-       variant, announced at once, holding every compared slot's lines in slot order (decision 73, rule 9). -->
+  <!-- The applicability summary, under the Results heading and above the table (ADR-0002 decision 83, rule 2), each
+       part one alert holding every compared slot's lines. Its "Not calculated" part is the one place the page asks the
+       person to act: the generated alert in its destructive variant, announced at once (decision 73, rule 9). Its
+       "Calculated, but outside these limits:" part is the default variant in ink with the same icon, told apart by its
+       heading and its colour, and announced politely (`status`), so a caveat interrupts no one's typing. -->
   {#if notCalculatedRows.length > 0}
     <Alert.Root variant="destructive">
       <TriangleAlertIcon />
       <Alert.Title>{copy.notCalculated}</Alert.Title>
-      {#each notCalculatedRows as row (row)}
-        {#each row.applicabilitySummary.notCalculated as line (line.text)}
-          <Alert.Description>
-            <span class="swatch-label">
-              {#if row.badge.name !== undefined}
-                {@render slotSwatch(row)}
-              {/if}
-              {slotLine(row, line.text)}
-            </span>
-          </Alert.Description>
-        {/each}
-      {/each}
+      {@render summaryLines(notCalculatedRows, (summary) => summary.notCalculated)}
+    </Alert.Root>
+  {/if}
+  {#if outsideLimitsRows.length > 0}
+    <Alert.Root role="status" class="outside-limits">
+      <TriangleAlertIcon />
+      <Alert.Title>{copy.outsideLimits}</Alert.Title>
+      {@render summaryLines(outsideLimitsRows, (summary) => summary.outsideLimits)}
     </Alert.Root>
   {/if}
 

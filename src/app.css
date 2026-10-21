@@ -329,6 +329,12 @@
 [data-slot="field-description"] {
 	font-size: var(--font-size-caption);
 }
+/* The applicability summary's "Calculated, but outside these limits:" part, the default alert, is lettered in ink, its
+   lines too, where Nova mutes an alert's description: a violation is marked by an icon and words, never a hue
+   (decision 83, rule 2). */
+[data-slot="alert"].outside-limits [data-slot="alert-description"] {
+	color: var(--foreground);
+}
 /* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
    trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint
    shows. */

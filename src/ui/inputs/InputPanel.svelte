@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-  import { enteredBound, splitViolations, warningFor } from "$lib/core/applicability";
+  import { enteredBound } from "$lib/core/applicability";
   import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
   import type { Quantity } from "$lib/core/quantities";
   import { enteredValue, panelRows, rowEntryGroupOf, type PanelRow } from "$lib/core/slot";
@@ -19,7 +19,6 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import * as Alert from "$lib/ui/primitives/alert";
   import { Label } from "$lib/ui/primitives/label";
   import { Switch } from "$lib/ui/primitives/switch";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
@@ -69,12 +68,6 @@
     const [head, ...rest] = columns;
     return [entryOf(head, quantity), ...rest.map((column) => column && entryOf(column, quantity))];
   }
-
-  // Everything but the result's own bound. Entered values are gated before the call against every row of the
-  // model's info, so an `input` row here is a limit the info does not carry: PMV (ASHRAE 55)'s on the relative
-  // air speed at the operative temperature — so the sentence names the relative air speed, under either air-speed mode.
-  const hints = $derived(columns.map((column) => (column ? splitViolations(column.outputs.violations).inputs : [])));
-  const hasHints = $derived(hints.some((slotHints) => slotHints.length > 0));
 </script>
 
 <!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
@@ -140,26 +133,5 @@
       />
     {/if}
   {/each}
-
-  <!-- A slot's applicability hints are the generated alert (the shell's spec, "The result table"), in its default
-       variant, which leaves red to the kept rows' note: the lead as its title, one hint a line. Announced politely
-       (`status`), where the note keeps the primitive's `alert`, so typing a value out of range interrupts no one
-       (decision 73, rule 9). -->
-  {#if hasHints}
-    <SlotColumns count={columns.length}>
-      {#each hints as slotHints, position (position)}
-        <div>
-          {#if slotHints.length > 0}
-            <Alert.Root role="status">
-              <Alert.Title>{copy.applicabilityHint}</Alert.Title>
-              {#each slotHints as violation (violation)}
-                <Alert.Description>{warningFor(violation, unitSystem)}</Alert.Description>
-              {/each}
-            </Alert.Root>
-          {/if}
-        </div>
-      {/each}
-    </SlotColumns>
-  {/if}
 </Stack>
 

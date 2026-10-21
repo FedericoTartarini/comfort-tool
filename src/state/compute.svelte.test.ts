@@ -15,11 +15,12 @@ import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { zoneFillsOf } from "$lib/core/charts/chartTestPaths";
 import { chartType } from "$lib/core/chartType";
-import { temperatureMode } from "$lib/core/entryModes";
+import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
@@ -377,6 +378,94 @@ describe("the applicability summary's Not calculated part", () => {
     const [first, second] = outputs.slots;
     expect(first.applicabilitySummary.notCalculated).toEqual([]);
     expect(second.applicabilitySummary.notCalculated.map((line) => line.quantity)).toEqual([q.v, null]);
+    expect(second.badge.name).toBe("Input 2");
+  });
+});
+
+describe("the applicability summary's Calculated, but outside these limits part", () => {
+  /**
+   * PMV (ASHRAE 55) at 0.9 m/s, past what the standard allows occupants without local control of the air speed:
+   * 0.64 m/s at the defaults' 25 °C operative temperature.
+   */
+  function ashraeWithoutControlAt09(): { session: Session; outputs: Outputs } {
+    const session = new Session(pmvPpdAshrae);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.v, 0.9);
+    return { session, outputs };
+  }
+
+  it("is empty at the defaults, as is the Not calculated part", () => {
+    const outputs = new Outputs(new Session(pmvPpdAshrae));
+
+    expect(outputs.slots[0].applicabilitySummary).toEqual({ notCalculated: [], outsideLimits: [] });
+  });
+
+  it("names PMV (ASHRAE 55)'s air-speed limit without local control, leading to the entered air speed", () => {
+    const { outputs } = ashraeWithoutControlAt09();
+
+    expect(outputs.slots[0].applicabilitySummary).toEqual({
+      notCalculated: [],
+      outsideLimits: [{ text: "Relative air speed must be ≤ 0.64 m/s", quantity: q.v }],
+    });
+  });
+
+  it("leads the same line to the entered relative air speed under relative air speed entry", () => {
+    const { session, outputs } = ashraeWithoutControlAt09();
+
+    session.setAirSpeedMode(airSpeedMode.corrected);
+
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits.map((line) => line.quantity)).toEqual([q.vr]);
+  });
+
+  it("names PMV (ISO 7730)'s vapour pressure over 2 700 Pa, which has no row on the panel to lead to", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.rh, 95);
+
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([
+      { text: "Water vapour partial pressure must be 0 – 2.7 kPa", quantity: null },
+    ]);
+  });
+
+  it("names an output's broken bound, as its Compliance cell does", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    for (const [quantity, value] of [[q.tdb, 30], [q.tr, 40], [q.met, 2], [q.clo, 1]] as const) {
+      session.slots[0].setEntered(quantity, value);
+    }
+
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([{ text: "Predicted Mean Vote must be -2 – 2", quantity: null }]);
+  });
+
+  it("keeps a kept result's broken bounds, listed below the Not calculated part", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.rh, 95);
+    void outputs.slots[0].result;
+
+    session.slots[0].setEntered(q.tdb, 35);
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual([
+      { text: "Dry-bulb air temperature must be 10 – 30 °C", quantity: q.tdb },
+      { text: "Showing the last valid result.", quantity: null },
+    ]);
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits.map((line) => line.text)).toEqual([
+      "Water vapour partial pressure must be 0 – 2.7 kPa",
+    ]);
+  });
+
+  it("under Compare, has lines only for the slot whose run broke a bound, which is named", () => {
+    const session = new Session(pmvPpdIso);
+    session.setCompare(true);
+    const outputs = new Outputs(session);
+
+    heldSlot(session, 1).setEntered(q.rh, 95);
+
+    const [first, second] = outputs.slots;
+    expect(first.applicabilitySummary.outsideLimits).toEqual([]);
+    expect(second.applicabilitySummary.outsideLimits.map((line) => line.text)).toEqual([
+      "Water vapour partial pressure must be 0 – 2.7 kPa",
+    ]);
     expect(second.badge.name).toBe("Input 2");
   });
 });

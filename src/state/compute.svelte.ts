@@ -5,7 +5,7 @@ import {
   type OutOfRangeRow,
   type ViolationRow,
 } from "$lib/core/applicability";
-import { notCalculatedLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
+import { notCalculatedLines, outsideLimitsLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
@@ -304,17 +304,16 @@ export class SlotOutputs {
     return last && result ? violationRows(last.model, result, this.#session.entryModes) : [];
   });
 
-  // Of what the gate stops now, never kept; it reads the last valid run only to say whether one is kept.
-  readonly #applicabilitySummary = $derived.by(
-    (): ApplicabilitySummary => ({
-      notCalculated: notCalculatedLines(
-        this.#stoppedRows,
-        panelQuantities(this.#session.model, this.#slot),
-        this.#lastValid !== null,
-        this.#session.unitSystem,
-      ),
-    }),
-  );
+  // The first part of what the gate stops now, never kept, reading the last valid run only to say whether one is
+  // kept; the second of the result shown, so a kept result keeps its lines (ADR-0002 decision 83, rule 2).
+  readonly #applicabilitySummary = $derived.by((): ApplicabilitySummary => {
+    const panel = panelQuantities(this.#session.model, this.#slot);
+    const unitSystem = this.#session.unitSystem;
+    return {
+      notCalculated: notCalculatedLines(this.#stoppedRows, panel, this.#lastValid !== null, unitSystem),
+      outsideLimits: outsideLimitsLines(this.#violations, panel, unitSystem),
+    };
+  });
 
   // Of the last valid run, so a closed gate stops here too; and of the shared
   // frame, which an edit to another slot leaves as it was.
@@ -370,7 +369,8 @@ export class SlotOutputs {
   /**
    * What qualifies the result, in the words the Results card shows above the
    * table (ADR-0002 decision 83, rule 2): while the gate is closed, the entries
-   * and the pressure it stops, each with its bound, and whether a result is kept.
+   * and the pressure it stops, each with its bound, and whether a result is kept;
+   * then each bound the result shown broke, the {@link violations}.
    */
   get applicabilitySummary(): ApplicabilitySummary {
     return this.#applicabilitySummary;

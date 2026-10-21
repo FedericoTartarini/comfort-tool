@@ -760,4 +760,26 @@ test.describe("the applicability summary", () => {
 
     await expect(summary).toHaveCount(0);
   });
+
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control shows the ink part between the Results heading and the table, and the Inputs card holds no status alert, on Standard and Explore", async ({ page }) => {
+    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+      await openStandard(page, 1440, address);
+      const results = card(page, "Results");
+      const summary = results.getByRole("status");
+      await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("0.9");
+
+      await expect(summary, address).toContainText("Calculated, but outside these limits:");
+      await expect(summary, address).toContainText(/Relative air speed must be ≤ .* m\/s/);
+      // Lettered in ink, the page's text colour, its lines too: no hue and not the muted caption grey.
+      const ink = await page.locator("body").evaluate((body) => getComputedStyle(body).color);
+      await expect(summary.locator('[data-slot="alert-description"]'), address).toHaveCSS("color", ink);
+      await expect(results.getByRole("alert"), address).toHaveCount(0);
+      await expect(card(page, "Inputs").getByRole("status"), address).toHaveCount(0);
+      const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
+      const part = await boxOf(summary);
+      const table = await boxOf(results.getByRole("table"));
+      expect(part.y, address).toBeGreaterThanOrEqual(heading.y + heading.height);
+      expect(table.y, address).toBeGreaterThanOrEqual(part.y + part.height);
+    }
+  });
 });
