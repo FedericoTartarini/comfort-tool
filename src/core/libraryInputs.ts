@@ -3,7 +3,6 @@ import {
   hasClothingGroup,
   hasHumidityGroup,
   hasTemperatureGroup,
-  takesAirSpeed,
   takesRelativeAirSpeed,
   type OptionSpec,
   type OptionsReader,
@@ -11,7 +10,7 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { airSpeedOf, dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
+import { dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -19,14 +18,10 @@ const q = quantities;
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh` at `atmosphericPressure`, and `v` becomes `vr`
- * when the model asks for it, where an entered `vr` is handed over as it is,
- * not derived (ADR-0002 decision 54). A model whose info names `v` beside
- * `vr` keeps `v` too, as the slot's air speed under either entry mode
- * ({@link airSpeedOf}): ASHRAE 55's air-speed rule checks the average air
- * speed, which the library never derives from `vr`, and a switch of entry
- * mode must not give one slot two (decision 81 rules 2 and 4). A model with
- * the clothing entry group is given the dynamic clothing insulation under
- * `clo`, the library's key for it: the entered clothing insulation corrected by the rule
+ * when the model asks for it, where an entered `vr` is handed over as it is
+ * and nothing is derived (ADR-0002 decision 54). A model with the clothing
+ * entry group is given the dynamic clothing insulation under `clo`, the
+ * library's key for it: the entered clothing insulation corrected by the rule
  * of the model's standard, or an entered dynamic one as it is. So `clo` among
  * the resolved values is the library's, and among a slot's the entry. No
  * `p_atm` is filled: no registered model takes one (ADR-0002 decision 49).
@@ -44,11 +39,7 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
 
   if (takesRelativeAirSpeed(model)) {
     resolved.set(q.vr, relativeAirSpeedOf(slot));
-    if (takesAirSpeed(model)) {
-      resolved.set(q.v, airSpeedOf(slot));
-    } else {
-      resolved.delete(q.v);
-    }
+    resolved.delete(q.v);
   }
 
   if (hasClothingGroup(model)) {

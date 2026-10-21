@@ -12,7 +12,6 @@ import { resolveQuantities, valuesReader } from "./libraryInputs";
 import { hasHumidityGroup, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import {
-  airSpeedOf,
   areSameEntryModes,
   defaultEntryModes,
   dynamicClothingOf,
@@ -465,17 +464,6 @@ describe("withAirSpeedMode", () => {
   it("answers the relative air speed of a slot in either mode", () => {
     expect(relativeAirSpeedOf(moving)).toBe(v_relative(0.4, 2));
     expect(relativeAirSpeedOf(enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 }))).toBe(0.7);
-  });
-
-  it("answers the air speed of a slot in either mode, the one the switch back to air speed entry stores", () => {
-    expect(airSpeedOf(moving)).toBe(0.4);
-    const relative = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
-    expect(airSpeedOf(relative)).toBe(0.4);
-    expect(airSpeedOf(relative)).toBe(withAirSpeedMode(relative, airSpeedMode.uncorrected).values.get(q.v));
-  });
-
-  it("answers a negative air speed, unclamped, for a relative air speed below the activity's share", () => {
-    expect(airSpeedOf(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }))).toBe(-0.2);
   });
 });
 

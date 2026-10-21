@@ -418,14 +418,6 @@ export function takesRelativeAirSpeed(model: RegisteredModel): boolean {
 }
 
 /**
- * Whether the model's info names `v`, read as {@link takesRelativeAirSpeed}
- * reads `vr`. Beside `vr`, the model is given both speeds (`core/libraryInputs.ts`).
- */
-export function takesAirSpeed(model: RegisteredModel): boolean {
-  return Object.keys(model.info.inputs).some((key) => quantityFor(key) === quantities.v);
-}
-
-/**
  * The rule by which `model` is given the dynamic clothing insulation: its
  * standard's row in `core/clothingCorrection.ts`, when its info names `clo`.
  * `undefined` for a model that takes no clothing, and for one whose standard
