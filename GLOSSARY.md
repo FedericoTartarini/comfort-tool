@@ -21,7 +21,7 @@ The library's published metadata for one model (`<MODEL>_INFO`): the model's nam
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
-The bounds within which a model's answer holds, published by the library per quantity. A gate, not a clamp: an entered value outside it is out of range and the model is not run; a value a run derives or returns outside it is a violation, shown beside the result. The app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
+The bounds within which a model's answer holds, published by the library per quantity. A gate, not a clamp: an entered value outside it is out of range and the model is not run; a value a run derives or returns outside it is a violation, reported with the result in the applicability summary. The app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
 _Avoid_: limit, range check, validation, clamp
 
 **Bound**:
@@ -29,12 +29,16 @@ The minimum and maximum a value is tested against; either may be absent. The lib
 _Avoid_: limit, range (that is an axis range)
 
 **Out of range**:
-Said of an entered value that breaks its bound before the model is called: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value was entered in. Never said of a result.
+Said of an entered value that breaks its bound before the model is called: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value was entered in. The model is not run, so the result is not calculated. Never said of a result.
 _Avoid_: invalid, violation
 
 **Violation**:
-An applicability bound a completed run broke, as the library reports it with the result.
-_Avoid_: warning (that is the sentence shown), error, out of range
+A bound a completed run broke, as the library reports it with the result: either the model's applicability, or a requirement the standard sets on the conditions, such as ASHRAE 55's air-speed limit without local control. The number is calculated; no yes-or-no answer is given beside it.
+_Avoid_: warning (that is the sentence shown), error, out of range, non-compliance
+
+**Applicability summary**:
+The one place a slot's out-of-range entries and violations are listed together, with the result they qualify: first what was not calculated, then what was calculated outside a bound. Each line names its bound and, where its entry is on the panel, leads to it.
+_Avoid_: error summary, hints, warnings panel
 
 **Axis range**:
 How far a quantity is drawn on a chart. A viewport, declared by the model file; falls back to the applicability bounds only when nothing is declared.

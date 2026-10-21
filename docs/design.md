@@ -22,8 +22,9 @@ icons, cream grounds with warm accents, display fonts.
 1. **Colour means data.** Hue appears where it carries information: a slot's zones and marker, a band's fill, a
    category's swatch. The interface is grey, white and black. The one blue, the brand, is spent on the current
    navigation item, the primary button, the focus ring, links, the header's and footer's bands, and every chosen or
-   pressed toggle; red marks an entry out of range, a refused Edge and a kept row's note; a kept result is greyed,
-   never coloured.
+   pressed toggle; red marks an entry out of range, a refused Edge and the applicability summary's "Not calculated";
+   a violation is marked by an icon and words in ink, never a hue (decision 83); a kept result is greyed, never
+   coloured.
 2. **Structure is information.** The modules are white panels on a faint ground, each bounded by a ring at 10 % ink;
    no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the Inputs card's under the
    model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above Copy
@@ -57,7 +58,7 @@ The named colours of `core/palette.ts` and the stylesheet's tokens, one set of h
 | lineHeavy | `#94a3b8` | the saturation line |
 | paper | `#ffffff` | a panel's ground and the plot's ground; a box in the sidebar, which stands on the ground |
 | ground | `#f8fafc` | the page's ground and a field's tint, one value |
-| alert | `#dc2626` | an entry out of range, a refused Edge, a kept row's note |
+| alert | `#dc2626` | an entry out of range, a refused Edge, the applicability summary's "Not calculated" |
 | slot 1, 2, 3 | `#0072b2`, `#009e73`, `#cc79a7` | Okabe–Ito's blue, bluish green and reddish purple: one hex per slot, from which the marker, the zone line and the zone fill are derived; safe for colour-blind readers and apart from RdBu's and YlOrRd's |
 
 A panel's ring is the ink at 10 %, the card primitive's own. The band families stay ColorBrewer's, read by decision
@@ -147,21 +148,25 @@ reads "Presets"; with Compare on it is the list icon with "Presets" as its toolt
 x. An option is a switch with its label, tucked under the row it qualifies at the field gap, PMV (ASHRAE 55)'s under
 the air speed (decision 36); with Compare on, one switch per slot column, "On" or "Off" beside it. The box is tinted
 `ground`; a select's trigger is not. With Compare on, the three slot buttons head three columns of the same `24rem`
-(decision 50); every pressed toggle is filled with the brand. The applicability hints, a default `Alert`, stand after
-the rows. The card ends with the Input calculators button, full width, outline, "Input calculators" over the names of
+(decision 50); every pressed toggle is filled with the brand. A row a violation is reported on carries the
+triangle-alert icon beside its bound, in ink (decision 83, rule 3). The card ends with the Input calculators button, full width, outline, "Input calculators" over the names of
 the calculators the model declares, which opens one tabbed dialog of one fixed height (decision 75); a model that
 declares none has no button.
 
-**Results.** A card: the Results heading, the table (decision 70: headings wrap, numbers right-aligned, the first
-column sticky, the region scrolls sideways with its clipped edge faded), then the standard's caption and the kept
-rows' note, an `Alert` in the `destructive` variant with a triangle-alert icon; a kept row's numbers are muted.
+**Results.** A card: the Results heading; the applicability summary when there is something to say (decision 83):
+"Not calculated", an `Alert` in the `destructive` variant with a triangle-alert icon, then "Calculated, but outside
+these limits:", a default `Alert` in ink with the same icon, a line per slot, its swatch under Compare; then the table
+(decision 70: headings wrap, numbers right-aligned, the first column sticky, the region scrolls sideways with its
+clipped edge faded), a "—" a violation causes carrying the same icon; then the standard's caption. A kept row's
+numbers are muted.
 
 **Chart.** A card: the heading row carries Chart, then at the right, on Explore, the Bands button, and Export image;
 under it a view row, on every chart, holds the chart type toggle-group, named "Chart type", then the axis selects
 where the chart has them, left-aligned (decision 73, rule 8 as revised 2026-10-12). The
 plot is the exported image's 4:3 plot area, capped at `24rem` tall, so the screen and the file are one picture; it
-stands on the card's leading edge, and no control moves it; content above the chart card may (a kept row's note,
-Compare's rows). The legend is a column beside it, `10rem` wide by preference, centred
+stands on the card's leading edge, and no control moves it; content above the chart card may (the applicability
+summary, Compare's rows). On Standard, a slot whose Comfort zone is empty has a line under the plot saying why
+(decision 83, rule 1). The legend is a column beside it, `10rem` wide by preference, centred
 in a room of at most `18rem` to its right, entries wrapping to lines. Bands is a dialog, `40rem` as every dialog (decision 67, rule 9),
 opened from the heading row; what the dialog does is decided apart (`.scratch/open-points.md` B6). The readout stays
 on the pointer, lettered at the caption's size.
