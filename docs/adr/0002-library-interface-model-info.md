@@ -3872,9 +3872,8 @@ notes under decisions 51 and 53:
     rule contradicts. The page says "limits", the standards' own word for both kinds (§5.2.2.3's heading, §5.3.4.2's
     text); the project's term stays **Bound**, as decision 76 kept **Session controls** behind "Settings". The library
     and the "—" do not change (decision 82). That the libraries mask a requirement of the standard as they mask
-    applicability, where the deployed tool reads non-compliance, goes upstream under decision 82 rule 1: a row in
-    `.scratch/open-points.md` and a comment on pythermalcomfort#487, the same rule's issue, drafted after this
-    decision's documents. (6) **Order**: no precondition. The summary shows what `violationRows` gives at the lock of
+    applicability, where the deployed tool reads non-compliance, is recorded in `.scratch/open-points.md` B25 and not
+    raised upstream (the user, 2026-10-21). (6) **Order**: no precondition. The summary shows what `violationRows` gives at the lock of
     the day, at `7e104f5` PMV (ASHRAE 55)'s rows on `vr` reported on the entered air speed; a pythermalcomfort release
     that changes them is grilled under decision 82 rule 2, and this decision does not change with it. Rejected: holding
     the result on a violation as the gate holds it, which breaks the split between **Out of range** and **Violation**,

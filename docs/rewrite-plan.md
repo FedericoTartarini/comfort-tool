@@ -382,9 +382,10 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > "Calculated, but outside these limits:" in ink with the triangle-alert icon, no new hue; a mark at each source, the
 > Inputs card's hints gone; a summary line focuses its entry; a Standard chart whose Comfort zone is empty says why in
 > a line under the plot and in an Image's Input summary. Its research
-> (`.scratch/applicability-display/research-airspeed-rule.md`) found ASHRAE 55-2023's air-speed limits without local control to be a requirement on the conditions, not the
-> model's applicability, which both libraries mask alike; the library and the "—" stay (decision 82), and a row in
-> `.scratch/open-points.md` and a comment on pythermalcomfort#487 follow these documents. Decisions 33, 64 and 77 are
+> (`.scratch/applicability-display/research-airspeed-rule.md`) found ASHRAE 55-2023's air-speed limits without local
+> control to be a requirement on the conditions, not the model's applicability, which both libraries mask alike; the
+> library and the "—" stay (decision 82), and it is recorded in `.scratch/open-points.md` B25, not raised upstream.
+> Decisions 33, 64 and 77 are
 > noted, decision 73 rule 9 revised; GLOSSARY.md changes **Applicability**, **Out of range** and **Violation** and
 > gains **Applicability summary**; `docs/design.md` follows. **Next: the user's `/to-spec` and `/to-tickets` in
 > `.scratch/applicability-display/`, then the Time-series grilling (decision 57 rule 6).**
