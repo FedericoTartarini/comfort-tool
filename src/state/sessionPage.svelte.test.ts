@@ -118,8 +118,8 @@ describe("The page in the session", () => {
     const traces = new Outputs(session).chart?.traces ?? [];
 
     expect(session.page).toBe(page.standard);
-    expect(zoneFillsOf({ traces })).toHaveLength(3);
-    expect(zoneLinesOf({ traces })).toHaveLength(3);
+    expect(zoneFillsOf({ traces })).toHaveLength(4);
+    expect(zoneLinesOf({ traces })).toHaveLength(4);
     expect(fillsOf(traces)).toEqual([]);
   });
 
@@ -134,14 +134,14 @@ describe("The page in the session", () => {
       const traces = outputs.chart?.traces ?? [];
       const fills = zoneFillsOf({ traces });
       const lines = zoneLinesOf({ traces });
-      expect(fills).toHaveLength(3 * outputs.slots.length);
-      expect(lines).toHaveLength(3 * outputs.slots.length);
+      expect(fills).toHaveLength(4 * outputs.slots.length);
+      expect(lines).toHaveLength(4 * outputs.slots.length);
       outputs.slots.forEach((slot, position) => {
         // Each zone is its own scan's traced, the humidity ratio shown in g/kg.
         const shown = (piece: PathPiece) => ({ x: piece.x, y: piece.y.map((hr) => hrUnit.fromSi(hr)) });
         const own = slot.scan.zones.map(traceRegion);
-        expect(fills.slice(3 * position, 3 * position + 3).map((fill) => fill.pieces)).toEqual(own.map((zone) => zone.rings.map(shown)));
-        expect(lines.slice(3 * position, 3 * position + 3).map((line) => line.pieces)).toEqual(own.map((zone) => zone.lines.map(shown)));
+        expect(fills.slice(4 * position, 4 * position + 4).map((fill) => fill.pieces)).toEqual(own.map((zone) => zone.rings.map(shown)));
+        expect(lines.slice(4 * position, 4 * position + 4).map((line) => line.pieces)).toEqual(own.map((zone) => zone.lines.map(shown)));
       });
       expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
       expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
@@ -205,7 +205,7 @@ describe("The page in the session", () => {
       const outputs = new Outputs(session);
       const zones = () => zoneLinesOf({ traces: outputs.chart?.traces ?? [] });
       const covers = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
-      expect(zones()).toHaveLength(9);
+      expect(zones()).toHaveLength(12);
       expect(covers()).toHaveLength(1);
       openAt(session, page.explore);
 

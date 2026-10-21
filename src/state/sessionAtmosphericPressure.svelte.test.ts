@@ -343,7 +343,7 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
       throw new Error("the chart has no hover grid");
     }
 
-    expect(zones).toHaveLength(3);
+    expect(zones).toHaveLength(4);
     expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
     // Column 25 is the slot's own 25 °C; a grid point's number is the slot's at
     // the relative humidity its humidity ratio has at that pressure, and a zone

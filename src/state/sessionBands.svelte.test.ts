@@ -122,7 +122,7 @@ describe("The Bands panel's edits through the session", () => {
     expect(zoneFillsOf({ traces }).map((fill) => fill.label)).toEqual(
       [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone)),
     );
-    expect(zoneLinesOf({ traces })).toHaveLength(3);
+    expect(zoneLinesOf({ traces })).toHaveLength(4);
     expect(paintedFills(outputs)).toEqual([]);
     expect(strokedEdges(outputs, defaultList)).toEqual([]);
   });

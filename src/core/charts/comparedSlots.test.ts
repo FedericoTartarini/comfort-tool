@@ -307,15 +307,15 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
 });
 
 describe("PMV (ISO 7730) drawn of three slots", () => {
-  it("fills and outlines nine zones on either chart", () => {
+  it("fills and outlines twelve zones on either chart", () => {
     const slots = threeSlots(pmvPpdIso);
     const dynamic = dynamicOf(pmvPpdIso);
     for (const spec of [
       psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots)),
       dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), dynamic.axes),
     ]) {
-      expect(zoneFillsOf(spec)).toHaveLength(9);
-      expect(outlinesOf(spec)).toHaveLength(9);
+      expect(zoneFillsOf(spec)).toHaveLength(12);
+      expect(outlinesOf(spec)).toHaveLength(12);
     }
   });
 
@@ -323,15 +323,15 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
     const largest = [...declaredZonesOf(pmvPpdIso)].sort((a, b) => b.limit - a.limit)[0];
     const label = copy.slotEntry("Input 2", copy.zoneLegend(largest));
-    expect(zoneFillsOf(spec)[3].label).toBe(label);
-    expect(outlinesOf(spec)[3].label).toBe(label);
+    expect(zoneFillsOf(spec)[4].label).toBe(label);
+    expect(outlinesOf(spec)[4].label).toBe(label);
   });
 
   it("is drawn in the Image as on the screen, the same traces of the same kinds", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
     const image = imageDescription({ chart: spec, title: "", summaryAndFooter: null, size: imageSize.doubleColumn });
     expect(image.chart.traces.map((trace) => trace.kind)).toEqual(spec.traces.map((trace) => trace.kind));
-    expect(zoneFillsOf(image.chart)).toHaveLength(9);
+    expect(zoneFillsOf(image.chart)).toHaveLength(12);
     expect(image.chart.legend).toEqual(spec.legend);
   });
 });
@@ -359,8 +359,8 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
     const lines = outlinesOf(spec);
     slots.forEach((slot, position) => {
       const alone = dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes);
-      expect(shapeOf(fills[position * 3])).toEqual(shapeOf(zoneFillsOf(alone)[0]));
-      expect(shapeOf(lines[position * 3])).toEqual(shapeOf(outlinesOf(alone)[0]));
+      expect(shapeOf(fills[position * 4])).toEqual(shapeOf(zoneFillsOf(alone)[0]));
+      expect(shapeOf(lines[position * 4])).toEqual(shapeOf(outlinesOf(alone)[0]));
     });
   });
 

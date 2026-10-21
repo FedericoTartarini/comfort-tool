@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PMV_CATEGORY_BINS_ISO, PMV_COMPLIANCE_INTERVAL_ASHRAE } from "jsthermalcomfort";
+import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_COMPLIANCE_INTERVAL_ASHRAE } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { categoryZones, intervalZone } from "./comfortZones";
 
 // Expected values are read off the library's own objects, never written as
 // numbers: the limits and the category labels are the library's.
-const bins = PMV_CATEGORY_BINS_ISO;
+const bins = PMV_CATEGORY_BINS_ISO_7730_2025;
 
 describe("categoryZones", () => {
   it("names one zone per bin below the sentinel edge, from the bin's label and upper edge", () => {
@@ -13,6 +13,7 @@ describe("categoryZones", () => {
       { label: copy.categoryZone(bins.labels[0]), limit: bins.edges[0], inclusive: bins.right },
       { label: copy.categoryZone(bins.labels[1]), limit: bins.edges[1], inclusive: bins.right },
       { label: copy.categoryZone(bins.labels[2]), limit: bins.edges[2], inclusive: bins.right },
+      { label: copy.categoryZone(bins.labels[3]), limit: bins.edges[3], inclusive: bins.right },
     ]);
   });
 

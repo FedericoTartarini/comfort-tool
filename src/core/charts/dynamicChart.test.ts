@@ -149,10 +149,10 @@ describe("dynamicSpec", () => {
 describe("the scanned dynamic chart of one slot", () => {
   const spec = dynamicSpec(request, isoChart.axes);
 
-  it("paints PMV (ISO 7730)'s three Comfort zones, nested, largest first, and one marker", () => {
+  it("paints PMV (ISO 7730)'s four Comfort zones, nested, largest first, and one marker", () => {
     const fills = zoneFillsOf(spec);
     expect(fills.map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdIso).map((zone) => copy.zoneLegend(zone)));
-    expect(fills).toHaveLength(3);
+    expect(fills).toHaveLength(4);
     const regions = fills.map((fill) => regionOf(spec, fill));
     regions.slice(1).forEach((inner, level) => {
       const outer = regions[level];
@@ -180,8 +180,8 @@ describe("the scanned dynamic chart of one slot", () => {
   it("paints them as the first of two slots paints its own, named without the slot", () => {
     const two = dynamicSpec(chartRequestForSlots(pmvPpdIso, [slot, slot]), isoChart.axes);
     const unnamed = ({ label: _label, ...zone }: PathTrace) => zone;
-    expect(zoneFillsOf(spec).map(unnamed)).toEqual(zoneFillsOf(two).slice(0, 3).map(unnamed));
-    expect(zoneLinesOf(spec).map(unnamed)).toEqual(zoneLinesOf(two).slice(0, 3).map(unnamed));
+    expect(zoneFillsOf(spec).map(unnamed)).toEqual(zoneFillsOf(two).slice(0, 4).map(unnamed));
+    expect(zoneLinesOf(spec).map(unnamed)).toEqual(zoneLinesOf(two).slice(0, 4).map(unnamed));
   });
 
   it("paints PMV (ASHRAE 55)'s one Comfort zone and one marker", () => {

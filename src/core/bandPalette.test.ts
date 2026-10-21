@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HEAT_INDEX_STRESS_CATEGORY_BINS,
-  PMV_CATEGORY_BINS_ISO,
+  PMV_CATEGORY_BINS_ISO_7730_2025,
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
   UTCI_STRESS_CATEGORY_BINS,
@@ -29,8 +29,8 @@ describe("bandColors", () => {
     expect(bandColors(HEAT_INDEX_STRESS_CATEGORY_BINS)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"]);
   });
 
-  it("gives ISO 7730's four bands YlOrRd-5 without its lightest, \"none\" unpainted", () => {
-    expect(bandColors(PMV_CATEGORY_BINS_ISO)).toEqual(["#fecc5c", "#fd8d3c", "#f03b20", undefined]);
+  it("gives ISO 7730:2025's five bands YlOrRd-6 without its lightest, \"none\" unpainted", () => {
+    expect(bandColors(PMV_CATEGORY_BINS_ISO_7730_2025)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", undefined]);
   });
 
   it("gives UTCI's ten stress categories five blues, RdBu-11's grey at the sixth position and four reds", () => {
@@ -112,12 +112,12 @@ describe("colorForBand", () => {
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Cold")).toBe(rdBu7[0]);
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe(rdBu7[3]);
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Hot")).toBe(rdBu7[6]);
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "B")).toBe("#fd8d3c");
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, "II")).toBe("#feb24c");
   });
 
   it("returns nothing for \"none\" and for a category past the last Edge or not named", () => {
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "none")).toBeUndefined();
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO, Number.NaN)).toBeUndefined();
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, "none")).toBeUndefined();
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, Number.NaN)).toBeUndefined();
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Freezing")).toBeUndefined();
   });
 });

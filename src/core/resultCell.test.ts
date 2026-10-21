@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PMV_CATEGORY_BINS_ISO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
+import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -15,7 +15,7 @@ import { unitSystem } from "./unitSystem";
 const q = quantities;
 
 const sensation = bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO);
-const isoCategory = bandColors(PMV_CATEGORY_BINS_ISO);
+const isoCategory = bandColors(PMV_CATEGORY_BINS_ISO_7730_2025);
 
 const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
@@ -89,10 +89,10 @@ describe("formatResultCell", () => {
 
 describe("classifiedOutputs", () => {
   it("reads each classified output's category and colours it from the output's own classifier's palette", () => {
-    // Neutral is the fourth of the seven sensation labels, B the second of A, B, C, none.
+    // Neutral is the fourth of the seven sensation labels, II the second of I, II, III, IV, none.
     expect(classifiedOutputs(pmvPpdIso, atDefaults(pmvPpdIso))).toEqual([
       { quantity: q.tsv, category: "Neutral", color: sensation[3] },
-      { quantity: q.category, category: "B", color: isoCategory[1] },
+      { quantity: q.category, category: "II", color: isoCategory[1] },
     ]);
     expect(classifiedOutputs(pmvPpdAshrae, atDefaults(pmvPpdAshrae))).toEqual([
       { quantity: q.tsv, category: "Neutral", color: sensation[3] },

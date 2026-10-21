@@ -226,7 +226,7 @@ describe("psychrometricSpec", () => {
     const drawn = psychrometricSpec({ ...request(temperatureMode.separate), model: isoWithoutBounds });
     const fills = zoneFillsOf(drawn);
     const { values } = scannedOf(request(temperatureMode.separate));
-    expect(zones).toHaveLength(3);
+    expect(zones).toHaveLength(4);
     expect(fills.map((zone) => zone.label)).toEqual(zones.map((zone) => copy.zoneLegend(zone)));
     fills.forEach((fill, position) => {
       const expected = values.map((row) => row.map((value) => Math.abs(value) < zones[position].limit));
@@ -236,7 +236,7 @@ describe("psychrometricSpec", () => {
 
   it("fills them in the slot's hue, the opacity rising inwards", () => {
     const drawn = zoneFillsOf(spec);
-    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(palette.slots[0], level, 3)));
+    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(palette.slots[0], level, 4)));
     expect(drawn.map((zone) => zone.fill)).toEqual(drawn.map((zone) => zone.color));
   });
 
@@ -282,7 +282,7 @@ describe("psychrometricSpec", () => {
     const drawn = psychrometricSpec(request(temperatureMode.operative));
     const scan = scannedOf(request(temperatureMode.operative));
     expect(drawn.layout.x.title).toContain(q.operative_tmp.label);
-    expect(zoneFillsOf(drawn)).toHaveLength(3);
+    expect(zoneFillsOf(drawn)).toHaveLength(4);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
       const db = scan.x[xIndex];
       expect(scan.values[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(scan.y[yIndex]), db, p), db), PMV_DIGITS);
@@ -314,10 +314,10 @@ describe("psychrometricSpec", () => {
     const everywhere = <Value>(value: Value) => ys.map(() => xs.map(() => value));
     // Each zone handed as the whole field: its one ring is the plot's frame.
     const whole = { x: xs, y: ys, inside: everywhere(true), across: everywhere(undefined), up: everywhere(undefined), centre: everywhere(undefined) };
-    const handed = { values: everywhere(0.1), zones: [whole, whole, whole], regionWithin: () => whole };
+    const handed = { values: everywhere(0.1), zones: [whole, whole, whole, whole], regionWithin: () => whole };
     const drawn = psychrometricSpec(request(temperatureMode.separate), [handed]);
     const frameRing = { x: [xs[0], xs[50], xs[50], xs[0]], y: [ys[0], ys[0], ys[50], ys[50]].map((hr) => hrUnit.fromSi(hr)) };
-    expect(zoneFillsOf(drawn).map((zone) => zone.pieces)).toEqual([[frameRing], [frameRing], [frameRing]]);
+    expect(zoneFillsOf(drawn).map((zone) => zone.pieces)).toEqual([[frameRing], [frameRing], [frameRing], [frameRing]]);
     expect(hoverGridOf(drawn).hoverText[0][0][2]).toBe(`${q.pmv.label}: 0.1`);
   });
 
@@ -361,9 +361,10 @@ describe("psychrometricSpec", () => {
     const zoneLabels = (model: RegisteredModel) =>
       zoneFillsOf(psychrometricSpec(chartRequestFor(model, startingSlot(model)))).map((zone) => zone.label);
     expect(zoneLabels(pmvPpdIso)).toEqual([
-      "Category C (|PMV| < 0.7)",
-      "Category B (|PMV| < 0.5)",
-      "Category A (|PMV| < 0.2)",
+      "Category IV (|PMV| < 1)",
+      "Category III (|PMV| < 0.7)",
+      "Category II (|PMV| < 0.5)",
+      "Category I (|PMV| < 0.2)",
     ]);
     expect(zoneLabels(pmvPpdAshrae)).toEqual(["Comfort zone (|PMV| < 0.5)"]);
   });
@@ -445,9 +446,9 @@ describe("psychrometricSpec", () => {
 
   it("offers one legend covering humidity, each zone and the slot", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
-    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "marker"]);
+    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "fill", "marker"]);
     expect(spec.legend[0].label).toBe(q.rh.label);
-    expect(spec.legend.slice(1, 4).map((entry) => entry.label)).toEqual(
+    expect(spec.legend.slice(1, 5).map((entry) => entry.label)).toEqual(
       isoZonesLargestFirst().map((zone) => copy.zoneLegend(zone)),
     );
   });

@@ -1,6 +1,6 @@
 import {
   HEAT_INDEX_STRESS_CATEGORY_BINS,
-  PMV_CATEGORY_BINS_ISO,
+  PMV_CATEGORY_BINS_ISO_7730_2025,
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
   UTCI_STRESS_CATEGORY_BINS,
@@ -86,7 +86,7 @@ const classifierPalettes: ReadonlyMap<ClassifierBins, PaletteEntry> = new Map<Cl
   [PMV_THERMAL_SENSATION_VOTE_BINS_ISO, palettes.diverging(3)],
   [PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE, palettes.diverging(3)],
   [HEAT_INDEX_STRESS_CATEGORY_BINS, palettes.sequential],
-  [PMV_CATEGORY_BINS_ISO, palettes.sequentialCategories],
+  [PMV_CATEGORY_BINS_ISO_7730_2025, palettes.sequentialCategories],
   // Neutral is "no thermal stress", the sixth of ten.
   [UTCI_STRESS_CATEGORY_BINS, palettes.diverging(5)],
 ]);

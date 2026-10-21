@@ -1,5 +1,5 @@
 import {
-  PMV_CATEGORY_BINS_ISO,
+  PMV_CATEGORY_BINS_ISO_7730_2025,
   pmv_ppd_iso,
   PMV_PPD_ISO_INFO,
   PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
@@ -14,8 +14,11 @@ import { quantities } from "$lib/core/quantities";
 const q = quantities;
 
 // 7730-2025, the library's default: its kernel follows ISO 7730:2025 Annex D
-// (ADR-0002 decision 6).
+// (ADR-0002 decision 6). The category bins are this edition's, the ones the
+// library classifies `category` with under it (decision 80): a change of
+// edition changes both.
 const ISO_EDITION = Standard.iso_7730_2025;
+const ISO_CATEGORY_BINS = PMV_CATEGORY_BINS_ISO_7730_2025;
 
 export const pmvPpdIso = {
   info: PMV_PPD_ISO_INFO,
@@ -71,14 +74,14 @@ export const pmvPpdIso = {
   //
   // The zones are cut from a scan of `run` itself: Fanger unmodified at this edition.
   // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
-  // Categories A, B and C, read off the bins the library classifies
-  // `category` with: the category on the result is the library's, strict at
-  // both ends, so a PMV of exactly 0.5 is C. The deployed tool's `≤` is a
-  // difference not ported.
+  // Categories I to IV, read off the bins the library classifies `category`
+  // with: the category on the result is the library's, strict at both ends,
+  // so a PMV of exactly 0.5 is III. The deployed tool's `≤` is a difference
+  // not ported.
   scan: {
     output: q.pmv,
     classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-    comfortZones: categoryZones(PMV_CATEGORY_BINS_ISO),
+    comfortZones: categoryZones(ISO_CATEGORY_BINS),
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;
