@@ -427,8 +427,7 @@ export function formatBound(bound: Bound, quantity: Quantity, system: UnitSystem
 /**
  * The sentence that `quantity` must be within `bound`, from its label, the
  * bound and its display unit under `system`: what a violation row and an entry
- * out of range both say, so a summary line and its row's bound read alike
- * (ADR-0002 decision 83, rule 4).
+ * out of range both say, so a summary line and its row's bound read alike.
  */
 export function boundSentence(quantity: Quantity, bound: Bound, system: UnitSystem): string {
   const unit = displayUnitFor(quantity, system);
