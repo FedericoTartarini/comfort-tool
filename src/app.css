@@ -497,6 +497,15 @@
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
+/* The icon on a dash standing for a violation (decision 83, rule 3): on the text's line, at its size, in the cell's
+   ink, before the dash. */
+.result-table .value svg {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-inline-end: 0.25em;
+	vertical-align: -0.125em;
+}
 /* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
    tall as its small buttons, and a colour box narrow enough that No colour stands beside it. */
 .bands-table [data-slot="table-head"] {

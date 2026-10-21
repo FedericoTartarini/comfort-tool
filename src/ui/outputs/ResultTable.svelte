@@ -168,7 +168,15 @@
               </Table.Cell>
             {/if}
             {#each model.table as quantity (quantity)}
-              <Table.Cell class="value">{formatResultCell(row.result, quantity, unitSystem, row.violations)}</Table.Cell>
+              {@const cell = formatResultCell(row.result, quantity, unitSystem, row.violations)}
+              <!-- A dash standing for a violation carries the summary's icon, named for screen readers; a dash for no
+                   value carries none, so the icon keeps one meaning (decision 83, rule 3). -->
+              <Table.Cell class="value">
+                {#if cell.violation}
+                  <TriangleAlertIcon role="img" aria-label={copy.violationMark} />
+                {/if}
+                {cell.text}
+              </Table.Cell>
             {/each}
           </Table.Row>
         {/each}

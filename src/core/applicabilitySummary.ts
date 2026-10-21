@@ -8,7 +8,7 @@
  * "Calculated, but outside these limits:" part names each bound the result
  * shown broke, a kept result's too. Every bound line is
  * `core/applicability.ts`'s {@link boundSentence}, so a line says what its
- * row's bound says (rule 4).
+ * row's bound says.
  */
 import { copy } from "$lib/text/copy";
 import { boundSentence, warningFor, type OutOfRangeRow, type ViolationRow } from "./applicability";
@@ -16,13 +16,11 @@ import type { Quantity } from "./quantities";
 import type { UnitSystem } from "./unitSystem";
 
 /**
- * One sentence of a summary, with the quantity whose entry on the panel it is
- * about, or `null` for none: the atmospheric pressure, which is no row on the
- * panel (decision 83, rule 4), and a quantity the run derives or outputs.
+ * One sentence of a summary. An object, not its string, so a sentence two
+ * slots or two rows repeat stays two lines.
  */
 export interface SummaryLine {
   readonly text: string;
-  readonly quantity: Quantity | null;
 }
 
 /**
@@ -39,11 +37,6 @@ export interface NotCalculatedPart {
 export interface ApplicabilitySummary {
   readonly notCalculated: NotCalculatedPart | null;
   readonly outsideLimits: readonly SummaryLine[];
-}
-
-/** The quantity whose entry a line leads to: `quantity`, while the `panel` has a row for it. */
-function entryOnPanel(quantity: Quantity, panel: readonly Quantity[]): Quantity | null {
-  return panel.includes(quantity) ? quantity : null;
 }
 
 /**
@@ -68,22 +61,14 @@ export function notCalculatedPart(
   };
   const lines = [...rows]
     .sort((a, b) => rank(a) - rank(b))
-    .map((row) => ({
-      text: boundSentence(row.quantity, row.bound, unitSystem),
-      quantity: entryOnPanel(row.quantity, panel),
-    }));
+    .map((row) => ({ text: boundSentence(row.quantity, row.bound, unitSystem) }));
   return { lines, result: keepsResult ? copy.notCalculatedKeptResult : copy.notCalculatedNoResult };
 }
 
 /**
  * The "Calculated, but outside these limits:" part for the violation `rows`
- * of the result shown, of every role, in their order: a line per row, leading
- * to the row it is reported on while the `panel` has one.
+ * of the result shown, of every role, in their order: a line per row.
  */
-export function outsideLimitsLines(
-  rows: readonly ViolationRow[],
-  panel: readonly Quantity[],
-  unitSystem: UnitSystem,
-): SummaryLine[] {
-  return rows.map((row) => ({ text: warningFor(row, unitSystem), quantity: entryOnPanel(row.quantity, panel) }));
+export function outsideLimitsLines(rows: readonly ViolationRow[], unitSystem: UnitSystem): SummaryLine[] {
+  return rows.map((row) => ({ text: warningFor(row, unitSystem) }));
 }

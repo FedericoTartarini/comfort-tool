@@ -326,7 +326,7 @@ describe("the applicability summary's Not calculated part", () => {
     session.slots[0].setEntered(q.v, 3);
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual({
-      lines: [{ text: "Air speed must be 0 – 0.97 m/s", quantity: q.v }],
+      lines: [{ text: "Air speed must be 0 – 0.97 m/s" }],
       result: "Showing the last valid result.",
     });
   });
@@ -340,7 +340,7 @@ describe("the applicability summary's Not calculated part", () => {
     session.setModel(heatIndexRothfusz);
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual({
-      lines: [{ text: "Dry-bulb air temperature must be ≥ 27 °C", quantity: q.tdb }],
+      lines: [{ text: "Dry-bulb air temperature must be ≥ 27 °C" }],
       result: "This model has no earlier result to show.",
     });
   });
@@ -351,10 +351,13 @@ describe("the applicability summary's Not calculated part", () => {
     session.slots[0].setEntered(q.v, 3);
     session.slots[0].setEntered(q.tdb, 35);
 
-    expect(outputs.slots[0].applicabilitySummary.notCalculated?.lines.map((line) => line.quantity)).toEqual([q.tdb, q.v]);
+    expect(outputs.slots[0].applicabilitySummary.notCalculated?.lines).toEqual([
+      { text: "Dry-bulb air temperature must be 10 – 30 °C" },
+      { text: "Air speed must be 0 – 0.97 m/s" },
+    ]);
   });
 
-  it("names an atmospheric pressure out of range with its bound, and no quantity whose entry it leads to", () => {
+  it("names an atmospheric pressure out of range with its bound", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     void outputs.slots[0].result;
@@ -362,7 +365,7 @@ describe("the applicability summary's Not calculated part", () => {
     session.atmosphericPressure = 20000;
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual({
-      lines: [{ text: "Atmospheric pressure must be 30000 – 110000 Pa", quantity: null }],
+      lines: [{ text: "Atmospheric pressure must be 30000 – 110000 Pa" }],
       result: "Showing the last valid result.",
     });
   });
@@ -377,7 +380,7 @@ describe("the applicability summary's Not calculated part", () => {
 
     const [first, second] = outputs.slots;
     expect(first.applicabilitySummary.notCalculated).toBeNull();
-    expect(second.applicabilitySummary.notCalculated?.lines.map((line) => line.quantity)).toEqual([q.v]);
+    expect(second.applicabilitySummary.notCalculated?.lines).toEqual([{ text: "Air speed must be 0 – 0.97 m/s" }]);
     expect(second.badge.name).toBe("Input 2");
   });
 });
@@ -400,30 +403,30 @@ describe("the applicability summary's Calculated, but outside these limits part"
     expect(outputs.slots[0].applicabilitySummary).toEqual({ notCalculated: null, outsideLimits: [] });
   });
 
-  it("names PMV (ASHRAE 55)'s air-speed limit without local control, leading to the entered air speed", () => {
+  it("names PMV (ASHRAE 55)'s air-speed limit without local control", () => {
     const { outputs } = ashraeWithoutControlAt09();
 
     expect(outputs.slots[0].applicabilitySummary).toEqual({
       notCalculated: null,
-      outsideLimits: [{ text: "Relative air speed must be ≤ 0.64 m/s", quantity: q.v }],
+      outsideLimits: [{ text: "Relative air speed must be ≤ 0.64 m/s" }],
     });
   });
 
-  it("leads the same line to the entered relative air speed under relative air speed entry", () => {
+  it("names the same limit under relative air speed entry", () => {
     const { session, outputs } = ashraeWithoutControlAt09();
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(outputs.slots[0].applicabilitySummary.outsideLimits.map((line) => line.quantity)).toEqual([q.vr]);
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([{ text: "Relative air speed must be ≤ 0.64 m/s" }]);
   });
 
-  it("names PMV (ISO 7730)'s vapour pressure over 2 700 Pa, which has no row on the panel to lead to", () => {
+  it("names PMV (ISO 7730)'s vapour pressure over 2 700 Pa, which has no row on the panel", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.rh, 95);
 
     expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([
-      { text: "Water vapour partial pressure must be 0 – 2.7 kPa", quantity: null },
+      { text: "Water vapour partial pressure must be 0 – 2.7 kPa" },
     ]);
   });
 
@@ -434,7 +437,7 @@ describe("the applicability summary's Calculated, but outside these limits part"
       session.slots[0].setEntered(quantity, value);
     }
 
-    expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([{ text: "Predicted Mean Vote must be -2 – 2", quantity: null }]);
+    expect(outputs.slots[0].applicabilitySummary.outsideLimits).toEqual([{ text: "Predicted Mean Vote must be -2 – 2" }]);
   });
 
   it("keeps a kept result's broken bounds, listed below the Not calculated part", () => {
@@ -446,7 +449,7 @@ describe("the applicability summary's Calculated, but outside these limits part"
     session.slots[0].setEntered(q.tdb, 35);
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual({
-      lines: [{ text: "Dry-bulb air temperature must be 10 – 30 °C", quantity: q.tdb }],
+      lines: [{ text: "Dry-bulb air temperature must be 10 – 30 °C" }],
       result: "Showing the last valid result.",
     });
     expect(outputs.slots[0].applicabilitySummary.outsideLimits.map((line) => line.text)).toEqual([

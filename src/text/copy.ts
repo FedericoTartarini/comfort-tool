@@ -177,6 +177,8 @@ export const copy = {
   footerLibrary: (version: string, day: string) => `${LIBRARY_NAME} ${version} · ${day}`,
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
+  // The accessible name of the icon on a dash standing for a violation (decision 83, rule 3).
+  violationMark: "The result is outside a limit",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).
   yes: "Yes",
   no: "No",

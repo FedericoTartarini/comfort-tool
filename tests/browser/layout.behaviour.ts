@@ -825,4 +825,41 @@ test.describe("the applicability summary", () => {
       expect(table.y, address).toBeGreaterThanOrEqual(part.y + part.height);
     }
   });
+
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control marks the compliance dash with the icon, named, and no input row, on Standard and Explore; at the defaults no dash is marked", async ({ page }) => {
+    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+      await openStandard(page, 1440, address);
+      const table = card(page, "Results").getByRole("table");
+      const marked = table.getByRole("cell").filter({ has: page.getByRole("img", { name: "The result is outside a limit" }) });
+      await expect(table.getByRole("cell", { name: "Yes", exact: true }), address).toHaveCount(1);
+      await expect(marked, address).toHaveCount(0);
+
+      const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+      await airSpeed.fill("0.9");
+
+      await expect(marked, address).toHaveCount(1);
+      await expect(marked, address).toHaveText("—");
+      // The icon is found where it stands, the Results card's, so none in the Inputs card is a finding.
+      const icon = "svg.lucide-triangle-alert";
+      await expect(card(page, "Results").locator(icon).first(), address).toBeVisible();
+      await expect(card(page, "Inputs").locator(icon), address).toHaveCount(0);
+      // The tab keeps its session across pages, so the next page opens at the default again only once it is typed back.
+      await airSpeed.fill("0.1");
+    }
+  });
+
+  test("at 1440 px under Compare, only the slot at 0.9 m/s without local control has its compliance dash marked", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    const table = card(page, "Results").getByRole("table");
+    const [first, second] = [/^Input 1/, /^Input 2/].map((name) => table.getByRole("row", { name }));
+    await expect(second).toBeVisible();
+    const mark = page.getByRole("img", { name: "The result is outside a limit" });
+
+    await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("0.9");
+
+    await expect(table.getByRole("cell").filter({ has: mark })).toHaveCount(1);
+    await expect(second.getByRole("cell").filter({ has: mark })).toHaveText("—");
+    await expect(first.getByRole("cell", { name: "Yes", exact: true })).toHaveCount(1);
+  });
 });

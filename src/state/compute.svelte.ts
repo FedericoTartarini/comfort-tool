@@ -311,7 +311,7 @@ export class SlotOutputs {
     const unitSystem = this.#session.unitSystem;
     return {
       notCalculated: notCalculatedPart(this.#stoppedRows, panel, this.#lastValid !== null, unitSystem),
-      outsideLimits: outsideLimitsLines(this.#violations, panel, unitSystem),
+      outsideLimits: outsideLimitsLines(this.#violations, unitSystem),
     };
   });
 
