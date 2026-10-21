@@ -37,7 +37,7 @@ A bound a completed run broke, as the library reports it with the result: either
 _Avoid_: warning (that is the sentence shown), error, out of range, non-compliance
 
 **Applicability summary**:
-The one place a slot's out-of-range entries and violations are listed together, with the result they qualify: first what was not calculated, then what was calculated outside a bound. Each line names its bound and, where its entry is on the panel, leads to it.
+The one place a slot's out-of-range entries and violations are listed together, with the result they qualify: first what was not calculated, then what was calculated outside a bound. Each line names its bound.
 _Avoid_: error summary, hints, warnings panel
 
 **Axis range**:
