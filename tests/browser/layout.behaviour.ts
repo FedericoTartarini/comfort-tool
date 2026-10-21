@@ -735,3 +735,29 @@ test.describe("the air-speed chart's Comfort zone", () => {
     await expect.poll(() => zoneArea(page)).toBe(capped);
   });
 });
+
+test.describe("the applicability summary", () => {
+  test("at 1440 px, an air speed typed out of range shows Not calculated between the Results heading and the table, the focus staying in the box, and back in range it goes", async ({ page }) => {
+    await openStandard(page, 1440);
+    const results = card(page, "Results");
+    const summary = results.getByRole("alert");
+    await expect(summary).toHaveCount(0);
+    const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+
+    await airSpeed.fill("5");
+
+    await expect(summary).toContainText("Not calculated");
+    await expect(summary).toContainText(/Air speed must be .* m\/s/);
+    await expect(summary).toContainText("Showing the last valid result.");
+    await expect(airSpeed).toBeFocused();
+    const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
+    const alert = await boxOf(summary);
+    const table = await boxOf(results.getByRole("table"));
+    expect(alert.y).toBeGreaterThanOrEqual(heading.y + heading.height);
+    expect(table.y).toBeGreaterThanOrEqual(alert.y + alert.height);
+
+    await airSpeed.fill("0.1");
+
+    await expect(summary).toHaveCount(0);
+  });
+});

@@ -1,9 +1,11 @@
 import {
-  isAtmosphericPressureOutOfRange,
-  outOfRangeQuantities,
+  atmosphericPressureRow,
+  outOfRangeRows,
   violationRows,
+  type OutOfRangeRow,
   type ViolationRow,
 } from "$lib/core/applicability";
+import { notCalculatedLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
@@ -17,7 +19,7 @@ import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDec
 import { runOn } from "$lib/core/modelRun";
 import { paintsBandsOn } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
-import { areSameEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
+import { areSameEntryModes, panelQuantities, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadge, type SlotBadge } from "$lib/core/slotBadge";
 import type { InputSlot, Session, SlotPosition } from "./session.svelte";
 
@@ -81,13 +83,14 @@ export class Outputs {
   /** One per slot of the session, by position, whether it is compared or not. */
   readonly #everySlot: readonly [SlotOutputs, SlotOutputs, SlotOutputs];
 
-  /** Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49). */
+  /**
+   * The pressure as a row the gate stops, or `undefined` while it is in range.
+   * Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).
+   */
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #atmosphericPressureOutOfRange = $derived.by(() =>
-    isAtmosphericPressureOutOfRange(this.#session.atmosphericPressure),
-  );
+  readonly #atmosphericPressureRow = $derived.by(() => atmosphericPressureRow(this.#session.atmosphericPressure));
 
   readonly #compared = $derived.by((): readonly SlotOutputs[] =>
     this.#session.comparedPositions.map((position) => this.#everySlot[position]),
@@ -154,9 +157,9 @@ export class Outputs {
 
   constructor(session: Session) {
     this.#session = session;
-    const atmosphericPressureOutOfRange = () => this.#atmosphericPressureOutOfRange;
+    const pressureRow = () => this.#atmosphericPressureRow;
     const scanFrame = () => this.#scanFrame;
-    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange, scanFrame);
+    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, pressureRow, scanFrame);
     this.#everySlot = [slotAt(0), slotAt(1), slotAt(2)];
   }
 
@@ -167,7 +170,7 @@ export class Outputs {
 
   /** Whether the session's atmospheric pressure is outside its bound. */
   get atmosphericPressureOutOfRange(): boolean {
-    return this.#atmosphericPressureOutOfRange;
+    return this.#atmosphericPressureRow !== undefined;
   }
 
   /**
@@ -237,7 +240,7 @@ export class SlotOutputs {
   /** Which of the session's slots this is, from 0. */
   readonly position: SlotPosition;
   readonly #session: Session;
-  readonly #atmosphericPressureOutOfRange: () => boolean;
+  readonly #atmosphericPressureRow: () => OutOfRangeRow | undefined;
   readonly #scanFrame: () => ScanFrame | null;
   /** What {@link #lastValid} last returned. Written and read only there. */
   #remembered: LastValidRun | null = null;
@@ -261,13 +264,19 @@ export class SlotOutputs {
   readonly #badge = $derived.by((): SlotBadge => slotBadge(this.position, this.#session.slotsNamed));
 
   /** Entered values the gate stops right now — the one thing that is never kept. */
-  readonly #outOfRangeQuantities = $derived.by(() =>
-    outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
+  readonly #outOfRangeRows = $derived.by(() =>
+    outOfRangeRows(this.#slot, this.#session.model, this.#session.atmosphericPressure),
   );
 
-  readonly #notCalculated = $derived.by(
-    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange(),
-  );
+  readonly #outOfRangeQuantities = $derived.by(() => this.#outOfRangeRows.map((row) => row.quantity));
+
+  /** Everything the gate stops right now: the entered values, then the pressure while it is out of range. */
+  readonly #stoppedRows = $derived.by((): readonly OutOfRangeRow[] => {
+    const pressure = this.#atmosphericPressureRow();
+    return pressure ? [...this.#outOfRangeRows, pressure] : this.#outOfRangeRows;
+  });
+
+  readonly #notCalculated = $derived.by(() => this.#stoppedRows.length > 0);
 
   readonly #lastValid = $derived.by((): LastValidRun | null => {
     const session = this.#session;
@@ -295,6 +304,18 @@ export class SlotOutputs {
     return last && result ? violationRows(last.model, result, this.#session.entryModes) : [];
   });
 
+  // Of what the gate stops now, never kept; it reads the last valid run only to say whether one is kept.
+  readonly #applicabilitySummary = $derived.by(
+    (): ApplicabilitySummary => ({
+      notCalculated: notCalculatedLines(
+        this.#stoppedRows,
+        panelQuantities(this.#session.model, this.#slot),
+        this.#lastValid !== null,
+        this.#session.unitSystem,
+      ),
+    }),
+  );
+
   // Of the last valid run, so a closed gate stops here too; and of the shared
   // frame, which an edit to another slot leaves as it was.
   readonly #scan = $derived.by((): ScannedField => {
@@ -308,18 +329,18 @@ export class SlotOutputs {
 
   /**
    * The slot at `position` in `session`, whose gate the session-wide
-   * `atmosphericPressureOutOfRange` closes as well, scanned in the chart's
-   * shared `scanFrame`.
+   * `atmosphericPressureRow` closes as well while it is one, scanned in the
+   * chart's shared `scanFrame`.
    */
   constructor(
     session: Session,
     position: SlotPosition,
-    atmosphericPressureOutOfRange: () => boolean,
+    atmosphericPressureRow: () => OutOfRangeRow | undefined,
     scanFrame: () => ScanFrame | null,
   ) {
     this.position = position;
     this.#session = session;
-    this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
+    this.#atmosphericPressureRow = atmosphericPressureRow;
     this.#scanFrame = scanFrame;
   }
 
@@ -344,6 +365,15 @@ export class SlotOutputs {
    */
   get notCalculated(): boolean {
     return this.#notCalculated;
+  }
+
+  /**
+   * What qualifies the result, in the words the Results card shows above the
+   * table (ADR-0002 decision 83, rule 2): while the gate is closed, the entries
+   * and the pressure it stops, each with its bound, and whether a result is kept.
+   */
+  get applicabilitySummary(): ApplicabilitySummary {
+    return this.#applicabilitySummary;
   }
 
   /**

@@ -17,7 +17,7 @@
     model: RegisteredModel;
     /**
      * One row per compared slot, in slot order. While their badges carry names, the table has an Input column naming
-     * each row beside its swatch, and the kept rows' note names the row it is about.
+     * each row beside its swatch, and the applicability summary names the slot each line is about.
      */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
@@ -39,12 +39,11 @@
   );
   const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
   const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
-  const uncalculatedRows = $derived(rows.filter((row) => row.notCalculated));
+  const notCalculatedRows = $derived(rows.filter((row) => row.notCalculated));
   const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 
-  function notCalculatedNote(row: SlotOutputs): string {
-    const note = row.result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult;
-    return row.badge.name === undefined ? note : copy.slotNote(row.badge.name, note);
+  function slotLine(row: SlotOutputs, text: string): string {
+    return row.badge.name === undefined ? text : copy.slotNote(row.badge.name, text);
   }
 </script>
 
@@ -54,6 +53,28 @@
 {/snippet}
 
 <Stack gap="2">
+  <!-- The applicability summary, under the Results heading and above the table (ADR-0002 decision 83, rule 2). Its
+       "Not calculated" part is the one place the page asks the person to act: the generated alert in its destructive
+       variant, announced at once, holding every compared slot's lines in slot order (decision 73, rule 9). -->
+  {#if notCalculatedRows.length > 0}
+    <Alert.Root variant="destructive">
+      <TriangleAlertIcon />
+      <Alert.Title>{copy.notCalculated}</Alert.Title>
+      {#each notCalculatedRows as row (row)}
+        {#each row.applicabilitySummary.notCalculated as line (line.text)}
+          <Alert.Description>
+            <span class="swatch-label">
+              {#if row.badge.name !== undefined}
+                {@render slotSwatch(row)}
+              {/if}
+              {slotLine(row, line.text)}
+            </span>
+          </Alert.Description>
+        {/each}
+      {/each}
+    </Alert.Root>
+  {/if}
+
   <!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region
        is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -110,31 +131,7 @@
     </Table.Root>
   </div>
 
-  <!-- The standard's caption, then the kept rows' note under it, so the note's coming and going moves the caption
-       nothing. The note is the one place the page asks the person to act: the generated alert in its destructive
-       variant (decision 73, rule 9). -->
-  {#if uncalculatedRows.length > 0 || standardCaption}
-    <Stack gap="2">
-      {#if standardCaption}
-        <span class="caption">{standardCaption}</span>
-      {/if}
-      {#if uncalculatedRows.length > 0}
-        <Alert.Root variant="destructive">
-          <TriangleAlertIcon />
-          <Alert.Title>
-            <Inline gap="4">
-              {#each uncalculatedRows as row (row)}
-                <span class="swatch-label">
-                  {#if row.badge.name !== undefined}
-                    {@render slotSwatch(row)}
-                  {/if}
-                  {notCalculatedNote(row)}
-                </span>
-              {/each}
-            </Inline>
-          </Alert.Title>
-        </Alert.Root>
-      {/if}
-    </Stack>
+  {#if standardCaption}
+    <span class="caption">{standardCaption}</span>
   {/if}
 </Stack>

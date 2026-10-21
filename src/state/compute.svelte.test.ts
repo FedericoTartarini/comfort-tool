@@ -23,7 +23,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { resultValueOf } from "./sessionTestReaders";
+import { heldSlot, resultValueOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -307,5 +307,76 @@ describe("Outputs", () => {
     expect(resultValueOf(outputs.slots[0].result, q.hi)).toBeTypeOf("number");
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeUndefined();
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the applicability summary's Not calculated part", () => {
+  it("is empty at the defaults", () => {
+    const outputs = new Outputs(new Session(pmvPpdIso));
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual([]);
+  });
+
+  it("names an air speed out of range with its bound, then says the last valid result is shown", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    void outputs.slots[0].result;
+
+    session.slots[0].setEntered(q.v, 3);
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual([
+      { text: "Air speed must be 0 – 0.97 m/s", quantity: q.v },
+      { text: "Showing the last valid result.", quantity: null },
+    ]);
+  });
+
+  it("says there is no earlier result for a model reached with an entry out of range", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    void outputs.slots[0].result;
+
+    // ISO 7730's default temperature is below the Rothfusz regression's floor.
+    session.setModel(heatIndexRothfusz);
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual([
+      { text: "Dry-bulb air temperature must be ≥ 27 °C", quantity: q.tdb },
+      { text: "This model has no earlier result to show.", quantity: null },
+    ]);
+  });
+
+  it("names two entries out of range in panel order", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.v, 3);
+    session.slots[0].setEntered(q.tdb, 35);
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated.map((line) => line.quantity)).toEqual([q.tdb, q.v, null]);
+  });
+
+  it("names an atmospheric pressure out of range with its bound, and no quantity whose entry it leads to", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    void outputs.slots[0].result;
+
+    session.atmosphericPressure = 20000;
+
+    expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual([
+      { text: "Atmospheric pressure must be 30000 – 110000 Pa", quantity: null },
+      { text: "Showing the last valid result.", quantity: null },
+    ]);
+  });
+
+  it("under Compare, has lines only for the slot whose gate is closed, which is named", () => {
+    const session = new Session(pmvPpdIso);
+    session.setCompare(true);
+    const outputs = new Outputs(session);
+    void outputs.slots.map((slot) => slot.result);
+
+    heldSlot(session, 1).setEntered(q.v, 3);
+
+    const [first, second] = outputs.slots;
+    expect(first.applicabilitySummary.notCalculated).toEqual([]);
+    expect(second.applicabilitySummary.notCalculated.map((line) => line.quantity)).toEqual([q.v, null]);
+    expect(second.badge.name).toBe("Input 2");
   });
 });

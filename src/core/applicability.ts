@@ -308,8 +308,18 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPr
  * reaches the pressure.
  */
 export function isAtmosphericPressureOutOfRange(atmosphericPressure: number): boolean {
+  return atmosphericPressureRow(atmosphericPressure) !== undefined;
+}
+
+/**
+ * The session's atmospheric pressure as a row the gate stops, with its kind's
+ * bound, or `undefined` while it is within it ({@link isAtmosphericPressureOutOfRange}).
+ */
+export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeRow | undefined {
   const bound = kindBounds[q.p_atm.kind];
-  return bound !== undefined && breaksBound(q.p_atm, bound, atmosphericPressure);
+  return bound !== undefined && breaksBound(q.p_atm, bound, atmosphericPressure)
+    ? { quantity: q.p_atm, value: atmosphericPressure, bound }
+    : undefined;
 }
 
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
@@ -414,8 +424,18 @@ export function formatBound(bound: Bound, quantity: Quantity, system: UnitSystem
   return min !== undefined ? `≥ ${min}` : `≤ ${max}`;
 }
 
-/** The sentence a violation row shows the user, from the bounded quantity's label, the bound and its display unit. */
+/**
+ * The sentence that `quantity` must be within `bound`, from its label, the
+ * bound and its display unit under `system`: what a violation row and an entry
+ * out of range both say, so a summary line and its row's bound read alike
+ * (ADR-0002 decision 83, rule 4).
+ */
+export function boundSentence(quantity: Quantity, bound: Bound, system: UnitSystem): string {
+  const unit = displayUnitFor(quantity, system);
+  return copy.applicabilityWarning(quantity.label, valueWithUnit(formatBound(bound, quantity, system), unit));
+}
+
+/** The sentence a violation row shows the user, of the bounded quantity ({@link boundSentence}). */
 export function warningFor(row: ViolationRow, unitSystem: UnitSystem): string {
-  const unit = displayUnitFor(row.bounded, unitSystem);
-  return copy.applicabilityWarning(row.bounded.label, valueWithUnit(formatBound(row.bound, row.bounded, unitSystem), unit));
+  return boundSentence(row.bounded, row.bound, unitSystem);
 }

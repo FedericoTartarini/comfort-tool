@@ -120,11 +120,12 @@ export const copy = {
   presetEmpty: "No matches.",
   inputColumn: "Input",
   complianceColumn: "Compliance",
-  // Two captions for one state (ADR-0002 decision 33): the gate keeps the last
-  // valid inputs of the *current* model, so a model reached with an entry out of
-  // range has nothing to show. The caller picks by whether it holds a result.
-  outOfRangeKeptResult: "Out of range — not calculated. Showing the last valid result.",
-  outOfRangeEmptyResult: "Out of range — not calculated. This model has no earlier result to show.",
+  // The applicability summary's first part (ADR-0002 decision 83, rule 2): its heading, and the line after the
+  // entries it names. Two lines for one state (decision 33): the gate keeps the last valid inputs of the *current*
+  // model, so a model reached with an entry out of range has nothing to show. The caller picks by whether it keeps one.
+  notCalculated: "Not calculated",
+  notCalculatedKeptResult: "Showing the last valid result.",
+  notCalculatedNoResult: "This model has no earlier result to show.",
   applicabilityHint: "Outside the model's applicability:",
   // One broken applicability row: `bound` already carries its unit.
   applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,
