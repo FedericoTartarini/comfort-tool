@@ -206,6 +206,9 @@ export const copy = {
   categoryZone: (category: string) => `Category ${category}`,
   zoneLegend: (zone: ComfortZone) =>
     `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
+  // The line under the plot of a slot whose Comfort zones are all empty, whatever emptied them (ADR-0002 decision 83
+  // rule 1, as noted 2026-10-22).
+  noComfortZone: "No comfort zone at these inputs.",
   // The Bands panel on Explore (ADR-0002 decision 59), in a dialog the chart's heading row opens (decision 73, rule 8).
   bands: "Bands",
   bandsReset: "Reset bands",

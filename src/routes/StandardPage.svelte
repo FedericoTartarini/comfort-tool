@@ -162,6 +162,22 @@ import { palette } from "$lib/core/palette";
           <PlotlyChart spec={outputs.chart} />
           <ChartLegend entries={outputs.chart.legend} />
         </div>
+        <!-- Under the plot, a caption per slot whose Comfort zones are all empty, its swatch while the slots are named
+             (ADR-0002 decision 83, rule 1); the axes, the marker, the hover and the legend stay as they are. -->
+        {#if outputs.chart.notes.length > 0}
+          <ul>
+            {#each outputs.chart.notes as note (note)}
+              <li class="caption">
+                <span class="swatch-label">
+                  {#if note.color}
+                    <span class="swatch swatch-marker" style:--swatch-color={note.color}></span>
+                  {/if}
+                  {note.text}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       {/if}
     </Stack>
   {/snippet}

@@ -863,3 +863,20 @@ test.describe("the applicability summary", () => {
     await expect(first.getByRole("cell", { name: "Yes", exact: true })).toHaveCount(1);
   });
 });
+
+/** A slot whose Comfort zones are all empty says so under the plot (ADR-0002 decision 83, rule 1, as noted 2026-10-22). */
+test.describe("the empty-zone line", () => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control says under the psychrometric plot that there is no comfort zone, and at the defaults says nothing", async ({ page }) => {
+    await openStandard(page, 1440);
+    const chart = card(page, "Chart");
+    await expect(page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name: "Psychrometric" })).toHaveAttribute("aria-checked", "true");
+    const line = chart.getByText("No comfort zone at these inputs.", { exact: true });
+    await expect(line).toHaveCount(0);
+
+    await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("0.9");
+
+    await expect(line).toBeVisible();
+    const plot = await boxOf(chart.locator(".chart-plot"));
+    expect((await boxOf(line)).y).toBeGreaterThanOrEqual(plot.y + plot.height);
+  });
+});

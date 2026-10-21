@@ -182,6 +182,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     },
     legend,
     annotations,
+    notes: paint.notes,
   };
 }
 

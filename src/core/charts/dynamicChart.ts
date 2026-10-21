@@ -87,6 +87,7 @@ export function dynamicSpec(request: ChartRequest, axes: ChartAxes, scans?: read
     layout: { x: axisFor(x, xUnit, xRange), y: axisFor(y, yUnit, yRange) },
     legend,
     annotations: [],
+    notes: paint.notes,
   };
 }
 

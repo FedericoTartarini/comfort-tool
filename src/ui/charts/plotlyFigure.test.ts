@@ -5,7 +5,7 @@ import { toPlotlyData } from "./plotlyFigure";
 /** `traces` as a chart of nothing else. */
 function chartOf(...traces: PathTrace[]): ChartSpec {
   const axis = { title: "", range: [0, 10] as const };
-  return { traces, layout: { x: axis, y: axis }, legend: [], annotations: [] };
+  return { traces, layout: { x: axis, y: axis }, legend: [], annotations: [], notes: [] };
 }
 
 describe("toPlotlyData", () => {

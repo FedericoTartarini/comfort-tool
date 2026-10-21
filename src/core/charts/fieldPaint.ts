@@ -9,8 +9,8 @@ import type { BandList } from "$lib/core/bands";
 import { displayUnitFor } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
-import type { ChartRequest } from "./chartRequest";
-import type { HoverGridTrace, HoverReadout, LegendEntry, PathPiece, PathTrace } from "./chartSpec";
+import type { ChartedSlot, ChartRequest } from "./chartRequest";
+import type { ChartNote, HoverGridTrace, HoverReadout, LegendEntry, PathPiece, PathTrace } from "./chartSpec";
 import { traceRegion, type RegionGrid, type TracedRegion } from "./regionTracer";
 import { comfortZonesOf, GRID, scannedField, type ScanFrame, type ScannedField, type Sweep } from "./scan";
 import { labelFor, readoutLine, samples, zoneInkFor, type ZoneInk } from "./specParts";
@@ -32,6 +32,8 @@ export interface FieldPaint {
   readonly bandLegend: readonly LegendEntry[];
   /** Each slot's Comfort zones' legend entries, largest first, in the request's slot order; none with a list. */
   readonly zoneLegendOfSlot: readonly (readonly LegendEntry[])[];
+  /** A note per slot whose Comfort zones are all empty, in the request's slot order; none with a list. */
+  readonly notes: readonly ChartNote[];
 }
 
 /**
@@ -51,7 +53,9 @@ export interface FieldPaint {
  * it, however many slots are drawn (ADR-0002 decisions 50, 58 and 71). Never the thermal-sensation palette for
  * a zone: it is diverging, and nested zones are levels of one thing. A zone
  * leaves out wherever a run breaks a bound ({@link ScannedField.zones}); a
- * band paints over it (ADR-0002 decision 77, rule 1).
+ * band paints over it (ADR-0002 decision 77, rule 1). A slot none of whose
+ * zones has a region gets a note saying so ({@link emptyZoneNoteFor}), the
+ * axes, its marker and the hover kept (decision 83, rule 1).
  *
  * Either way one hover grid reads both swept values and every slot's number,
  * labelled by its slot while there are several, and with a list the band the
@@ -73,6 +77,7 @@ export function fieldPaintFor(
   const outlines: PathTrace[] = [];
   const bandLegend: LegendEntry[] = [];
   const zoneLegendOfSlot = request.slots.map((): LegendEntry[] => []);
+  const notes: ChartNote[] = [];
   const lay = ({ line, fill }: RegionPaths) => {
     if (fill) {
       fills.push(fill);
@@ -90,11 +95,16 @@ export function fieldPaintFor(
   } else {
     const zones = comfortZonesOf(frame.model);
     request.slots.forEach((charted, position) => {
+      const regions = fields[position].zones.map((zone) => traced(zone));
       zones.forEach((zone, index) => {
         const ink = zoneInkFor(charted, copy.zoneLegend(zone), index, zones.length);
-        lay(zonePathsFor(traced(fields[position].zones[index]), ink));
+        lay(zonePathsFor(regions[index], ink));
         zoneLegendOfSlot[position].push(ink.legendEntry);
       });
+      // A model that declares no zone has none to empty.
+      if (regions.length > 0 && regions.every((region) => region.rings.length === 0)) {
+        notes.push(emptyZoneNoteFor(charted));
+      }
     });
   }
 
@@ -106,7 +116,19 @@ export function fieldPaintFor(
       return lines.map((line) => labelFor(charted, line));
     });
   });
-  return { fills, outlines, hoverGrid, bandLegend, zoneLegendOfSlot };
+  return { fills, outlines, hoverGrid, bandLegend, zoneLegendOfSlot, notes };
+}
+
+/**
+ * The note of `charted`, whose Comfort zones are all empty: one sentence,
+ * whatever emptied them, named and with the slot's swatch while the slot has
+ * a name, as the applicability summary names its lines (ADR-0002 decision 83
+ * rule 1, as noted 2026-10-22). The legend keeps the zones' entries.
+ */
+function emptyZoneNoteFor(charted: ChartedSlot): ChartNote {
+  return charted.name === undefined
+    ? { text: copy.noComfortZone }
+    : { text: copy.slotNote(charted.name, copy.noComfortZone), color: chartInk.marker(charted.hue) };
 }
 
 /** A region's line, and its fill where it is filled. */

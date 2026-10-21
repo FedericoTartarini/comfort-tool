@@ -13,6 +13,7 @@ const chart: ChartSpec = {
   layout: { x: { title: "x", range: [0, 1] }, y: { title: "y", range: [0, 1] } },
   legend: [{ label: "Comfort zone", swatch: "fill", color: "#000000" }],
   annotations: [],
+  notes: [],
 };
 
 describe("imageSize", () => {

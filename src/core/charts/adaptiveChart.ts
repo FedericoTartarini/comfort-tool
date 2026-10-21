@@ -96,6 +96,8 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
     layout: { x: axisFor(x, xUnit, xRange), y: axisFor(y, yUnit, yRange) },
     legend: legendOfSlot.flat(),
     annotations: [],
+    // Its zones are the library's lines, not regions traced over a scan, so no note says one is empty.
+    notes: [],
   };
 }
 

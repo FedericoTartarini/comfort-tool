@@ -98,10 +98,23 @@ export interface Annotation {
   readonly text: string;
 }
 
+/**
+ * A line the chart card draws under the plot: the note of a slot whose
+ * Comfort zones are all empty (ADR-0002 decision 83 rule 1), already worded,
+ * named by the slot while the slots are named.
+ */
+export interface ChartNote {
+  readonly text: string;
+  /** The slot's swatch colour, its marker's, while the slots are named; absent otherwise, as the text then names no slot. */
+  readonly color?: string;
+}
+
 export interface ChartSpec {
   readonly traces: readonly Trace[];
   readonly layout: { readonly x: AxisSpec; readonly y: AxisSpec };
   /** The chart's one legend (ADR §4.4). Plotly's own is switched off. */
   readonly legend: readonly LegendEntry[];
   readonly annotations: readonly Annotation[];
+  /** The lines under the plot, one per slot whose Comfort zones are all empty, in slot order; an Image draws none. */
+  readonly notes: readonly ChartNote[];
 }

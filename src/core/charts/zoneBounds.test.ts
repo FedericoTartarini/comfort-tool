@@ -7,20 +7,24 @@
  * against the library's own `warnings` on the inputs, and every region is
  * read off the drawn fill; the bounds the ticket names, ISO 7730's 30 °C and
  * 2 700 Pa and PMV (ASHRAE 55)'s 1.5 clo, are restated here as its acceptance
- * states them.
+ * states them. A slot whose zones a bound or its inputs leave all empty gets
+ * a note under the plot (decision 83, rule 1).
  */
 import { describe, expect, it } from "vitest";
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
+import { chartInk } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
+import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, withEntryModes, withOption, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { copy } from "$lib/text/copy";
 import type { ChartSpec, HoverGridTrace, PathTrace } from "./chartSpec";
 import { bandFillsOf, isInsideFill, regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
@@ -321,6 +325,49 @@ describe("PMV (ASHRAE 55)'s psychrometric zone", () => {
       expect(region[yIndex][xIndex]).toBe(Math.abs(pmv) < limitOf(pmvPpdAshrae, 0));
     }
     expect(countOf(region)).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * A chart whose Comfort zones are all empty for a slot says so under the
+ * plot, one note per such slot, on the Standard page alone (ADR-0002 decision
+ * 83 rule 1, as noted 2026-10-22): the one sentence, whatever emptied them.
+ */
+describe("the note of a slot whose Comfort zones are all empty", () => {
+  const empty = { text: copy.noComfortZone };
+  const tdbAndRh = { x: q.tdb, y: q.rh };
+
+  it("stands on PMV (ASHRAE 55)'s psychrometric chart at 0.9 m/s without local control, and not at its defaults", () => {
+    expect(psychrometricSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 }))).notes).toEqual([empty]);
+    expect(psychrometricSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false))).notes).toEqual([]);
+  });
+
+  it("does not stand on PMV (ISO 7730)'s chart while Category I is empty and Category IV is not", () => {
+    const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { tr: 15 })));
+    const fills = zoneFillsOf(spec);
+    // Categories IV to I, largest first: at a 15 °C mean radiant temperature only Category IV has a region.
+    expect(fills.map((fill) => fill.pieces.length > 0)).toEqual([true, false, false, false]);
+    expect(spec.notes).toEqual([]);
+  });
+
+  it("does not stand on Explore, where a Band list paints the field", () => {
+    const bands = bandListOf(pmvPpdAshrae.scan.classifier);
+    expect(psychrometricSpec({ ...chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 })), bands }).notes).toEqual([]);
+  });
+
+  it("under Compare stands for the empty slot alone, named and with its swatch", () => {
+    const spec = psychrometricSpec(chartRequestForSlots(pmvPpdAshrae, [ashraeSlot(false), ashraeSlot(false, { v: 0.9 })]));
+    expect(spec.notes).toEqual([{ text: copy.slotNote(copy.slotName(1), copy.noComfortZone), color: chartInk.marker(palette.slots[1]) }]);
+  });
+
+  it("stands on the dynamic chart alike where its zone empties", () => {
+    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 })), tdbAndRh).notes).toEqual([empty]);
+    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false)), tdbAndRh).notes).toEqual([]);
+  });
+
+  it("does not stand for a model that declares no Comfort zone, which has none to empty", () => {
+    const zoneless = { ...pmvPpdAshrae, scan: { ...pmvPpdAshrae.scan, comfortZones: undefined } };
+    expect(dynamicSpec(chartRequestFor(zoneless, ashraeSlot(false, { v: 0.9 })), tdbAndRh).notes).toEqual([]);
   });
 });
 
