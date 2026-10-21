@@ -361,7 +361,8 @@ Axis rules (2026-09-04):
   samples its isolines at 121 points across the temperature range. *(Corrected 2026-10-17, chart audit F5 and F6:
   this read "the extents the deployed CBE tool draws". The temperatures and `v` are ASHRAE 55's applicability; the
   deployed tool draws 10–36 °C on its psychrometric and temperature–humidity charts and 20–34 °C × 0–1.2 m/s on its
-  air-speed chart, and samples its isolines every 0.5 °C (ADR-0002 decision 5's note).)* Per-chart ranges were tried
+  air-speed chart, and samples its isolines every 0.5 °C (ADR-0002 decision 5's note).)* *(Noted 2026-10-22: the
+  declarations' ranges are now ADR-0002 decision 5's note of that date.)* Per-chart ranges were tried
   first, as this section originally specified, and bought nothing: the only thing the extra level produced was
   `10, 40` written four times in one declaration. Model level also makes the psychrometric x range follow the temperature entry mode for free, since it is
   the range of whichever quantity the mode puts on the axis. Should two charts of one model ever need different extents,
