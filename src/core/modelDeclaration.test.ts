@@ -295,12 +295,12 @@ describe("the clothing entry group", () => {
 
 describe("axisRangeFor", () => {
   it("returns the declared range when the model has one", () => {
-    const declared = pmvPpdIso.axisRanges.find((range) => range.quantity === q.tdb);
-    if (!declared) throw new Error("PMV (ISO 7730) declares a tdb range");
+    const declared = heatIndexRothfusz.axisRanges.find((range) => range.quantity === q.tdb);
+    if (!declared) throw new Error("Heat Index declares a tdb range");
     // A declared range equal to the applicability bound could not tell the two sources apart.
-    const bound = pmvPpdIso.info.inputs.tdb?.applicability;
+    const bound = heatIndexRothfusz.info.inputs.tdb?.applicability;
     expect([declared.min, declared.max]).not.toEqual([bound?.min, bound?.max]);
-    expect(axisRangeFor(pmvPpdIso, q.tdb)).toEqual({ min: declared.min, max: declared.max });
+    expect(axisRangeFor(heatIndexRothfusz, q.tdb)).toEqual({ min: declared.min, max: declared.max });
   });
 
   it("falls back to the applicability bound when none is declared, but both a min and a max exist", () => {
@@ -373,12 +373,7 @@ describe("axisRanges", () => {
     expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(adaptiveAshrae)).not.toThrow();
   });
 
-  it("draw PMV (ISO 7730)'s relative air speed as far as its air speed, from the declaration and not the applicability bound", () => {
-    // A declared range equal to the applicability bound could not tell the two sources apart.
-    const bound = pmvPpdIso.info.inputs.vr?.applicability;
-    expect(bound?.min).toBeDefined();
-    expect(bound?.max).toBeDefined();
-    expect(axisRangeFor(pmvPpdIso, q.vr)).not.toEqual({ min: bound?.min, max: bound?.max });
+  it("draw PMV (ISO 7730)'s relative air speed as far as its air speed", () => {
     expect(axisRangeFor(pmvPpdIso, q.vr)).toEqual(axisRangeFor(pmvPpdIso, q.v));
   });
 });

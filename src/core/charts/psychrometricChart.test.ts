@@ -392,9 +392,9 @@ describe("psychrometricSpec", () => {
   it("converts the axes to the displayed unit", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip));
     expect(spec.layout.x.title).toContain("°F");
-    // The declared viewport is 10–40 °C, as the deployed tool draws it.
+    // The declared viewport is 10–35 °C.
     expect(spec.layout.x.range[0]).toBeCloseTo(50, 10);
-    expect(spec.layout.x.range[1]).toBeCloseTo(104, 10);
+    expect(spec.layout.x.range[1]).toBeCloseTo(95, 10);
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBeCloseTo(78.8, 10);
     // The zones over the same scan as in SI, every vertex the SI vertex converted.
@@ -466,8 +466,8 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
   });
 
   it("reads the temperature, the humidity ratio and the slot's number, no relative humidity and no zone name", () => {
-    // Cell (row 10, column 25) at PMV (ISO 7730)'s defaults: 25 °C, 6 g/kg, about 30 %.
-    expect(hoverText[10][25]).toEqual([
+    // Cell (row 10, column 30) at PMV (ISO 7730)'s defaults: 25 °C, 6 g/kg, about 30 %.
+    expect(hoverText[10][30]).toEqual([
       "Dry-bulb air temperature: 25 °C",
       "Humidity ratio: 6 g/kg",
       "Predicted Mean Vote: -0.56",
@@ -488,24 +488,24 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
 
   it("reads under operative entry the operative temperature", () => {
     const operative = hoverGridOf(psychrometricSpec(request(temperatureMode.operative)));
-    expect(operative.hoverText[10][25][0]).toBe(`${q.operative_tmp.label}: 25 °C`);
+    expect(operative.hoverText[10][30][0]).toBe(`${q.operative_tmp.label}: 25 °C`);
   });
 
   it("reads in IP units in IP", () => {
     const ip = hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso), unitSystem.ip)));
-    expect(ip.hoverText[10][25].slice(0, 2)).toEqual(["Dry-bulb air temperature: 77 °F", "Humidity ratio: 6 lb/klb"]);
-    expect(ip.hoverText[10][25][2]).toBe(hoverText[10][25][2]);
+    expect(ip.hoverText[10][30].slice(0, 2)).toEqual(["Dry-bulb air temperature: 77 °F", "Humidity ratio: 6 lb/klb"]);
+    expect(ip.hoverText[10][30][2]).toBe(hoverText[10][30][2]);
   });
 
   it("reads every compared slot's number, each labelled by its slot", () => {
     const slots = [startingSlot(pmvPpdIso), enteredSlotFor(pmvPpdIso, { clo: 1 }), enteredSlotFor(pmvPpdIso, { met: 1.4 })];
     const compared = hoverGridOf(psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots))).hoverText;
     const alone = slots.map((entered) => hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, entered))).hoverText);
-    expect(compared[10][25]).toEqual([
-      ...hoverText[10][25].slice(0, 2),
-      ...alone.map((field, position) => copy.slotEntry(`Input ${position + 1}`, field[10][25][2])),
+    expect(compared[10][30]).toEqual([
+      ...hoverText[10][30].slice(0, 2),
+      ...alone.map((field, position) => copy.slotEntry(`Input ${position + 1}`, field[10][30][2])),
     ]);
-    expect(new Set(alone.map((field) => field[10][25][2])).size).toBe(3);
+    expect(new Set(alone.map((field) => field[10][30][2])).size).toBe(3);
   });
 });
 

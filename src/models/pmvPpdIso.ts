@@ -50,21 +50,26 @@ export const pmvPpdIso = {
     { quantity: q.met, value: 1.1 },
     { quantity: q.clo, value: 0.5, calculators: [customEnsemble] },
   ],
-  // The ranges ASHRAE 55's applicability spans (temperatures 10–40 °C, `vr`
-  // 0–2 m/s), as PMV (ASHRAE 55)'s, not ISO 7730's narrower bounds (ADR §4.4)
-  // — the charts show what the field looks like around the standard, and
-  // `info`'s applicability says which of it the user may enter.
+  // Demonstration ranges: the deployed tool's where it draws the quantity and
+  // its range holds what may be entered (`hr`, 30 g/kg past the 27.2 g/kg of
+  // saturated air at 30 °C; `rh`), else what may be entered (`tr`; `v` by
+  // `vr`'s bound; the clothing insulation, and the dynamic one with it, past
+  // the 3.13 clo the gate's converted bound reaches where `vr` is 1 m/s).
+  // `tdb` and `operative_tmp` end at 35 °C, one short of the deployed EN
+  // page's 36, where the single-column Image's 80 % and 90 % labels would
+  // overlap. The Comfort zones end at ISO 7730's 30 °C and 2 700 Pa inside
+  // the plot.
   axisRanges: [
-    { quantity: q.tdb, min: 10, max: 40 },
+    { quantity: q.tdb, min: 10, max: 35 },
     { quantity: q.tr, min: 10, max: 40 },
-    { quantity: q.operative_tmp, min: 10, max: 40 },
+    { quantity: q.operative_tmp, min: 10, max: 35 },
     { quantity: q.hr, min: 0, max: 0.03 },
-    { quantity: q.v, min: 0, max: 2 },
-    { quantity: q.vr, min: 0, max: 2 },
+    { quantity: q.v, min: 0, max: 1 },
+    { quantity: q.vr, min: 0, max: 1 },
     { quantity: q.rh, min: 0, max: 100 },
-    { quantity: q.met, min: 1, max: 4 },
-    { quantity: q.clo, min: 0, max: 2 },
-    { quantity: q.clo_dynamic, min: 0, max: 2 },
+    { quantity: q.met, min: 0.8, max: 4 },
+    { quantity: q.clo, min: 0, max: 4 },
+    { quantity: q.clo_dynamic, min: 0, max: 4 },
   ],
   table: [q.pmv, q.ppd],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the

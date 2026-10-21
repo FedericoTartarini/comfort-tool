@@ -345,19 +345,19 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
 
     expect(zones).toHaveLength(4);
     expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
-    // Column 25 is the slot's own 25 °C; a grid point's number is the slot's at
+    // Column 30 is the slot's own 25 °C; a grid point's number is the slot's at
     // the relative humidity its humidity ratio has at that pressure, and a zone
     // holds it where its magnitude is within the zone's limit.
-    expect(grid.x[25]).toBeCloseTo(TDB, 9);
+    expect(grid.x[30]).toBeCloseTo(TDB, 9);
     const limits = [...pmvPpdIso.scan.comfortZones].map((zone) => zone.limit).sort((a, b) => b - a);
     zones.forEach((zone, position) => {
       const region = insideAtSamples(zone, grid.x, grid.y);
       for (const yIndex of [0, 10, 20]) {
         const rh = hr_to_rh(hrUnit.toSi(grid.y[yIndex]), TDB, LOWER_PRESSURE);
-        expect(region[yIndex][25]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh))) < limits[position]);
+        expect(region[yIndex][30]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh))) < limits[position]);
       }
     });
-    expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][25])).toBe(true);
+    expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][30])).toBe(true);
   });
 
   it("ends the humidity-ratio axis at the declared upper end times the default pressure over the pressure", () => {

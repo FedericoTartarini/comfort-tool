@@ -276,8 +276,8 @@ describe("the psychrometric chart given a Band list", () => {
         expect(hoverText[yIndex][xIndex].slice(3)).toEqual(typeof band === "string" ? [band] : []);
       }),
     );
-    // Cell (row 10, column 25) at PMV (ISO 7730)'s defaults: 25 °C, 6 g/kg, about 30 %.
-    expect(hoverText[10][25]).toEqual([
+    // Cell (row 10, column 30) at PMV (ISO 7730)'s defaults: 25 °C, 6 g/kg, about 30 %.
+    expect(hoverText[10][30]).toEqual([
       "Dry-bulb air temperature: 25 °C",
       "Humidity ratio: 6 g/kg",
       "Predicted Mean Vote: -0.56",

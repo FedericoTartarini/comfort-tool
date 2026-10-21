@@ -128,8 +128,9 @@ describe("dynamicSpec", () => {
   it("converts both axes to the displayed unit, every zone's vertex the SI vertex converted", () => {
     const spec = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, isoChart.axes);
     const { x, y } = hoverGridOf(spec);
+    // 10 °C and 1 m/s, the declared ends.
     expect(x[0]).toBeCloseTo(50, 10);
-    expect(last(y)).toBeCloseTo(393.7, 2);
+    expect(last(y)).toBeCloseTo(196.85, 2);
     expect(spec.layout.y.title).toContain("fpm");
     const [xUnit, yUnit] = [displayUnitFor(q.tdb, unitSystem.ip), displayUnitFor(q.v, unitSystem.ip)];
     const si = zoneFillsOf(dynamicSpec(request, isoChart.axes));
@@ -330,9 +331,8 @@ describe("axes across an air-speed entry mode switch", () => {
     expect(markerOf(spec)?.y).toBe(0.4);
   });
 
-  it("draws the relative air speed as far as the air speed, not to the standard's applicability bound", () => {
+  it("draws the relative air speed as far as the air speed", () => {
     const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 })), isoChart.axes);
-    expect(spec.layout.y.range).toEqual([0, 2]);
     expect(spec.layout.y.range).toEqual(declaredRangeOf(q.v));
   });
 
@@ -379,24 +379,24 @@ describe("axes across a clothing entry mode switch", () => {
 describe("the scanned chart's hover readout", () => {
   const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
-  // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
-  // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.2209… on the
+  // Cell (row 4, column 32) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
+  // tdb 26 °C, v 0.08 m/s, where the model gives a PMV of -0.1459… on the
   // clothing ISO 7730's rule gives it (0.4238 clo for the 0.5 clo entered).
   it("reads both axis values and the output, each number at two decimals at most", () => {
     const grid = hoverGridOf(dynamicSpec(pmvRequest, isoChart.axes));
-    expect(grid.hoverText[2][26]).toEqual([
-      "Dry-bulb air temperature: 25.6 °C",
+    expect(grid.hoverText[4][32]).toEqual([
+      "Dry-bulb air temperature: 26 °C",
       "Air speed: 0.08 m/s",
-      "Predicted Mean Vote: -0.22",
+      "Predicted Mean Vote: -0.15",
     ]);
   });
 
   it("reads the axis values in the displayed unit", () => {
     const grid = hoverGridOf(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, isoChart.axes));
-    expect(grid.hoverText[2][26]).toEqual([
-      "Dry-bulb air temperature: 78.08 °F",
+    expect(grid.hoverText[4][32]).toEqual([
+      "Dry-bulb air temperature: 78.8 °F",
       "Air speed: 15.75 fpm",
-      "Predicted Mean Vote: -0.22",
+      "Predicted Mean Vote: -0.15",
     ]);
   });
 });

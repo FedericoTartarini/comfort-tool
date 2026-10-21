@@ -4,7 +4,7 @@ import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { valuesReader } from "$lib/core/libraryInputs";
-import { requireAxisRange, type DeclaredAdaptiveChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { requireAxisRange, type AxisRange, type DeclaredAdaptiveChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -21,9 +21,24 @@ import { labelFor } from "./specParts";
 
 const q = quantities;
 
-/** PMV (ISO 7730)'s declaration with `chart` as its one chart, on whose inputs and ranges a fixture chart is drawn. */
+/**
+ * The axis ranges a fixture chart is drawn over: the fixture's own, so a
+ * change to PMV (ISO 7730)'s demonstration ranges moves no expectation here.
+ */
+const fixtureAxisRanges: readonly AxisRange[] = [
+  { quantity: q.tdb, min: 10, max: 40 },
+  { quantity: q.tr, min: 10, max: 40 },
+  { quantity: q.operative_tmp, min: 10, max: 40 },
+  { quantity: q.v, min: 0, max: 2 },
+  { quantity: q.vr, min: 0, max: 2 },
+];
+
+/** PMV (ISO 7730)'s declaration over the fixture's ranges, on whose inputs a fixture chart is drawn. */
+const fixtureModel: RegisteredModel = { ...pmvPpdIso, axisRanges: fixtureAxisRanges };
+
+/** {@link fixtureModel} with `chart` as its one chart. */
 function isoDrawing(chart: DeclaredAdaptiveChart): RegisteredModel {
-  return { ...pmvPpdIso, charts: [chart] };
+  return { ...fixtureModel, charts: [chart] };
 }
 
 const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
@@ -31,9 +46,9 @@ const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
 const { v } = valuesReader(startingSlot(pmvPpdIso).values);
 
-/** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
-function declaredRangeOf(quantity: Quantity): [number, number] {
-  const { min, max } = requireAxisRange(pmvPpdIso, quantity);
+/** The fixture's range for `quantity`, as the layout writes a range. */
+function fixtureRangeOf(quantity: Quantity): [number, number] {
+  const { min, max } = requireAxisRange(fixtureModel, quantity);
   return [min, max];
 }
 
@@ -98,7 +113,7 @@ describe("a declared limits source", () => {
     const [fill] = fillsOf(spec);
     const [upper, lower] = linesOf(spec);
     expect(fill?.label).toBe("80% acceptability");
-    const [min, max] = declaredRangeOf(q.operative_tmp);
+    const [min, max] = fixtureRangeOf(q.operative_tmp);
     const [region, upperLine] = [onlyPieceOf(fill), onlyPieceOf(upper)];
     expect(region.x).toEqual([min, max, max, min]);
     expect(upperLine.x).toEqual([min, max]);
@@ -116,7 +131,7 @@ describe("a declared limits source", () => {
   it("stays on its declared operative axis under separate entry, where the dynamic chart would map it to tdb", () => {
     const spec = adaptiveSpec(chartRequestFor(model, apart));
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
-    expect(spec.layout.x.range).toEqual(declaredRangeOf(q.operative_tmp));
+    expect(spec.layout.x.range).toEqual(fixtureRangeOf(q.operative_tmp));
     expect(spec.layout.y.title).toContain(q.v.label);
   });
 

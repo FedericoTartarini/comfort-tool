@@ -42,11 +42,12 @@ export const adaptiveAshrae = {
     { quantity: q.t_running_mean, value: 25 },
     { quantity: q.v, value: 0.3 },
   ],
-  // The deployed tool's range for the operative temperature axis. The running
-  // mean's axis is its applicability, which an undeclared quantity falls back
-  // to (ADR-0002 decision 5). No other quantity carries an axis.
+  // Demonstration ranges, each at least as wide as what may be entered: the
+  // operative temperature over the 10–40 °C `tdb` and `tr` are entered within.
+  // The running mean's axis is its applicability, which an undeclared quantity
+  // falls back to (ADR-0002 decision 5). No other quantity carries an axis.
   axisRanges: [
-    { quantity: q.operative_tmp, min: 14, max: 35 },
+    { quantity: q.operative_tmp, min: 10, max: 40 },
   ],
   // The library's outputs, in its order. The two acceptabilities are the
   // reading, as Yes or No: the compliance column appears only for a classified

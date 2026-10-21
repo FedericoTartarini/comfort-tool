@@ -68,7 +68,12 @@ export const pmvPpdAshrae = {
     { quantity: q.met, value: 1.1 },
     { quantity: q.clo, value: 0.5, calculators: [customEnsemble, clothingFromOutdoorTemperature] },
   ],
-  // The same ranges as PMV (ISO 7730) today; each declaration owns its own.
+  // Demonstration ranges: the deployed tool's where it draws the quantity and
+  // its range holds what may be entered (`rh`), else what may be entered (`v`
+  // by `vr`'s bound; the clothing insulation, and the dynamic one with it,
+  // past the 2.14 clo the gate's converted bound reaches at 4 met). One
+  // exception, `hr`: the deployed tool's 30 g/kg, though entry reaches the
+  // 48.9 g/kg of saturated air at 40 °C.
   axisRanges: [
     { quantity: q.tdb, min: 10, max: 40 },
     { quantity: q.tr, min: 10, max: 40 },
@@ -78,8 +83,8 @@ export const pmvPpdAshrae = {
     { quantity: q.vr, min: 0, max: 2 },
     { quantity: q.rh, min: 0, max: 100 },
     { quantity: q.met, min: 1, max: 4 },
-    { quantity: q.clo, min: 0, max: 2 },
-    { quantity: q.clo_dynamic, min: 0, max: 2 },
+    { quantity: q.clo, min: 0, max: 2.2 },
+    { quantity: q.clo_dynamic, min: 0, max: 2.2 },
   ],
   // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
   table: [q.pmv, q.ppd, q.compliance],
