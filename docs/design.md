@@ -148,8 +148,8 @@ reads "Presets"; with Compare on it is the list icon with "Presets" as its toolt
 x. An option is a switch with its label, tucked under the row it qualifies at the field gap, PMV (ASHRAE 55)'s under
 the air speed (decision 36); with Compare on, one switch per slot column, "On" or "Off" beside it. The box is tinted
 `ground`; a select's trigger is not. With Compare on, the three slot buttons head three columns of the same `24rem`
-(decision 50); every pressed toggle is filled with the brand. A row a violation is reported on carries the
-triangle-alert icon beside its bound, in ink (decision 83, rule 3). The card ends with the Input calculators button, full width, outline, "Input calculators" over the names of
+(decision 50); every pressed toggle is filled with the brand.
+The card ends with the Input calculators button, full width, outline, "Input calculators" over the names of
 the calculators the model declares, which opens one tabbed dialog of one fixed height (decision 75); a model that
 declares none has no button.
 
@@ -166,7 +166,7 @@ under it a view row, on every chart, holds the chart type toggle-group, named "C
 where the chart has them, left-aligned (decision 73, rule 8 as revised 2026-10-12). The
 plot is the exported image's 4:3 plot area, capped at `24rem` tall, so the screen and the file are one picture; it
 stands on the card's leading edge, and no control moves it; content above the chart card may (the applicability
-summary, Compare's rows). On Standard, a slot whose Comfort zone is empty has a line under the plot saying why
+summary, Compare's rows). On Standard, a slot whose Comfort zone is empty has a line under the plot saying so
 (decision 83, rule 1). The legend is a column beside it, `10rem` wide by preference, centred
 in a room of at most `18rem` to its right, entries wrapping to lines. Bands is a dialog, `40rem` as every dialog (decision 67, rule 9),
 opened from the heading row; what the dialog does is decided apart (`.scratch/open-points.md` B6). The readout stays
