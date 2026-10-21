@@ -362,6 +362,21 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > | 5 | The Time-series grilling (decision 57 rule 6) | the grilling itself | 4 |
 > | 6 | Steps 4 to 8 of the order of 2026-10-17 | as written there | 5 |
 
+> **2026-10-21 — position, the library's scope reset**: jsthermalcomfort reset its scope on 2026-10-21 (its ADR 0016,
+> upstream first): `feat/v2-typescript-setup` is at `7e104f5`, which keeps `4aa49f6` (ISO 7730 bins per edition) and
+> reverts Adaptive's step and the air-speed rule on `v` (`.scratch/library-scope-reset-2026-10-21.md`). ADR-0002
+> decision 82 (`33de430`) has the app follow the library's values until pythermalcomfort releases a change: decision
+> 79 rule 2 now decides what is raised upstream, decision 81 and the step of 2026-10-19 are withdrawn, decision 77
+> rule 3 reads as taken on 2026-10-17, and decision 80 stands. Built: `4c56a11` and `1692e71` revert
+> `.scratch/standard-check/` tickets 02 and 01, and `aec2b5e` moves the lock to `7e104f5` with ISO 7730:2025's
+> categories I to IV; the uncommitted adaptation to `59330f6` is kept on `wip/lib-59330f6-adapt-2026-10-21`
+> (`5b37f2f`). `.scratch/standard-check/` is closed. Of the order of 2026-10-19, rows 1 and 3 are done as far as the
+> reset leaves them; row 2's issues, #486 and #487, stay open upstream, tracked in `.scratch/open-points.md` B20 and
+> B21; row 4's browser walk of the three charts was not made, the reset changing no chart but PMV (ISO 7730)'s zones.
+> `npm test` passes at 1128 tests and `npm run test:browser` at 71. **Next: a numbered proposal for ADR-0002 decision
+> 83 from `.scratch/applicability-display/notes.md`, read first for sentences that rest on decision 81, then the
+> Time-series grilling (decision 57 rule 6).**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
