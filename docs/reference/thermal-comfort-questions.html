@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thermal comfort questions &middot; CBE Thermal Comfort Tool</title><style>
+<title>Frequently asked questions · rewrite/v1 · CBE Thermal Comfort Tool</title><style>
 :root{--bg:#fff;--fg:#1c1917;--muted:#6b6663;--line:#e7e5e4;--accent:#0f766e;--soft:#f7f6f5;--code:#f4f4f5}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
@@ -43,184 +43,57 @@ footer.pf{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font
 figure.screenshot{margin:22px 0;text-align:center}
 figure.screenshot img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #e7e5e4;border-radius:8px}
 figure.screenshot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
-</style></head><body>
+</style><style>
+/* Documentation status labels; the existing page layout is retained. */
+.doc-status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:700;letter-spacing:.025em;vertical-align:middle;margin-bottom:12px}.doc-v1{background:#e3f3ec;color:#155e47;border:1px solid #b6dbcc}.doc-archived{background:#fff1d6;color:#70420b;border:1px solid #e7cd9c}.doc-banner{padding:14px 18px;margin:0 0 22px;border-left:4px solid #b17d25;background:#fff8e8;font-size:14px;line-height:1.6}.doc-source{font-size:13px;color:#625d58}.doc-permalink{font-size:.8em;text-decoration:none;margin-left:8px}.doc-toc{display:flex;flex-wrap:wrap;gap:5px 18px;list-style:none;padding:0}.doc-version-nav{font-size:11px;color:#62605c;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.06em}.doc-old-nav{font-size:11px;color:#88581c;margin-left:5px}h2[id],h3[id]{scroll-margin-top:22px}.doc-skip{position:absolute;left:-10000px}.doc-skip:focus{left:12px;top:12px;z-index:5;background:white;padding:12px}a:focus-visible{outline:3px solid #b45309;outline-offset:3px}.doc-table{overflow-x:auto}@media(max-width:760px){.doc-table table{min-width:460px}}@media print{aside{display:none}.wrap{display:block}main{max-width:none;padding:0}.doc-banner{border:1px solid #999}}
+</style><link rel="stylesheet" href="../assets/navigation.css?v=20261023-1" data-docs-navigation>
+</head><body><a class="doc-skip" href="#main">Skip to content</a>
 <div class="wrap">
-<aside>
-<a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+<aside class="docs-sidebar">
+<a href="../index.html" class="brand">CBE Thermal Comfort Tool</a>
 <div class="brandsub">Documentation</div>
-<ul>
-<li><a class="" href="../index.html">Home</a></li>
+<nav aria-label="Documentation">
+<ul><li><a href="../index.html">Home</a></li></ul>
+<h4>rewrite/v1 — models</h4><ul>
+<li><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a href="../models/heat-index.html">Heat Index (Rothfusz)</a></li>
 </ul>
-<h4>Getting started</h4>
-<ul>
-<li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
-<li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
-<li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
-<li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
-<li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+<h4>rewrite/v1 — reference</h4><ul>
+<li><a href="glossary.html">Glossary</a></li>
+<li><a href="thermal-comfort-questions.html" class="on" aria-current="page">FAQ</a></li>
+<li><a href="references.html">References and citations</a></li>
+<li><a href="../sitepages/contributing.html">Contributing</a></li>
 </ul>
-<h4>Workspaces</h4>
-<ul>
-<li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
-<li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
-<li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
-<li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
-<li><a class="" href="../workspaces/explore.html">Explore</a></li>
-<li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+<h4>Archived — Getting started</h4><ul>
+<li><a href="../getting-started/main-interface.html">Main interface</a></li>
+<li><a href="../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a href="../getting-started/compare-mode.html">Compare with a baseline</a></li>
+<li><a href="../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a href="../getting-started/sharing.html">Sharing a calculation</a></li>
 </ul>
-<h4>Models</h4>
-<ul>
-<li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
-<li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
-<li><a class="" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
-<li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
-<li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
-<li><a class="" href="../models/utci.html">UTCI</a></li>
-<li><a class="" href="../models/heat-index.html">Heat Index</a></li>
-<li><a class="" href="../models/humidex.html">Humidex</a></li>
-<li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
+<h4>Archived — workspaces and features</h4><ul>
+<li><a href="../workspaces/ashrae-55.html">ASHRAE 55 workspace</a></li>
+<li><a href="../workspaces/iso-7730.html">ISO 7730 workspace</a></li>
+<li><a href="../workspaces/en-16798-1.html">EN 16798-1 workspace</a></li>
+<li><a href="../workspaces/iso-7933.html">ISO 7933 workspace</a></li>
+<li><a href="../workspaces/explore.html">Explore workspace</a></li>
+<li><a href="../workspaces/time-series.html">Time-series</a></li>
+<li><a href="../features/input-modifiers.html">Input modifiers</a></li>
 </ul>
-<h4>Features</h4>
-<ul>
-<li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+<h4>Archived — other models</h4><ul>
+<li><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a href="../models/phs.html">PHS (ISO 7933)</a></li>
+<li><a href="../models/utci.html">UTCI</a></li>
+<li><a href="../models/humidex.html">Humidex</a></li>
+<li><a href="../models/wind-chill.html">Wind Chill</a></li>
 </ul>
-<h4>API documentation</h4>
-<ul>
-<li><a class="" href="../api/index.html">API Reference</a></li>
+<h4>Archived — developer and site pages</h4><ul>
+<li><a href="../api/index.html">API Reference</a></li>
+<li><a href="../sitepages/help.html">Help</a></li>
+<li><a href="../sitepages/changelog.html">Changelog</a></li>
+<li><a href="../archive/index.html">All archived documentation</a></li>
 </ul>
-<h4>Reference</h4>
-<ul>
-<li><a class="" href="../reference/references.html">References and citations</a></li>
-<li><a class="on" href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
-</ul>
-<h4>Site pages</h4>
-<ul>
-<li><a class="" href="../sitepages/help.html">Help</a></li>
-<li><a class="" href="../sitepages/contributing.html">Contributing</a></li>
-<li><a class="" href="../sitepages/changelog.html">Changelog</a></li>
-</ul>
-</aside>
-<main>
-<div class="crumb">Reference</div>
-
-<h1>Thermal comfort questions</h1>
-
-<p class="lede">Questions that come up repeatedly when people use this tool  about which model to pick, why two models disagree, and what the interface is telling you when it refuses to give an answer.</p>
-
-<p>This page is about interpretation. For where each model comes from, see <a href="references.html">References and citations</a>; for how to drive the interface, see <a href="../sitepages/help.html">Help</a>.</p>
-
-<h2>Choosing a model</h2>
-
-<h3>Which model should I use?</h3>
-
-<p>Start from the environment, not the index:</p>
-
-<table>
-<tr><th>Situation</th><th>Model</th><th>Where</th></tr>
-<tr><td>A conditioned indoor space, assessed against a standard</td><td>PMV / PPD</td><td><a href="../workspaces/ashrae-55.html">ASHRAE 55</a> or <a href="../workspaces/iso-7730.html">ISO 7730</a></td></tr>
-<tr><td>A naturally ventilated space where occupants open windows</td><td>Adaptive</td><td><a href="../workspaces/ashrae-55.html">ASHRAE 55</a> or <a href="../workspaces/en-16798-1.html">EN 16798-1</a></td></tr>
-<tr><td>Hot work  how long someone can safely stay</td><td>PHS</td><td><a href="../workspaces/iso-7933.html">ISO 7933</a></td></tr>
-<tr><td>Outdoors, full climate range</td><td>UTCI</td><td><a href="../workspaces/explore.html">Explore</a></td></tr>
-<tr><td>Communicating hot-weather risk to the public</td><td>Heat Index or Humidex</td><td><a href="../workspaces/explore.html">Explore</a></td></tr>
-<tr><td>Communicating cold-wind risk</td><td>Wind Chill</td><td><a href="../workspaces/explore.html">Explore</a></td></tr>
-</table>
-
-<p>Which standard applies is usually decided for you by the jurisdiction, the client or the certification scheme. Where you have a free choice, the compliance workspaces are the ones that give a verdict; Explore gives you a number and leaves the judgement to you.</p>
-
-<h3>Why are UTCI, Heat Index, Humidex and Wind Chill only in Explore?</h3>
-
-<p>Because none of them belongs to a building standard, so there is no criterion to pass or fail. They return a value and a stress or discomfort category, and that is the whole output. Putting them on a compliance workspace would imply a verdict the models cannot give.</p>
-
-<div class="warn">These four are also the easiest models to misuse, because they are simple enough to apply anywhere and each one silently assumes conditions you may not have. Read the validity section on the model page before quoting a number from any of them. A heat-stress index used outside its range returns a confident, wrong answer.</div>
-
-<h3>Why is Adaptive not available in Explore?</h3>
-
-<p>The adaptive comfort band is defined by the standard as a function of outdoor temperature. Explore lets you edit band edges, which is useful for investigation but would misrepresent a model whose bands are the standard's whole content. The two adaptive models are therefore offered on their compliance workspaces only.</p>
-
-<h2>When two models disagree</h2>
-
-<h3>Why do PMV (ASHRAE 55) and PMV (ISO 7730) give different answers for the same inputs?</h3>
-
-<p>Because they are different calculations, not two labels on one. The PMV equation is shared, but ASHRAE 55 first computes a cooling effect from elevated air speed, subtracts it from both the air and mean radiant temperatures, and then evaluates PMV with air speed set to 0.1&nbsp;m/s. ISO 7730 applies Fanger's original formulation with no such adjustment.</p>
-
-<p>At still air the two agree closely. The gap opens as air speed rises  which is exactly the condition people most often want to model.</p>
-
-<p>They also differ in what they will accept at all:</p>
-
-<table>
-<tr><th>Limit</th><th>ASHRAE 55</th><th>ISO 7730:2005</th></tr>
-<tr><td>Air temperature</td><td>10 to 40&nbsp;&deg;C</td><td>10 to 30&nbsp;&deg;C</td></tr>
-<tr><td>Mean radiant temperature</td><td>10 to 40&nbsp;&deg;C</td><td>10 to 40&nbsp;&deg;C</td></tr>
-<tr><td>Relative air speed</td><td>0 to 2&nbsp;m/s</td><td>0 to 1&nbsp;m/s</td></tr>
-<tr><td>Metabolic rate</td><td>1 to 4&nbsp;met</td><td>0.8 to 4&nbsp;met</td></tr>
-<tr><td>Clothing insulation</td><td>0 to 1.5&nbsp;clo</td><td>0 to 2&nbsp;clo</td></tr>
-<tr><td>Resulting PMV</td><td>no bound</td><td>&minus;2 to +2</td></tr>
-</table>
-
-<p>The last row surprises people. ISO 7730 bounds its own <em>output</em>: a case that produces a PMV beyond &plusmn;2 is outside the model's applicability even when every input was legal. ASHRAE has no equivalent rule, so the same room can return a number on one workspace and nothing on the other.</p>
-
-<h3>Only ASHRAE offers an air-speed control option. Why?</h3>
-
-<p>ASHRAE 55 imposes an upper limit on air speed that varies with operative temperature when occupants <em>cannot</em> control the air movement themselves  a ceiling fan someone can switch off is treated differently from a draught they cannot. That rule exists only in ASHRAE, so the control appears only on the ASHRAE PMV model.</p>
-
-<h3>Which humidity input should I use?</h3>
-
-<p>Whichever one you actually measured. The five modes  relative humidity, humidity ratio, dew-point temperature, wet-bulb temperature and vapour pressure  are alternative ways of stating the same moisture content, and the tool converts between them. Entering a converted value you calculated by hand adds a rounding step for no benefit.</p>
-
-<h3>Air temperature or operative temperature?</h3>
-
-<p>Operative temperature combines air and mean radiant temperature into one figure. Use it when you have a single measured or specified operative value; use the air-temperature mode when you have air and radiant temperatures separately, which is the more informative case. A large gap between the two  a cold window, a sunlit floor, a radiant panel  is exactly the information operative mode averages away.</p>
-
-<h2>Reading the result</h2>
-
-<h3>What does &ldquo;Out of range&rdquo; mean?</h3>
-
-<p>It means the model does not apply to the case you entered, so no number is given. It is not a failure verdict. A model fitted within an envelope of conditions returns nothing meaningful outside it, and showing a value there would be worse than showing none.</p>
-
-<div class="warn">
-<strong>One caveat on PMV.</strong> On the two PMV models, <code>Out of range</code> is currently also shown when the inputs are perfectly valid but the resulting PMV falls outside the acceptable comfort band  that is, for a room that is simply too warm or too cold. Those are different findings: one means &ldquo;the model cannot answer&rdquo;, the other means &ldquo;the model answered, and the answer is non-compliant&rdquo;. The adaptive models distinguish them correctly. Until PMV does the same, check your inputs against the limits above before reading <code>Out of range</code> as an applicability problem.
-</div>
-
-<h3>PPD never goes below 5%. Is that a bug?</h3>
-
-<p>No. PPD is derived from PMV by a fixed curve whose minimum is 5% at PMV&nbsp;=&nbsp;0. The model's position is that in any group of people, in any environment, about one person in twenty will be dissatisfied. There is no combination of inputs that removes it.</p>
-
-<h3>Why does the result change when I turn on an input modifier?</h3>
-
-<p>Because a modifier changes the value the model sees. The base input you typed is stored separately and stays visible; the calculation runs on the modified value. Modifiers apply in a fixed order and chain into each other  see <a href="../features/input-modifiers.html">Input modifiers</a>.</p>
-
-<h3>The previous version corrected clothing for movement automatically. This one does not.</h3>
-
-<p>Correct. Dynamic clothing is now an explicit modifier you switch on. If you are comparing a result against one from the older tool, that difference is a likely cause.</p>
-
-<h2>About this build</h2>
-
-<h3>Is my data sent anywhere?</h3>
-
-<p>No. Every calculation runs in your browser. There is no account, no server-side session and no stored history. A <a href="../getting-started/sharing.html">share link</a> carries your inputs inside the link itself rather than uploading them.</p>
-
-<h3>Why is there no Share button in Time-series?</h3>
-
-<p>A share link encodes one set of inputs, which cannot represent a multi-segment scenario. Rather than hand out a link that silently drops the scenario, the <a href="../workspaces/time-series.html">Time-series</a> workspace offers none. Export the charts instead.</p>
-
-<h3>Can I upload a weather file or a CSV?</h3>
-
-<p>Not in this version. There is no file import anywhere in the tool; inputs are entered by hand, and Time-series scenarios are built segment by segment.</p>
-
-<h3>What happened to the fans-during-heatwaves feature?</h3>
-
-<p>It is not present in this version. The nearest live capability is the air-speed control option on <a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a>, which is a different thing: it applies the standard's air-speed limits, it does not model a fan during a heat event.</p>
-
-<h3>Why do the charts differ from one model to another?</h3>
-
-<p>Each model declares its own charts, so the set changes with the model rather than being a fixed menu. Most models offer one or two. Earlier documentation described a fixed set of five chart types; that is no longer how the tool works.</p>
-
-<h2>Where to go next</h2>
-
-<ul class="body">
-<li><a href="references.html">References and citations</a>  the source behind each model, and the values that have none.</li>
-<li><a href="../sitepages/help.html">Help</a>  using the interface, and what to do when something looks wrong.</li>
-<li><a href="../getting-started/main-interface.html">Main interface</a>  the parts of the screen.</li>
-</ul>
-
-</main></div></body></html>
+</nav></aside>
+<main id="main"><span class="doc-status doc-v1">rewrite/v1</span><div class="crumb">Reference</div><h1>Frequently asked questions</h1><p class="lede">Choosing a method and understanding what a result means.</p><h2 id="adaptive-choice">Should I use PMV or adaptive comfort?</h2><p>Start with the assessment context. PMV uses environmental and personal inputs; the ASHRAE adaptive method is for eligible occupant-controlled naturally conditioned spaces. Read each method’s eligibility criteria before comparing their results.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.adaptive_ashrae.adaptive_ashrae">pythermalcomfort model documentation</a>.</p><h2 id="pmv-differences">Why can ASHRAE and ISO PMV give different results?</h2><p>The selected method and its air-speed treatment matter. The ASHRAE implementation includes a SET-based cooling-effect step for elevated air speed. Also check the input assumptions, units, clothing adjustments and standard edition.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.pmv_ppd_ashrae.pmv_ppd_ashrae">pythermalcomfort model documentation</a>.</p><h2 id="ppd-minimum">Why does PPD not reach zero?</h2><p>PPD describes dissatisfaction within a group rather than a promise that every person is comfortable. The PMV–PPD relationship has a minimum of about 5% at neutral PMV.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.pmv_ppd_iso.pmv_ppd_iso">pythermalcomfort model documentation</a>.</p><h2 id="applicability">Does an uncomfortable result mean the model is out of range?</h2><p>No. A model can apply to a case and predict discomfort. Check the model’s applicability separately from its acceptance criterion. Do not treat a chart colour or a release-specific status label as proof that these checks are identical.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.pmv_ppd_iso.pmv_ppd_iso">pythermalcomfort model documentation</a>.</p><h2 id="adaptive-inputs">Why does adaptive comfort have fewer inputs?</h2><p>Its empirical relationship uses the outdoor climate rather than the PMV heat-balance inputs. Clothing and activity still constrain whether the method is appropriate even though they are not direct parameters of the model call.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.adaptive_ashrae.adaptive_ashrae">pythermalcomfort model documentation</a>.</p><h2 id="heat-index">Can I use Heat Index as an indoor comfort verdict?</h2><p>Heat Index describes apparent heat from temperature and humidity. It does not replace PMV or adaptive comfort, and its category does not establish an individual’s safety.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.heat_index_rothfusz.heat_index_rothfusz">pythermalcomfort model documentation</a>.</p><h2 id="chart-range">Is the chart axis the model’s valid input range?</h2><p>No. A chart is a viewport and may extend beyond applicability. Check the method documentation and the target app’s applicability reporting.</p><p class="doc-source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.pmv_ppd_iso.pmv_ppd_iso">pythermalcomfort model documentation</a>.</p><h2 id="versions">Why does the archived guide show different models or controls?</h2><p>The archived guide describes an earlier interface. Controls and model availability can differ between releases. The rewrite/v1 pages focus on model concepts; historical walkthroughs remain labelled Archived.</p><h2 id="screenshots">Where are the walkthroughs and screenshots?</h2><p>They remain in the archive. New screenshots, routes, defaults and control instructions are deferred until a target application commit and its calculation dependency have been confirmed.</p><h2 id="sharing">How do Compare, Time-series, calculators and sharing work in my build?</h2><p>Those details vary between versions. This model-first guide does not claim the archived behaviour is present or absent in the latest app. Use release-specific documentation once it has been verified.</p><h2>Read more</h2><p>See the <a href="glossary.html">glossary</a>, the four model pages, and their <a href="references.html">primary references</a>.</p></main></div></body></html>

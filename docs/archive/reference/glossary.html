@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glossary · Archived · CBE Thermal Comfort Tool</title><style>
+:root{--bg:#fff;--fg:#1c1917;--muted:#6b6663;--line:#e7e5e4;--accent:#0f766e;--soft:#f7f6f5;--code:#f4f4f5}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{display:flex;min-height:100vh;max-width:1400px;margin:0 auto}
+aside{width:290px;flex:0 0 290px;border-right:1px solid var(--line);padding:22px 18px 60px;background:var(--soft);position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{font-weight:700;font-size:15px;line-height:1.3;display:block;color:var(--fg);margin-bottom:4px}
+aside .brandsub{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+aside h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:20px 0 7px}
+aside ul{list-style:none;margin:0;padding:0}
+aside li{margin:1px 0}
+aside a{display:block;padding:5px 9px;border-radius:6px;color:#44403c;font-size:13.5px}
+aside a:hover{background:#ececea;text-decoration:none}
+aside a.on{background:#0f766e;color:#fff;font-weight:600}
+aside a.todo{color:#a8a29e}
+aside a.todo:after{content:"draft";float:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#c4c0bd;padding-top:2px}
+main{flex:1;min-width:0;padding:40px 52px 100px;max-width:900px}
+.crumb{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:31px;line-height:1.2;margin:0 0 12px;letter-spacing:-.02em}
+h2{font-size:20px;margin:38px 0 10px;padding-top:6px;letter-spacing:-.01em}
+h3{font-size:15.5px;margin:24px 0 6px}
+.lede{font-size:17px;color:#44403c;margin:0 0 8px}
+p{margin:12px 0}
+code{background:var(--code);padding:1.5px 5px;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;font-size:12.5px;letter-spacing:.02em}
+ul.body,ol.body{padding-left:22px}
+ul.body li,ol.body li{margin:6px 0}
+.note{border-left:3px solid var(--accent);background:#f0fdfa;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+.warn{border-left:3px solid #d97706;background:#fffbeb;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+figure.shot{margin:22px 0;border:2px dashed #d6d3d1;border-radius:8px;background:repeating-linear-gradient(45deg,#fafaf9,#fafaf9 10px,#f5f5f4 10px,#f5f5f4 20px);padding:30px 20px;text-align:center}
+figure.shot .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#78716c;border:1px solid #d6d3d1;background:#fff;border-radius:99px;padding:3px 10px;margin-bottom:9px}
+figure.shot .want{font-weight:600;font-size:14.5px;color:#44403c}
+figure.shot figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--line);background:var(--soft);border-radius:99px;padding:2px 9px;margin-right:5px;color:#57534e}
+footer.pf{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+@media (max-width:860px){.wrap{display:block}aside{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}main{padding:26px 20px 70px}}
+
+figure.screenshot{margin:22px 0;text-align:center}
+figure.screenshot img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #e7e5e4;border-radius:8px}
+figure.screenshot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+</style><style>
+/* Documentation status labels; the existing page layout is retained. */
+.doc-status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:700;letter-spacing:.025em;vertical-align:middle;margin-bottom:12px}.doc-v1{background:#e3f3ec;color:#155e47;border:1px solid #b6dbcc}.doc-archived{background:#fff1d6;color:#70420b;border:1px solid #e7cd9c}.doc-banner{padding:14px 18px;margin:0 0 22px;border-left:4px solid #b17d25;background:#fff8e8;font-size:14px;line-height:1.6}.doc-source{font-size:13px;color:#625d58}.doc-permalink{font-size:.8em;text-decoration:none;margin-left:8px}.doc-toc{display:flex;flex-wrap:wrap;gap:5px 18px;list-style:none;padding:0}.doc-version-nav{font-size:11px;color:#62605c;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.06em}.doc-old-nav{font-size:11px;color:#88581c;margin-left:5px}h2[id],h3[id]{scroll-margin-top:22px}.doc-skip{position:absolute;left:-10000px}.doc-skip:focus{left:12px;top:12px;z-index:5;background:white;padding:12px}a:focus-visible{outline:3px solid #b45309;outline-offset:3px}.doc-table{overflow-x:auto}@media(max-width:760px){.doc-table table{min-width:460px}}@media print{aside{display:none}.wrap{display:block}main{max-width:none;padding:0}.doc-banner{border:1px solid #999}}
+</style><link rel="stylesheet" href="../../assets/navigation.css?v=20261023-1" data-docs-navigation>
+</head><body><a class="doc-skip" href="#main">Skip to content</a>
+<div class="wrap">
+<aside class="docs-sidebar">
+<a href="../../index.html" class="brand">CBE Thermal Comfort Tool</a>
+<div class="brandsub">Documentation</div>
+<nav aria-label="Documentation">
+<ul><li><a href="../../index.html">Home</a></li></ul>
+<h4>rewrite/v1 — models</h4><ul>
+<li><a href="../../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a href="../../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a href="../../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a href="../../models/heat-index.html">Heat Index (Rothfusz)</a></li>
+</ul>
+<h4>rewrite/v1 — reference</h4><ul>
+<li><a href="../../reference/glossary.html">Glossary</a></li>
+<li><a href="../../reference/thermal-comfort-questions.html">FAQ</a></li>
+<li><a href="../../reference/references.html">References and citations</a></li>
+<li><a href="../../sitepages/contributing.html">Contributing</a></li>
+</ul>
+<h4>Archived — Getting started</h4><ul>
+<li><a href="../../getting-started/main-interface.html">Main interface</a></li>
+<li><a href="../../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a href="../../getting-started/compare-mode.html">Compare with a baseline</a></li>
+<li><a href="../../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a href="../../getting-started/sharing.html">Sharing a calculation</a></li>
+</ul>
+<h4>Archived — workspaces and features</h4><ul>
+<li><a href="../../workspaces/ashrae-55.html">ASHRAE 55 workspace</a></li>
+<li><a href="../../workspaces/iso-7730.html">ISO 7730 workspace</a></li>
+<li><a href="../../workspaces/en-16798-1.html">EN 16798-1 workspace</a></li>
+<li><a href="../../workspaces/iso-7933.html">ISO 7933 workspace</a></li>
+<li><a href="../../workspaces/explore.html">Explore workspace</a></li>
+<li><a href="../../workspaces/time-series.html">Time-series</a></li>
+<li><a href="../../features/input-modifiers.html">Input modifiers</a></li>
+</ul>
+<h4>Archived — other models</h4><ul>
+<li><a href="../../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a href="../../models/phs.html">PHS (ISO 7933)</a></li>
+<li><a href="../../models/utci.html">UTCI</a></li>
+<li><a href="../../models/humidex.html">Humidex</a></li>
+<li><a href="../../models/wind-chill.html">Wind Chill</a></li>
+</ul>
+<h4>Archived — developer and site pages</h4><ul>
+<li><a href="../../api/index.html">API Reference</a></li>
+<li><a href="../../sitepages/help.html">Help</a></li>
+<li><a href="../../sitepages/changelog.html">Changelog</a></li>
+<li><a href="../index.html" class="on" aria-current="page">All archived documentation</a></li>
+</ul>
+</nav></aside>
+<main id="main"><span class="doc-status doc-archived">Archived</span><div class="doc-banner"><strong>Archived interface documentation.</strong> This page documents an earlier interface. Its screenshots, controls and version notes are historical and have not been verified for rewrite/v1. Use the rewrite/v1 model pages for the revised guide.</div>
+<div class="crumb">Reference</div>
+
+<h1>Glossary</h1>
+
+<p class="lede">What each term means in the CBE Thermal Comfort Tool, in plain language. Terms are grouped by what they describe rather than listed alphabetically, so a term sits beside the ones it is easiest to confuse it with.</p>
+
+<p>Two kinds of term appear here. Some name a physical quantity and come from the standards. Others name something the tool itself does, and for those the definition follows the vocabulary the repository keeps in <code>GLOSSARY.md</code> on <code>rewrite/v1</code>, so the documentation and the interface use one word for one thing. Where a word is commonly used for a concept but is not this tool's word for it, the entry says so.</p>
+
+<div class="note">Terms are also defined where they are met, on the page that uses them. This page is the single source those definitions are drawn from, not a substitute for them. Verified against <code>rewrite/v1</code> at commit <code>4d6f6df</code>.</div>
+
+<h2>Environmental factors</h2>
+
+<h3>Air temperature</h3>
+<p>The temperature of the air itself, measured by a thermometer shaded from radiant heat. Also called dry-bulb temperature. Written <code>tdb</code> where the tool talks to its calculation library.</p>
+
+<h3>Mean radiant temperature</h3>
+<p>The average temperature of the surfaces around an occupant  walls, windows, ceiling, floor  weighted by how much of their view each takes up. A cold window or a sunlit wall changes how warm a room feels without changing the air temperature.</p>
+
+<h3>Operative temperature</h3>
+<p>A single temperature combining air temperature and mean radiant temperature, weighted by air speed. It approximates what the body responds to, which is why several standards use it in place of the two separately. It can be entered instead of the two, as one of the temperature entry modes.</p>
+
+<h3>Air speed</h3>
+<p>How fast air moves past the occupant. Moving air carries heat away from the skin, so the same air temperature feels cooler as air speed rises.</p>
+
+<h3>Relative air speed</h3>
+<p>Air speed corrected for the occupant's own movement, because a person walking generates air movement of their own. It is one of the two air speed entry modes: either the plain air speed is entered and the correction derived, or the corrected value is entered directly.</p>
+
+<h3>Relative humidity</h3>
+<p>How much water vapour the air holds, as a percentage of the most it could hold at that temperature. 100% means saturated. This is the quantity the comfort models take; the other four humidity forms below are converted to it.</p>
+
+<h3>Humidity ratio</h3>
+<p>The mass of water vapour per mass of dry air. Unlike relative humidity it does not change when air is heated or cooled, which is why psychrometric charts use it. It is the one quantity the atmospheric pressure affects.</p>
+
+<h3>Dew point</h3>
+<p>The temperature air would have to be cooled to before water condenses out of it. A higher dew point means more moisture in the air.</p>
+
+<h3>Wet-bulb temperature</h3>
+<p>The temperature a wet thermometer reads in moving air. Evaporation cools it, so the drier the air, the further it falls below the air temperature.</p>
+
+<h3>Vapour pressure</h3>
+<p>The part of the air's total pressure contributed by water vapour. Another way of saying how much moisture the air holds.</p>
+
+<h3>Atmospheric pressure</h3>
+<p>The pressure of the air that every set of conditions on the page describes. One value applies to the whole session and the person enters it. It moves only what is converted to or from humidity ratio; no comfort model takes it directly.</p>
+<p>Not called barometric pressure or altitude in this tool, and &ldquo;pressure&rdquo; alone is avoided because it could mean vapour pressure.</p>
+
+<h2>Personal factors</h2>
+
+<h3>Metabolic rate</h3>
+<p>How much heat the body produces, which depends on activity. 1 met is a seated person at rest; standing relaxed is about 1.2 met, walking slowly about 2 met.</p>
+
+<h3>Clothing insulation</h3>
+<p>How much the clothing worn slows heat loss from the body. 0 clo is unclothed and 1 clo is roughly a business suit. A typical summer outfit is near 0.5 clo.</p>
+
+<h3>Dynamic clothing insulation</h3>
+<p>Clothing insulation corrected for activity, because movement pumps air through clothing and reduces its effective insulation. Each standard has its own correction rule. It is one of the two clothing entry modes.</p>
+
+<h3>Activity-adjusted input</h3>
+<p>The general name for a quantity corrected for the occupant's activity: the relative air speed and the dynamic clothing insulation. Each can be entered either as the uncorrected value, with the correction derived, or as the corrected value itself. Switching back from the corrected mode reverses the correction, so what the model calculates with does not change.</p>
+
+<h2>What a model gives back</h2>
+
+<h3>PMV  Predicted Mean Vote</h3>
+<p>A number describing how a large group of people would on average rate the warmth of a space, from &minus;3 (cold) through 0 (neutral) to +3 (hot). It is a prediction about a group, not about any one person.</p>
+
+<h3>PPD  Predicted Percentage of Dissatisfied</h3>
+<p>The share of people expected to find the conditions uncomfortable, as a percentage. It never reaches zero: even in neutral conditions about 5% of people are dissatisfied, because individuals differ.</p>
+
+<h3>Heat index</h3>
+<p>A single temperature combining air temperature and humidity to express how hot conditions feel. Intended for warm, humid outdoor conditions rather than indoor comfort.</p>
+
+<h3>Acceptability</h3>
+<p>Whether conditions fall inside an adaptive standard's accepted range, read as Yes or No. The adaptive model reports two, at 80% and 90% acceptability, each with its own upper and lower limit.</p>
+
+<h3>Comfort zone</h3>
+<p>The region of a chart that falls inside one limit a standard draws  a yes or no boundary. Where a standard sets several limits there is one zone per limit, nested inside each other. A comfort zone is not thermal sensation: it is about acceptability, not about how warm something feels. The two coincide only where a standard happens to draw a limit at a band's edge.</p>
+<p>Not called a compliance zone or a neutral band.</p>
+
+<h3>Violation</h3>
+<p>An applicability bound that a completed calculation broke, as the library reports it alongside the result. The result is still shown, with the violation noted beside it. Distinct from <em>out of range</em>, which is said of what was entered and stops the calculation.</p>
+
+<h2>Models, standards and limits</h2>
+
+<h3>Model</h3>
+<p>A calculation defined by a standard, or in one case by a published regression. Four are available: PMV/PPD under ASHRAE 55, Adaptive under ASHRAE 55, PMV/PPD under ISO 7730, and the Heat Index. PMV/PPD under ASHRAE 55 is the default.</p>
+
+<h3>Standard</h3>
+<p>A published standard taken as a family, such as ISO 7730. It is what a Standard page is named after, and a model belongs to one standard by declaring one of its editions. A model with no standard, such as the Heat Index, has no Standard page and is reached through Explore.</p>
+
+<h3>Edition</h3>
+<p>One version of a standard, such as ISO 7730:2025. Two models may declare different editions of the same standard and share its page. The edition appears in the result table's caption and in the input summary on a downloaded image, and nowhere else.</p>
+
+<h3>Applicability</h3>
+<p>The range over which a model's answer is valid, published by the library for each quantity. The tool treats it as a gate, not a correction: a value outside it stops the calculation rather than being quietly adjusted. The single exception belongs to the person  switching to a model that an entered value breaks asks first, and moves the value to the nearest bound only on a yes.</p>
+<p>Not called validation or a clamp. The tool never adjusts a value on its own.</p>
+
+<h3>Bound</h3>
+<p>The minimum or maximum a value is tested against. Either may be absent: some quantities are bounded at one end only, and some not at all.</p>
+
+<h3>Out of range</h3>
+<p>Said of a value the person entered that falls outside what the model accepts, in the entry mode it was entered in. The model is not run. Never said of a result.</p>
+
+<h3>Classifier</h3>
+<p>The set of cut points that divides one output into named categories, published by the library. A model's bands start as a copy of its classifier.</p>
+
+<h2>Entering values</h2>
+
+<h3>Quantity</h3>
+<p>Anything a model or an input calculator takes in or gives back that has a unit  air temperature, humidity, air speed, metabolic rate, and so on.</p>
+
+<h3>Slot</h3>
+<p>One set of conditions: one air and one occupant, with a value for every quantity the model takes, plus its options. A session holds three. A slot belongs to no model, so it keeps what it holds when the model changes. While Compare is on they are named Input 1, Input 2 and Input 3; otherwise the single slot has no name.</p>
+<p>Not called a scenario or a case.</p>
+
+<h3>Entry group</h3>
+<p>A set of quantities that may be entered in more than one way: temperature, humidity, air speed and clothing.</p>
+
+<h3>Entry mode</h3>
+<p>Which quantity the person types when more than one would do. Temperature has two, humidity five, air speed two and clothing two. What is typed is the truth and the rest is derived from it. An entry mode belongs to the session, so changing it converts every slot, which is what lets three columns share a row.</p>
+
+<h3>Preset</h3>
+<p>A named reference value published alongside the standards  a typical task for metabolic rate, a typical ensemble for clothing. Choosing one enters its number. The number is what counts; nothing remembers which preset it came from.</p>
+
+<h3>Option</h3>
+<p>A switch a model offers beside its numbers, with no unit and never drawn on a chart. The ASHRAE 55 PMV model has one: whether occupants have local control of the air speed.</p>
+
+<h3>Input calculator</h3>
+<p>A one-shot helper that works out a value for one input row from inputs of its own, and writes it to the chosen slots when Apply is pressed. Three exist, offered together in one tabbed dialog opened from a button at the foot of the Inputs card: a clothing ensemble summed from garments, clothing predicted from the outdoor temperature at 6 a.m., and solar gain raising the mean radiant temperature. A calculator's own inputs belong to nothing  not the slot, not the session, not the share link.</p>
+<p>Not called a modifier, a wizard or a tool.</p>
+
+<h2>The tool's screens</h2>
+
+<h3>Page</h3>
+<p>One of the tool's screens, each with its own address. <strong>Standard</strong> shows one model under its standard and supports Compare. <strong>Explore</strong> allows any model and makes the band list editable. <strong>Time-series</strong> is declared but not yet reachable, because no model has been built for it. The page decides what the charts paint: Standard paints comfort zones, Explore paints bands.</p>
+<p>Not called a workspace, a view or a mode.</p>
+
+<h3>Session</h3>
+<p>What makes three slots one table: the model they run, the unit system, the entry modes, the atmospheric pressure, which slots are shown, and the chart settings and band list remembered per model. A session lasts as long as its browser tab and survives a reload. It is replaced only on the person's yes  by a share link opened in that tab, or by Reset.</p>
+
+<h3>Compare</h3>
+<p>Showing up to three slots side by side on the Standard page, each with its own result, its own comfort zones and its own marker. It is a switch. Slot 1 is always compared; slots 2 and 3 are each enabled by the person. No slot is a reference for the others  there is no baseline and no active slot, and every compared slot draws its own zones.</p>
+
+<h3>Session controls</h3>
+<p>The settings that apply to everything at once: the unit system, the atmospheric pressure, Copy link and Reset. They sit together in the left column, or beside the navigation on a narrower page.</p>
+
+<h3>Share link</h3>
+<p>An address carrying everything a page is computed from  the model, the inputs and the settings, but never a result. Opening one in a tab that already holds work asks before replacing it.</p>
+
+<h2>Charts</h2>
+
+<h3>Band</h3>
+<p>One labelled, coloured interval of a scale, such as &ldquo;Slightly Cool&rdquo;. Bands start as the standard's own categories and can be edited on the Explore page. A band with no colour is filled nowhere but still names what falls in it.</p>
+
+<h3>Band list</h3>
+<p>The bands of one model as the Explore page paints them: one per model, shared by both of its charts, editable and resettable. The result table never reads it.</p>
+
+<h3>Edge</h3>
+<p>The boundary between two bands. Bands sit side by side with no gaps, so editing bands means moving, adding or removing edges.</p>
+
+<h3>Palette</h3>
+<p>The colours a model's bands start with: one colour family per classifier, diverging for a scale around neutral and sequential for a one-sided one, taken by band position rather than by label.</p>
+
+<h3>Axis range</h3>
+<p>How much of a quantity a chart draws  the window being looked through, not a limit on what is valid. A chart often draws beyond a model's applicability on purpose, to show what the field looks like around the standard.</p>
+
+<h3>Scan</h3>
+<p>A model's output computed over a grid of two quantities, from which a chart contours its bands or its comfort zones. The dynamic and psychrometric charts are scans. The adaptive chart is not: its limits are lines the model itself returns.</p>
+
+<h3>Swatch</h3>
+<p>The small colour sample standing for one thing on the page  a slot, a band, a category. It is drawn as a square, a line or a dot to match how the chart draws that thing, and the same swatch appears in the legend, the result table and the slot buttons.</p>
+
+<h2>Downloading a chart</h2>
+
+<h3>Image</h3>
+<p>A downloadable picture of the chart with its legend and, unless turned off, a title, a summary of what it was computed from, and a footer naming the tool, its version, the library version and the date. It comes at the printed width of a single or a double column.</p>
+
+<h3>Input summary</h3>
+<p>The text on a downloaded image saying what the chart was computed from: the model, its standard, and for each slot drawn, the values as entered, its options and the atmospheric pressure. It never includes a result.</p>
+
+<h2>Where these come from</h2>
+
+<p>Definitions of physical quantities follow the standards listed on <a href="../../reference/references.html">References and citations</a>. Definitions of the tool's own terms follow <code>GLOSSARY.md</code> on <code>rewrite/v1</code>, which is the vocabulary the code is written to. Where this page says a word is not used, that is taken from the same file, so that a reader and a contributor are told the same thing.</p>
+
+<h2>Where to go next</h2>
+<ul class="body">
+<li><a href="../../reference/references.html">References and citations</a>  the published source behind each model.</li>
+<li><a href="../../reference/thermal-comfort-questions.html">Thermal comfort questions</a>  the concepts behind the terms.</li>
+</ul>
+
+</main>
+</div>
+</body>
+</html>

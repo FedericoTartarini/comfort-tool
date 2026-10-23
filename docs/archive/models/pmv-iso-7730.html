@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PMV / PPD (ISO 7730) · Archived · CBE Thermal Comfort Tool</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #1c1917;
+      --muted: #6b6663;
+      --line: #e7e5e4;
+      --accent: #0f766e;
+      --soft: #f7f6f5;
+      --code: #f4f4f5
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg)
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    a:hover {
+      text-decoration: underline
+    }
+
+    .wrap {
+      display: flex;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto
+    }
+
+    aside {
+      width: 290px;
+      flex: 0 0 290px;
+      border-right: 1px solid var(--line);
+      padding: 22px 18px 60px;
+      background: var(--soft);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto
+    }
+
+    aside .brand {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.3;
+      display: block;
+      color: var(--fg);
+      margin-bottom: 4px
+    }
+
+    aside .brandsub {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px
+    }
+
+    aside h4 {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 20px 0 7px
+    }
+
+    aside ul {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    aside li {
+      margin: 1px 0
+    }
+
+    aside a {
+      display: block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      color: #44403c;
+      font-size: 13.5px
+    }
+
+    aside a:hover {
+      background: #ececea;
+      text-decoration: none
+    }
+
+    aside a.on {
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600
+    }
+
+    aside a.todo {
+      color: #a8a29e
+    }
+
+    aside a.todo:after {
+      content: "draft";
+      float: right;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #c4c0bd;
+      padding-top: 2px
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 52px 100px;
+      max-width: 900px
+    }
+
+    .crumb {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 10px
+    }
+
+    h1 {
+      font-size: 31px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+      letter-spacing: -.02em
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 38px 0 10px;
+      padding-top: 6px;
+      letter-spacing: -.01em
+    }
+
+    h3 {
+      font-size: 15.5px;
+      margin: 24px 0 6px
+    }
+
+    .lede {
+      font-size: 17px;
+      color: #44403c;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 12px 0
+    }
+
+    code {
+      background: var(--code);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 14px;
+      display: block;
+      overflow-x: auto
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 11px;
+      text-align: left;
+      vertical-align: top
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      font-size: 12.5px;
+      letter-spacing: .02em
+    }
+
+    ul.body,
+    ol.body {
+      padding-left: 22px
+    }
+
+    ul.body li,
+    ol.body li {
+      margin: 6px 0
+    }
+
+    .note {
+      border-left: 3px solid var(--accent);
+      background: #f0fdfa;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    .warn {
+      border-left: 3px solid #d97706;
+      background: #fffbeb;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    figure.shot {
+      margin: 22px 0;
+      border: 2px dashed #d6d3d1;
+      border-radius: 8px;
+      background: repeating-linear-gradient(45deg, #fafaf9, #fafaf9 10px, #f5f5f4 10px, #f5f5f4 20px);
+      padding: 30px 20px;
+      text-align: center
+    }
+
+    figure.shot .tag {
+      display: inline-block;
+      font-size: 10.5px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #78716c;
+      border: 1px solid #d6d3d1;
+      background: #fff;
+      border-radius: 99px;
+      padding: 3px 10px;
+      margin-bottom: 9px
+    }
+
+    figure.shot .want {
+      font-weight: 600;
+      font-size: 14.5px;
+      color: #44403c
+    }
+
+    figure.shot figcaption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 99px;
+      padding: 2px 9px;
+      margin-right: 5px;
+      color: #57534e
+    }
+
+    footer.pf {
+      margin-top: 60px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    @media (max-width:860px) {
+      .wrap {
+        display: block
+      }
+
+      aside {
+        width: auto;
+        height: auto;
+        position: static;
+        border-right: 0;
+        border-bottom: 1px solid var(--line)
+      }
+
+      main {
+        padding: 26px 20px 70px
+      }
+    }
+
+    figure.screenshot {
+      margin: 22px 0;
+      text-align: center
+    }
+
+    figure.screenshot img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px
+    }
+
+    figure.screenshot figcaption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 8px
+    }
+  </style>
+<style>
+/* Documentation status labels; the existing page layout is retained. */
+.doc-status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:700;letter-spacing:.025em;vertical-align:middle;margin-bottom:12px}.doc-v1{background:#e3f3ec;color:#155e47;border:1px solid #b6dbcc}.doc-archived{background:#fff1d6;color:#70420b;border:1px solid #e7cd9c}.doc-banner{padding:14px 18px;margin:0 0 22px;border-left:4px solid #b17d25;background:#fff8e8;font-size:14px;line-height:1.6}.doc-source{font-size:13px;color:#625d58}.doc-permalink{font-size:.8em;text-decoration:none;margin-left:8px}.doc-toc{display:flex;flex-wrap:wrap;gap:5px 18px;list-style:none;padding:0}.doc-version-nav{font-size:11px;color:#62605c;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.06em}.doc-old-nav{font-size:11px;color:#88581c;margin-left:5px}h2[id],h3[id]{scroll-margin-top:22px}.doc-skip{position:absolute;left:-10000px}.doc-skip:focus{left:12px;top:12px;z-index:5;background:white;padding:12px}a:focus-visible{outline:3px solid #b45309;outline-offset:3px}.doc-table{overflow-x:auto}@media(max-width:760px){.doc-table table{min-width:460px}}@media print{aside{display:none}.wrap{display:block}main{max-width:none;padding:0}.doc-banner{border:1px solid #999}}
+</style><link rel="stylesheet" href="../../assets/navigation.css?v=20261023-1" data-docs-navigation>
+</head>
+
+<body><a class="doc-skip" href="#main">Skip to content</a>
+  <div class="wrap">
+    <aside class="docs-sidebar">
+<a href="../../index.html" class="brand">CBE Thermal Comfort Tool</a>
+<div class="brandsub">Documentation</div>
+<nav aria-label="Documentation">
+<ul><li><a href="../../index.html">Home</a></li></ul>
+<h4>rewrite/v1 — models</h4><ul>
+<li><a href="../../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a href="../../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a href="../../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a href="../../models/heat-index.html">Heat Index (Rothfusz)</a></li>
+</ul>
+<h4>rewrite/v1 — reference</h4><ul>
+<li><a href="../../reference/glossary.html">Glossary</a></li>
+<li><a href="../../reference/thermal-comfort-questions.html">FAQ</a></li>
+<li><a href="../../reference/references.html">References and citations</a></li>
+<li><a href="../../sitepages/contributing.html">Contributing</a></li>
+</ul>
+<h4>Archived — Getting started</h4><ul>
+<li><a href="../../getting-started/main-interface.html">Main interface</a></li>
+<li><a href="../../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a href="../../getting-started/compare-mode.html">Compare with a baseline</a></li>
+<li><a href="../../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a href="../../getting-started/sharing.html">Sharing a calculation</a></li>
+</ul>
+<h4>Archived — workspaces and features</h4><ul>
+<li><a href="../../workspaces/ashrae-55.html">ASHRAE 55 workspace</a></li>
+<li><a href="../../workspaces/iso-7730.html">ISO 7730 workspace</a></li>
+<li><a href="../../workspaces/en-16798-1.html">EN 16798-1 workspace</a></li>
+<li><a href="../../workspaces/iso-7933.html">ISO 7933 workspace</a></li>
+<li><a href="../../workspaces/explore.html">Explore workspace</a></li>
+<li><a href="../../workspaces/time-series.html">Time-series</a></li>
+<li><a href="../../features/input-modifiers.html">Input modifiers</a></li>
+</ul>
+<h4>Archived — other models</h4><ul>
+<li><a href="../../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a href="../../models/phs.html">PHS (ISO 7933)</a></li>
+<li><a href="../../models/utci.html">UTCI</a></li>
+<li><a href="../../models/humidex.html">Humidex</a></li>
+<li><a href="../../models/wind-chill.html">Wind Chill</a></li>
+</ul>
+<h4>Archived — developer and site pages</h4><ul>
+<li><a href="../../api/index.html">API Reference</a></li>
+<li><a href="../../sitepages/help.html">Help</a></li>
+<li><a href="../../sitepages/changelog.html">Changelog</a></li>
+<li><a href="../index.html" class="on" aria-current="page">All archived documentation</a></li>
+</ul>
+</nav></aside>
+    <main id="main"><span class="doc-status doc-archived">Archived</span><div class="doc-banner"><strong>Archived interface documentation.</strong> This page documents an earlier interface. Its screenshots, controls and version notes are historical and have not been verified for rewrite/v1. Use the rewrite/v1 model pages for the revised guide.</div>
+      <div class="crumb">Models</div>
+
+      <h1>PMV / PPD (ISO 7730)</h1>
+      <p><span class="pill">pmv-ppd-iso</span><span class="pill">ISO 7730:2025</span><span class="pill">Standard page</span><span class="pill">Explore</span>
+      </p>
+      <p>The same Fanger heat-balance model described on the <a href="../../models/pmv-ashrae-55.html">ASHRAE 55 page</a>, evaluated
+        under ISO 7730. The equations agree; what differs is the applicability range, how the result is banded, and
+        which provisions the standard allows.</p>
+      <p>Six primary factors affect thermal comfort. Four describe the environment air temperature, mean radiant
+        temperature, air speed and humidity and two describe the person: metabolic rate and clothing insulation.</p>
+      <p>PMV uses all six, and the descriptions of each factor on the ASHRAE page apply here unchanged. This page covers
+        what is specific to the ISO treatment.</p>
+      <div class="note">In <code>rewrite/v1</code> this model declares ISO 7730:2025, is reached at <code>/standard/iso-7730/pmv-ppd-iso</code> and from Explore, and defaults to 25&nbsp;&deg;C air and radiant temperature, 0.1&nbsp;m/s air speed, 50&nbsp;&percnt; relative humidity, 1.1&nbsp;met and 0.5&nbsp;clo. Its result table shows PMV and PPD only, with no compliance column. Its comfort zones are ISO categories A, B and C, nested, and the category bins are strict at both ends, so a PMV of exactly 0.5 falls in category C. One input calculator attaches here, the custom ensemble on clothing insulation. Verified at <code>4d6f6df</code>.</div>
+
+      <h2>How it differs from the ASHRAE variant</h2>
+      <table>
+        <tr>
+          <th></th>
+          <th>ISO 7730</th>
+          <th>ASHRAE 55</th>
+        </tr>
+        <tr>
+          <td>Occupant control of air speed</td>
+          <td>No such setting</td>
+          <td>Available as an option, off by default; with it off, up to three upper bounds apply to the relative air speed</td>
+        </tr>
+        <tr>
+          <td>Clothing applicability</td>
+          <td>Up to 2&nbsp;clo</td>
+          <td>Up to 1.5&nbsp;clo</td>
+        </tr>
+        <tr>
+          <td>Chart banding on its workspace</td>
+          <td>The seven sensation categories</td>
+          <td>Acceptable / not acceptable</td>
+        </tr>
+        <tr>
+          <td>Comfort boundary drawn</td>
+          <td>Categories A, B and C, drawn as nested zones</td>
+          <td>The standard's acceptable PMV limits</td>
+        </tr>
+        <tr>
+          <td>Operative temperature</td>
+          <td>ISO formulation</td>
+          <td>ASHRAE formulation</td>
+        </tr>
+      </table>
+      <div class="warn">The elevated-air-speed cooling effect belongs to the ASHRAE model. Do not read an ISO result as
+        though a fan had been accounted for.</div>
+
+      <h2>Environmental factors</h2>
+      <p>Air temperature is accepted from 10 to 30&nbsp;&deg;C and mean radiant temperature from 10 to 40&nbsp;&deg;C.
+        Relative air speed is accepted from 0 to 1&nbsp;m/s, metabolic rate from 0.8 to 4&nbsp;met and clothing
+        insulation from 0 to 2&nbsp;clo. Water vapour pressure, which is derived from the temperature and the humidity
+        rather than entered, is accepted up to 2700&nbsp;Pa. Relative humidity itself carries no bound of its own beyond
+        the 0 to 100&nbsp;% its kind implies. Humidity can be entered in any of the five modes relative humidity,
+        humidity ratio, dew point, wet bulb or vapour pressure and temperature in separate or operative mode.</p>
+      <div class="note">These are the bounds the calculation library publishes as <code>ISO_7730_LIMITS</code>, which is
+        what gates an entered value. They are narrower than this model's chart axes, which run to 40&nbsp;&deg;C and
+        2&nbsp;m/s: a chart deliberately draws the field around the standard, and an axis range is not an applicability
+        bound. ISO also gates the <em>output</em>, accepting a PMV between &minus;2 and +2; a result outside that is
+        reported as a violation beside the result rather than stopping the calculation.</div>
+      <p>Air speed is the relative air speed, so the measured-air-speed modifier applies the same correction for the
+        occupant's own movement as it does on the ASHRAE model.</p>
+
+      <h2>Personal factors</h2>
+      <p>Metabolic rate is accepted from 1 to 4&nbsp;met. Clothing insulation extends to <strong>2&nbsp;clo</strong>,
+        wider than ASHRAE 55 allows the main practical difference between the two, since a heavily dressed occupant may
+        be assessable here and out of range there.</p>
+      <p>All four input modifiers are available: measured air speed, morning clothing estimate, dynamic clothing and
+        solar gain.</p>
+
+      <h2>Outputs</h2>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Meaning</th>
+        </tr>
+        <tr>
+          <td>PMV</td>
+          <td>Predicted mean vote, &minus;3 to +3.</td>
+        </tr>
+        <tr>
+          <td>PPD</td>
+          <td>Predicted percentage dissatisfied.</td>
+        </tr>
+        <tr>
+          <td>Sensation category</td>
+          <td>Cold, Cool, Slightly Cool, Neutral, Slightly Warm, Warm or Hot.</td>
+        </tr>
+      </table>
+
+      <h2>Banding and the comfort boundary</h2>
+      <p>ISO 7730 does not define a single acceptable/unacceptable band the way ASHRAE 55 does, so the workspace bands
+        the chart by the seven sensation categories and treats <strong>Neutral</strong> as the comfort criterion. The
+        boundary lines drawn on the chart are the edges of that category.</p>
+      <figure class="screenshot"><img src="../../images/pmv-iso-7730 image 1.png" alt="Documentation screenshot">
+        <figcaption>Archived ISO PMV chart with sensation-category bands and the neutral boundary.</figcaption>
+      </figure>
+
+      <h2>Categories of thermal environment</h2>
+      <p>ISO 7730 describes categories of thermal environment commonly A, B and C with progressively tighter PMV limits.
+        The tool evaluates at the <strong>category&nbsp;B</strong> expectation, which is the ordinary design case and
+        the reason this model is named as it is. For a different category, compare the reported PMV against that
+        category's limit directly.</p>
+
+      <h2>Edition</h2>
+      <p>In <code>rewrite/v1</code> the model declares the <strong>ISO 7730:2025</strong> edition, which is the
+        calculation library's default, and the library's kernel follows that edition's Annex D (ADR-0002 decision 6).
+        The library treats the 2005 and 2025 editions as specifying identical equations and limits, so pinning one does
+        not change a result; it changes which edition the tool names. The edition appears in the result table's caption
+        and in the input summary on a downloaded image. An earlier version of this page said the 2005 edition was
+        pinned deliberately, which described the archived interface. Verified at <code>4d6f6df</code>.</p>
+
+      <h2>Applicability</h2>
+      <p>Inputs outside the standard's stated range are marked and reported as out of range rather than given a verdict.
+      </p>
+
+      <h2>Where to find it</h2>
+      <p>On the <a href="../../workspaces/iso-7730.html">ISO 7730</a> workspace, which offers this model only, and in <a
+          href="../../workspaces/explore.html">Explore</a>.</p>
+
+      <h2>References</h2>
+      <ul class="body">
+        <li>ISO 7730:2025, <em>Ergonomics of the thermal environment Analytical determination and interpretation of
+            thermal comfort using calculation of the PMV and PPD indices and local thermal comfort criteria</em>. This
+            is the edition the model declares; its kernel follows Annex D.</li>
+        <li>Fanger, P.O. (1970). <em>Thermal Comfort: Analysis and Applications in Environmental Engineering</em>.</li>
+      </ul>
+
+    </main>
+  </div>
+</body>
+
+</html>

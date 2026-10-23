@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Adaptive (ASHRAE 55) &middot; CBE Thermal Comfort Tool</title>
+    <title>Adaptive comfort · ASHRAE 55 · rewrite/v1 · CBE Thermal Comfort Tool</title>
     <style>
         :root {
             --bg: #fff;
@@ -317,170 +317,67 @@
             margin-top: 8px
         }
     </style>
+<style>
+/* Documentation status labels; the existing page layout is retained. */
+.doc-status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:700;letter-spacing:.025em;vertical-align:middle;margin-bottom:12px}.doc-v1{background:#e3f3ec;color:#155e47;border:1px solid #b6dbcc}.doc-archived{background:#fff1d6;color:#70420b;border:1px solid #e7cd9c}.doc-banner{padding:14px 18px;margin:0 0 22px;border-left:4px solid #b17d25;background:#fff8e8;font-size:14px;line-height:1.6}.doc-source{font-size:13px;color:#625d58}.doc-permalink{font-size:.8em;text-decoration:none;margin-left:8px}.doc-toc{display:flex;flex-wrap:wrap;gap:5px 18px;list-style:none;padding:0}.doc-version-nav{font-size:11px;color:#62605c;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.06em}.doc-old-nav{font-size:11px;color:#88581c;margin-left:5px}h2[id],h3[id]{scroll-margin-top:22px}.doc-skip{position:absolute;left:-10000px}.doc-skip:focus{left:12px;top:12px;z-index:5;background:white;padding:12px}a:focus-visible{outline:3px solid #b45309;outline-offset:3px}.doc-table{overflow-x:auto}@media(max-width:760px){.doc-table table{min-width:460px}}@media print{aside{display:none}.wrap{display:block}main{max-width:none;padding:0}.doc-banner{border:1px solid #999}}
+</style><link rel="stylesheet" href="../assets/navigation.css?v=20261023-1" data-docs-navigation>
 </head>
 
-<body>
+<body><a class="doc-skip" href="#main">Skip to content</a>
     <div class="wrap">
-        <aside>
-            <a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
-            <div class="brandsub">Documentation</div>
-            <ul>
-                <li><a class="" href="../index.html">Home</a></li>
-            </ul>
-            <h4>Getting started</h4>
-            <ul>
-                <li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
-                <li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
-                <li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
-                <li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
-                <li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
-            </ul>
-            <h4>Workspaces</h4>
-            <ul>
-                <li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
-                <li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
-                <li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
-                <li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
-                <li><a class="" href="../workspaces/explore.html">Explore</a></li>
-                <li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
-            </ul>
-            <h4>Models</h4>
-            <ul>
-                <li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
-                <li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
-                <li><a class="on" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
-                <li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
-                <li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
-                <li><a class="" href="../models/utci.html">UTCI</a></li>
-                <li><a class="" href="../models/heat-index.html">Heat Index</a></li>
-                <li><a class="" href="../models/humidex.html">Humidex</a></li>
-                <li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
-            </ul>
-            <h4>Features</h4>
-            <ul>
-                <li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
-            </ul>
-            <h4>API documentation</h4>
-            <ul>
-                <li><a href="../api/index.html">API Reference</a></li>
-            </ul>
-            <h4>Reference</h4>
-            <ul>
-                <li><a href="../reference/references.html">References and citations</a></li>
-                <li><a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
-            </ul>
-            <h4>Site pages</h4>
-            <ul>
-                <li><a href="../sitepages/help.html">Help</a></li>
-                <li><a href="../sitepages/contributing.html">Contributing</a></li>
-                <li><a href="../sitepages/changelog.html">Changelog</a></li>
-            </ul>
-        </aside>
-        <main>
-            <div class="crumb">Models</div>
-
-            <h1>Adaptive comfort (ASHRAE 55)</h1>
-            <p><span class="pill">adaptive-ashrae</span><span class="pill">ASHRAE 55 workspace</span><span
-                    class="pill">Not in Explore</span></p>
-            <p>The adaptive model applies to naturally conditioned spaces buildings where occupants can open
-                windows and are free to adapt their clothing and activity. Rather than balancing heat flows, it predicts
-                the comfortable indoor temperature directly from the recent outdoor climate.</p>
-
-            <h2>Why a second comfort model exists</h2>
-            <p>Field studies in naturally ventilated buildings repeatedly found people comfortable at temperatures the
-                heat-balance model called too warm. People in these buildings adapt: they change what they wear, open a
-                window, slow down, and shift what they expect. The adaptive model captures that by making the comfort
-                temperature a function of the outdoor climate the occupants have been living in.</p>
-            <div class="warn">Use this model only where occupants genuinely control the openings and there is no
-                mechanical cooling in operation. In a sealed, air-conditioned building the <a
-                    href="pmv-ashrae-55.html">PMV model</a> is the right one.</div>
-
-            <h2>Environmental factors</h2>
-
-            <h3>Prevailing mean outdoor temperature</h3>
-            <p>The running mean of recent outdoor air temperature, accepted from 10 to 33.5&nbsp;&deg;C. It is the
-                horizontal axis of the chart and the input that decides where the comfort bands sit: raise it and the
-                whole comfort region moves to warmer indoor temperatures.</p>
-            <p>Note the name ASHRAE calls this the <em>prevailing</em> mean, EN 16798-1 calls its equivalent the
-                <em>running</em> mean. The tool uses each standard's own term.
-            </p>
-
-            <h3>Indoor temperature</h3>
-            <p>The condition being assessed, accepted from 10 to 40&nbsp;&deg;C. This model defaults to
-                <strong>operative temperature</strong> rather than separate air and radiant values, since that is how
-                the standard expresses the comfort relation. Separate entry is available if you have both measurements.
-            </p>
-
-            <h3>Air speed</h3>
-            <p>Accepted from 0 to 2&nbsp;m/s and offered with presets appropriate to a naturally ventilated space.
-                Elevated air movement extends the acceptable range upward at warmer indoor temperatures.</p>
-
-            <h2>Personal factors</h2>
-            <p>None are entered. Metabolic rate and clothing insulation are not inputs to this model: its premise is
-                that occupants adjust these themselves, so they are absorbed into the relation rather than supplied.
-                Humidity is likewise not an input, for the same reason.</p>
-            <figure class="screenshot"><img src="../images/adaptive-ashrae-55 image 1.png"
-                    alt="Documentation screenshot">
-                <figcaption>Show that it asks for far fewer inputs than PMV &amp;mdash; the fastest way to explain the
-                    difference between the two models.</figcaption>
-            </figure>
-
-            <h2>Outputs and the acceptability zones</h2>
-            <p>The chart plots indoor operative temperature against prevailing mean outdoor temperature, with two bands
-                drawn around the comfort temperature:</p>
-            <ul class="body">
-                <li><strong>80&nbsp;% acceptability</strong> the wider band. This is the compliance criterion: a
-                    point inside it satisfies the standard.</li>
-                <li><strong>90&nbsp;% acceptability</strong> the narrower band inside it, for spaces with a
-                    higher expectation of comfort.</li>
-            </ul>
-            <table>
-                <tr>
-                    <th>Output</th>
-                    <th>Meaning</th>
-                </tr>
-                <tr>
-                    <td>Comfort temperature</td>
-                    <td>The predicted comfortable operative temperature for the outdoor condition entered.</td>
-                </tr>
-                <tr>
-                    <td>Zone</td>
-                    <td>Which band the assessed point falls in, or Too cool / Too warm outside them.</td>
-                </tr>
-                <tr>
-                    <td>Compliance verdict</td>
-                    <td>Whether the point is inside the 80&nbsp;% band.</td>
-                </tr>
-            </table>
-            <figure class="screenshot"><img src="../images/adaptive-ashrae-55 image 2.png"
-                    alt="Documentation screenshot">
-                <figcaption>Both the 80 % and 90 % bands with the plotted point, x-axis label &amp;ldquo;Prevailing mean
-                    outdoor temperature&amp;rdquo; legible.</figcaption>
-            </figure>
-
-            <h2>Applicability</h2>
-            <p>The relation is defined only over the outdoor temperature range above, and the chart is drawn over
-                exactly that range. Outside it the standard makes no claim, and neither does the tool.</p>
-
-            <h2>Why it is not in Explore</h2>
-            <p>Explore lets you edit band edges as numbers. Adaptive bands are not numbers each edge is a
-                function of the outdoor temperature, so it is a sloping line rather than a horizontal one. Allowing them
-                to be dragged would produce a chart that looks like an adaptive assessment but is not one, so the model
-                is offered only on its compliance workspace.</p>
-
-            <h2>Where to find it</h2>
-            <p>On the <a href="../workspaces/ashrae-55.html">ASHRAE 55</a> workspace, alongside PMV. Switch between them
-                with the model selector at the top of the input panel.</p>
-
-            <h2>References</h2>
-            <ul class="body">
-                <li>ANSI/ASHRAE Standard 55, <em>Thermal Environmental Conditions for Human Occupancy</em>
-                    adaptive method for naturally conditioned spaces.</li>
-                <li>de Dear, R. and Brager, G.S. (1998). Developing an adaptive model of thermal comfort and preference.
-                </li>
-            </ul>
-
-        </main>
+        <aside class="docs-sidebar">
+<a href="../index.html" class="brand">CBE Thermal Comfort Tool</a>
+<div class="brandsub">Documentation</div>
+<nav aria-label="Documentation">
+<ul><li><a href="../index.html">Home</a></li></ul>
+<h4>rewrite/v1 — models</h4><ul>
+<li><a href="pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a href="pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a href="adaptive-ashrae-55.html" class="on" aria-current="page">Adaptive (ASHRAE 55)</a></li>
+<li><a href="heat-index.html">Heat Index (Rothfusz)</a></li>
+</ul>
+<h4>rewrite/v1 — reference</h4><ul>
+<li><a href="../reference/glossary.html">Glossary</a></li>
+<li><a href="../reference/thermal-comfort-questions.html">FAQ</a></li>
+<li><a href="../reference/references.html">References and citations</a></li>
+<li><a href="../sitepages/contributing.html">Contributing</a></li>
+</ul>
+<h4>Archived — Getting started</h4><ul>
+<li><a href="../getting-started/main-interface.html">Main interface</a></li>
+<li><a href="../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a href="../getting-started/compare-mode.html">Compare with a baseline</a></li>
+<li><a href="../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a href="../getting-started/sharing.html">Sharing a calculation</a></li>
+</ul>
+<h4>Archived — workspaces and features</h4><ul>
+<li><a href="../workspaces/ashrae-55.html">ASHRAE 55 workspace</a></li>
+<li><a href="../workspaces/iso-7730.html">ISO 7730 workspace</a></li>
+<li><a href="../workspaces/en-16798-1.html">EN 16798-1 workspace</a></li>
+<li><a href="../workspaces/iso-7933.html">ISO 7933 workspace</a></li>
+<li><a href="../workspaces/explore.html">Explore workspace</a></li>
+<li><a href="../workspaces/time-series.html">Time-series</a></li>
+<li><a href="../features/input-modifiers.html">Input modifiers</a></li>
+</ul>
+<h4>Archived — other models</h4><ul>
+<li><a href="adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a href="phs.html">PHS (ISO 7933)</a></li>
+<li><a href="utci.html">UTCI</a></li>
+<li><a href="humidex.html">Humidex</a></li>
+<li><a href="wind-chill.html">Wind Chill</a></li>
+</ul>
+<h4>Archived — developer and site pages</h4><ul>
+<li><a href="../api/index.html">API Reference</a></li>
+<li><a href="../sitepages/help.html">Help</a></li>
+<li><a href="../sitepages/changelog.html">Changelog</a></li>
+<li><a href="../archive/index.html">All archived documentation</a></li>
+</ul>
+</nav></aside>
+        <main id="main"><span class="doc-status doc-v1">rewrite/v1</span><div class="crumb">Models</div><h1>Adaptive comfort · ASHRAE 55</h1><p class="lede">Relates acceptable indoor conditions to the recent outdoor climate in eligible naturally conditioned spaces.</p><p><strong>Standard:</strong> ANSI/ASHRAE Standard 55:2023.</p><p class="source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.adaptive_ashrae.adaptive_ashrae">pythermalcomfort — Model definition and parameter documentation</a>. See also <a href="../reference/references.html">References</a>.</p>
+<h2>When it applies</h2><p>The method is intended for occupant-controlled naturally conditioned spaces. Eligibility includes no mechanical heating or cooling in operation, suitable occupant activity and freedom to adapt clothing. The upstream documentation specifies a prevailing mean outdoor temperature range of 10–33.5 °C. Consult the standard and model documentation for the full conditions.</p>
+<h2>Inputs</h2><div class="table-wrap"><table><thead><tr><th scope="col">Input</th><th scope="col">Unit</th><th scope="col">Meaning</th></tr></thead><tbody><tr><td><a href="../reference/glossary.html#air-temperature">Air temperature</a></td><td>°C</td><td>Indoor air temperature.</td></tr><tr><td><a href="../reference/glossary.html#mean-radiant-temperature">Mean radiant temperature</a></td><td>°C</td><td>Indoor radiant environment.</td></tr><tr><td><a href="../reference/glossary.html#prevailing-mean-outdoor-temperature">Prevailing mean outdoor temperature</a></td><td>°C</td><td>Recent outdoor thermal conditions.</td></tr><tr><td><a href="../reference/glossary.html#air-speed">Air speed</a></td><td>m/s</td><td>Indoor air movement.</td></tr></tbody></table></div><p>Humidity, metabolic rate and clothing insulation are not direct parameters of this model call. Occupant activity and clothing adaptation still matter to eligibility.</p><p class="source">Source: <a href="https://pythermalcomfort.readthedocs.io/en/stable/documentation/models.html#pythermalcomfort.models.adaptive_ashrae.adaptive_ashrae">pythermalcomfort — parameters and eligibility</a>. See also <a href="../reference/references.html">References</a>.</p>
+<h2>Outputs</h2><p>The model provides a comfort temperature, lower and upper limits for 80% and 90% acceptability, and an acceptability result for each interval. These describe two acceptance levels rather than a thermal-sensation scale.</p>
+<h2>Interpretation</h2><p>A condition can be inside the wider 80% interval and outside the narrower 90% interval. Name the acceptance level when reporting a result. A result outside an acceptable interval is different from a case outside the method’s applicability.</p>
+<h2>Related explanations</h2><p><a href="../reference/glossary.html#operative-temperature">Operative temperature</a> · <a href="../reference/glossary.html#acceptability">Acceptability</a> · <a href="../reference/thermal-comfort-questions.html#adaptive-choice">Choosing adaptive or PMV</a></p></main>
     </div>
 </body>
 

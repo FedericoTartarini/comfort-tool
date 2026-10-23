@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Contributing &middot; CBE Thermal Comfort Tool</title><style>
+<title>Contributing · rewrite/v1 · CBE Thermal Comfort Tool</title><style>
 :root{--bg:#fff;--fg:#1c1917;--muted:#6b6663;--line:#e7e5e4;--accent:#0f766e;--soft:#f7f6f5;--code:#f4f4f5}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
@@ -43,162 +43,57 @@ footer.pf{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font
 figure.screenshot{margin:22px 0;text-align:center}
 figure.screenshot img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #e7e5e4;border-radius:8px}
 figure.screenshot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
-</style></head><body>
+</style><style>
+/* Documentation status labels; the existing page layout is retained. */
+.doc-status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:700;letter-spacing:.025em;vertical-align:middle;margin-bottom:12px}.doc-v1{background:#e3f3ec;color:#155e47;border:1px solid #b6dbcc}.doc-archived{background:#fff1d6;color:#70420b;border:1px solid #e7cd9c}.doc-banner{padding:14px 18px;margin:0 0 22px;border-left:4px solid #b17d25;background:#fff8e8;font-size:14px;line-height:1.6}.doc-source{font-size:13px;color:#625d58}.doc-permalink{font-size:.8em;text-decoration:none;margin-left:8px}.doc-toc{display:flex;flex-wrap:wrap;gap:5px 18px;list-style:none;padding:0}.doc-version-nav{font-size:11px;color:#62605c;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.06em}.doc-old-nav{font-size:11px;color:#88581c;margin-left:5px}h2[id],h3[id]{scroll-margin-top:22px}.doc-skip{position:absolute;left:-10000px}.doc-skip:focus{left:12px;top:12px;z-index:5;background:white;padding:12px}a:focus-visible{outline:3px solid #b45309;outline-offset:3px}.doc-table{overflow-x:auto}@media(max-width:760px){.doc-table table{min-width:460px}}@media print{aside{display:none}.wrap{display:block}main{max-width:none;padding:0}.doc-banner{border:1px solid #999}}
+</style><link rel="stylesheet" href="../assets/navigation.css?v=20261023-1" data-docs-navigation>
+</head><body><a class="doc-skip" href="#main">Skip to content</a>
 <div class="wrap">
-<aside>
-<a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+<aside class="docs-sidebar">
+<a href="../index.html" class="brand">CBE Thermal Comfort Tool</a>
 <div class="brandsub">Documentation</div>
-<ul>
-<li><a class="" href="../index.html">Home</a></li>
+<nav aria-label="Documentation">
+<ul><li><a href="../index.html">Home</a></li></ul>
+<h4>rewrite/v1 — models</h4><ul>
+<li><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a href="../models/heat-index.html">Heat Index (Rothfusz)</a></li>
 </ul>
-<h4>Getting started</h4>
-<ul>
-<li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
-<li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
-<li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
-<li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
-<li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+<h4>rewrite/v1 — reference</h4><ul>
+<li><a href="../reference/glossary.html">Glossary</a></li>
+<li><a href="../reference/thermal-comfort-questions.html">FAQ</a></li>
+<li><a href="../reference/references.html">References and citations</a></li>
+<li><a href="contributing.html" class="on" aria-current="page">Contributing</a></li>
 </ul>
-<h4>Workspaces</h4>
-<ul>
-<li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
-<li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
-<li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
-<li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
-<li><a class="" href="../workspaces/explore.html">Explore</a></li>
-<li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+<h4>Archived — Getting started</h4><ul>
+<li><a href="../getting-started/main-interface.html">Main interface</a></li>
+<li><a href="../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a href="../getting-started/compare-mode.html">Compare with a baseline</a></li>
+<li><a href="../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a href="../getting-started/sharing.html">Sharing a calculation</a></li>
 </ul>
-<h4>Models</h4>
-<ul>
-<li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
-<li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
-<li><a class="" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
-<li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
-<li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
-<li><a class="" href="../models/utci.html">UTCI</a></li>
-<li><a class="" href="../models/heat-index.html">Heat Index</a></li>
-<li><a class="" href="../models/humidex.html">Humidex</a></li>
-<li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
+<h4>Archived — workspaces and features</h4><ul>
+<li><a href="../workspaces/ashrae-55.html">ASHRAE 55 workspace</a></li>
+<li><a href="../workspaces/iso-7730.html">ISO 7730 workspace</a></li>
+<li><a href="../workspaces/en-16798-1.html">EN 16798-1 workspace</a></li>
+<li><a href="../workspaces/iso-7933.html">ISO 7933 workspace</a></li>
+<li><a href="../workspaces/explore.html">Explore workspace</a></li>
+<li><a href="../workspaces/time-series.html">Time-series</a></li>
+<li><a href="../features/input-modifiers.html">Input modifiers</a></li>
 </ul>
-<h4>Features</h4>
-<ul>
-<li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+<h4>Archived — other models</h4><ul>
+<li><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a href="../models/phs.html">PHS (ISO 7933)</a></li>
+<li><a href="../models/utci.html">UTCI</a></li>
+<li><a href="../models/humidex.html">Humidex</a></li>
+<li><a href="../models/wind-chill.html">Wind Chill</a></li>
 </ul>
-<h4>API documentation</h4>
-<ul>
-<li><a class="" href="../api/index.html">API Reference</a></li>
+<h4>Archived — developer and site pages</h4><ul>
+<li><a href="../api/index.html">API Reference</a></li>
+<li><a href="help.html">Help</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+<li><a href="../archive/index.html">All archived documentation</a></li>
 </ul>
-<h4>Reference</h4>
-<ul>
-<li><a class="" href="../reference/references.html">References and citations</a></li>
-<li><a class="" href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
-</ul>
-<h4>Site pages</h4>
-<ul>
-<li><a class="" href="../sitepages/help.html">Help</a></li>
-<li><a class="on" href="../sitepages/contributing.html">Contributing</a></li>
-<li><a class="" href="../sitepages/changelog.html">Changelog</a></li>
-</ul>
-</aside>
-<main>
-<div class="crumb">Site pages</div>
-
-<h1>Contributing</h1>
-
-<p class="lede">The tool is open source. Bug reports, model corrections and documentation fixes are all welcome, and the calculation engine is a separate project that takes contributions of its own.</p>
-
-<table>
-<tr><th>What</th><th>Where</th></tr>
-<tr><td>Application source</td><td><a href="https://github.com/FedericoTartarini/comfort-tool">github.com/FedericoTartarini/comfort-tool</a></td></tr>
-<tr><td>Calculation engine</td><td><a href="https://github.com/CenterForTheBuiltEnvironment/comfort.js"><code>jsthermalcomfort</code></a></td></tr>
-<tr><td>Live tool</td><td><a href="https://comfort.cbe.berkeley.edu/">comfort.cbe.berkeley.edu</a></td></tr>
-</table>
-
-<h2>Reporting a bug</h2>
-
-<p>File it on the application repository's issue tracker. <a href="help.html">Help</a> lists what to include  in short, a share link reproducing the case is worth more than any description of it.</p>
-
-<p>One decision to make first: <strong>is it the interface or the engine?</strong> The application selects inputs, presents results and draws charts. It contains no copy of the model equations  every number comes from <code>jsthermalcomfort</code>. A wrong value for valid inputs usually belongs on the engine's tracker; a wrong label, band, unit conversion or control belongs here.</p>
-
-<h2>Setting up</h2>
-
-<p>You need <strong>Node.js 22 or later</strong>, npm, and git. The engine is vendored as a git submodule, so clone recursively:</p>
-
-<p><code>git clone --recurse-submodules &lt;repo-url&gt;</code><br>
-<code>cd comfort-tool</code><br>
-<code>npm install</code><br>
-<code>npm run dev</code></p>
-
-<p>There is nothing to install by hand. <code>npm install</code> initialises the submodule, installs its dependencies and compiles it  including if you cloned without <code>--recurse-submodules</code>.</p>
-
-<h2>Working on the engine</h2>
-
-<p>The engine is a fork of <code>jsthermalcomfort</code> at <code>vendor/jsthermalcomfort</code>. Edit it in place, then rebuild so the app picks up the change:</p>
-
-<p><code>npm run build --prefix vendor/jsthermalcomfort</code></p>
-
-<p>It has its own test suite, deliberately excluded from the application's tests:</p>
-
-<p><code>npm test --prefix vendor/jsthermalcomfort</code></p>
-
-<div class="warn">Commit and push engine changes <em>inside the submodule first</em>, then commit the updated submodule pointer in the application repository. A pointer bump without the pushed commit behind it leaves a repository nobody else can build.</div>
-
-<p>To pull a fork commit someone else pushed:</p>
-
-<p><code>git submodule update --remote vendor/jsthermalcomfort</code><br>
-<code>npm run build --prefix vendor/jsthermalcomfort</code></p>
-
-<h2>Before you open a pull request</h2>
-
-<p>Run the full validation suite:</p>
-
-<p><code>npm test</code><br>
-<code>npm run check</code><br>
-<code>npm run lint</code><br>
-<code>npm run build</code><br>
-<code>npm run test:visual</code><br>
-<code>git diff --check</code></p>
-
-<p>The visual suite needs its browser installed once:</p>
-
-<p><code>npx playwright install chromium</code></p>
-
-<h3>Visual baselines</h3>
-
-<p>Approved baseline images live beside the Playwright tests. Update them only for a change that is <em>meant</em> to be visible, with <code>npm run test:visual:update</code>, and look at every expected, actual and diff image before committing. A baseline refreshed without being inspected turns the visual suite from a safety net into a rubber stamp.</p>
-
-<h2>Adding a model</h2>
-
-<p>Each registered model has one focused declaration under <code>src/declarations/</code>, which owns its identity, inputs, options, zones, calculation, result rows, charts and modifiers. The repository has a developer guide for the whole path  see <code>docs/adding-a-model.md</code> in the source tree.</p>
-
-<p>Some invariants worth knowing before you start:</p>
-
-<ul class="body">
-<li><strong>Units.</strong> Shared inputs, modifier values and editable chart bands are stored canonically in SI. <code>src/engines/units/</code> is the only place conversion happens.</li>
-<li><strong>Base inputs stay separate from modifier configuration.</strong> Effective inputs are derived through the modifier chain, never written back over what the user typed.</li>
-<li><strong>Options are complete and exact.</strong> Parsers reject missing, extra or illegal values rather than silently defaulting.</li>
-<li><strong>Charts are declared per model.</strong> There is no shared chart set, and no parallel chart-id tree beside the declaration.</li>
-<li><strong>Presentation-only changes never invalidate a calculation cache</strong>  this is what lets Explore's editable bands be presentational without touching results.</li>
-<li><strong>Direct <code>jsthermalcomfort</code> imports stay inside the declaration and engine layers.</strong></li>
-</ul>
-
-<p>A new model also needs documentation: a model page answering the same questions in the same order as the existing ones, an entry in <a href="../reference/references.html">References and citations</a>, and rows in the model tables on the home page.</p>
-
-<h2>Documentation</h2>
-
-<p>Two separate things share the word:</p>
-
-<ul class="body">
-<li><strong>These pages</strong>  the user documentation you are reading.</li>
-<li><strong>The Markdown under <code>docs/</code> in the source tree</strong>  an internal developer reference (architecture, adding a model, testing). It is maintained in the repository, is not generated, and is not part of the production build.</li>
-</ul>
-
-<p>If you change behaviour a user can see, the user documentation needs updating in the same pull request. A band boundary, an input range or a control that is documented but no longer true is worse than one that was never documented at all.</p>
-
-<div class="note">When you document a band boundary or a validity limit, cite the standard or publication it comes from. If you cannot find one, say so explicitly and mark it tool-specific  see the list at the foot of <a href="../reference/references.html">References and citations</a>. Do not attach a plausible-looking citation to a number you could not trace.</div>
-
-<h2>Citing the tool</h2>
-
-<p>If you use it in published work, cite the software paper  the exact reference is on <a href="../reference/references.html">References and citations</a>.</p>
-
-</main></div></body></html>
+</nav></aside>
+<main id="main"><span class="doc-status doc-v1">rewrite/v1</span><div class="crumb">Site pages</div><h1>Contributing</h1><p>Propose documentation changes through a pull request based on <code>documentation-site</code>, targeting that same branch.</p><h2>Model and reference pages</h2><p>Keep the four model pages, glossary, FAQ and references consistent. Cite the standard or pythermalcomfort documentation for model descriptions, input/output meanings and applicability claims.</p><h2>Version labels</h2><p>Use <strong>rewrite/v1</strong> on the revised model and reference pages. Retain <strong>Archived</strong> on earlier walkthroughs, screenshots and models outside the agreed scope. Do not remove an archive label simply because a page loads.</p><h2>Glossary links</h2><p>Use stable term addresses such as <code>reference/glossary.html#mean-radiant-temperature</code>. Keep existing IDs when rewording definitions. New terms should match <code>CONTEXT.md</code> on the target branch and the labels shown by the app.</p><h2>Walkthroughs and screenshots</h2><p>Add these after the interface is agreed. Record the application and library commits used, check routes and controls against that version, and replace historical paragraphs rather than adding contradictory notes above them.</p><h2>Preview locally</h2><p>From the repository root, run <code>python3 -m http.server 8000 --bind 127.0.0.1 --directory docs</code>, then open <code>http://localhost:8000</code>. These static pages do not require the Svelte app or calculation dependency to run.</p></main></div></body></html>
