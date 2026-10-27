@@ -76,10 +76,14 @@
     <AppSidebar {navigation} {sessionControls} />
     <!--
       The inset is the block's content area, the page's `main`, on the ground,
-      and a container: two columns, the inputs at `24rem` and the results and
-      the chart beside them, while it is at least `70rem` wide, the input
-      column, the chart card's plot and the legend's basis with their gaps
-      (decision 73, rule 10); one column below, the input card above. The page
+      and a container: two columns, the input card and the results and the
+      chart beside them, while it is at least `74.5rem` wide, the input card,
+      the chart card's plot and the legend's basis with their gaps (decision
+      73, rule 10, the sum recomputed by decision 84, rule 12); one column
+      below, the input card above the others at the left. The input card is
+      `28.75rem` at every width, the narrowest at which three slots show
+      Presets (`.scratch/input-gate/issues/04-…md` Comments); its column is
+      `auto`, so the card's width is written once. The page
       gutter is the spacing token on three sides; on the fourth the sidebar's
       own insets make it, so its fills stand that far from the cards and its
       first group label's top is level with theirs. Below `md` the sidebar is
@@ -88,9 +92,9 @@
     -->
     <Sidebar.Inset class="@container min-w-0 bg-transparent first:pl-(--space-page)">
       <div
-        class="grid grid-cols-[minmax(0,1fr)] items-start gap-(--space-page) p-(--space-page) pl-0 @min-[70rem]:grid-cols-[24rem_minmax(0,1fr)]"
+        class="grid grid-cols-[minmax(0,1fr)] items-start gap-(--space-page) p-(--space-page) pl-0 @min-[74.5rem]:grid-cols-[auto_minmax(0,1fr)]"
       >
-        <Card.Root>
+        <Card.Root class="w-[28.75rem]">
           <Card.Header class="items-center">
             <Card.Title><h2>{copy.inputs}</h2></Card.Title>
             {#if inputsActions}

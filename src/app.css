@@ -103,8 +103,11 @@
 		font-size: var(--font-size-body);
 		line-height: 1.5;
 	}
+	/* The root keeps the scrollbar's room whether or not the page scrolls, so Compare's added rows move nothing
+	   sideways (decision 84, rule 12). */
 	html {
 		@apply font-sans;
+		scrollbar-gutter: stable;
 	}
 	/* The title, the header's `h1`, and a heading, a card's `h2`, set over the card title's own size (the Phase 5c
 	   spec's type roles; decision 73, rule 2). */
@@ -352,15 +355,15 @@
 	height: 0.75rem;
 }
 /* The box's end, its step buttons and a row's Presets, with no gap and no inset: the last stands at the box's right
-   edge, and Presets, the end's one button, whose slot is its trigger's, keeps a quarter rem of padding each side as
-   the space around its word. */
+   edge, and Presets, the end's one button, whose slot is its trigger's, keeps half a rem of padding each side, so its
+   word's ink stands about as far from the box's right edge as from its top and bottom, some 10 px. */
 [data-slot="input-group-addon"].box-end {
 	gap: 0;
 	padding-right: 0;
 	margin-right: 0;
 }
 [data-slot="input-group-addon"].box-end > button {
-	padding-inline: 0.25rem;
+	padding-inline: 0.5rem;
 }
 /* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
    trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint

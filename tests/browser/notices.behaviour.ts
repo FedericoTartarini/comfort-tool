@@ -76,8 +76,9 @@ test("a refused share link raises a toast at the top right, under the header and
   const box = await boxOf(toast);
   const banner = page.getByRole("banner");
   const inputs = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Inputs", exact: true }) });
-  expect(WIDTH - (box.x + box.width)).toBeLessThanOrEqual(32);
   const header = await boxOf(banner);
+  // From the page's right edge, the header band's: the window less the scrollbar's gutter the root keeps.
+  expect(header.x + header.width - (box.x + box.width)).toBeLessThanOrEqual(32);
   expect(box.y).toBeGreaterThanOrEqual(header.y + header.height);
   expect(box.y).toBeCloseTo((await boxOf(inputs)).y, 0);
 

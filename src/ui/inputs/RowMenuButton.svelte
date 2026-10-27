@@ -2,19 +2,16 @@
   A row's menu: a text button inside its box, at the right end, one per slot,
   that opens the row's presets as a searchable list (ADR-0002 decision 67,
   rule 3, and decision 75, rule 6), so a box carries one control. A preset is
-  committed as it is chosen. Under Compare a box has no room for the word
-  beside its value, so the button is the list icon with the word as its
-  tooltip (decision 73, rule 8's note as amended 2026-10-12).
+  committed as it is chosen. The button is the word with one slot and with
+  three, the input card being wide enough for it (decision 84, rule 12).
 -->
 <script lang="ts">
-  import ListIcon from "@lucide/svelte/icons/list";
   import { formatNumber } from "$lib/core/numberFormat";
   import type { Preset } from "$lib/core/presets";
   import type { DisplayUnit } from "$lib/core/units";
   import { copy } from "$lib/text/copy";
   import * as InputGroup from "$lib/ui/primitives/input-group";
   import * as Popover from "$lib/ui/primitives/popover";
-  import * as Tooltip from "$lib/ui/primitives/tooltip";
   import ValueList from "./ValueList.svelte";
 
   interface Props {
@@ -23,12 +20,10 @@
     unit: DisplayUnit;
     /** The slot's badge's name, while the slots are named: the button is named for it. */
     slotName?: string;
-    /** The list icon in place of the word, which says it in a tooltip: the box stands in one of three slot columns. */
-    compact?: boolean;
     oncommit: (si: number) => void;
   }
 
-  let { presets, unit, slotName, compact = false, oncommit }: Props = $props();
+  let { presets, unit, slotName, oncommit }: Props = $props();
 
   let open = $state(false);
 
@@ -46,28 +41,10 @@
 </script>
 
 <Popover.Root bind:open>
-  <!--
-    The tooltip is always there and says the word only where the icon stands
-    for it: Compare switches the button's content, never the triggers around
-    it, which taken out and put back left the popover reading the old one.
-  -->
-  <Tooltip.Root disabled={!compact}>
-    <Tooltip.Trigger>
-      {#snippet child({ props: tooltipProps })}
-        <Popover.Trigger {...tooltipProps}>
-          {#snippet child({ props })}
-            <InputGroup.Button {...props} size={compact ? "icon-xs" : "xs"} aria-label={name}>
-              {#if compact}
-                <ListIcon />
-              {:else}
-                {copy.presetTrigger}
-              {/if}
-            </InputGroup.Button>
-          {/snippet}
-        </Popover.Trigger>
-      {/snippet}
-    </Tooltip.Trigger>
-    <Tooltip.Content>{copy.presetTrigger}</Tooltip.Content>
-  </Tooltip.Root>
+  <Popover.Trigger>
+    {#snippet child({ props })}
+      <InputGroup.Button {...props} size="xs" aria-label={name}>{copy.presetTrigger}</InputGroup.Button>
+    {/snippet}
+  </Popover.Trigger>
   <ValueList groups={listGroups} search={{ placeholder: copy.presetSearchPlaceholder, empty: copy.presetEmpty }} onpick={pick} />
 </Popover.Root>

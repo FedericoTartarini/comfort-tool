@@ -89,6 +89,11 @@ function isLegendBesidePlot({ plot, legend }: Boxes) {
   return legend.x >= plot.x + plot.width && legend.y < plot.y + plot.height && legend.y + legend.height > plot.y;
 }
 
+/** The page's width: the root's box, the window less the scrollbar's gutter. */
+function pageWidth(page: Page) {
+  return page.evaluate(() => document.documentElement.getBoundingClientRect().width);
+}
+
 async function openStandard(page: Page, width: number, address = PMV_ADDRESS) {
   await page.setViewportSize({ width, height: 900 });
   await page.goto(address);
@@ -111,7 +116,15 @@ async function holdBoxes(page: Page) {
   };
 }
 
-for (const width of [1440, 1366]) {
+/**
+ * The scrollbar's gutter the root always keeps (decision 84, rule 12), in
+ * Playwright's Chromium: the page is the window less it.
+ */
+const SCROLLBAR_GUTTER = 15;
+/** The narrowest window in two columns: the main area's `74.5rem`, the `14rem` sidebar and the gutter. */
+const TWO_COLUMNS_FROM = (74.5 + 14) * 16 + SCROLLBAR_GUTTER;
+
+for (const width of [1440, TWO_COLUMNS_FROM]) {
   test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare moves the plot down, and the legend stays beside it`, async ({ page }) => {
     await openStandard(page, width);
     const inputs = await boxOf(card(page, "Inputs"));
@@ -195,7 +208,7 @@ for (const width of [1440, 1366]) {
   });
 }
 
-for (const width of [1280, 1024]) {
+for (const width of [1366, 1280, 1024]) {
   test(`at ${width} px, the input card is above the result card and the legend beside the plot`, async ({ page }) => {
     await openStandard(page, width);
     const inputs = await boxOf(card(page, "Inputs"));
@@ -207,13 +220,96 @@ for (const width of [1280, 1024]) {
 }
 
 /**
- * Wider than the content needs, the page stops growing: the sidebar and the
- * main grid are one frame, as wide as at 1440 px and centred in the window,
- * and the header's and footer's contents stand in it, while their bands run
- * the window's width (decision 73, rule 10 as revised again 2026-10-12). The
- * frame's width is read at 1440 px rather than restated.
+ * The input card has one width at every Compare state and window width, and
+ * Compare moves nothing sideways (ADR-0002 decision 84, rule 12).
  */
-async function frame(page: Page, width: number) {
+test.describe("the input card's width", () => {
+  // Playwright's headless Chromium hides its scrollbars, which then take no room (the gutter is still reserved), so
+  // without the gutter Compare would move nothing there either; this test launches one that shows them.
+  test("at 1600 × 1000, where Compare makes the page scroll, the input card's left edge and width are the same with Compare off and on", async ({ playwright, baseURL }) => {
+    const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
+    try {
+      const page = await browser.newPage({ baseURL, viewport: { width: 1600, height: 1000 } });
+      await page.goto(PMV_ADDRESS);
+      await expect(page.locator(".chart-plot svg").first()).toBeVisible();
+      const scrolls = () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight);
+      const inputsBox = async () => {
+        const { x, width } = await boxOf(card(page, "Inputs"));
+        return { x, width };
+      };
+      expect(await scrolls()).toBe(false);
+      const off = await inputsBox();
+
+      await page.getByRole("switch", { name: "Compare", exact: true }).click();
+      await expect(page.getByRole("row", { name: /^Input 2/ })).toBeVisible();
+
+      expect(await scrolls()).toBe(true);
+      expect(await inputsBox()).toEqual(off);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  test("just below the two-column threshold, the result card is under the input card, and the input card is as wide as above it, at the left", async ({ page }) => {
+    await openStandard(page, TWO_COLUMNS_FROM);
+    const above = await boxOf(card(page, "Inputs"));
+    expect(above.x + above.width).toBeLessThanOrEqual((await boxOf(card(page, "Results"))).x);
+
+    await openStandard(page, TWO_COLUMNS_FROM - 1);
+    const inputs = await boxOf(card(page, "Inputs"));
+    const results = await boxOf(card(page, "Results"));
+
+    expect(inputs.y + inputs.height).toBeLessThanOrEqual(results.y);
+    expect(inputs.width).toBe(above.width);
+    expect(inputs.x).toBe(results.x);
+    expect(results.width).toBeGreaterThan(inputs.width);
+  });
+
+  test("with Compare on and three slots, every Presets reads Presets and no four-character value beside it is cut off", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    for (const slot of ["Input 2", "Input 3"]) {
+      const toggle = page.getByRole("button", { name: slot, exact: true });
+      if ((await toggle.getAttribute("aria-pressed")) !== "true") {
+        await toggle.click();
+      }
+    }
+
+    // The rows that have presets, each with a four-character value its bound admits; clothing's `0.00` is the widest
+    // such text in the box's font (the ticket's Comments). The whole number commits, and the decimals that follow
+    // parse to it, so the box keeps them as typed.
+    const rows = [
+      { label: "Metabolic rate (met)", whole: "3" },
+      { label: "Clothing insulation (clo)", whole: "0" },
+    ];
+    const isCut = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
+    for (const slot of ["Input 1", "Input 2", "Input 3"]) {
+      for (const { label, whole } of rows) {
+        const box = page.getByRole("spinbutton", { name: `${label}, ${slot}` });
+        const presets = page
+          .locator('[data-slot="input-group"]')
+          .filter({ has: box })
+          .getByRole("button", { name: `Presets, ${slot}` });
+        await expect(presets).toHaveText("Presets");
+        expect(await presets.evaluate(isCut)).toBe(false);
+
+        await box.fill(whole);
+        await box.pressSequentially(".00");
+        await expect(box).toHaveValue(`${whole}.00`);
+        expect(await box.evaluate(isCut)).toBe(false);
+      }
+    }
+  });
+});
+
+/**
+ * Wider than the content needs, the page stops growing: the sidebar and the
+ * main grid are one frame, as wide as on a 1440 px page and centred in the
+ * page, and the header's and footer's contents stand in it, while their bands
+ * run the page's width (decision 73, rule 10 as revised again 2026-10-12). The
+ * frame's width is read on a 1440 px page rather than restated.
+ */
+async function frame(page: Page) {
   const banner = page.getByRole("banner");
   const footer = page.getByRole("contentinfo");
   const frameStart = (await boxOf(page.locator('[data-slot="sidebar-content"]').locator(".."))).x;
@@ -225,7 +321,7 @@ async function frame(page: Page, width: number) {
     return frameEnd - (box.x + box.width);
   };
   return {
-    margins: { start: frameStart, end: width - frameEnd },
+    margins: { start: frameStart, end: (await pageWidth(page)) - frameEnd },
     /** The frame's width and how far inside it each band's first and last item stands. */
     inside: {
       width: frameEnd - frameStart,
@@ -238,12 +334,12 @@ async function frame(page: Page, width: number) {
 }
 
 for (const width of [1920, 2560]) {
-  test(`at ${width} px, the sidebar, the main grid and the bands' contents are the 1440 px frame centred in the window, the legend beside the plot`, async ({ page }) => {
-    await openStandard(page, 1440);
-    const at1440 = await frame(page, 1440);
+  test(`at ${width} px, the sidebar, the main grid and the bands' contents are the 1440 px page's frame centred in the page, the legend beside the plot`, async ({ page }) => {
+    await openStandard(page, 1440 + SCROLLBAR_GUTTER);
+    const at1440 = await frame(page);
 
     await openStandard(page, width);
-    const { margins, inside } = await frame(page, width);
+    const { margins, inside } = await frame(page);
 
     expect(inside).toEqual(at1440.inside);
     expect(margins.start).toBe(margins.end);
@@ -252,11 +348,12 @@ for (const width of [1920, 2560]) {
 }
 
 for (const width of [2560, 1920, 1440, 1366, 1280, 1024, 768, 767]) {
-  test(`at ${width} px, the header and footer bands span the window`, async ({ page }) => {
+  test(`at ${width} px, the header and footer bands span the page`, async ({ page }) => {
     await openStandard(page, width);
+    expect(await pageWidth(page)).toBe(width - SCROLLBAR_GUTTER);
 
     for (const band of [page.getByRole("banner"), page.getByRole("contentinfo")]) {
-      expect(await boxOf(band)).toMatchObject({ x: 0, width });
+      expect(await boxOf(band)).toMatchObject({ x: 0, width: width - SCROLLBAR_GUTTER });
     }
   });
 }
@@ -617,35 +714,6 @@ test("a row's Presets is the word at the box's end, and its list's values end at
   );
   expect(insets.length).toBeGreaterThan(1);
   expect(new Set(insets.flat()).size).toBe(1);
-});
-
-test("under Compare with three slots, a row's Presets is the list icon saying the word in a tooltip, and no value beside it is clipped", async ({ page }) => {
-  await openStandard(page, 1440);
-  await page.getByRole("switch", { name: "Compare", exact: true }).click();
-  for (const slot of ["Input 2", "Input 3"]) {
-    const toggle = page.getByRole("button", { name: slot, exact: true });
-    if ((await toggle.getAttribute("aria-pressed")) !== "true") {
-      await toggle.click();
-    }
-  }
-
-  for (const slot of ["Input 1", "Input 2", "Input 3"]) {
-    const clothing = page.getByRole("spinbutton", { name: `Clothing insulation (clo), ${slot}` });
-    const presets = page
-      .locator('[data-slot="input-group"]')
-      .filter({ has: clothing })
-      .getByRole("button", { name: `Presets, ${slot}` });
-    await expect(presets).toHaveText("");
-    await expect(presets.locator("svg")).toHaveCount(1);
-
-    for (const value of ["0.57", "25.55"]) {
-      await clothing.fill(value);
-      expect(await clothing.evaluate((box: HTMLInputElement) => box.scrollWidth <= box.clientWidth)).toBe(true);
-    }
-  }
-
-  await page.getByRole("button", { name: "Presets, Input 1" }).first().hover();
-  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Presets");
 });
 
 /**

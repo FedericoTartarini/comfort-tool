@@ -79,7 +79,7 @@
     {#each entries as entry, index (index)}
       {#if entry}
         {#snippet rowMenu()}
-          <RowMenuButton {presets} {unit} slotName={entry.slotName} compact={entries.length > 1} oncommit={entry.oncommit} />
+          <RowMenuButton {presets} {unit} slotName={entry.slotName} oncommit={entry.oncommit} />
         {/snippet}
         <Field.Field data-invalid={entry.outOfRange || undefined}>
           <NumberInput
