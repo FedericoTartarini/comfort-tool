@@ -4051,6 +4051,14 @@ notes under decisions 51 and 53:
     entry whose run reports any row, or an input or derived row, which bars PMV (ISO 7730) above +2 and makes an
     option refusable; red for a violation, which reads as not accepted; an icon per result cell; a mark on the chart;
     keeping the header's notice line; a separate arrival notice; the chart previewing the Bands copy.
+    **Noted 2026-10-27 (with the user, after `.scratch/input-gate/` ticket 02).** Rule 10's "no spinner" is the
+    browser's: the box carries two step buttons of its own, chevron up over chevron down, inside its right end beside
+    the number and before a row's Presets. Each steps as ↑ and ↓ do, by the unit's step to the bound and only the way
+    it points; they are out of the tab order, keep the focus in the box, do not repeat while held and are not disabled
+    at the bound, where a press changes nothing. The box stays `type="text"`: measured in Chromium on 2026-10-27, a
+    `type="number"` box reports `selectionStart` as `null`, so `beforeinput` cannot read the text an edit would leave;
+    reads "25e" as `""`; steps on the mouse wheel; and shows the step-mismatch message for a value off its step.
+    Rejected: the browser's spinner.
 
 ## Consequences
 
