@@ -41,8 +41,8 @@
   to every slot and every page, the sidebar's Settings group under the
   navigation (decision 73, rule 6), the same on both pages. A rule parts the
   settings from the two actions on the whole page (rule 6 as revised
-  2026-10-15). Copy link and Reset stand one under the other, so Copy link
-  saying the link was copied moves nothing.
+  2026-10-15). Share and Reset stand one under the other, so Share saying the
+  link was copied moves nothing.
 -->
 <Stack gap="4">
   <UnitSystemControls {session} />
@@ -60,7 +60,7 @@
     ]}
   />
   <!--
-    Copy link puts the page as it is on the clipboard; Reset asks first, and on
+    Share puts the page as it is on the clipboard; Reset asks first, and on
     a yes the tab shows what a new tab at this address shows (decision 63,
     rules 7 and 8).
   -->

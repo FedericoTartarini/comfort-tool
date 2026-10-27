@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * A share link as Copy link writes it on the Standard page, to PMV (ISO 7730)
+ * A share link as Share writes it on the Standard page, to PMV (ISO 7730)
  * at its defaults. The notice's check reads nothing from the address, so
  * without `Proxy` or `toSorted` its text only has to look like one.
  */

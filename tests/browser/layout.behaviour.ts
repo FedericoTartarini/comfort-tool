@@ -154,7 +154,7 @@ for (const width of [1440, 1366]) {
     });
     const notice = page.getByRole("banner").getByRole("status");
     await expectInPlace(async () => {
-      await page.getByRole("button", { name: "Copy link" }).click();
+      await page.getByRole("button", { name: "Share" }).click();
       await expect(notice).not.toBeEmpty();
     });
     await expectInPlace(async () => {
@@ -551,15 +551,27 @@ test.describe("controls by their question", () => {
     );
   });
 
-  test("at 1440 px, the sidebar's settings are headed Settings, ruled off from Copy link and Reset", async ({ page }) => {
+  test("at 1440 px, the sidebar's settings are headed Settings, ruled off from Share and Reset", async ({ page }) => {
     await openStandard(page, 1440);
     const settings = page.getByRole("group", { name: "Settings" });
     const pressure = await boxOf(settings.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
     const rule = await boxOf(settings.locator('[data-slot="separator"]'));
-    const copyLink = await boxOf(settings.getByRole("button", { name: "Copy link" }));
+    const share = await boxOf(settings.getByRole("button", { name: "Share" }));
 
     expect(rule.y).toBeGreaterThan(pressure.y + pressure.height);
-    expect(copyLink.y).toBeGreaterThan(rule.y);
+    expect(share.y).toBeGreaterThan(rule.y);
+  });
+
+  test("the sidebar's Share puts the link to the page on the clipboard and says Link copied", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openStandard(page, 1440);
+    const settings = page.getByRole("group", { name: "Settings" });
+    await settings.getByRole("button", { name: "Share" }).click();
+
+    await expect(settings.getByRole("button", { name: "Link copied" })).toBeVisible();
+    const prefix = `${new URL(page.url()).origin}${PMV_ADDRESS}?share=v1.`;
+    const link = await page.evaluate(() => navigator.clipboard.readText());
+    expect(link.slice(0, prefix.length)).toBe(prefix);
   });
 
   test("at 1440 px, the sidebar's line above Settings starts and ends where the line inside Settings does", async ({ page }) => {

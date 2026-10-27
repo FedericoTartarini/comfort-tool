@@ -2378,6 +2378,9 @@ notes under decisions 51 and 53:
     `b365056` nothing under `src/state/` changed but five tests' read of an option (`e7e55cb`), and the router not at
     all. Rule 3's last sentence as first written holds of the code: walked at `1906b86`, a fresh tab at `/` opens the
     default model and its address is corrected to that model's path (`.scratch/shell/` ticket 13's Comments).
+    **Noted 2026-10-27 (`.scratch/frontend-review/` ticket 03).** Rule 7's button reads "Share", at the reviewer's
+    request (Linear USYD-108, O6); it still writes the link to the clipboard and says "Link copied", and rule 8's
+    "a button beside Copy link" is Reset beside it. The rule's text is kept as written.
 64. **An image is a figure built for the file from the page's `ChartSpec`, in two printed sizes, and it says what
     its chart is computed from.** Taken 2026-10-07 with the user in the grilling of Phase 5 item 5, ahead of the
     code; notes ADR-0001 §4.4 and §7; `CONTEXT.md` gains **Image** and **Input summary**. Facts. `src/` has no

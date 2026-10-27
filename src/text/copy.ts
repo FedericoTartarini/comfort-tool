@@ -152,8 +152,8 @@ export const copy = {
   linkQuestion: "This tab already holds a session. Opening the link replaces it, and that cannot be undone.",
   linkAccept: "Yes, open the link",
   linkDecline: "No, keep mine",
-  // Copy link and the notice line (ADR-0002 decision 63, rules 6 and 7).
-  copyLink: "Copy link",
+  // Share and the notice line (ADR-0002 decision 63, rules 6 and 7; rule 7's button as noted 2026-10-27).
+  share: "Share",
   linkCopied: "Link copied",
   linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
   linkFilledNotice: "Some of this link could not be used as written; what it lacked starts at its defaults.",

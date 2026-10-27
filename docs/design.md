@@ -27,8 +27,8 @@ icons, cream grounds with warm accents, display fonts.
    coloured.
 2. **Structure is information.** The modules are white panels on a faint ground, each bounded by a ring at 10 % ink;
    no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the Inputs card's under the
-   model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above Copy
-   link). The header and the footer are bands of the brand. A boundary encodes a boundary that exists.
+   model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above
+   Share). The header and the footer are bands of the brand. A boundary encodes a boundary that exists.
 3. **Instrument density.** Body text at 14 px; numbers in tabular figures so decimals align; labels in sentence case,
    never upper case. Line length under 80 characters in any prose the page carries.
 4. **No motion that nobody asked for.** Dialogs and sheets keep the primitive's; nothing else animates.
@@ -112,7 +112,7 @@ meets the cards' top.
 │ [101325]   │ ◉ Occupants have local contr… │ │ └──────────────┘                        │ │
 │ 30000 – …  │ Relative humidity (%) [… ▾]   │ └─────────────────────────────────────────┘ │
 │ ────────── │ [50                       ]   │                                             │
-│ [Copy link]│ Metabolic rate (met)          │                                             │
+│ [Share]    │ Metabolic rate (met)          │                                             │
 │ [Reset]    │ [1.1              Presets]    │                                             │
 │            │ Typing · 1 – 4                │                                             │
 │            │ …                             │                                             │
@@ -135,7 +135,7 @@ link's yes lands on the `h1`.
 
 **Sidebar.** The `sidebar-16` block's menu on the ground, no icons, items `gap-1`. Groups: Standard, one item per
 standard; Tools, Explore (Time-series joins as one item when it exists, no placeholder); a separator; Settings, the
-unit system as a toggle-group, the atmospheric pressure's input with its bound text, a separator, Copy link and Reset,
+unit system as a toggle-group, the atmospheric pressure's input with its bound text, a separator, Share and Reset,
 standing on the group labels' line, 20 px in, text against text; the pressure's box is the paper, since a box takes
 the other colour of the surface it stands on. The current address is drawn as current; a standard's link on another of
 its models too (decision 67, rule 2).
