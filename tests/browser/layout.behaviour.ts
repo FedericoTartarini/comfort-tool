@@ -561,6 +561,15 @@ test.describe("controls by their question", () => {
     expect(rule.y).toBeGreaterThan(pressure.y + pressure.height);
     expect(copyLink.y).toBeGreaterThan(rule.y);
   });
+
+  test("at 1440 px, the sidebar's line above Settings starts and ends where the line inside Settings does", async ({ page }) => {
+    await openStandard(page, 1440);
+    const outer = await boxOf(page.locator('[data-slot="sidebar-separator"]'));
+    const inner = await boxOf(page.getByRole("group", { name: "Settings" }).locator('[data-slot="separator"]'));
+
+    expect(Math.abs(outer.x - inner.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(outer.x + outer.width - (inner.x + inner.width))).toBeLessThanOrEqual(1);
+  });
 });
 
 test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {

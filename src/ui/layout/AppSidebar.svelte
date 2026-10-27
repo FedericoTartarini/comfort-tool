@@ -12,8 +12,10 @@
   on; no brand tile in a `Sidebar.Header` (the header
   holds the mark), no user menu in a `Sidebar.Footer` (the page's footer
   holds the versions); the block's sample groups are the navigation the page
-  hands in, then a `Sidebar.Separator` and the Settings group, which holds the
-  session controls whole, inset as a menu item's text is.
+  hands in, then a `Sidebar.Separator`, inset as far as the rule inside
+  Settings (the group's `p-2` and its content's `px-2`), and the Settings
+  group, which holds the session controls whole, inset as a menu item's text
+  is.
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -39,7 +41,8 @@
 >
   <Sidebar.Content>
     {@render navigation()}
-    <Sidebar.Separator />
+    <!-- The primitive's `w-auto` loses to the base separator's `data-horizontal:w-full`, which would push the inset line past the column. -->
+    <Sidebar.Separator class="mx-4 data-horizontal:w-auto" />
     <Sidebar.Group role="group" aria-labelledby="{id}-settings">
       <Sidebar.GroupLabel id="{id}-settings">{copy.settings}</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="px-2 pt-1">
