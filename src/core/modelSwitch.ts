@@ -13,7 +13,7 @@
  * It is asked again at the slot with its rows adjusted, because a bound may
  * be read at another entry (see {@link rehearseSwitch}).
  */
-import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
+import { nearestEnd, outOfRangeRows, type OutOfRangeRow } from "./applicability";
 import type { RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
@@ -77,9 +77,9 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
  * 2 clo in still air at 1 met), and the model may be given a hair over its own
  * bound for it; the run's violation rows judge that at the same precision.
  *
- * The only place the app adjusts a value the person entered, and it is reached
- * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
- * gate: a value outside it stays as typed and the result is withheld.
+ * Reached by the person's yes to a switch (ADR-0002 decision 32). A single
+ * committed value past its bound is cut to the same end by its commit's
+ * verdict (`entryVerdict` in `./applicability`, decision 84 rule 2).
  */
 export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
   const adjusted = new Map<Quantity, number>();
@@ -87,17 +87,6 @@ export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot
     adjusted.set(quantity, nearestEnd(value, bound));
   }
   return withEnteredValues(slot, adjusted);
-}
-
-/** The end of `bound` that `value` is beyond; `value` itself when it is beyond neither. */
-function nearestEnd(value: number, bound: Bound): number {
-  if (bound.min !== undefined && value < bound.min) {
-    return bound.min;
-  }
-  if (bound.max !== undefined && value > bound.max) {
-    return bound.max;
-  }
-  return value;
 }
 
 /**

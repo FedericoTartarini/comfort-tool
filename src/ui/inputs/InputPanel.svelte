@@ -1,18 +1,25 @@
 <script module lang="ts">
+  import type { Verdict } from "$lib/core/applicability";
+  import type { Quantity } from "$lib/core/quantities";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
-  import type { InputSlot } from "$lib/state/session.svelte";
+  import type { InputSlot, SlotPosition } from "$lib/state/session.svelte";
 
   /** One slot's column: what the slot holds and what its outputs say of it. */
   export interface SlotColumn {
     inputSlot: InputSlot;
     outputs: SlotOutputs;
   }
+
+  /** What judges and commits a value entered in a slot: the session's (ADR-0002 decision 84, rule 2). */
+  export interface EntryWriter {
+    judgeEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict;
+    commitEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict;
+  }
 </script>
 
 <script lang="ts">
   import { enteredBound } from "$lib/core/applicability";
   import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
-  import type { Quantity } from "$lib/core/quantities";
   import { enteredValue, panelRows, rowEntryGroupOf, type PanelRow } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
@@ -20,6 +27,7 @@
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Label } from "$lib/ui/primitives/label";
+  import { raiseVerdict } from "$lib/ui/outputs/notices";
   import { Switch } from "$lib/ui/primitives/switch";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
   import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";
@@ -36,9 +44,11 @@
     atmosphericPressure: number;
     /** The session's: a row's entry group menu button converts every slot (ADR-0002 decision 51). */
     entryModeSetters: EntryModeSetters;
+    /** The session's: a box's value is judged and committed in its slot, and a cut or a refusal told by a toast. */
+    entryWriter: EntryWriter;
   }
 
-  let { model, columns, unitSystem, atmosphericPressure, entryModeSetters }: Props = $props();
+  let { model, columns, unitSystem, atmosphericPressure, entryModeSetters, entryWriter }: Props = $props();
 
   const id = $props.id();
 
@@ -55,12 +65,15 @@
 
   function entryOf(column: SlotColumn, quantity: Quantity): QuantityEntry {
     const { inputSlot, outputs } = column;
+    const { position } = outputs;
+    const slotName = outputs.badge.name;
     return {
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outputs.outOfRangeQuantities.includes(quantity),
-      slotName: outputs.badge.name,
-      oncommit: (si) => inputSlot.setEntered(quantity, si),
+      slotName,
+      isLegal: (si) => entryWriter.judgeEntry(position, quantity, si).kind === "legal",
+      oncommit: (si) => raiseVerdict(entryWriter.commitEntry(position, quantity, si), { quantity, slotName }, si, unitSystem),
     };
   }
 

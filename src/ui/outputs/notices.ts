@@ -1,4 +1,9 @@
 import { toast } from "svelte-sonner";
+import { boundSentence, type OutOfRangeRow, type Verdict } from "$lib/core/applicability";
+import { formatNumber } from "$lib/core/numberFormat";
+import type { Quantity } from "$lib/core/quantities";
+import { displayUnitFor, valueWithUnit } from "$lib/core/units";
+import type { UnitSystem } from "$lib/core/unitSystem";
 import type { Notice } from "$lib/state/openSession";
 import { copy } from "$lib/text/copy";
 
@@ -17,6 +22,44 @@ const noticeText: Record<Notice, string> = {
  */
 export function raiseNotice(notice: Notice): void {
   toast(noticeText[notice], { id: notice });
+}
+
+/** The box a value was committed in: its quantity, and its slot's name while the slots are named. */
+export interface CommittedBox {
+  readonly quantity: Quantity;
+  readonly slotName?: string;
+}
+
+/**
+ * Tell the person what committing the SI `value` in `box` did, by its
+ * `verdict` (ADR-0002 decision 84, rules 2 and 7): nothing for a value
+ * written as it is; for a cut, the value written, with its unit; for a
+ * refusal, the bound each row would break at it, under `slotNameOf` its
+ * slot's name. Each toast stands until it is closed, a later commit's beside it.
+ */
+export function raiseVerdict<Row extends OutOfRangeRow>(
+  verdict: Verdict<Row>,
+  box: CommittedBox,
+  value: number,
+  unitSystem: UnitSystem,
+  slotNameOf: (row: Row) => string | undefined = () => undefined,
+): void {
+  if (verdict.kind === "legal") {
+    return;
+  }
+  const subject = box.slotName ? copy.slotControl(box.quantity.label, box.slotName) : box.quantity.label;
+  const unit = displayUnitFor(box.quantity, unitSystem);
+  const withUnit = (si: number) => valueWithUnit(formatNumber(unit.fromSi(si)), unit);
+  if (verdict.kind === "cut") {
+    toast(copy.cutNotice(subject, withUnit(verdict.value)));
+    return;
+  }
+  const reasons = verdict.rows.map((row) => {
+    const sentence = boundSentence(row.quantity, row.bound, unitSystem);
+    const slotName = slotNameOf(row);
+    return slotName ? copy.slotNote(slotName, sentence) : sentence;
+  });
+  toast(copy.refusedNotice(subject, withUnit(value), reasons));
 }
 
 /** Close every toast standing, as the session they speak of is replaced. */

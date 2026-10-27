@@ -27,6 +27,12 @@ function captionOf(box: Locator) {
   return box.locator('xpath=ancestor::*[@data-slot="field"][1]').locator(".caption-line");
 }
 
+/** Types `text` over `box`'s and commits it at once, as Enter does. */
+async function commit(box: Locator, text: string) {
+  await box.fill(text);
+  await box.press("Enter");
+}
+
 /**
  * Types `keys` at the start or the end of `box`, one key at a time as a person
  * does. The caret is placed directly: Home and End do not move it in a text
@@ -104,7 +110,7 @@ test.describe("the arrow keys", () => {
   test("↑ and ↓ step by the unit's step, each a commit", async ({ page }) => {
     await open(page, PMV_ADDRESS);
     const box = dryBulb(page);
-    await box.fill("25");
+    await commit(box, "25");
 
     await box.press("ArrowUp");
     await expect(box).toHaveValue("25.1");
@@ -122,14 +128,14 @@ test.describe("the arrow keys", () => {
     await open(page, PMV_ADDRESS);
     const box = dryBulb(page);
 
-    await box.fill("40");
+    await commit(box, "40");
     await box.press("ArrowUp");
     await expect(box).toHaveValue("40");
-    await box.fill("39.95");
+    await commit(box, "39.95");
     await box.press("ArrowUp");
     await expect(box).toHaveValue("40");
 
-    await box.fill("10");
+    await commit(box, "10");
     await box.press("ArrowDown");
     await expect(box).toHaveValue("10");
   });
@@ -145,7 +151,7 @@ test.describe("the step buttons", () => {
   test("a click steps by the unit's step, stops at the bound, and leaves the focus in the box", async ({ page }) => {
     await open(page, PMV_ADDRESS);
     const box = dryBulb(page);
-    await box.fill("39.9");
+    await commit(box, "39.9");
     await page.locator("body").click({ position: { x: 1, y: 1 } });
     const { up, down } = stepButtons(box);
 
@@ -238,10 +244,11 @@ test.describe("the line under the box", () => {
     await open(page, PMV_ADDRESS);
     await enterHumidityAs(page, /^Wet-bulb temperature/);
     const box = page.getByRole("spinbutton", { name: /^Wet-bulb temperature/ });
-    // `psy_ta_rh(t, 100).t_wb` is 25 at 25 °C and 9.9 at 10 °C.
-    await dryBulb(page).fill("25");
+    // `psy_ta_rh(t, 100).t_wb` is 25 at 25 °C and 9.9 at 10 °C. The wet bulb is lowered first: a dry bulb under it is refused.
+    await commit(dryBulb(page), "25");
     await expect(captionOf(box)).toHaveText("≤ 25 °C");
-    await dryBulb(page).fill("10");
+    await commit(box, "5");
+    await commit(dryBulb(page), "10");
     await expect(captionOf(box)).toHaveText("≤ 9.9 °C");
   });
 });

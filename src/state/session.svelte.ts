@@ -5,7 +5,13 @@ import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import type { ChartAxes, OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
-import type { OutOfRangeRow } from "$lib/core/applicability";
+import {
+  atmosphericPressureVerdict,
+  entryVerdict,
+  type OutOfRangeRow,
+  type SlotOutOfRangeRow,
+  type Verdict,
+} from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import {
@@ -509,6 +515,51 @@ export class Session {
   }
 
   /**
+   * The verdict on entering `value` for `quantity` in the slot at `position`,
+   * which must hold values, under the session's model and pressure (ADR-0002
+   * decision 84, rule 2), writing nothing: what the box asks of a draft.
+   */
+  judgeEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict {
+    return entryVerdict(this.#heldSlotAt(position), this.model, this.atmosphericPressure, quantity, value);
+  }
+
+  /**
+   * Commit `value` for `quantity` in the slot at `position`: written as it
+   * is, cut to its bound's end, or not written, as {@link judgeEntry} says,
+   * which is returned for the page to tell the person. The session raises no
+   * notice itself.
+   */
+  commitEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict {
+    const verdict = this.judgeEntry(position, quantity, value);
+    if (verdict.kind !== "refused") {
+      this.#heldSlotAt(position).setEntered(quantity, verdict.kind === "cut" ? verdict.value : value);
+    }
+    return verdict;
+  }
+
+  /**
+   * The verdict on the atmospheric pressure `value`, against its kind's bound
+   * and the humidity entry of every slot that holds values, compared or not
+   * (ADR-0002 decision 84, rule 2), writing nothing.
+   */
+  judgeAtmosphericPressure(value: number): Verdict<SlotOutOfRangeRow> {
+    const held = slotPositions.flatMap((position) => {
+      const slot = this.#slots[position];
+      return slot ? [{ position, slot }] : [];
+    });
+    return atmosphericPressureVerdict(held, this.model, value);
+  }
+
+  /** Commit the atmospheric pressure `value`, as {@link commitEntry} commits a slot's entry. */
+  commitAtmosphericPressure(value: number): Verdict<SlotOutOfRangeRow> {
+    const verdict = this.judgeAtmosphericPressure(value);
+    if (verdict.kind !== "refused") {
+      this.atmosphericPressure = verdict.kind === "cut" ? verdict.value : value;
+    }
+    return verdict;
+  }
+
+  /**
    * The address's path — a typed URL, the back button, a share link — which
    * has no previous page to stay on and so never asks and never adjusts a
    * value (ADR-0002 decision 32). Every slot that holds values is converted
@@ -609,6 +660,15 @@ export class Session {
     this.model = model;
     this.chart = this.#chartFor(model);
     this.pendingSwitch = null;
+  }
+
+  /** The slot at `position`, or a throw for a slot never enabled, which holds nothing to enter a value in. */
+  #heldSlotAt(position: SlotPosition): InputSlot {
+    const slot = this.#slots[position];
+    if (!slot) {
+      throw new Error(`The slot at position ${position} is entered in before it was ever enabled, and holds nothing`);
+    }
+    return slot;
   }
 
   /** Every slot that holds values, in slot order. */

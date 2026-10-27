@@ -20,9 +20,18 @@ import { inputsOf, takesRelativeAirSpeed, type ModelResult, type RegisteredModel
 import { resultWarnings } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
-import { isHumidityQuantity, resolvedTdb, valueEntryGroups, type EntryCorrection, type Slot, type ValueEntryModes } from "./slot";
+import {
+  isHumidityQuantity,
+  resolvedTdb,
+  valueEntryGroups,
+  withEnteredValues,
+  type EntryCorrection,
+  type Slot,
+  type ValueEntryModes,
+} from "./slot";
 import { displayUnitFor, valueWithUnit, type DisplayUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
+import type { SlotPosition } from "./writtenSession";
 
 export type { Bound };
 
@@ -299,6 +308,98 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPr
     }
   }
   return rows;
+}
+
+/** An out-of-range row of one of the session's slots, the slot named by its position. */
+export interface SlotOutOfRangeRow extends OutOfRangeRow {
+  readonly position: SlotPosition;
+}
+
+/**
+ * What the gate says of a value a person would commit (ADR-0002 decision 84,
+ * rule 2), and so what a commit of it does: **legal**, written as it is;
+ * **cut**, past its own bound, written as the end it is beyond, the end
+ * itself in SI (decision 56); or **refused**, as it would put another value
+ * out of range, written not at all, with the rows of what it would break. The
+ * other value is never cut. `Row` is a slot's own row, or one naming its slot
+ * where the value is the session's.
+ */
+export type Verdict<Row extends OutOfRangeRow = OutOfRangeRow> =
+  | { readonly kind: "legal" }
+  | { readonly kind: "cut"; readonly value: number; readonly bound: Bound }
+  | { readonly kind: "refused"; readonly rows: readonly Row[] };
+
+const legal = { kind: "legal" } as const;
+
+/**
+ * The {@link Verdict} on `value` past `bound` cut to its end, then checked by
+ * `rowsAt` at what would be written: refused for any row there, cut where the
+ * end differs from `value`, and legal otherwise.
+ */
+function verdictOf<Row extends OutOfRangeRow>(
+  value: number,
+  quantity: Quantity,
+  bound: Bound | undefined,
+  rowsAt: (written: number) => readonly Row[],
+): Verdict<Row> {
+  const written = bound && breaksBound(quantity, bound, value) ? nearestEnd(value, bound) : value;
+  const rows = rowsAt(written);
+  if (rows.length > 0) {
+    return { kind: "refused", rows };
+  }
+  return bound && written !== value ? { kind: "cut", value: written, bound } : legal;
+}
+
+/**
+ * The verdict on entering `value` for `quantity` in `slot` under `model`
+ * (ADR-0002 decision 84, rules 2 and 3): its own bound, {@link enteredBound},
+ * then every entry of the slot as it would be, by {@link outOfRangeRows}, so
+ * a value whose own bound is read at another entry, a humidity entry's at the
+ * dry bulb, refuses that entry's move. Judged at decision 56's precision, and
+ * without running the model.
+ */
+export function entryVerdict(
+  slot: Slot,
+  model: RegisteredModel,
+  atmosphericPressure: number,
+  quantity: Quantity,
+  value: number,
+): Verdict {
+  const slotWith = (entered: number) => withEnteredValues(slot, new Map([[quantity, entered]]));
+  // No bound is read at the entry it bounds, so the bound at `value` is the bound at the end it cuts to.
+  const bound = enteredBound(model, quantity, slotWith(value), atmosphericPressure);
+  return verdictOf(value, quantity, bound, (written) => outOfRangeRows(slotWith(written), model, atmosphericPressure));
+}
+
+/**
+ * The verdict on the atmospheric pressure `value` (ADR-0002 decisions 49 and
+ * 84): its kind's bound, then the humidity entry of every slot in `slots`,
+ * the session's every held slot, read at it, since that entry's bound alone
+ * reads the pressure. A refusal's rows name their slot.
+ */
+export function atmosphericPressureVerdict(
+  slots: readonly { readonly position: SlotPosition; readonly slot: Slot }[],
+  model: RegisteredModel,
+  value: number,
+): Verdict<SlotOutOfRangeRow> {
+  return verdictOf(value, q.p_atm, kindBounds[q.p_atm.kind], (written) =>
+    slots.flatMap(({ position, slot }) =>
+      outOfRangeRows(slot, model, written)
+        .filter((row) => row.quantity === slot.humidity?.mode.quantity)
+        .map((row) => ({ ...row, position })),
+    ),
+  );
+}
+
+/** The end of `bound` that `value` is beyond; `value` itself when it is beyond neither. */
+export function nearestEnd(value: number, bound: Bound): number {
+  if (bound.min !== undefined && value < bound.min) {
+    return bound.min;
+  }
+  if (bound.max !== undefined && value > bound.max) {
+    return bound.max;
+  }
+  return value;
 }
 
 /**

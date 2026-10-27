@@ -72,6 +72,7 @@
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
         entryModeSetters={session}
+        entryWriter={session}
       />
       <InputCalculators
         model={session.model}

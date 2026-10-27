@@ -22,6 +22,9 @@
     outOfRange?: boolean;
     /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */
     slotName?: string;
+    /** Whether a typed SI value may commit on a pause in the typing (ADR-0002 decision 84, rule 2); every one may, without it. */
+    isLegal?: (si: number) => boolean;
+    /** Commit an SI value, typed, stepped or a preset's: the owner writes it, cut or refused. */
     oncommit: (si: number) => void;
   }
 </script>
@@ -88,6 +91,7 @@
             {unit}
             bound={entry.bound}
             invalid={entry.outOfRange}
+            isLegal={entry.isLegal}
             ariaLabel={controlNameFor(labelText, entry)}
             end={presets.length > 0 ? rowMenu : undefined}
             oncommit={entry.oncommit}

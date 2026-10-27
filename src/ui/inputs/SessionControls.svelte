@@ -1,9 +1,11 @@
 <script lang="ts">
   import { kindBounds, quantities } from "$lib/core/quantities";
-  import type { Session } from "$lib/state/session.svelte";
+  import { slotNames } from "$lib/core/slotBadge";
+  import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
+  import { raiseVerdict } from "$lib/ui/outputs/notices";
   import { Separator } from "$lib/ui/primitives/separator";
   import CopyLinkButton from "./CopyLinkButton.svelte";
   import QuantityInput from "./QuantityInput.svelte";
@@ -27,6 +29,20 @@
 
   /** Whether Reset's question stands: the button's own, as nothing else reads it. */
   let askingReset = $state(false);
+
+  /**
+   * The slot a pressure's refusal names by its position, whether compared or
+   * not, while the session holds more than one: a slot not shown has no other
+   * name (ADR-0002 decision 84, rule 4).
+   */
+  function slotNameAt(position: SlotPosition): string | undefined {
+    return session.slots.filter((slot) => slot !== null).length > 1 ? slotNames[position] : undefined;
+  }
+
+  function commitPressure(si: number) {
+    const verdict = session.commitAtmosphericPressure(si);
+    raiseVerdict(verdict, { quantity: quantities.p_atm }, si, session.unitSystem, (row) => slotNameAt(row.position));
+  }
 
   // The question is closed before the session is replaced, which builds the
   // page, and these controls with it, again on the new one.
@@ -55,7 +71,8 @@
         value: session.atmosphericPressure,
         bound: kindBounds[quantities.p_atm.kind],
         outOfRange: atmosphericPressureOutOfRange,
-        oncommit: (si) => (session.atmosphericPressure = si),
+        isLegal: (si) => session.judgeAtmosphericPressure(si).kind === "legal",
+        oncommit: commitPressure,
       },
     ]}
   />
