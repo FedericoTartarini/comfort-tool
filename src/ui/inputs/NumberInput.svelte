@@ -142,7 +142,7 @@
 <!-- The group draws the border, and the alert colour while the box inside it is invalid. -->
 <InputGroup.Root>
   <InputGroup.Input bind:ref={box} {...boxAttributes} />
-  <InputGroup.Addon align="inline-end">
+  <InputGroup.Addon align="inline-end" class="box-end">
     <div class="step-buttons" aria-hidden="true">
       <InputGroup.Button size="icon-xs" tabindex={-1} onmousedown={keepFocus} onclick={() => stepByButton(1)}>
         <ChevronUpIcon />

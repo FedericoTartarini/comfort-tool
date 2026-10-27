@@ -349,13 +349,15 @@
 	width: 0.75rem;
 	height: 0.75rem;
 }
-/* A row's Presets follows them with no gap, its own padding the space between; at the box's end, with no Presets
-   after them, they stand at its right edge, without the addon's inset. */
-[data-slot="input-group-addon"]:has(> .step-buttons) {
+/* The box's end, its step buttons and a row's Presets, with no gap and no inset: the last stands at the box's right
+   edge, and Presets keeps a quarter rem of padding each side as the space around its word. */
+.box-end {
 	gap: 0;
-}
-[data-slot="input-group-addon"]:has(> .step-buttons:last-child) {
 	padding-right: 0;
+	margin-right: 0;
+}
+.box-end > button {
+	padding-inline: 0.25rem;
 }
 /* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
    trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint
