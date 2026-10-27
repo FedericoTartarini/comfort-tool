@@ -657,8 +657,8 @@ describe("the session's entry modes", () => {
     const outputs = new Outputs(session);
     session.setCompare(true);
     void outputs.chart;
-    // 3 clo is past ASHRAE 55's 2 clo, and no entry-mode change moves it.
-    session.slots[0].setEntered(q.clo, 3);
+    // 4.5 met is past ASHRAE 55's 4 met, and no entry-mode change moves it.
+    session.slots[0].setEntered(q.met, 4.5);
 
     session.setTemperatureMode(temperatureMode.operative);
 
@@ -684,10 +684,10 @@ describe("the session's entry modes", () => {
       heldSlot(session, 1).setEntered(quantity, value);
     }
     void outputs.chart;
-    // 3 clo is past ISO 7730's 2 clo, and no entry-mode change moves it.
+    // 4.5 met is past ISO 7730's 4 met, and no entry-mode change moves it.
     // Slot 1's gate is closed as well, so no slot's run is in the new mode.
-    heldSlot(session, 1).setEntered(q.clo, 3);
-    session.slots[0].setEntered(q.clo, 3);
+    heldSlot(session, 1).setEntered(q.met, 4.5);
+    session.slots[0].setEntered(q.met, 4.5);
 
     session.setTemperatureMode(temperatureMode.operative);
 

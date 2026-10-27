@@ -24,19 +24,19 @@ import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf, withBounds
 const q = quantities;
 
 /**
- * PMV (ISO 7730) bounded to 10–20 °C dry-bulb and 1 clo at least, and taking
+ * PMV (ISO 7730) bounded to 10–20 °C dry-bulb and 1.1 met at least, and taking
  * the external work PMV (ISO 7730) does not, so a slot the switch seeded is
  * one that holds it.
  */
 const coolerAndTakesWork = {
-  ...withBounds({ tdb: { min: 10, max: 20 }, clo: { min: 1 } }),
+  ...withBounds({ tdb: { min: 10, max: 20 }, met: { min: 1.1 } }),
   inputs: [...pmvPpdIso.inputs, { quantity: q.wme, value: 0.4 }],
 } satisfies RegisteredModel;
 
-/** A dry-bulb temperature, [°C], and a clothing insulation, [clo], {@link coolerAndTakesWork} accepts. */
+/** A dry-bulb temperature, [°C], and a metabolic rate, [met], {@link coolerAndTakesWork} accepts. */
 const accepted = new Map<Quantity, number>([
   [q.tdb, 18],
-  [q.clo, 1.2],
+  [q.met, 1.2],
 ]);
 
 /** What the slots start with, and the positions in `breaking` breaking {@link coolerAndTakesWork}. */
@@ -45,7 +45,8 @@ function entriesBreaking(breaking: readonly SlotPosition[]): ReadonlyMap<Quantit
     breaking.includes(position)
       ? new Map<Quantity, number>([
           [q.tdb, 24 + position],
-          [q.clo, 1.2 - position * 0.4],
+          // Inside PMV (ISO 7730)'s own 0.8 met at every position.
+          [q.met, 1.2 - position * 0.15],
         ])
       : accepted,
   );
@@ -84,7 +85,7 @@ describe("Session.requestModel while Compare is on", () => {
     session.requestModel(coolerAndTakesWork);
 
     expect(listedPositions(session)).toEqual([1]);
-    expect(listedRowsOf(session, 1)?.map((row) => row.quantity)).toEqual([q.tdb, q.clo]);
+    expect(listedRowsOf(session, 1)?.map((row) => row.quantity)).toEqual([q.tdb, q.met]);
     expect(session.model).toBe(pmvPpdIso);
     expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(before);
   });
@@ -96,7 +97,7 @@ describe("Session.requestModel while Compare is on", () => {
 
     expect(listedPositions(session)).toEqual([0, 2]);
     expect(listedRowsOf(session, 0)?.map((row) => row.quantity)).toEqual([q.tdb]);
-    expect(listedRowsOf(session, 2)?.map((row) => row.quantity)).toEqual([q.tdb, q.clo]);
+    expect(listedRowsOf(session, 2)?.map((row) => row.quantity)).toEqual([q.tdb, q.met]);
   });
 
   it("lists for each slot the rows a session holding that slot alone is asked about", () => {
@@ -177,7 +178,7 @@ describe("Session.requestModel while Compare is on", () => {
 
     session.setSlotEnabled(2, true);
 
-    expect(outputs.slots[2].outOfRangeQuantities).toEqual([q.tdb, q.clo]);
+    expect(outputs.slots[2].outOfRangeQuantities).toEqual([q.tdb, q.met]);
   });
 
   it("converts a slot that is not compared out of operative entry for a model without the temperature entry group", () => {

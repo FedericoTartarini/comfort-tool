@@ -52,9 +52,10 @@ export const pmvPpdIso = {
   ],
   // Demonstration ranges: the deployed tool's where it draws the quantity and
   // its range holds what may be entered (`hr`, 30 g/kg past the 27.2 g/kg of
-  // saturated air at 30 °C; `rh`), else what may be entered (`tr`; `v` by
-  // `vr`'s bound; the clothing insulation, and the dynamic one with it, past
-  // the 3.13 clo the gate's converted bound reaches where `vr` is 1 m/s).
+  // saturated air at 30 °C; `rh`), else what may be entered (`tr`), or what
+  // the model is given inside its rows (`v` by `vr`'s bound; the clothing
+  // insulation, and the dynamic one with it, past the 3.13 clo given as the
+  // model's 2 at 4 met where `vr` is 1 m/s).
   // `tdb` and `operative_tmp` end at 35 °C, one short of the deployed EN
   // page's 36, where the single-column Image's 80 % and 90 % labels would
   // overlap. The Comfort zones end at ISO 7730's 30 °C and 2 700 Pa inside

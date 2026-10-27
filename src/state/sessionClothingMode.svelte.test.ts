@@ -10,22 +10,19 @@
  * `clo_dynamic_iso`, or what a session entering that number gives.
  */
 import { clo_dynamic_ashrae, clo_dynamic_iso } from "jsthermalcomfort";
-import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { PointTrace } from "$lib/core/charts/chartSpec";
-import { enteredBound, formatBound } from "$lib/core/applicability";
+import { enteredBound } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { formatNumber } from "$lib/core/numberFormat";
 import { quantities } from "$lib/core/quantities";
-import { displayUnitFor } from "$lib/core/units";
-import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -208,109 +205,34 @@ describe("the session's clothing entry mode", () => {
     expect(heldSlot(session, 2).clothing.mode).toBe(clothingMode.corrected);
   });
 
-  it("judges the entered clothing on the row the person sees, in either mode", () => {
-    const bound = pmvPpdAshrae.info.inputs.clo?.applicability;
-    const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.clo, (bound?.max ?? 0) + 0.1);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+  it.each([
+    // ASHRAE 55's rule gives 1.6 clo at 1.1 met as itself, past the model's 1.5.
+    { model: pmvPpdAshrae, entries: [[q.met, 1.1], [q.clo, 1.6]], dynamic: 1.6 },
+    // ISO 7730's gives still, seated air more clothing than was entered: 2 clo as 2.069, past its 2.
+    { model: pmvPpdIso, entries: [[q.v, 0], [q.met, 1], [q.clo, 2]], dynamic: clo_dynamic_iso(2, 1, 0) },
+  ] as const)(
+    "on $model.info.label, calculates a clothing insulation the model is given past its row, reporting it on the clothing row, and stops it as an entered dynamic clothing insulation",
+    ({ model, entries, dynamic }) => {
+      const bound = model.info.inputs.clo?.applicability;
+      const session = new Session(model);
+      const outputs = new Outputs(session);
+      for (const [quantity, value] of entries) {
+        session.slots[0].setEntered(quantity, value);
+      }
 
-    session.setClothingMode(clothingMode.corrected);
+      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(enteredBound(model, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
+      expect(outputs.slots[0].result).not.toBeNull();
+      expect(outputs.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({ bounded: q.clo_dynamic, value: dynamic, bound });
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo_dynamic]);
-    expect(enteredBound(pmvPpdAshrae, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
-    expect(outputs.slots[0].notCalculated).toBe(true);
-  });
+      session.setClothingMode(clothingMode.corrected);
 
-  // ISO 7730's rule gives still, seated air more clothing than was entered: 2
-  // clo is given to the model as 2.069, past its 2, so the gate stops it before the run.
-  it("stops a clothing insulation the model would be given past its bound, on the clothing row, with the converted range", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value);
-    }
-
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
-    const bound = enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure);
-    expect(bound?.min).toBe(0);
-    expect(bound?.max).toBeCloseTo(1.93, 2);
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.slots[0].result).toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-
-    session.setClothingMode(clothingMode.corrected);
-
-    expect(session.slots[0].values.get(q.clo_dynamic)).toBe(clo_dynamic_iso(2, 1, 0));
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo_dynamic]);
-    expect(outputs.slots[0].notCalculated).toBe(true);
-  });
-
-  it("moves the clothing's bound with the air speed under ISO 7730's rule, and opens the gate where the entry is inside it", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value);
-    }
-    expect(outputs.slots[0].notCalculated).toBe(true);
-
-    session.slots[0].setEntered(q.v, 0.5);
-
-    expect(enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure)?.max).toBeGreaterThan(2);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-  });
-
-  // The gate and the run's violations judge at the precision a row shows (ADR-0002 decision 56): ISO 7730's
-  // converted end is a search's answer, which the library gives the model a hair over its own 2 clo.
-  it("leaves the row open through the switch to dynamic clothing entry at the exact converted bound, and reports nothing", () => {
-    const consoleWrites = (["warn", "log", "error"] as const).map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
-    onTestFinished(() => {
-      vi.restoreAllMocks();
-    });
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.v, 0);
-    session.slots[0].setEntered(q.met, 1);
-    const end = enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure)?.max ?? Number.NaN;
-    session.slots[0].setEntered(q.clo, end);
-    expect(clo_dynamic_iso(end, 1, 0)).toBeGreaterThan(2);
-    expect(clo_dynamic_iso(end, 1, 0)).toBeCloseTo(2, 2);
-
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-
-    session.setClothingMode(clothingMode.corrected);
-
-    expect(session.slots[0].values.get(q.clo_dynamic)).toBeCloseTo(2, 2);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].notCalculated).toBe(false);
-    expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-    expect(consoleWrites.flatMap((spy) => spy.mock.calls)).toEqual([]);
-  });
-
-  it("passes an entry the row shows as the range's end, and stops one shown past it, withholding the result", () => {
-    const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
-    expect(enteredBound(pmvPpdAshrae, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 1.875 });
-
-    for (const clo of [1.8749, 1.875, 1.8751, 1.88]) {
-      session.slots[0].setEntered(q.clo, clo);
-      expect(outputs.slots[0].outOfRangeQuantities, String(clo)).toEqual([]);
-      expect(outputs.slots[0].result, String(clo)).not.toBeNull();
-      // ASHRAE 55's rule gives 1.88 clo as 1.504, which a row shows as the model's 1.5.
-      expect(outputs.slots[0].violations, String(clo)).toEqual([]);
-    }
-
-    session.slots[0].setEntered(q.clo, 1.885);
-
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
-    expect(outputs.slots[0].notCalculated).toBe(true);
-  });
+      expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamic);
+      expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo_dynamic]);
+      expect(enteredBound(model, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
+      expect(outputs.slots[0].notCalculated).toBe(true);
+    },
+  );
 
   // ASHRAE 55's rule gives 1.6 clo at 2 met as 1.28 clo, inside the model's 1.5.
   it("passes a clothing insulation past the model's bound that the model is given inside it", () => {
@@ -321,7 +243,6 @@ describe("the session's clothing entry mode", () => {
 
     expect(clo_dynamic_ashrae(1.6, 2)).toBe(1.28);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(enteredBound(pmvPpdAshrae, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 1.875 });
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].result).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, 1.28)).slots[0].result);
     expect(outputs.slots[0].violations).toEqual([]);
@@ -329,90 +250,25 @@ describe("the session's clothing entry mode", () => {
 });
 
 describe("a model switch under clothing insulation entry", () => {
-  it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end on a yes", () => {
+  it("switches without asking to a model whose dynamic clothing row the clothing breaks, and reports it on the clothing row", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 2);
     // ISO 7730's rule gives it as 1.63 clo at 2 met, inside the model's 2; ASHRAE 55's as 1.52, past its 1.5.
     session.slots[0].setEntered(q.clo, 1.9);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
     session.requestModel(pmvPpdAshrae);
 
-    expect(session.model).toBe(pmvPpdIso);
-    const [row] = listedRowsOf(session) ?? [];
-    expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 1.9, bound: { min: 0, max: 1.875 } }]);
-
-    session.acceptSwitch();
-
+    expect(listedRowsOf(session)).toBeUndefined();
     expect(session.model).toBe(pmvPpdAshrae);
     expect(session.clothingMode).toBe(clothingMode.uncorrected);
-    // The end itself, which the row shows as 1.88, the range's end.
-    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.max);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(session.slots[0].values.get(q.clo)).toBe(1.9);
     expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-  });
-
-  // ISO 7730's rule does not round, its converted end is a search's answer, and the library compares
-  // strictly: a yes leaves the end itself, given to the model a hair over its 2 clo, which the gate and
-  // the run's violations judge at the precision a row shows (ADR-0002 decision 56).
-  it.each([unitSystem.si, unitSystem.ip])("leaves, on a yes, the converted end itself, which ISO 7730's run reports nothing of, in $title", (system) => {
-    // The same model under no standard corrects no clothing, so 2 clo is inside its bound as entered.
-    const session = new Session({ ...pmvPpdIso, standard: undefined });
-    session.unitSystem = system;
-    const outputs = new Outputs(session);
-    for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value);
-    }
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-
-    session.requestModel(pmvPpdIso);
-
-    const [row] = listedRowsOf(session) ?? [];
-    expect([row.quantity, row.value, row.bound.min]).toEqual([q.clo, 2, 0]);
-    expect(row.bound.max).toBeCloseTo(1.93, 2);
-
-    session.acceptSwitch();
-
-    const landed = session.slots[0].values.get(q.clo) ?? Number.NaN;
-    expect(landed).toBe(row.bound.max);
-    expect(clo_dynamic_iso(landed, 1, 0)).toBeGreaterThan(2);
-    // The box reads the end as the range beside it does.
-    const unit = displayUnitFor(q.clo, system);
-    expect(formatNumber(unit.fromSi(landed))).toBe("1.93");
-    expect(formatBound(row.bound, q.clo, system)).toBe("0 – 1.93");
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].notCalculated).toBe(false);
-    expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].violations).toEqual([]);
-  });
-
-  // The clothing's bound under ISO 7730's rule is read at the air speed, whose
-  // own bound is read at the metabolic rate: each is judged at what a yes would leave.
-  it("asks about a clothing insulation the converted bound stops only at the air speed a yes would leave", () => {
-    const stillAir = withBounds({ vr: { min: 0, max: 0 } });
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    for (const [quantity, value] of [[q.v, 0.5], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value);
-    }
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-
-    session.requestModel(stillAir);
-
-    const rows = listedRowsOf(session) ?? [];
-    expect(rows.map(({ quantity, value }) => [quantity, value])).toEqual([[q.v, 0.5], [q.clo, 2]]);
-    expect(rows[0].bound).toEqual({ min: 0, max: 0 });
-    expect(rows[1].bound.max).toBeCloseTo(1.93, 2);
-
-    session.acceptSwitch();
-
-    expect(session.slots[0].values.get(q.v)).toBe(0);
-    expect(session.slots[0].values.get(q.clo)).toBe(rows[1].bound.max);
-    expect(formatNumber(session.slots[0].values.get(q.clo) ?? Number.NaN)).toBe("1.93");
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({
+      bounded: q.clo_dynamic,
+      value: clo_dynamic_ashrae(1.9, 2),
+      bound: pmvPpdAshrae.info.inputs.clo?.applicability,
+    });
   });
 });
 

@@ -44,8 +44,14 @@ export type QuantityKind =
 export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
   percentage: { min: 0, max: 100 },
   // No speed is below 0, and the switch back to air speed entry can give one
-  // (ADR-0002 decision 54). A PMV model's info bounds `vr`, not an entered `v`.
+  // (ADR-0002 decision 54). A PMV model's info bounds `vr`, not an entered `v`,
+  // and this bound alone holds the entered `v` (decision 84's note of
+  // 2026-10-28, rule 2).
   airSpeed: { min: 0 },
+  // No garment insulates below 0. A PMV model's info bounds the dynamic
+  // clothing insulation it is given, not an entered `clo`, which this bound
+  // alone holds, as the air speed's holds an entered `v`.
+  clothingInsulation: { min: 0 },
   // Neither the library nor pythermalcomfort bounds `p_atm`; this is the
   // deployed tool's range, one for every model (ADR-0002 decision 49).
   atmosphericPressure: { min: 30000, max: 110000 },

@@ -128,12 +128,12 @@ describe("a change of atmospheric pressure", () => {
   it("does not move a last valid result kept on screen, which was run at the pressure it remembers", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
     const kept = resultValueOf(outputs.slots[0].result, q.pmv);
-    // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
-    session.slots[0].setEntered(q.clo, 2.5);
+    // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 closes the gate.
+    session.slots[0].setEntered(q.met, 4.5);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(kept);
   });
 });
@@ -163,9 +163,9 @@ describe("an atmospheric pressure out of range", () => {
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].notCalculated).toBe(true);
-    // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 is out of range beside it.
-    session.slots[0].setEntered(q.clo, 2.5);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 is out of range beside it.
+    session.slots[0].setEntered(q.met, 4.5);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
   });
 
   it("back in range, is calculated again at the new pressure", () => {
@@ -394,12 +394,12 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
   it("draws a chart kept from the last valid run at the pressure that run remembers", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
     const kept = outputs.chart;
-    // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
-    session.slots[0].setEntered(q.clo, 2.5);
+    // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 closes the gate.
+    session.slots[0].setEntered(q.met, 4.5);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
     expect(outputs.chart).toEqual(kept);
     expect(outputs.chart?.layout.y.range).toEqual([0, drawnHrMax(LOWER_PRESSURE)]);
   });

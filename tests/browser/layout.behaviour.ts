@@ -188,9 +188,13 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
   });
 
   test(`at ${width} px, the switch question opens and closes moving no region or the plot`, async ({ page }) => {
-    await openStandard(page, width, ADAPTIVE_ADDRESS);
-    // 2 m/s is Adaptive's top; PMV's bound at the default metabolic rate is lower, so the switch asks.
-    await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("2");
+    await openStandard(page, width);
+    // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
+    // Committed before the boxes are held: the run it gives breaks a limit, which the result card shows.
+    const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+    await airSpeed.fill("3");
+    await airSpeed.press("Enter");
+    await expect(card(page, "Results").getByRole("status")).toBeVisible();
     const expectInPlace = await holdBoxes(page);
     const question = page.getByRole("dialog");
 
@@ -199,7 +203,7 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
       await expect(page.getByRole("option", { name: /^PMV/ })).toBeVisible();
     });
     await expectInPlace(async () => {
-      await page.getByRole("option", { name: /^PMV/ }).click();
+      await page.getByRole("option", { name: /^Adaptive/ }).click();
       await expect(question).toBeVisible();
     });
     await expectInPlace(async () => {
@@ -468,11 +472,11 @@ test.describe("the slots' names", () => {
 
   test("at 1440 px, name the switch question's slot column with Compare on, slots 2 and 3 disabled too, and none with it off", async ({ page }) => {
     const question = page.getByRole("dialog");
-    // 2 m/s is Adaptive's top; PMV's bound at the default metabolic rate is lower, so the switch asks.
+    // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
     async function askSwitch(airSpeed: Locator) {
-      await airSpeed.fill("2");
+      await airSpeed.fill("3");
       await page.getByRole("button", { name: "Model", exact: true }).click();
-      await page.getByRole("option", { name: /^PMV/ }).click();
+      await page.getByRole("option", { name: /^Adaptive/ }).click();
       await expect(question).toBeVisible();
     }
     async function decline() {
@@ -480,7 +484,7 @@ test.describe("the slots' names", () => {
       await expect(question).toBeHidden();
     }
 
-    await openStandard(page, 1440, ADAPTIVE_ADDRESS);
+    await openStandard(page, 1440);
     await askSwitch(page.getByRole("spinbutton", { name: /^Air speed/ }));
     await expect(question.getByRole("columnheader")).toHaveCount(3);
     await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveCount(0);
@@ -488,7 +492,7 @@ test.describe("the slots' names", () => {
 
     // Compare enables slot 2 on first use; slot 3 stays disabled.
     await page.getByRole("switch", { name: "Compare", exact: true }).click();
-    await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("2");
+    await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("3");
     await askSwitch(page.getByRole("spinbutton", { name: /^Air speed.*, Input 1$/ }));
     await expect(question.getByRole("columnheader")).toHaveCount(4);
     await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1", "Input 2"]);
@@ -860,14 +864,14 @@ async function openUncalculated(page: Page, width: number, address: string) {
 }
 
 test.describe("the applicability summary", () => {
-  test("at 1440 px, an air speed out of range from a link shows Not calculated between the Results heading and the table, and committed back in range it goes", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ v: 5 }]));
+  test("at 1440 px, a metabolic rate out of range from a link shows Not calculated between the Results heading and the table, and committed back in range it goes", async ({ page }) => {
+    await openUncalculated(page, 1440, pmvLinkWith([{ met: 5 }]));
     const results = card(page, "Results");
     const summary = results.getByRole("alert");
-    const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+    const metabolicRate = page.getByRole("spinbutton", { name: /^Metabolic rate/ });
 
     await expect(summary).toContainText("Not calculated, outside these limits:");
-    await expect(summary).toContainText(/Air speed must be .* m\/s/);
+    await expect(summary).toContainText(/Metabolic rate must be .* met/);
     await expect(summary).toContainText("This model has no earlier result to show.");
     const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
     const alert = await boxOf(summary);
@@ -875,20 +879,20 @@ test.describe("the applicability summary", () => {
     expect(alert.y).toBeGreaterThanOrEqual(heading.y + heading.height);
     expect(table.y).toBeGreaterThanOrEqual(alert.y + alert.height);
 
-    await airSpeed.fill("0.1");
-    await airSpeed.press("Enter");
+    await metabolicRate.fill("1.1");
+    await metabolicRate.press("Enter");
 
     await expect(summary).toHaveCount(0);
   });
 
   test("at 1440 px, two entries out of range from a link are one list under Not calculated, outside these limits:, the sentence on the result after it, every line at the heading's left edge", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ tdb: 50, v: 5 }]));
+    await openUncalculated(page, 1440, pmvLinkWith([{ tdb: 50, met: 5 }]));
     const summary = card(page, "Results").getByRole("alert");
 
     const title = summary.locator('[data-slot="alert-title"]');
     await expect(title).toHaveText("Not calculated, outside these limits:");
     const items = summary.getByRole("listitem");
-    await expect(items).toHaveText([/Dry-bulb air temperature must be /, /Air speed must be /]);
+    await expect(items).toHaveText([/Dry-bulb air temperature must be /, /Metabolic rate must be /]);
     const sentence = summary.getByText("This model has no earlier result to show.", { exact: true });
     await expect(items.filter({ hasText: "earlier result" })).toHaveCount(0);
     const left = (await boxOf(title)).x;
@@ -900,11 +904,11 @@ test.describe("the applicability summary", () => {
   });
 
   test("at 1440 px under Compare, two slots out of range from a link are one list holding both slots' lines, a sentence on the result per slot after it", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ v: 5 }, { v: 5 }]));
+    await openUncalculated(page, 1440, pmvLinkWith([{ met: 5 }, { met: 5 }]));
     const summary = card(page, "Results").getByRole("alert");
 
     await expect(summary.getByRole("list")).toHaveCount(1);
-    await expect(summary.getByRole("listitem")).toHaveText([/Input 1: Air speed must be /, /Input 2: Air speed must be /]);
+    await expect(summary.getByRole("listitem")).toHaveText([/Input 1: Metabolic rate must be /, /Input 2: Metabolic rate must be /]);
     const sentences = summary.getByText(/Input \d: This model has no earlier result to show\./);
     await expect(sentences).toHaveText(["Input 1: This model has no earlier result to show.", "Input 2: This model has no earlier result to show."]);
     // Every line and every sentence carries its slot's swatch.

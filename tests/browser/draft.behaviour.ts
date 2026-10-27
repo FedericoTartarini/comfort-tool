@@ -5,9 +5,11 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * a legal one commits 400 ms after the last keystroke, Enter and leaving the
  * box commit at once, and nothing moves before; a draft past its bound is
  * marked and waits, and is cut to the bound's end on leaving the box; a draft
- * that would put another value out of range is refused. A cut and a refusal
- * each raise a toast. The page's clock is paused once it has drawn, so a
- * pause in the typing is the time the test runs the clock for.
+ * that would put a humidity entry out of range is refused, and an air speed
+ * past the model's row under a metabolic rate is not: the run is calculated
+ * and its broken limit shown. A cut and a refusal each raise a toast. The
+ * page's clock is paused once it has drawn, so a pause in the typing is the
+ * time the test runs the clock for.
  */
 
 /** PMV (ASHRAE 55): dry-bulb 10 – 40 °C. */
@@ -169,23 +171,48 @@ test.describe("a draft past its bound", () => {
   });
 });
 
-test.describe("a draft that would put another value out of range", () => {
-  test("a metabolic rate under which the air speed is out of its bound is refused: the box shows the committed value and a toast says why", async ({ page }) => {
+test.describe("a draft that would put a humidity entry out of range", () => {
+  test("a dry-bulb temperature below the held dew point is refused: the box shows the committed value and a toast says why", async ({ page }) => {
     await open(page);
-    // PMV (ASHRAE 55) takes 1.5 m/s at 1.1 met, and at 3 met no more than 1.4.
-    await commit(page.getByRole("spinbutton", { name: /^Air speed/ }), "1.5");
+    await page.getByRole("button", { name: "Humidity", exact: true }).click();
+    await page.getByRole("menu").getByRole("menuitemradio", { name: /^Dew-point temperature/ }).click();
+    await commit(page.getByRole("spinbutton", { name: /^Dew-point temperature/ }), "15");
+    const box = dryBulb(page);
+    const table = resultTable(page);
+    const before = await textOf(table);
+
+    await box.fill("12");
+    await page.clock.runFor(COMMIT_PAUSE * 3);
+    await expect(box).toHaveAttribute("aria-invalid", "true");
+    await box.press("Enter");
+
+    await expect(box).toHaveValue("25");
+    await expectText(table, before);
+    const toast = toasts(page);
+    await expect(toast).toContainText("Dry-bulb air temperature was not changed to 12 °C");
+    await expect(toast).toContainText("Dew-point temperature must be ≤ 12 °C");
+  });
+});
+
+test.describe("an air speed held under a metabolic rate", () => {
+  test("on PMV (ASHRAE 55) at 1.5 m/s, 3 met is taken, the lines under the air speed and the clothing read ≥ 0 with their units, and the result shows the relative air speed's limit broken", async ({ page }) => {
+    await open(page);
+    const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+    await commit(airSpeed, "1.5");
     const box = page.getByRole("spinbutton", { name: /^Metabolic rate/ });
     const table = resultTable(page);
     const before = await textOf(table);
 
-    await box.fill("3");
-    await expect(box).toHaveAttribute("aria-invalid", "true");
-    await box.press("Enter");
+    await commit(box, "3");
 
-    await expect(box).toHaveValue("1.1");
-    await expectText(table, before);
-    const toast = toasts(page);
-    await expect(toast).toContainText("Metabolic rate was not changed to 3 met");
-    await expect(toast).toContainText(/Air speed must be 0 – 1\.4 m\/s/);
+    await expect(box).toHaveValue("3");
+    await changedFrom(table, before);
+    await expect(captionOf(airSpeed)).toHaveText("≥ 0 m/s");
+    await expect(captionOf(page.getByRole("spinbutton", { name: /^Clothing insulation/ }))).toHaveText("≥ 0 clo");
+    // 1.5 m/s at 3 met is a relative air speed of 2.1 m/s, past the model's 2.
+    const summary = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Results", exact: true }) }).getByRole("status");
+    await expect(summary).toContainText("Calculated, but outside these limits:");
+    await expect(summary.getByRole("listitem")).toHaveText([/Relative air speed must be 0 – 2 m\/s/]);
+    await expect(toasts(page)).toHaveCount(0);
   });
 });

@@ -69,9 +69,9 @@ export const pmvPpdAshrae = {
     { quantity: q.clo, value: 0.5, calculators: [customEnsemble, clothingFromOutdoorTemperature] },
   ],
   // Demonstration ranges: the deployed tool's where it draws the quantity and
-  // its range holds what may be entered (`rh`), else what may be entered (`v`
-  // by `vr`'s bound; the clothing insulation, and the dynamic one with it,
-  // past the 2.14 clo the gate's converted bound reaches at 4 met). One
+  // its range holds what may be entered (`rh`), else what the model is given
+  // inside its rows (`v` by `vr`'s bound; the clothing insulation, and the
+  // dynamic one with it, past the 2.14 clo given as the model's 1.5 at 4 met). One
   // exception, `hr`: the deployed tool's 30 g/kg, though entry reaches the
   // 48.9 g/kg of saturated air at 40 °C.
   axisRanges: [

@@ -85,10 +85,10 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * {@link ValueEntryModes}, {@link defaultEntryModes} and {@link entryModesOf}
  * name beside the others, and which the session's slot, its setter and its
  * control carry as the slot's shape. What a group's entry resolves to for the
- * library is `core/libraryInputs.ts`'s, and the row a library violation is
- * reported on `core/applicability.ts`'s: each names the group there. The
- * bound an entry must satisfy is `core/applicability.ts`'s too, which names
- * no activity-adjusted group: it reads the row's {@link EntryCorrection}.
+ * library is `core/libraryInputs.ts`'s, which names the group there. The
+ * bound an entry must satisfy and the row a library violation is reported on
+ * are `core/applicability.ts`'s, which names no activity-adjusted group: it
+ * reads the row's {@link EntryCorrection}.
  *
  * Humidity is an entry group and not one of these: its entry is one quantity
  * held apart from the values (`Slot.humidity`), its modes carry their own
@@ -118,24 +118,19 @@ export interface ValueEntryGroup {
 }
 
 /**
- * What an activity-adjusted group tells the pre-call gate (ADR-0002 decision
- * 54 as revised a third time): the model's info bounds the quantity the model
- * takes, so an entry of the corrected mode is held to that row as it is, and
- * an entry of the other mode to that row converted into the entered quantity.
- * `core/applicability.ts` reads it, by one rule for every such group.
+ * What an activity-adjusted group tells the pre-call gate and the violation
+ * rows (ADR-0002 decision 84's note of 2026-10-28, rule 2, and decision 54's
+ * note of that day): the model's info bounds the quantity the model takes, so
+ * an entry of the corrected mode is held to that row as it is, an entry of the
+ * other mode to its kind's bound alone, and a run that breaks the row is
+ * reported on the entry. `core/applicability.ts` reads it, by one rule for
+ * every such group.
  */
 export interface EntryCorrection {
   /** The quantity the model's info names what the model is given by, and so bounds. */
   readonly taken: Quantity;
   /** The mode whose entry the model is given as it is. */
   readonly corrected: ValueEntryMode;
-  /**
-   * The entry of the uncorrected mode that `model` is given `taken` for at the
-   * slot's own other values, by the correction's inverse: exactly under a
-   * correction that rounds, and to the inverse's own precision under one that
-   * does not.
-   */
-  readonly entryGiving: (taken: number, slot: Slot, model: RegisteredModel) => number;
 }
 
 // Each group's mode is read from its field, so the table names the field once.
@@ -152,14 +147,14 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = (
       modes: Object.values(airSpeedMode),
       appliesTo: takesRelativeAirSpeed,
       convert: withAirSpeedMode,
-      correction: { taken: q.vr, corrected: airSpeedMode.corrected, entryGiving: airSpeedGiving },
+      correction: { taken: q.vr, corrected: airSpeedMode.corrected },
     },
     {
       field: "clothing",
       modes: Object.values(clothingMode),
       appliesTo: hasClothingGroup,
       convert: withClothingMode,
-      correction: { taken: q.clo, corrected: clothingMode.corrected, entryGiving: clothingGiving },
+      correction: { taken: q.clo, corrected: clothingMode.corrected },
     },
   ] satisfies Omit<ValueEntryGroup, "modeOf">[]
 ).map((group) => ({ ...group, modeOf: (modes: ValueEntryModes) => modes[group.field].mode }));
@@ -313,8 +308,9 @@ function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number
 
 /**
  * The air speed that gives the relative air speed `vr` at the slot's own
- * metabolic rate: the air-speed group's {@link EntryCorrection.entryGiving}.
- * `v_relative` rounds to 0.001, so the answer is given exactly `vr`.
+ * metabolic rate, what the switch back to air speed entry stores
+ * ({@link withAirSpeedMode}). `v_relative` rounds to 0.001, so the answer is
+ * given exactly `vr`.
  */
 function airSpeedGiving(vr: number, slot: Slot): number {
   return v_relative_inverse({ vr, met: requireValue(slot.values, q.met) });
@@ -323,8 +319,9 @@ function airSpeedGiving(vr: number, slot: Slot): number {
 /**
  * The clothing insulation `model`'s rule corrects to `dynamic` at the slot's
  * own values ({@link clothingCorrectionAt}), by the temporary library's
- * `clo_dynamic_inverse`: the clothing group's {@link EntryCorrection.entryGiving}.
- * The number itself for a model without a rule.
+ * `clo_dynamic_inverse`, what the switch back to clothing insulation entry
+ * stores ({@link withClothingMode}). The number itself for a model without a
+ * rule.
  */
 function clothingGiving(dynamic: number, slot: Slot, model: RegisteredModel): number {
   const correction = clothingCorrectionAt(slot, model);

@@ -184,11 +184,11 @@ describe("Outputs", () => {
     session.chart.type = chartType.dynamic;
     expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
 
-    // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
-    session.slots[0].setEntered(q.clo, 3);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    // 4.5 met is past ISO 7730's 4 met, and no temperature switch moves it.
+    session.slots[0].setEntered(q.met, 4.5);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
     session.setTemperatureMode(temperatureMode.operative);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
 
     expect(outputs.slots[0].lastValid?.slot.temperature.mode).toBe(temperatureMode.separate);
     expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
@@ -318,15 +318,15 @@ describe("the applicability summary's Not calculated part", () => {
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toBeNull();
   });
 
-  it("names an air speed out of range with its bound, and says apart from it that the last valid result is shown", () => {
+  it("names a metabolic rate out of range with its bound, and says apart from it that the last valid result is shown", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     void outputs.slots[0].result;
 
-    session.slots[0].setEntered(q.v, 3);
+    session.slots[0].setEntered(q.met, 4.5);
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated).toEqual({
-      lines: [{ text: "Air speed must be 0 – 0.97 m/s" }],
+      lines: [{ text: "Metabolic rate must be 0.8 – 4 met" }],
       result: "Showing the last valid result.",
     });
   });
@@ -348,12 +348,12 @@ describe("the applicability summary's Not calculated part", () => {
   it("names two entries out of range in panel order", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.v, 3);
+    session.slots[0].setEntered(q.met, 4.5);
     session.slots[0].setEntered(q.tdb, 35);
 
     expect(outputs.slots[0].applicabilitySummary.notCalculated?.lines).toEqual([
       { text: "Dry-bulb air temperature must be 10 – 30 °C" },
-      { text: "Air speed must be 0 – 0.97 m/s" },
+      { text: "Metabolic rate must be 0.8 – 4 met" },
     ]);
   });
 
@@ -376,11 +376,11 @@ describe("the applicability summary's Not calculated part", () => {
     const outputs = new Outputs(session);
     void outputs.slots.map((slot) => slot.result);
 
-    heldSlot(session, 1).setEntered(q.v, 3);
+    heldSlot(session, 1).setEntered(q.met, 4.5);
 
     const [first, second] = outputs.slots;
     expect(first.applicabilitySummary.notCalculated).toBeNull();
-    expect(second.applicabilitySummary.notCalculated?.lines).toEqual([{ text: "Air speed must be 0 – 0.97 m/s" }]);
+    expect(second.applicabilitySummary.notCalculated?.lines).toEqual([{ text: "Metabolic rate must be 0.8 – 4 met" }]);
     expect(second.badge.name).toBe("Input 2");
   });
 });

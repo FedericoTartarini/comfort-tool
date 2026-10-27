@@ -72,10 +72,9 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
  * and no further; a bound with one end moves a value only towards that end.
  * The end itself, and not a rounding of it (ADR-0002 decision 56): a slot
  * holds the full-precision number, and the gate judges at the precision a row
- * shows, so the end passes it and reads as the range beside the row does. A
- * converted end has more decimals than a row shows (1.934… clo for ISO 7730's
- * 2 clo in still air at 1 met), and the model may be given a hair over its own
- * bound for it; the run's violation rows judge that at the same precision.
+ * shows, so the end passes it and reads as the range beside the row does,
+ * a humidity entry's converted end among them, which has more decimals than a
+ * row shows.
  *
  * Reached by the person's yes to a switch (ADR-0002 decision 32). A single
  * committed value past its bound is cut to the same end by its commit's
