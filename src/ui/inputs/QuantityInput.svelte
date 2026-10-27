@@ -22,7 +22,10 @@
     outOfRange?: boolean;
     /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */
     slotName?: string;
-    /** Whether a typed SI value may commit on a pause in the typing (ADR-0002 decision 84, rule 2); every one may, without it. */
+    /**
+     * Whether an SI value is taken as it is: a typed one may commit on a pause in the typing, and a preset may be
+     * picked (ADR-0002 decision 84, rules 2 and 5); every one, without it.
+     */
     isLegal?: (si: number) => boolean;
     /** Commit an SI value, typed, stepped or a preset's: the owner writes it, cut or refused. */
     oncommit: (si: number) => void;
@@ -82,7 +85,7 @@
     {#each entries as entry, index (index)}
       {#if entry}
         {#snippet rowMenu()}
-          <RowMenuButton {presets} {unit} slotName={entry.slotName} oncommit={entry.oncommit} />
+          <RowMenuButton {presets} {unit} slotName={entry.slotName} isLegal={entry.isLegal} oncommit={entry.oncommit} />
         {/snippet}
         <Field.Field data-invalid={entry.outOfRange || undefined}>
           <NumberInput

@@ -361,22 +361,26 @@ describe("shownRow", () => {
   it("has an after that is not a number while there is no result", () => {
     const row = shownRow(room, solarGainOnOccupants, undefined, pmvPpdAshrae, P);
     expect([row.quantity, row.before, row.after]).toEqual([q.tr, 27, Number.NaN]);
-    expect(row.brokenBound).toBeUndefined();
+    expect(row.cutTo).toBeUndefined();
   });
 
-  it("carries the row's bound where the after is outside it, as the panel marks it, and none inside it", () => {
+  it("is cut to the row's bound where the raise is past it, with the bound, as a typed value is; inside it, carries none", () => {
     const past = resultOf(q.delta_mrt, 20);
     const raised = shownRow(room, solarGainOnOccupants, past, pmvPpdAshrae, P);
-    expect(raised.brokenBound).toBeDefined();
-    expect(raised.brokenBound).toEqual(enteredBound(pmvPpdAshrae, q.tr, room, P));
-    expect(shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P).brokenBound).toBeUndefined();
+    const bound = enteredBound(pmvPpdAshrae, q.tr, room, P);
+    expect(raised.cutTo).toBeDefined();
+    expect(raised.cutTo).toEqual(bound);
+    expect(raised.after).toBe(bound?.max);
+    expect(shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P).cutTo).toBeUndefined();
   });
 
-  it("carries the operative row's bound under operative entry, where the folded after is outside it", () => {
+  it("is cut to the operative row's bound under operative entry, where the folded raise is past it", () => {
     // The fold weighs the raise by 0.4 at this air speed, so 20 K moves it 8 K and stays inside: 50 K is needed.
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
     const raised = shownRow(operative, solarGainOnOccupants, resultOf(q.delta_mrt, 50), pmvPpdAshrae, P);
-    expect(raised.brokenBound).toBeDefined();
-    expect(raised.brokenBound).toEqual(enteredBound(pmvPpdAshrae, q.operative_tmp, operative, P));
+    const bound = enteredBound(pmvPpdAshrae, q.operative_tmp, operative, P);
+    expect(raised.cutTo).toBeDefined();
+    expect(raised.cutTo).toEqual(bound);
+    expect(raised.after).toBe(bound?.max);
   });
 });

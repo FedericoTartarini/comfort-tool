@@ -241,26 +241,28 @@ test.describe("Solar gain on occupants", () => {
     await expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled();
   });
 
-  test("Apply raises the box by the shown delta and closes; reopened, the before is the raised value, the after past the bound is marked with it, and Apply raises again", async ({ page }) => {
+  test("Apply raises the box by the shown delta and closes; reopened, the before is the raised value, the after past the bound is its end with the bound, and Apply writes that end with no toast", async ({ page }) => {
     await open(page);
     const mrt = page.getByRole("spinbutton", { name: /^Mean radiant temperature/ });
-    const once = formatNumber(25 + increaseAt(0));
-    const twice = formatNumber(25 + 2 * increaseAt(0));
+    await mrt.fill("15");
+    await mrt.press("Enter");
+    const once = formatNumber(15 + increaseAt(0));
 
     let dialog = await openDialog(page, SOLAR);
-    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`25 → ${once} (limit 10 – 40)`);
-    await expect(dockLine(dialog, MRT_LINE).locator(".out-of-range")).toHaveText(`${once} (limit 10 – 40)`);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`15 → ${once}`);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(entryOf(page)).toBeFocused();
     await expect(mrt).toHaveValue(once);
-    await expect(mrt).toHaveAttribute("aria-invalid", "true");
 
+    // 15 °C raised twice is past ASHRAE 55's 40 °C: the dock shows the cut before Apply, as decision 84 rule 5 has it.
     dialog = await openDialog(page);
-    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`${once} → ${twice} (limit 10 – 40)`);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`${once} → 40 (limit 10 – 40)`);
     await expect(dialog.getByRole("button", { name: "Apply" })).toBeEnabled();
     await dialog.getByRole("button", { name: "Apply" }).click();
-    await expect(mrt).toHaveValue(twice);
+    await expect(mrt).toHaveValue("40");
+    await expect(mrt).not.toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
   });
 
   test("closing without Apply changes nothing", async ({ page }) => {
@@ -554,6 +556,28 @@ test.describe("the dock's row under the entry modes", () => {
     await expect(page.getByRole("spinbutton", { name: /^Dynamic clothing insulation/ })).toHaveValue(corrected);
   });
 
+  test("under dynamic clothing entry, an ensemble past the row's bound shows the bound's end with the bound, and Apply writes that end", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Clothing", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: /^Dynamic clothing insulation/ }).click();
+
+    // 0.49 + 0.48 + 0.69 clo at the default 1.1 met, which the standard leaves as it is: 1.66, past ASHRAE 55's 1.5.
+    const dialog = await openDialog(page, ENSEMBLE);
+    const panel = dialog.getByRole("tabpanel");
+    for (const [group, garment] of [
+      ["Trousers and Coveralls", "Coveralls"],
+      ["Suit Jackets and Vests", "Double-breasted coat (thick)"],
+      ["Sleepwear and Robes", "Long-sleeve long wrap robe (thick)"],
+    ]) {
+      await panel.getByRole("group", { name: group, exact: true }).getByRole("button", { name: `Add ${group}` }).click();
+      await page.getByRole("listbox").getByRole("option", { name: new RegExp(`^${garment.replace(/[()]/g, "\\$&")}`) }).click();
+    }
+    await expect(dockLine(dialog, "Dynamic clothing insulation (clo)")).toHaveText("0.5 → 1.5 (limit 0 – 1.5)");
+    await panel.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("spinbutton", { name: /^Dynamic clothing insulation/ })).toHaveValue("1.5");
+  });
+
   test("under operative entry, it is the operative temperature, and Apply folds the raise at the model's standard", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Temperature", exact: true }).click();
@@ -580,7 +604,7 @@ test.describe("Apply to, under Compare", () => {
     await page.keyboard.press("Escape");
 
     await compareThreeSlots(page);
-    await mrtOf(page, "Input 2").fill("30");
+    await mrtOf(page, "Input 2").fill("15");
 
     dialog = await openDialog(page, SOLAR);
     let panel = dialog.getByRole("tabpanel");
@@ -589,12 +613,12 @@ test.describe("Apply to, under Compare", () => {
     for (const [name, checked] of [["Input 1", true], ["Input 2", false], ["Input 3", false]] as const) {
       await expect(applyTo.getByRole("checkbox", { name })).toHaveAttribute("aria-checked", String(checked));
     }
-    await expect(dockLine(dialog, mrtLine("Input 1"))).toContainText(`25 → ${formatNumber(25 + increase)}`);
+    await expect(dockLine(dialog, mrtLine("Input 1"))).toHaveText(`25 → 40 (limit 10 – 40)`);
     await expect(dockLine(dialog, mrtLine("Input 2"))).toHaveCount(0);
     await expect(dockLine(dialog, MRT_LINE)).toHaveCount(0);
 
     await applyTo.getByRole("checkbox", { name: "Input 2" }).click();
-    await expect(dockLine(dialog, mrtLine("Input 2"))).toContainText(`30 → ${formatNumber(30 + increase)}`);
+    await expect(dockLine(dialog, mrtLine("Input 2"))).toHaveText(`15 → ${formatNumber(15 + increase)}`);
 
     await page.keyboard.press("Escape");
     dialog = await openDialog(page);
@@ -610,9 +634,10 @@ test.describe("Apply to, under Compare", () => {
     await dialog.getByRole("tabpanel").getByRole("checkbox", { name: "Input 3" }).click();
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(mrtOf(page, "Input 1")).toHaveValue(formatNumber(25 + increase));
+    // 25 °C raised is past ASHRAE 55's 40 °C, so each checked slot takes the bound's end.
+    await expect(mrtOf(page, "Input 1")).toHaveValue("40");
     await expect(mrtOf(page, "Input 2")).toHaveValue("25");
-    await expect(mrtOf(page, "Input 3")).toHaveValue(formatNumber(25 + increase));
+    await expect(mrtOf(page, "Input 3")).toHaveValue("40");
   });
 
   test("offers no disabled slot, and with no slot checked, Apply is disabled", async ({ page }) => {
@@ -655,6 +680,6 @@ test.describe("Apply to, under Compare", () => {
     const dialog = await openDialog(page, SOLAR);
     await expect(dialog.getByText("Apply to")).toHaveCount(0);
     await expect(dialog.getByRole("checkbox")).toHaveCount(0);
-    await expect(dockLine(dialog, MRT_LINE)).toContainText(`25 → ${formatNumber(25 + increase)}`);
+    await expect(dockLine(dialog, MRT_LINE)).toHaveText(`25 → 40 (limit 10 – 40)`);
   });
 });

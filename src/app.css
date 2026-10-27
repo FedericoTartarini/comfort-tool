@@ -265,10 +265,6 @@
 		border-top: 1px solid var(--border);
 		background: color-mix(in oklab, var(--muted) 50%, transparent);
 	}
-	/* A row's value after Apply outside the row's bound, with the bound: the colour an out-of-range box's edge takes. */
-	.result-dock .out-of-range {
-		color: var(--destructive);
-	}
 	/* The footer's "Apply to" stands at its start, Apply at its end; its heading is set as the labels beside it. Where
 	   the generated footer stacks its children in reverse, below `sm`, it is ordered after Apply so it still stands
 	   above it, where the Tab order reaches it first. */
@@ -464,6 +460,11 @@
    own, and stood further from it than the names from the left. */
 .list-popover [data-slot="command-item"]:has(> .item-value) > svg {
 	display: none;
+}
+/* A disabled item in such a list, a preset its slot would not take as it is (decision 84, rule 5), dimmed as the
+   generated item means to: bits-ui marks it `data-disabled=""`, which the item's `data-[disabled=true]` does not match. */
+.list-popover [data-slot="command-item"][data-disabled] {
+	opacity: 0.5;
 }
 /* Custom ensemble's search: its results float over the garment rows below it, so typing a query moves no row, and its
    box's edges stand in line with the rows'. */

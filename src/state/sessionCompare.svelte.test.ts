@@ -651,57 +651,6 @@ describe("the session's entry modes", () => {
     expect(shapeOf(heldSlot(session, 1))).toEqual(shapeOf(alone.slots[0]));
   });
 
-  it("resolves the chart's axes and the picker's choices from the session's entry mode, whichever slot's gate is closed", () => {
-    const session = new Session(pmvPpdAshrae);
-    session.chart.type = chartType.dynamic;
-    const outputs = new Outputs(session);
-    session.setCompare(true);
-    void outputs.chart;
-    // 4.5 met is past ASHRAE 55's 4 met, and no entry-mode change moves it.
-    session.slots[0].setEntered(q.met, 4.5);
-
-    session.setTemperatureMode(temperatureMode.operative);
-
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.slots[0].lastValid?.slot.temperature.mode).toBe(temperatureMode.separate);
-    const alone = new Session(pmvPpdAshrae);
-    alone.chart.type = chartType.dynamic;
-    alone.setTemperatureMode(temperatureMode.operative);
-    const aloneOutputs = new Outputs(alone);
-    expect(outputs.drawnAxes).toEqual(aloneOutputs.drawnAxes);
-    expect(outputs.chart?.layout).toEqual(aloneOutputs.chart?.layout);
-  });
-
-  it("marks a slot whose gate is closed on the new axis, at the value the conversion gives its last valid inputs", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    session.setCompare(true);
-    const lastValid = new Map<Quantity, number>([
-      [q.tdb, 24],
-      [q.tr, 28],
-    ]);
-    for (const [quantity, value] of lastValid) {
-      heldSlot(session, 1).setEntered(quantity, value);
-    }
-    void outputs.chart;
-    // 4.5 met is past ISO 7730's 4 met, and no entry-mode change moves it.
-    // Slot 1's gate is closed as well, so no slot's run is in the new mode.
-    heldSlot(session, 1).setEntered(q.met, 4.5);
-    session.slots[0].setEntered(q.met, 4.5);
-
-    session.setTemperatureMode(temperatureMode.operative);
-
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([true, true]);
-    const alone = new Session(pmvPpdIso);
-    for (const [quantity, value] of lastValid) {
-      alone.slots[0].setEntered(quantity, value);
-    }
-    alone.setTemperatureMode(temperatureMode.operative);
-    const aloneChart = new Outputs(alone).chart;
-    expect(outputs.chart?.layout).toEqual(aloneChart?.layout);
-    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(aloneChart, 0));
-  });
-
   it("moves no marker off the value its slot's input shows while every gate is open", () => {
     const session = threeDifferentSlots(pmvPpdIso);
     const outputs = new Outputs(session);

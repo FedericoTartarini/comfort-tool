@@ -104,7 +104,7 @@ export const copy = {
   // with that bound named as its limit, "44.98 (limit 10 – 40)" (decision 75, rule 6 (d); worded by the user,
   // 2026-10-15).
   calculatorChangeJoiner: " → ",
-  calculatorBrokenBound: (after: string, bound: string) => `${after} (limit ${bound})`,
+  calculatorCutTo: (after: string, bound: string) => `${after} (limit ${bound})`,
   // Custom ensemble's rows: the search box above them and its empty list; a row's list button, "Change" on Chairs
   // while a chair is worn; a worn garment's remove button; Clear at the title's right; and the sum.
   ensembleSearchPlaceholder: "Search garments…",

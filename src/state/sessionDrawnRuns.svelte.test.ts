@@ -6,7 +6,6 @@
  * `compute.svelte.test.ts` gives.
  */
 import { describe, expect, it } from "vitest";
-import { temperatureMode } from "$lib/core/entryModes";
 import { inputSummary } from "$lib/core/inputSummary";
 import { page } from "$lib/core/page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
@@ -97,17 +96,6 @@ describe("Outputs.drawnRuns", () => {
     const lines = summaryLinesOf(session, outputs);
     expect(lines).toContain(lineOf(q.tdb, 25));
     expect(lines.some((line) => line.includes(String(OUT_OF_RANGE_TDB)))).toBe(false);
-  });
-
-  it("keeps a slot's run in the entry mode it was calculated in when the mode changes while it is out of range", () => {
-    const { session, outputs } = sessionKeepingItsRun();
-    session.setTemperatureMode(temperatureMode.operative);
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.drawnRuns[0].slot.temperature.mode).toBe(temperatureMode.separate);
-    const lines = summaryLinesOf(session, outputs);
-    expect(lines).toContain(lineOf(q.tdb, 25));
-    expect(lines).toContain(lineOf(q.tr, 25));
-    expect(lines.some((line) => line.startsWith(q.operative_tmp.label))).toBe(false);
   });
 
   it("keeps a slot's run at its own pressure when the pressure changes while it is out of range", () => {

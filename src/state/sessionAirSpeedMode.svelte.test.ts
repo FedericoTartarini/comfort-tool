@@ -133,30 +133,14 @@ describe("the session's air-speed entry mode", () => {
       return session;
     }
 
-    it("holds a negative air speed, which the gate lists on the air speed row and withholds the result for", () => {
+    it("is cut to an air speed of 0, the air speed's bound, and calculated (ADR-0002 decision 84, rule 5)", () => {
       const session = switchedBack();
       const outputs = new Outputs(session);
 
-      expect(session.slots[0].values.get(q.v)).toBe(-0.2);
-      expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.v]);
-      expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
-      expect(outputs.slots[0].notCalculated).toBe(true);
-      expect(outputs.slots[0].result).toBeNull();
-    });
-
-    it("is listed by a requested switch to another model, and moved to 0 by a yes", () => {
-      const session = switchedBack();
-
-      session.requestModel(pmvPpdAshrae);
-
-      expect(session.model).toBe(pmvPpdIso);
-      expect(listedRowsOf(session)).toEqual([{ quantity: q.v, value: -0.2, bound: { min: 0 } }]);
-
-      session.acceptSwitch();
-
-      expect(session.model).toBe(pmvPpdAshrae);
       expect(session.slots[0].values.get(q.v)).toBe(0);
-      expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([]);
+      expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
+      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(outputs.slots[0].result).not.toBeNull();
     });
   });
 
@@ -218,7 +202,7 @@ describe("the session's air-speed entry mode", () => {
     expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.vr, q.vr]]);
   });
 
-  it("calculates an air speed the model is given past its relative-air-speed row, reporting it on the air speed's row, and stops it as an entered relative air speed", () => {
+  it("calculates an air speed the model is given past its relative-air-speed row, reporting it on the air speed's row, and cuts it to the row as an entered relative air speed", () => {
     const bound = pmvPpdIso.info.inputs.vr?.applicability;
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
@@ -232,10 +216,10 @@ describe("the session's air-speed entry mode", () => {
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(session.slots[0].values.get(q.vr)).toBe(1.1);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.vr]);
     expect(enteredBound(pmvPpdIso, q.vr, session.slots[0], session.atmosphericPressure)).toEqual(bound);
-    expect(outputs.slots[0].notCalculated).toBe(true);
+    expect(session.slots[0].values.get(q.vr)).toBe(bound?.max);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].result).not.toBeNull();
   });
 });
 
@@ -257,23 +241,6 @@ describe("the dynamic chart under the session's air-speed entry mode", () => {
     expect(outputs.drawnAxes?.choices).not.toContain(q.v);
     expect(outputs.chart?.layout.y.title).toContain(q.vr.label);
     expect(markerOf(outputs)?.y).toBe(session.slots[0].values.get(q.vr));
-  });
-
-  it("marks a slot whose gate is closed on the session's axis, at the value the conversion gives its last valid inputs", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    session.chart.type = chartType.dynamic;
-    session.slots[0].setEntered(q.met, 2);
-    void outputs.chart;
-    // 5 °C is below ISO 7730's 10 °C, and no air-speed entry-mode change moves it.
-    session.slots[0].setEntered(q.tdb, 5);
-
-    session.setAirSpeedMode(airSpeedMode.corrected);
-
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.slots[0].lastValid?.slot.airSpeed.mode).toBe(airSpeedMode.uncorrected);
-    expect(outputs.chart?.layout.y.title).toContain(q.vr.label);
-    expect(markerOf(outputs)?.y).toBe(v_relative(0.1, 2));
   });
 });
 

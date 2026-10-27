@@ -1,14 +1,14 @@
 /**
  * How the session tests read a session's state: a slot as plain data, a slot
- * the session is known to hold, a value the result table would show, and what
- * a pending switch lists; the session comparing all three slots and the
+ * the session is known to hold, a value the result table would show, what
+ * a pending switch lists, and every entry out of range; the session comparing all three slots and the
  * bounded model they start from; the check of the invariant the session's
  * entry modes rest on; and what a page would open on, the address a session
  * is on, and the texts a tab keeps and a link carries of it. Shared by the
  * state tests so that all of them compare the same way.
  */
 import { expect } from "vitest";
-import type { Bound, OutOfRangeRow } from "$lib/core/applicability";
+import { outOfRangeRows, type Bound, type OutOfRangeRow } from "$lib/core/applicability";
 import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
 import type { Address } from "$lib/core/page";
@@ -43,6 +43,11 @@ export function expectEverySlotInSessionEntryModes(session: Session): void {
   const held = session.slots.filter((slot) => slot !== null);
   expect(held.map(entryModesOf)).toEqual(held.map(() => session.entryModes));
   expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
+}
+
+/** Every entry out of range in every slot `session` holds, as the gate reads it. */
+export function outOfRangeRowsOf(session: Session): OutOfRangeRow[] {
+  return session.slots.flatMap((slot) => (slot ? outOfRangeRows(slot, session.model, session.atmosphericPressure) : []));
 }
 
 /** A session on `model` with Compare on and all three slots enabled, each holding what slot 1 started with. */

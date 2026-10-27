@@ -6,7 +6,9 @@
   dialog of one width and one fixed height, a tab per calculator in the
   panel's row order: the tab's settings, the one region that scrolls; the
   result dock, the result and, for each slot Apply writes, that slot's row
-  before and after; and the footer with Apply, which writes and closes. While
+  before and after, cut to the row's bound with the bound beside it; and the
+  footer with Apply, which commits each row as a typed value is committed,
+  with no toast, and closes (ADR-0002 decision 84, rule 5). While
   the slots are named (decision 50), the footer's "Apply to" checks the slots
   Apply writes, slot 1 alone on opening; otherwise it writes slot 1. Closing
   any other way changes nothing.
@@ -37,11 +39,11 @@
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import { formatBound } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
-  import { panelCalculators, shownRow, withCalculatorResult, type CalculatorResult } from "$lib/core/calculators";
+  import { panelCalculators, shownRow, type CalculatorResult } from "$lib/core/calculators";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { displayUnitFor, nameWithUnit, numberInUnit } from "$lib/core/units";
-  import type { SlotPosition } from "$lib/state/session.svelte";
+  import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -61,9 +63,11 @@
     unitSystem: UnitSystem;
     /** The session's, in Pa: a slot's row is read in its entry mode at it. */
     atmosphericPressure: number;
+    /** The session's: Apply commits each target's row through it, as the row's box commits a typed value. */
+    calculatorWriter: Pick<Session, "applyCalculator">;
   }
 
-  let { model, columns, unitSystem, atmosphericPressure }: Props = $props();
+  let { model, columns, unitSystem, atmosphericPressure, calculatorWriter }: Props = $props();
 
   const id = $props.id();
 
@@ -91,10 +95,10 @@
     checked = isChecked ? [...checked, position] : checked.filter((other) => other !== position);
   }
 
-  /** Apply: the result written into each target as decision 75 rule 3 converts it, then gated by its row as a typed value. */
+  /** Apply: each target's row committed as the dock shows it, cut to the row's bound. */
   function apply(calculator: Calculator, result: CalculatorResult) {
-    for (const { inputSlot } of targets) {
-      inputSlot.replaceWith(withCalculatorResult(inputSlot, calculator, result, model));
+    for (const { outputs } of targets) {
+      calculatorWriter.applyCalculator(outputs.position, calculator, result);
     }
     open = false;
   }
@@ -150,8 +154,7 @@
                     `${index}-row-${outputs.position}`,
                     nameWithUnit(outputs.badge.name ? copy.slotControl(row.quantity.label, outputs.badge.name) : row.quantity.label, unit),
                     numberInUnit(row.before, unit),
-                    row.brokenBound ? copy.calculatorBrokenBound(after, formatBound(row.brokenBound, row.quantity, unitSystem)) : after,
-                    row.brokenBound !== undefined,
+                    row.cutTo ? copy.calculatorCutTo(after, formatBound(row.cutTo, row.quantity, unitSystem)) : after,
                   )}
                 {/each}
               </Stack>
@@ -205,14 +208,11 @@
 
 <!--
   A line of the dock, named by its label, so the value is announced with what it is; a slot's row line has its value
-  after Apply too, in the out-of-range colour where it breaks the row's bound.
+  after Apply too, with the row's bound beside it where the result was cut to it.
 -->
-{#snippet dockLine(key: string, label: string, value: string, after?: string, outOfRange = false)}
+{#snippet dockLine(key: string, label: string, value: string, after?: string)}
   <Inline gap="2" justify="between">
     <span id="{id}-{key}">{label}</span>
-    <output aria-labelledby="{id}-{key}"
-      >{value}{#if after !== undefined}{copy.calculatorChangeJoiner}<span class={{ "out-of-range": outOfRange }}>{after}</span
-        >{/if}</output
-    >
+    <output aria-labelledby="{id}-{key}">{value}{#if after !== undefined}{copy.calculatorChangeJoiner}{after}{/if}</output>
   </Inline>
 {/snippet}

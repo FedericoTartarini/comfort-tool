@@ -211,7 +211,7 @@ describe("the session's clothing entry mode", () => {
     // ISO 7730's gives still, seated air more clothing than was entered: 2 clo as 2.069, past its 2.
     { model: pmvPpdIso, entries: [[q.v, 0], [q.met, 1], [q.clo, 2]], dynamic: clo_dynamic_iso(2, 1, 0) },
   ] as const)(
-    "on $model.info.label, calculates a clothing insulation the model is given past its row, reporting it on the clothing row, and stops it as an entered dynamic clothing insulation",
+    "on $model.info.label, calculates a clothing insulation the model is given past its row, reporting it on the clothing row, and cuts it to the row as an entered dynamic clothing insulation",
     ({ model, entries, dynamic }) => {
       const bound = model.info.inputs.clo?.applicability;
       const session = new Session(model);
@@ -227,10 +227,10 @@ describe("the session's clothing entry mode", () => {
 
       session.setClothingMode(clothingMode.corrected);
 
-      expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamic);
-      expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo_dynamic]);
       expect(enteredBound(model, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
-      expect(outputs.slots[0].notCalculated).toBe(true);
+      expect(session.slots[0].values.get(q.clo_dynamic)).toBe(bound?.max);
+      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(outputs.slots[0].result).not.toBeNull();
     },
   );
 
@@ -295,21 +295,6 @@ describe("the dynamic chart under the session's clothing entry mode", () => {
     expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.clo_dynamic });
     expect(outputs.drawnAxes?.choices).toContain(q.clo_dynamic);
     expect(outputs.drawnAxes?.choices).not.toContain(q.clo);
-    expect(outputs.chart?.layout.y.title).toContain(q.clo_dynamic.label);
-    expect(markerOf(outputs)?.y).toBe(clo_dynamic_ashrae(0.5, 2));
-  });
-
-  it("marks a slot whose gate is closed on the session's axis, at the value the conversion gives its last valid inputs", () => {
-    const session = sessionOnClothingAxis();
-    const outputs = new Outputs(session);
-    void outputs.chart;
-    // 50 °C is past ASHRAE 55's 40 °C, and no clothing-mode change moves it.
-    session.slots[0].setEntered(q.tdb, 50);
-
-    session.setClothingMode(clothingMode.corrected);
-
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.slots[0].lastValid?.slot.clothing.mode).toBe(clothingMode.uncorrected);
     expect(outputs.chart?.layout.y.title).toContain(q.clo_dynamic.label);
     expect(markerOf(outputs)?.y).toBe(clo_dynamic_ashrae(0.5, 2));
   });

@@ -110,6 +110,7 @@ import { palette } from "$lib/core/palette";
         {columns}
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
+        calculatorWriter={session}
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}

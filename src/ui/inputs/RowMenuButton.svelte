@@ -2,8 +2,10 @@
   A row's menu: a text button inside its box, at the right end, one per slot,
   that opens the row's presets as a searchable list (ADR-0002 decision 67,
   rule 3, and decision 75, rule 6), so a box carries one control. A preset is
-  committed as it is chosen. The button is the word with one slot and with
-  three, the input card being wide enough for it (decision 84, rule 12).
+  committed as it is chosen; one its slot would cut or refuse is disabled, its
+  number still shown (decision 84, rule 5). The button is the word with one
+  slot and with three, the input card being wide enough for it (decision 84,
+  rule 12).
 -->
 <script lang="ts">
   import { formatNumber } from "$lib/core/numberFormat";
@@ -20,10 +22,12 @@
     unit: DisplayUnit;
     /** The slot's badge's name, while the slots are named: the button is named for it. */
     slotName?: string;
+    /** Whether the slot takes an SI value as it is, as the box judges a typed value; every one, without it. */
+    isLegal?: (si: number) => boolean;
     oncommit: (si: number) => void;
   }
 
-  let { presets, unit, slotName, oncommit }: Props = $props();
+  let { presets, unit, slotName, isLegal, oncommit }: Props = $props();
 
   let open = $state(false);
 
@@ -31,7 +35,14 @@
 
   // An entry's key is its position among the presets.
   const listGroups = $derived([
-    { items: presets.map((preset, index) => ({ key: String(index), label: preset.label, value: formatNumber(unit.fromSi(preset.value)) })) },
+    {
+      items: presets.map((preset, index) => ({
+        key: String(index),
+        label: preset.label,
+        value: formatNumber(unit.fromSi(preset.value)),
+        disabled: isLegal !== undefined && !isLegal(preset.value),
+      })),
+    },
   ]);
 
   function pick(key: string) {

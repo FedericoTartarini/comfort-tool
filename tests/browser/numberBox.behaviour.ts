@@ -7,7 +7,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * step by the unit's step and stop at the bound, and so do the box's own two
  * step buttons (decision 84's note of 2026-10-27); a numeric keypad where the
  * lower end is at least 0. The line under a quantity's box is its bound with
- * the display unit, and no preset's name.
+ * the display unit, and no preset's name. A preset the slot would not take as
+ * it is is disabled in the row's menu, its number still shown (rule 5).
  */
 
 /** PMV (ASHRAE 55): dry-bulb 10 – 40 °C, air speed from 0, so neither takes a minus. */
@@ -250,5 +251,26 @@ test.describe("the line under the box", () => {
     await commit(box, "5");
     await commit(dryBulb(page), "10");
     await expect(captionOf(box)).toHaveText("≤ 9.9 °C");
+  });
+});
+
+test.describe("the row's presets", () => {
+  test("a metabolic rate past the bound is disabled in the menu with its number shown, and one within is picked", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const metabolicRate = page.getByRole("spinbutton", { name: /^Metabolic rate/ });
+    await page.locator('[data-slot="input-group"]').filter({ has: metabolicRate }).getByRole("button", { name: "Presets" }).click();
+    const list = page.getByRole("listbox");
+
+    // ASHRAE 55 takes 1 – 4 met: basketball's 6.3 is past it, walking about's 1.7 within.
+    const basketball = list.getByRole("option", { name: /^Basketball/ });
+    await expect(basketball).toHaveAttribute("aria-disabled", "true");
+    await expect(basketball).toContainText("6.3");
+    await expect(basketball).toHaveCSS("opacity", "0.5");
+    const walking = list.getByRole("option", { name: /^Walking about/ });
+    await expect(walking).toHaveAttribute("aria-disabled", "false");
+
+    await walking.click();
+    await expect(list).toHaveCount(0);
+    await expect(metabolicRate).toHaveValue("1.7");
   });
 });

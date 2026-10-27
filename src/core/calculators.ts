@@ -21,7 +21,7 @@ import {
   type SolarGainParams,
 } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
-import { outOfRangeRows, type Bound } from "./applicability";
+import { entryVerdict, type Bound } from "./applicability";
 import { inputsOf, type DeclaredQuantity, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, enteredValue, panelRows, requireValue, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
@@ -256,10 +256,10 @@ export function panelCalculators(model: RegisteredModel, slot: Slot): Calculator
 export interface ShownRow {
   readonly quantity: Quantity;
   readonly before: number;
-  /** Not a number while there is no result. */
+  /** What Apply commits, cut to the row's bound; not a number while there is no result. */
   readonly after: number;
-  /** The row's bound where the after is outside it, as the panel would mark it; absent otherwise. */
-  readonly brokenBound?: Bound;
+  /** The row's bound where the result met with the row is past it, and the after is its end; absent otherwise. */
+  readonly cutTo?: Bound;
 }
 
 /**
@@ -270,8 +270,10 @@ export interface ShownRow {
  * clothing entry it is the dynamic clothing insulation, the standard's
  * correction of the result after, and under operative entry the operative
  * temperature, folded from the raised mean radiant temperature after. With no
- * result the after is not a number. Whether the after is out of range is
- * the gate's `outOfRangeRows` over the written slot, the panel's own reader.
+ * result the after is not a number. The after is judged as a typed value of
+ * the row is, by the gate's `entryVerdict`, and is the bound's end where the
+ * written value is past it, which Apply then commits (ADR-0002 decision 84,
+ * rule 5): the dock shows what Apply writes.
  */
 export function shownRow(
   slot: Slot,
@@ -296,9 +298,9 @@ export function shownRow(
   if (!result) {
     return { quantity, before, after: Number.NaN };
   }
-  const written = withCalculatorResult(slot, calculator, result, model);
-  const broken = outOfRangeRows(written, model, atmosphericPressure).find((row) => row.quantity === quantity);
-  return { quantity, before, after: valueIn(written), ...(broken && { brokenBound: broken.bound }) };
+  const after = valueIn(withCalculatorResult(slot, calculator, result, model));
+  const verdict = entryVerdict(slot, model, atmosphericPressure, quantity, after);
+  return verdict.kind === "cut" ? { quantity, before, after: verdict.value, cutTo: verdict.bound } : { quantity, before, after };
 }
 
 /**
@@ -310,8 +312,8 @@ export function shownRow(
  * becomes the standard's correction of it, and under operative entry the
  * raised mean radiant temperature and the expanded air temperature fold back
  * into an operative temperature at the model's standard. A slot already in
- * the first mode is written and left. The value is not gated here: the row
- * gates what is written as it gates a typed value.
+ * the first mode is written and left. The value is not gated here: Apply
+ * commits the row's value as a typed value is committed ({@link shownRow}).
  */
 export function withCalculatorResult(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): Slot {
   const row = inputsOf(model).find((entry) => entry.calculators?.includes(calculator));

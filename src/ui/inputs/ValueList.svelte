@@ -6,11 +6,12 @@
   after its trigger, and hands the chosen entry's key back.
 -->
 <script lang="ts" module>
-  /** One entry: its label, and its value as shown, where it has one. */
+  /** One entry: its label, its value as shown, where it has one, and whether it cannot be picked, still shown. */
   export interface ValueListItem {
     readonly key: string;
     readonly label: string;
     readonly value?: string;
+    readonly disabled?: boolean;
   }
 
   /** A group of entries, under a heading or none; an empty group is not drawn. */
@@ -55,7 +56,7 @@
         {#if group.items.length > 0}
           <Command.Group heading={group.heading}>
             {#each group.items as item (item.key)}
-              <Command.Item value={item.label} onSelect={() => onpick(item.key)}>
+              <Command.Item value={item.label} disabled={item.disabled} onSelect={() => onpick(item.key)}>
                 {#if item.value === undefined}
                   {item.label}
                 {:else}

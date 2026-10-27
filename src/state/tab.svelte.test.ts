@@ -20,7 +20,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { writeKeptText } from "./keptText";
 import type { Notice } from "./openSession";
 import type { Session } from "./session.svelte";
-import { addressOf, heldSlot, keptTextOf, linkSessionOf, openedOn, sessionComparingThreeSlots } from "./sessionTestReaders";
+import { addressOf, heldSlot, keptTextOf, linkSessionOf, openedOn, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessionTestReaders";
 import { Tab } from "./tab.svelte";
 
 const q = quantities;
@@ -273,6 +273,18 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
       });
       expect(tab.waitingLink).toBeNull();
       expect(raised).toEqual([]);
+    }
+  });
+
+  it("leaves no entry out of range, on every registered model (ADR-0002 decision 84, rule 5)", () => {
+    for (const model of registeredModels) {
+      writeKeptText(keptTextOf(keptSession()));
+      const { tab } = recordingTab();
+      tab.arrive(standardAddress(model), undefined);
+
+      tab.reset();
+
+      expect(outOfRangeRowsOf(openSessionOf(tab)), model.info.label).toEqual([]);
     }
   });
 });

@@ -1,6 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ClassifierBins } from "jsthermalcomfort";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
+import { shownRow, type Calculator, type CalculatorResult } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import type { ChartAxes, OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
@@ -477,45 +478,46 @@ export class Session {
   /**
    * Change the temperature entry mode: every slot that holds values,
    * compared or not, is converted by `withTemperatureMode` at its own values,
-   * weighed by the session's model. A slot never enabled holds nothing and
-   * takes the mode when it copies slot 1.
+   * weighed by the session's model, and cut to its bounds
+   * ({@link #replaceCut}). A slot never enabled holds nothing and takes the mode
+   * when it copies slot 1.
    */
   setTemperatureMode(mode: TemperatureMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withTemperatureMode(slot, mode, this.model));
+      this.#replaceCut(slot, withTemperatureMode(slot, mode, this.model));
     }
   }
 
   /**
    * Change the air-speed entry mode: every slot that holds values is
    * converted by `withAirSpeedMode` at its own air speed and metabolic rate,
-   * as {@link setTemperatureMode} converts.
+   * as {@link setTemperatureMode} converts and cuts.
    */
   setAirSpeedMode(mode: AirSpeedMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withAirSpeedMode(slot, mode));
+      this.#replaceCut(slot, withAirSpeedMode(slot, mode));
     }
   }
 
   /**
    * Change the clothing entry mode: every slot that holds values is converted
    * by `withClothingMode` at its own values, by the rule of the session's
-   * model's standard, as {@link setTemperatureMode} converts.
+   * model's standard, as {@link setTemperatureMode} converts and cuts.
    */
   setClothingMode(mode: ClothingMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withClothingMode(slot, mode, this.model));
+      this.#replaceCut(slot, withClothingMode(slot, mode, this.model));
     }
   }
 
   /**
    * Change the humidity entry mode: every slot that holds values is converted
    * by `withHumidityMode` at its own dry-bulb temperature and the session's
-   * atmospheric pressure, as {@link setTemperatureMode} converts.
+   * atmospheric pressure, as {@link setTemperatureMode} converts and cuts.
    */
   setHumidityMode(mode: HumidityMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withHumidityMode(slot, mode, this.atmosphericPressure));
+      this.#replaceCut(slot, withHumidityMode(slot, mode, this.atmosphericPressure));
     }
   }
 
@@ -540,6 +542,18 @@ export class Session {
       this.#heldSlotAt(position).setEntered(quantity, verdict.kind === "cut" ? verdict.value : value);
     }
     return verdict;
+  }
+
+  /**
+   * An input calculator's Apply of `result` to the slot at `position`: the
+   * row the dock shows for it, the result met with the row and cut to the
+   * row's bound (`shownRow`), committed as a typed value is (ADR-0002
+   * decision 84, rule 5). What the commit says is returned; the dialog
+   * raises no notice, as its dock showed the cut before the person chose.
+   */
+  applyCalculator(position: SlotPosition, calculator: Calculator, result: CalculatorResult): Verdict {
+    const row = shownRow(this.#heldSlotAt(position), calculator, result, this.model, this.atmosphericPressure);
+    return this.commitEntry(position, row.quantity, row.after);
   }
 
   /**
@@ -602,11 +616,7 @@ export class Session {
     }
     let cut = pressureRow !== undefined;
     for (const slot of this.#heldSlots()) {
-      const rows = settledOutOfRangeRows(slot, this.model, this.atmosphericPressure);
-      if (rows.length > 0) {
-        slot.replaceWith(adjustToBounds(slot, rows));
-        cut = true;
-      }
+      cut = this.#replaceCut(slot, slot) || cut;
     }
     return cut;
   }
@@ -687,6 +697,19 @@ export class Session {
     this.model = model;
     this.chart = this.#chartFor(model);
     this.pendingSwitch = null;
+  }
+
+  /**
+   * Replace what `slot` holds with `held`, every entry out of range cut to
+   * its bound at the session's model and pressure, read at the entries as
+   * cut (ADR-0002 decision 84, rules 4 and 5), and answer whether it cut
+   * anything. An arrival lands so, and an entry-mode switch, as a conversion
+   * can carry an entry past a bound the mode it left did not hold it to.
+   */
+  #replaceCut(slot: InputSlot, held: Slot): boolean {
+    const rows = settledOutOfRangeRows(held, this.model, this.atmosphericPressure);
+    slot.replaceWith(rows.length > 0 ? adjustToBounds(held, rows) : held);
+    return rows.length > 0;
   }
 
   /** The slot at `position`, or a throw for a slot never enabled, which holds nothing to enter a value in. */

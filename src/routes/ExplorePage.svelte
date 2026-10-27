@@ -79,6 +79,7 @@
         {columns}
         unitSystem={session.unitSystem}
         atmosphericPressure={session.atmosphericPressure}
+        calculatorWriter={session}
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}

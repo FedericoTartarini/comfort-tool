@@ -176,33 +176,6 @@ describe("Outputs", () => {
     expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
   });
 
-  // The axes are the session's entry mode's, not the kept run's (ADR-0002
-  // decision 51): the kept slot is drawn converted into it.
-  it("offers the session's entry mode's axes, and draws the chart on them, while an entry is out of range", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    session.chart.type = chartType.dynamic;
-    expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
-
-    // 4.5 met is past ISO 7730's 4 met, and no temperature switch moves it.
-    session.slots[0].setEntered(q.met, 4.5);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
-    session.setTemperatureMode(temperatureMode.operative);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
-
-    expect(outputs.slots[0].lastValid?.slot.temperature.mode).toBe(temperatureMode.separate);
-    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
-    expect(outputs.drawnAxes?.selected).toEqual({ x: q.operative_tmp, y: q.v });
-    expect(outputs.drawnAxes?.choices).toContain(q.operative_tmp);
-    expect(outputs.drawnAxes?.choices).not.toContain(q.tdb);
-
-    // An axis picked while the gate is closed moves the chart and the picker alike.
-    session.chart.setAxes({ y: q.rh });
-
-    expect(outputs.chart?.layout.y.title).toContain(q.rh.label);
-    expect(outputs.drawnAxes?.selected).toEqual({ x: q.operative_tmp, y: q.rh });
-  });
-
   it("offers no axes when no dynamic chart is drawn", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
