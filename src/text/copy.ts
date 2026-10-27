@@ -114,8 +114,6 @@ export const copy = {
   ensembleRemove: (garment: string) => `Remove ${garment}`,
   ensembleClear: "Clear",
   ensembleInsulation: "Ensemble insulation",
-  // A row's caption line under its box (decision 67, rule 3): the matching preset's name and the bound.
-  rowCaption: (preset: string, bound: string) => `${preset} · ${bound}`,
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
   inputColumn: "Input",

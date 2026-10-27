@@ -222,7 +222,7 @@ test.describe("Solar gain on occupants", () => {
       "Fraction of body exposed to sun",
       "Average shortwave absorptivity",
     ]);
-    await expect(panel.locator(".caption-line")).toHaveText(["", "0 – 90", "0 – 180", "200 – 1000", "0 – 1", "0 – 1", "0 – 1", "0.2 – 0.9"]);
+    await expect(panel.locator(".caption-line")).toHaveText(["", "0 – 90 °", "0 – 180 °", "200 – 1000 W/m²", "0 – 1", "0 – 1", "0 – 1", "0.2 – 0.9"]);
     await expect(panel.getByRole("button", { name: "Posture", exact: true })).toHaveText("Seated");
 
     await expect(dockLine(dialog, "ERF (W/m²)")).toBeVisible();

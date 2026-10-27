@@ -1,6 +1,6 @@
 import { clo_typical_ensembles, met_typical_tasks } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { matchingPreset, presetsFor } from "./presets";
+import { presetsFor } from "./presets";
 import { quantities } from "./quantities";
 
 describe("presetsFor", () => {
@@ -20,16 +20,5 @@ describe("presetsFor", () => {
 
   it("is undefined for a quantity with no presets", () => {
     expect(presetsFor(quantities.tdb)).toBeUndefined();
-  });
-});
-
-describe("matchingPreset", () => {
-  it("finds the met preset whose value formats the same as the given value", () => {
-    const [label, value] = Object.entries(met_typical_tasks).find(([, met]) => met === 1.0)!;
-    expect(matchingPreset(quantities.met, value)).toEqual({ label, value });
-  });
-
-  it("is undefined when no preset's value formats the same as the given value", () => {
-    expect(matchingPreset(quantities.met, 1.01)).toBeUndefined();
   });
 });

@@ -197,7 +197,7 @@
 		margin-top: calc(var(--space-field) - var(--space-page));
 	}
 	/* A row's caption line under its box (decision 67, rule 3), the field's description: one line while empty too, so
-	   a preset's name appearing as a value is typed moves no row below. 1.5em for `1lh`, which Firefox 115 lacks. */
+	   a box with no bound lines up with one beside it. 1.5em for `1lh`, which Firefox 115 lacks. */
 	.caption-line {
 		min-height: 1.5em;
 	}

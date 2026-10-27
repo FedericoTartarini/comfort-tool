@@ -1,8 +1,8 @@
 <!--
   A quantity's row, one shape for every row (ADR-0002 decision 67, rule 3):
   the label row, then per entry a box, with the row's menu of its presets
-  inside it, and a caption line under it of the matching
-  preset's name and the bound; an entry is a slot's, or the session's
+  inside it, and a caption line under it of the bound with its unit
+  (ADR-0002 decision 84, rule 10); an entry is a slot's, or the session's
   pressure. The row is the generated
   field, and each entry's box and caption a field of their own, marked
   invalid while the entry is out of range (the shell's spec, "The rows").
@@ -17,7 +17,7 @@
   export interface QuantityEntry {
     /** Canonical SI value. */
     value: number;
-    /** Allowed bound in SI; shown converted, and the box turns red outside it. A `Bound` may be min-only or max-only. */
+    /** Allowed bound in SI; shown converted, an arrow step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
     /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */
@@ -29,10 +29,10 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { formatBound } from "$lib/core/applicability";
-  import { matchingPreset, presetsFor } from "$lib/core/presets";
+  import { presetsFor } from "$lib/core/presets";
   import type { Quantity } from "$lib/core/quantities";
   import type { UnitSystem } from "$lib/core/unitSystem";
-  import { displayUnitFor, labelWithUnit } from "$lib/core/units";
+  import { displayUnitFor, labelWithUnit, valueWithUnit } from "$lib/core/units";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
@@ -59,11 +59,9 @@
   const labelText = $derived(labelWithUnit(quantity, unit));
   const presets = $derived(presetsFor(quantity) ?? []);
 
-  /** The caption line under a box: the matching preset's name and the bound, either alone where the other is not. */
+  /** The caption line under a box: the bound with the display unit, `10 – 40 °C`, or nothing where there is none. */
   function captionOf(entry: QuantityEntry): string {
-    const preset = matchingPreset(quantity, entry.value)?.label;
-    const bound = entry.bound && formatBound(entry.bound, quantity, unitSystem);
-    return preset && bound ? copy.rowCaption(preset, bound) : (preset ?? bound ?? "");
+    return entry.bound ? valueWithUnit(formatBound(entry.bound, quantity, unitSystem), unit) : "";
   }
 
   /** `control`'s accessible name with the entry's slot in it, while the slots are named. */
@@ -88,6 +86,7 @@
             id="{id}-{index}"
             value={entry.value}
             {unit}
+            bound={entry.bound}
             invalid={entry.outOfRange}
             ariaLabel={controlNameFor(labelText, entry)}
             end={presets.length > 0 ? rowMenu : undefined}

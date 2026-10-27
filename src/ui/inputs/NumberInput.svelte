@@ -3,10 +3,14 @@
   of the app, shared by a quantity's row and a band's Edge, so both read with
   the one formatter and step by the displayed unit (ADR §4.6). A control the
   box carries, a row's Presets, stands inside it at its right end (ADR-0002
-  decision 67, rule 3).
+  decision 67, rule 3). It takes only a number (decision 84, rules 1 and 10):
+  a text input, so no spinner, wheel or browser validation, that admits digits,
+  one decimal point and a leading minus where its bound allows a negative;
+  ↑ and ↓ step it. It keeps the spinbutton's role the number input had.
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import type { Bound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
   import type { DisplayUnit } from "$lib/core/units";
   import { Input } from "$lib/ui/primitives/input";
@@ -17,6 +21,8 @@
     /** Canonical SI value. */
     value: number;
     unit: DisplayUnit;
+    /** The bound in SI an arrow step stops at and the minus is admitted by; none for a band's Edge. */
+    bound?: Bound;
     /** Marked as an out-of-range entry is. */
     invalid?: boolean;
     /** The box's accessible name, where no `<label>` names it. */
@@ -26,9 +32,29 @@
     oncommit: (si: number) => void;
   }
 
-  let { id, value, unit, invalid = false, ariaLabel, end, oncommit }: Props = $props();
+  let { id, value, unit, bound, invalid = false, ariaLabel, end, oncommit }: Props = $props();
 
   const text = $derived(formatNumber(unit.fromSi(value)));
+
+  /** A negative is allowed where the lower end, in the display unit, is below 0 or there is none. */
+  const allowsNegative = $derived(bound?.min === undefined || unit.fromSi(bound.min) < 0);
+  /** A number as it may stand while typed: digits, one decimal point, and the minus only in front. */
+  const typedNumber = $derived(allowsNegative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/);
+
+  // Refuse an insertion whose text would not be a number being typed, before
+  // it lands; a deletion from such a text leaves one.
+  function admit(event: InputEvent) {
+    if (!event.inputType.startsWith("insert")) {
+      return;
+    }
+    const input = event.currentTarget as HTMLInputElement;
+    const from = input.selectionStart ?? input.value.length;
+    const to = input.selectionEnd ?? from;
+    const inserted = event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
+    if (!typedNumber.test(input.value.slice(0, from) + inserted + input.value.slice(to))) {
+      event.preventDefault();
+    }
+  }
 
   // Commit only when the parsed value differs from what is stored. While the
   // user types "25." the parse is still 25, nothing is committed, and the
@@ -40,6 +66,23 @@
     }
     const si = unit.toSi(parsed);
     if (si !== value) {
+      oncommit(si);
+    }
+  }
+
+  // ↑ and ↓ step the committed value by the unit's step, held to the bound in
+  // SI so a step to the end lands on the end itself. A step commits only when
+  // it moves the way its key points: none at the end, and none back from a
+  // value already past it. A modified arrow keeps the caret's own meaning.
+  function step(event: KeyboardEvent) {
+    const direction = { ArrowUp: 1, ArrowDown: -1 }[event.key];
+    if (direction === undefined || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    const stepped = unit.toSi(unit.fromSi(value) + direction * unit.step);
+    const si = Math.min(Math.max(stepped, bound?.min ?? -Infinity), bound?.max ?? Infinity);
+    if (Math.sign(si - value) === direction) {
       oncommit(si);
     }
   }
@@ -60,12 +103,16 @@
   /** The box's attributes, the same whether it stands alone or inside a group. */
   const boxAttributes = $derived({
     id,
-    type: "number" as const,
-    step: unit.step,
+    type: "text" as const,
+    role: "spinbutton" as const,
+    inputmode: allowsNegative ? undefined : ("decimal" as const),
+    autocomplete: "off" as const,
     value: text,
     "aria-label": ariaLabel,
     "aria-invalid": invalid || undefined,
+    onbeforeinput: admit,
     oninput: commit,
+    onkeydown: step,
     onblur: restore,
   });
 </script>

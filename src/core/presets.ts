@@ -1,5 +1,4 @@
 import { clo_typical_ensembles, met_typical_tasks } from "jsthermalcomfort";
-import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -24,13 +23,4 @@ const presetsByQuantity = new Map<Quantity, readonly Preset[]>([
 /** The presets for a quantity, in the library's order, or `undefined` if it has none. */
 export function presetsFor(quantity: Quantity): readonly Preset[] | undefined {
   return presetsByQuantity.get(quantity);
-}
-
-/**
- * The preset whose value formats to the same text as `value` (ADR §4.6) —
- * the comparison the user sees, not a tolerance constant.
- */
-export function matchingPreset(quantity: Quantity, value: number): Preset | undefined {
-  const formatted = formatNumber(value);
-  return presetsFor(quantity)?.find((preset) => formatNumber(preset.value) === formatted);
 }
