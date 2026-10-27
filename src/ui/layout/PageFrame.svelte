@@ -82,8 +82,9 @@
       73, rule 10, the sum recomputed by decision 84, rule 12); one column
       below, the input card above the others at the left. The input card is
       `28.75rem` at every width, the narrowest at which three slots show
-      Presets (`.scratch/input-gate/issues/04-…md` Comments); its column is
-      `auto`, so the card's width is written once. The page
+      Presets beside a four-character value
+      (`.scratch/input-gate/issues/04-…md` Comments); its column is `auto`,
+      so the card's width is written once. The page
       gutter is the spacing token on three sides; on the fourth the sidebar's
       own insets make it, so its fills stand that far from the cards and its
       first group label's top is level with theirs. Below `md` the sidebar is
