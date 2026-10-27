@@ -11,6 +11,7 @@ const noticeText: Record<Notice, string> = {
   linkFilled: copy.linkFilledNotice,
   copyRefused: copy.copyRefusedNotice,
   imageFailed: copy.imageFailedNotice,
+  valuesCut: copy.valuesCutNotice,
 };
 
 /**

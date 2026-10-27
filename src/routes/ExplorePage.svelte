@@ -82,7 +82,6 @@
       />
       <ModelSwitchDialog
         pending={session.pendingSwitch}
-        comparedSlots={outputs.slots}
         unitSystem={session.unitSystem}
         onaccept={inApp.accept}
         ondecline={() => session.declineSwitch()}

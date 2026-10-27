@@ -156,6 +156,8 @@ export const copy = {
   linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
   linkFilledNotice: "Some of this link could not be used as written; what it lacked starts at its defaults.",
   copyRefusedNotice: "The link could not be copied.",
+  // An arrival that cut values to their bounds (decision 84, rule 4, as noted 2026-10-28).
+  valuesCutNotice: "Some values were out of range and were cut to the nearest allowed value.",
   // A toast's close button (decision 84, rule 7).
   closeToast: "Close",
   // What a refused value's toast says (decision 84, rules 2 and 7): `subject` is the box's quantity, with its slot

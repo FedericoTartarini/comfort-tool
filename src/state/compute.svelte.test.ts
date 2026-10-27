@@ -283,7 +283,7 @@ describe("Outputs", () => {
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).not.toEqual([]);
 
-    // The address's own way in, which never asks and never adjusts: ISO
+    // Setting the model, which never asks and never adjusts: ISO
     // 7730's own default temperature is below the Rothfusz regression's floor.
     session.setModel(heatIndexRothfusz);
 

@@ -19,6 +19,8 @@ export class Tab {
   /** Set by the first address, and again by each replacement. Replaced whole, so `$state.raw`. */
   #opened = $state.raw<OpenSession>();
   #waitingLink = $state<string | null>(null);
+  /** What a no to the waiting link raises, held while it waits (`FirstLoad.declineNotices`); not read by the page, so plain. */
+  #declineNotices: readonly Notice[] = [];
   #replacements = $state(0);
 
   constructor(models: readonly RegisteredModel[], onnotice: (notice: Notice) => void) {
@@ -52,12 +54,15 @@ export class Tab {
   /**
    * An address, and the share link's text it carried if any. The first opens
    * the session on its page and model, from its link or what the tab kept;
-   * every one after it — a typed URL, the back button — moves the session
-   * there. This is the address's path, and it never asks.
+   * every one after it — back and forward, the app's own navigation — moves
+   * the session there, and raises the cut's notice where that cut a value
+   * (decision 84, rule 4). This is the address's path, and it never asks.
    */
   arrive(address: Address, link: string | undefined): void {
     if (this.#opened) {
-      this.#opened.session.setAddress(address);
+      if (this.#opened.session.setAddress(address)) {
+        this.#onnotice("valuesCut");
+      }
       return;
     }
     this.#openAt(address, link);
@@ -76,22 +81,31 @@ export class Tab {
     this.#replace(this.#waitingLink);
   }
 
-  /** The person said no to the waiting link: it is dropped, and the session kept where the address moved it. */
+  /**
+   * The person said no to the waiting link: it is dropped, and the session
+   * kept where the address moved it, with the notice of the cut that move
+   * made, if it made one.
+   */
   declineLink(): void {
     this.#waitingLink = null;
+    for (const notice of this.#declineNotices) {
+      this.#onnotice(notice);
+    }
+    this.#declineNotices = [];
   }
 
   /**
    * Run the first address's load at `address`, with `link` and what the tab
    * kept: the session it opens and the link it leaves waiting, each in place
-   * of what was there, and the notice it raises.
+   * of what was there, and the notices it raises.
    */
   #openAt(address: Address, link: string | undefined): void {
     const load = firstLoadAt(address, { link, kept: readKeptText() }, this.#models);
     this.#opened = { session: load.session, outputs: new Outputs(load.session) };
     this.#waitingLink = load.waitingLink;
-    if (load.notice) {
-      this.#onnotice(load.notice);
+    this.#declineNotices = load.declineNotices;
+    for (const notice of load.notices) {
+      this.#onnotice(notice);
     }
   }
 

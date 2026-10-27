@@ -355,7 +355,7 @@ describe("a model switch under dynamic clothing entry", () => {
     expect(session.slots[0].values.has(q.clo)).toBe(false);
   });
 
-  it("keeps the mode and the number between the two PMV models, and adjusts nothing on the address's path", () => {
+  it("keeps the mode and the number between the two PMV models, and adjusts nothing when the model is set", () => {
     const session = enteringDynamicClothing();
 
     session.setModel(pmvPpdAshrae);

@@ -6,13 +6,15 @@ import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "
 import type { ChartAxes, OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
 import {
+  atmosphericPressureRow,
   atmosphericPressureVerdict,
   entryVerdict,
+  nearestEnd,
   type OutOfRangeRow,
   type SlotOutOfRangeRow,
   type Verdict,
 } from "$lib/core/applicability";
-import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
+import { adjustToBounds, rehearseSwitch, settledOutOfRangeRows } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import {
   defaultEntryModes,
@@ -255,9 +257,9 @@ export interface RehearsedSlot {
   /** What the slot would hold under the new model: `rehearseSwitch`'s slot. */
   readonly slot: Slot;
   /**
-   * What the question lists of it: the entered values the new model does not
-   * accept, as `rehearseSwitch` reports them, for a compared slot; none for a
-   * slot not compared, which is neither listed nor adjusted.
+   * What the question lists of it and a yes cuts: the entered values the new
+   * model does not accept, as `rehearseSwitch` reports them, compared or not
+   * (ADR-0002 decision 84, rule 4).
    */
   readonly listedRows: readonly OutOfRangeRow[];
 }
@@ -370,9 +372,12 @@ export class Session {
   }
 
   /**
-   * Whether each compared slot is named by its position: on the Standard page
-   * while Compare is on, and nowhere else (ADR-0002 decision 50). Asked here
-   * alone; each slot's badge is given from it (`state/compute.svelte.ts`).
+   * Whether each compared slot's badge carries its position name: on the
+   * Standard page while Compare is on, and nowhere else (ADR-0002 decision
+   * 50). Asked here alone; each slot's badge is given from it
+   * (`state/compute.svelte.ts`). A slot not shown has no badge, so the
+   * switch's dialog and the pressure's toast name a slot by position on their
+   * own rule (decision 84, rule 4).
    */
   get slotsNamed(): boolean {
     return this.page === page.standard && this.#compare;
@@ -560,11 +565,10 @@ export class Session {
   }
 
   /**
-   * The address's path — a typed URL, the back button, a share link — which
-   * has no previous page to stay on and so never asks and never adjusts a
-   * value (ADR-0002 decision 32). Every slot that holds values is converted
-   * and seeded, and lands with the model in one step, so no derivation sees a
-   * slot and the model disagree.
+   * Set `model` without a question and without a cut (ADR-0002 decision 32):
+   * every slot that holds values is converted and seeded, and lands with the
+   * model in one step, so no derivation sees a slot and the model disagree.
+   * The address's path, {@link setAddress}, sets the model so and then cuts.
    */
   setModel(model: RegisteredModel): void {
     if (model === this.model) {
@@ -574,27 +578,48 @@ export class Session {
   }
 
   /**
-   * Where the address points now: its page and its model, the model set as
-   * {@link setModel} sets it, so a change of page never asks either. Every
-   * slot, Compare and the chart settings are kept: they are the session's,
-   * not a page's (ADR-0002 decision 57). An arrival answers whatever was
-   * pending with a "No", as a landing does, even on the model already
-   * current: the question was asked on a page the address has left.
+   * Where the address points now — a typed URL, back and forward, a share
+   * link, a restored tab — which has no previous page to stay on and so never
+   * asks: its page and its model, the model set as {@link setModel} sets it.
+   * Every slot, Compare and the chart settings are kept: they are the
+   * session's, not a page's (ADR-0002 decision 57). An arrival answers
+   * whatever was pending with a "No", as a landing does, even on the model
+   * already current: the question was asked on a page the address has left.
+   *
+   * It then cuts the pressure to its kind's bound, and every entry of every
+   * slot that holds values, compared or not, to its bound at the pressure as
+   * cut, as a switch's "Yes" cuts (decision 84, rule 4, as noted 2026-10-28).
+   * It lists nothing and holds nothing pending, and answers whether it cut
+   * anything, for the page to say so.
    */
-  setAddress(address: Address): void {
+  setAddress(address: Address): boolean {
     this.pendingSwitch = null;
     this.page = address.page;
     this.setModel(address.model);
+    const pressureRow = atmosphericPressureRow(this.atmosphericPressure);
+    if (pressureRow) {
+      this.atmosphericPressure = nearestEnd(pressureRow.value, pressureRow.bound);
+    }
+    let cut = pressureRow !== undefined;
+    for (const slot of this.#heldSlots()) {
+      const rows = settledOutOfRangeRows(slot, this.model, this.atmosphericPressure);
+      if (rows.length > 0) {
+        slot.replaceWith(adjustToBounds(slot, rows));
+        cut = true;
+      }
+    }
+    return cut;
   }
 
   /**
    * The app's own way of switching: the person asked for `model` from a page
    * they are already on, so the session may have a question about it
    * (ADR-0002 decisions 32 and 52). Requesting is therefore a different act
-   * from setting — with every value of the compared slots acceptable to
-   * `model` the switch simply lands, and otherwise nothing changes and one
-   * question about all of them is held until {@link acceptSwitch} or
-   * {@link declineSwitch} answers it.
+   * from setting — with every value of every slot that holds values, compared
+   * or not, acceptable to `model` the switch simply lands, and otherwise
+   * nothing changes and one question about all of them is held until
+   * {@link acceptSwitch} or {@link declineSwitch} answers it (decision 84,
+   * rule 4).
    */
   requestModel(model: RegisteredModel): void {
     // Every request supersedes the last one, so no question outlives the act
@@ -631,8 +656,10 @@ export class Session {
 
   /**
    * Every slot that holds values, as a switch to `model` would leave it, in
-   * slot order. The rehearsal is a function of one slot, asked of each; only a
-   * compared slot's rows are listed.
+   * slot order. The rehearsal is a function of one slot, asked of each, and
+   * every slot's rows are listed, a slot not compared among them: it changes
+   * with the rest, and is listed so that none changes unseen (ADR-0002
+   * decision 84, rule 4).
    */
   #rehearse(model: RegisteredModel): RehearsedSlot[] {
     return slotPositions.flatMap((position) => {
@@ -641,7 +668,7 @@ export class Session {
         return [];
       }
       const { slot, outOfRangeRows } = rehearseSwitch(held, this.model, model, this.atmosphericPressure);
-      return [{ position, slot, listedRows: this.#comparedPositions.includes(position) ? outOfRangeRows : [] }];
+      return [{ position, slot, listedRows: outOfRangeRows }];
     });
   }
 

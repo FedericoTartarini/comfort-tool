@@ -141,20 +141,48 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual([]);
   });
 
-  it("to another model than the tab's, answered no, gives the kept session converted to it as a typed address converts it, nothing asked", () => {
+  it("to another model than the tab's, answered no, gives the kept session converted and cut as a typed address converts and cuts it, nothing asked, and the cut notice only then", () => {
     const kept = keptSession();
     // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
     heldSlot(kept, 1).setEntered(q.tdb, 35);
     const sender = sessionComparingThreeSlots(pmvPpdIso);
-    const { tab } = tabOpenedThroughLink(kept, standardAddress(pmvPpdIso), toText(linkSessionOf(sender), registeredModels));
+    const { tab, raised } = tabOpenedThroughLink(kept, standardAddress(pmvPpdIso), toText(linkSessionOf(sender), registeredModels));
     expect(openSessionOf(tab).pendingSwitch).toBeNull();
+    expect(raised).toEqual([]);
 
     tab.declineLink();
 
     kept.setAddress(standardAddress(pmvPpdIso));
     expect(openedOn(openSessionOf(tab))).toEqual(openedOn(kept));
     expect(openSessionOf(tab).model).toBe(pmvPpdIso);
-    expect(heldSlot(openSessionOf(tab), 1).values.get(q.tdb)).toBe(35);
+    expect(heldSlot(openSessionOf(tab), 1).values.get(q.tdb)).toBe(30);
+    expect(raised).toEqual(["valuesCut"]);
+  });
+
+  it("over a kept session the address cut, answered yes, gives only the link's notices", () => {
+    const kept = keptSession();
+    heldSlot(kept, 1).setEntered(q.tdb, 35);
+    const sender = sessionComparingThreeSlots(pmvPpdIso);
+    const { tab, raised } = tabOpenedThroughLink(kept, standardAddress(pmvPpdIso), toText(linkSessionOf(sender), registeredModels));
+
+    tab.acceptLink();
+
+    expect(raised).toEqual([]);
+  });
+
+  it("with a value out of range asks as one without does, and answered yes opens it cut, with the cut notice once", () => {
+    const sender = senderSession();
+    // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
+    heldSlot(sender, 0).setEntered(q.tdb, 45);
+    const { tab, raised } = tabOpenedThroughLink(keptSession(), addressOf(sender), toText(linkSessionOf(sender), registeredModels));
+    expect(tab.waitingLink).not.toBeNull();
+    expect(raised).toEqual([]);
+
+    tab.acceptLink();
+
+    expect(heldSlot(openSessionOf(tab), 0).values.get(q.tdb)).toBe(40);
+    expect(raised).toEqual(["valuesCut"]);
+    expect(tab.waitingLink).toBeNull();
   });
 
   it("that needed something filled: answered yes, the link's session filled and the notice that says so", () => {
@@ -182,6 +210,43 @@ describe("a link reaching a tab that kept a session", () => {
     expect(openedOn(openSessionOf(tab))).toEqual(openedOn(kept));
     expect(raised).toEqual([]);
     expect(tab.waitingLink).toBeNull();
+  });
+});
+
+describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)", () => {
+  it("through a link with a value out of range opens it cut, with the cut notice once", () => {
+    const sender = senderSession();
+    // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
+    heldSlot(sender, 0).setEntered(q.tdb, 45);
+    const { tab, raised } = recordingTab();
+
+    tab.arrive(addressOf(sender), toText(linkSessionOf(sender), registeredModels));
+
+    expect(heldSlot(openSessionOf(tab), 0).values.get(q.tdb)).toBe(40);
+    expect(raised).toEqual(["valuesCut"]);
+  });
+
+  it("through a link with none raises nothing", () => {
+    const sender = senderSession();
+    const { tab, raised } = recordingTab();
+
+    tab.arrive(addressOf(sender), toText(linkSessionOf(sender), registeredModels));
+
+    expect(raised).toEqual([]);
+  });
+
+  it("after the first, at a model under which a held value is out of range, cuts it and raises the cut notice; one with none raises nothing", () => {
+    const { tab, raised } = recordingTab();
+    tab.arrive(standardAddress(pmvPpdAshrae), undefined);
+    // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s.
+    openSessionOf(tab).slots[0].setEntered(q.tdb, 35);
+
+    tab.arrive({ page: page.explore, model: pmvPpdAshrae }, undefined);
+    expect(raised).toEqual([]);
+    tab.arrive(standardAddress(pmvPpdIso), undefined);
+
+    expect(openSessionOf(tab).slots[0].values.get(q.tdb)).toBe(30);
+    expect(raised).toEqual(["valuesCut"]);
   });
 });
 

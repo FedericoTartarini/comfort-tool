@@ -5,27 +5,39 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * Every notice the app gives is a toast at the top right, under the header
  * and level with the cards, kept until its close button closes it, and the
  * header holds none (ADR-0002 decision 84, rule 7). Each notice is raised
- * where the page raises it: a link at the first address, Share's clipboard,
- * the Image's download. A notice raised again replaces its own toast, and
+ * where the page raises it: a link at the first address, and a value it held
+ * out of range, cut (rule 4, as noted 2026-10-28); Share's clipboard; the
+ * Image's download. A notice raised again replaces its own toast, and
  * Reset takes the toasts standing with it.
  */
 
 const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
 const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
 
-/** PMV (ISO 7730) at its defaults as Share writes it, with slot 1's metabolic rate taken out: read, but not exactly. */
-const FILLED_LINK = `v1.${Buffer.from(
-  JSON.stringify({
-    model: "pmv_ppd_iso",
-    unitSystem: "si",
-    p_atm: 101325,
-    compare: false,
-    enabled: [false, false],
-    entryModes: { temperature: "separate", airSpeed: "air-speed", clothing: "clothing-insulation", humidity: "relative-humidity" },
-    slots: [{ values: { tdb: 25, tr: 25, v: 0.1, clo: 0.5, rh: 50 }, options: {} }, null, null],
-    charts: { pmv_ppd_iso: { type: "psychrometric", axes: { x: "tdb", y: "v" } } },
-  }),
-).toString("base64url")}`;
+/** PMV (ISO 7730) as Share writes it, slot 1 holding `values` alone. */
+function isoLinkWith(values: Record<string, number>): string {
+  return `v1.${Buffer.from(
+    JSON.stringify({
+      model: "pmv_ppd_iso",
+      unitSystem: "si",
+      p_atm: 101325,
+      compare: false,
+      enabled: [false, false],
+      entryModes: { temperature: "separate", airSpeed: "air-speed", clothing: "clothing-insulation", humidity: "relative-humidity" },
+      slots: [{ values, options: {} }, null, null],
+      charts: { pmv_ppd_iso: { type: "psychrometric", axes: { x: "tdb", y: "v" } } },
+    }),
+  ).toString("base64url")}`;
+}
+
+/** PMV (ISO 7730) at its defaults, with slot 1's metabolic rate taken out: read, but not exactly. */
+const FILLED_LINK = isoLinkWith({ tdb: 25, tr: 25, v: 0.1, clo: 0.5, rh: 50 });
+
+/** PMV (ISO 7730) at its defaults, exactly. */
+const EXACT_LINK = isoLinkWith({ tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, rh: 50 });
+
+/** {@link EXACT_LINK} with a dry-bulb temperature past PMV (ISO 7730)'s 30 °C. */
+const OUT_OF_RANGE_LINK = isoLinkWith({ tdb: 35, tr: 25, v: 0.1, met: 1.1, clo: 0.5, rh: 50 });
 
 const WIDTH = 1440;
 
@@ -97,6 +109,24 @@ test("a link that needed something filled raises its toast", async ({ page }) =>
   await open(page, `${ISO_ADDRESS}?share=${FILLED_LINK}`);
 
   await expect(toasts(page)).toContainText("Some of this link could not be used as written; what it lacked starts at its defaults.");
+});
+
+test("a link with a value out of range opens with the value cut and one toast saying so, and no dialog", async ({ page }) => {
+  await open(page, `${ISO_ADDRESS}?share=${OUT_OF_RANGE_LINK}`);
+
+  await expect(page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ })).toHaveValue("30");
+  await expect(toasts(page)).toHaveCount(1);
+  await expect(toasts(page)).toContainText("Some values were out of range and were cut to the nearest allowed value.");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("a link with every value within its bound raises no toast", async ({ page }) => {
+  await page.clock.install();
+  await open(page, `${ISO_ADDRESS}?share=${EXACT_LINK}`);
+
+  // Past the moment a toast raised by the load would have shown.
+  await page.clock.runFor(1000);
+  await expect(toasts(page)).toHaveCount(0);
 });
 
 test("a clipboard that refuses the link raises its toast, refusing again replaces it, and another notice stacks", async ({ page }) => {

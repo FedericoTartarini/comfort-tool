@@ -1,7 +1,7 @@
 /**
  * The first address's load (ADR-0002 decision 63, rules 3 and 4) at the state
  * seam: a link's text or none, a kept text or none and an address in, the
- * session the page opens on, the notice and the link left waiting out, with
+ * session the page opens on, the notices and the link left waiting out, with
  * no browser, no router and no component. The expected session is the app's
  * own: a model's starting session, the narrowed session a link was written
  * from, or the live session the text was written from, moved to the address
@@ -34,8 +34,8 @@ import {
 } from "./sessionTestReaders";
 
 const q = quantities;
-/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** A pressure inside the bound's 30 000 Pa and off the default. */
+const PRESSURE_IN_RANGE = 90000;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The text of a link copied from `session` on its page. */
@@ -46,8 +46,8 @@ function linkTextOf(session: Session): string {
 /**
  * A session on PMV (ASHRAE 55) comparing three slots of their own values with
  * slot 3 disabled, every entry group off its default mode, an option ticked,
- * a value and the pressure out of range, IP, and edited chart settings on PMV
- * (ISO 7730), which it left, and on PMV (ASHRAE 55).
+ * a pressure off its default, IP, and edited chart settings on PMV (ISO 7730),
+ * which it left, and on PMV (ASHRAE 55). Every value is within its bound.
  */
 function editedSession(): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
@@ -62,11 +62,10 @@ function editedSession(): Session {
   session.setHumidityMode(humidityMode.dewPoint);
   heldSlot(session, 1).setEntered(q.operative_tmp, 27);
   heldSlot(session, 1).setOption(airSpeedControl, true);
-  // Past PMV (ASHRAE 55)'s 30 °C operative temperature: the gate closes on slot 3.
-  heldSlot(session, 2).setEntered(q.operative_tmp, 60);
+  heldSlot(session, 2).setEntered(q.operative_tmp, 22);
   session.setSlotEnabled(2, false);
   session.unitSystem = unitSystem.ip;
-  session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+  session.atmosphericPressure = PRESSURE_IN_RANGE;
   return session;
 }
 
@@ -89,13 +88,28 @@ describe("the first address's load", () => {
     }
   });
 
-  it("with a kept text is that session: its slots, flags, entry modes, and every model's chart settings", () => {
+  it("with a kept text is that session: its slots, flags, entry modes, and every model's chart settings, and no notice", () => {
     const kept = editedSession();
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: keptTextOf(kept) }, registeredModels);
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual(openedOn(kept));
     expectEverySlotInSessionEntryModes(session);
+    expect(notices).toEqual([]);
+  });
+
+  it("with a kept text holding a value out of range is that session cut to its bounds, and the cut notice once", () => {
+    const kept = editedSession();
+    // Past PMV (ASHRAE 55)'s 30 °C operative temperature, in slot 3, which is not compared.
+    heldSlot(kept, 2).setEntered(q.operative_tmp, 60);
+    const text = keptTextOf(kept);
+
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: text }, registeredModels);
+
+    expect(kept.setAddress(standardAddress(pmvPpdAshrae))).toBe(true);
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(heldSlot(session, 2).values.get(q.operative_tmp)).toBeLessThan(60);
+    expect(notices).toEqual(["valuesCut"]);
   });
 
   it("with a kept text on Explore opens on Explore, the session unchanged", () => {
@@ -110,9 +124,10 @@ describe("the first address's load", () => {
     for (const text of ["", "not a text", "v1.not-base64-json", "v2.e30"]) {
       expect(toDecodedSession(text, registeredModels), text).toBeUndefined();
 
-      const { session } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
+      const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
 
       expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+      expect(notices, text).toEqual([]);
     }
   });
 
@@ -137,7 +152,7 @@ describe("the first address's load", () => {
     expect(openedOn(session)).toEqual(openedOn(kept));
   });
 
-  it("with a kept text written under another model follows the address as the back button does: converted and seeded, nothing adjusted, nothing asked", () => {
+  it("with a kept text written under another model follows the address as the back button does: converted, seeded and cut, nothing asked, and the cut notice", () => {
     const kept = sessionComparingThreeSlots(pmvPpdAshrae);
     // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
     heldSlot(kept, 1).setEntered(q.tdb, 35);
@@ -145,12 +160,13 @@ describe("the first address's load", () => {
     kept.requestModel(pmvPpdIso);
     expect(kept.pendingSwitch).not.toBeNull();
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
 
     kept.setAddress(standardAddress(pmvPpdIso));
     expect(openedOn(session)).toEqual(openedOn(kept));
     expect(session.pendingSwitch).toBeNull();
-    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(35);
+    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(30);
+    expect(notices).toEqual(["valuesCut"]);
   });
 
   it("with a kept text written under a model without an entry group follows the address to one with it, seeded", () => {
@@ -177,10 +193,25 @@ describe("the first address's load with a link", () => {
   it("and nothing kept is the link's session, with no notice and nothing waiting", () => {
     const sender = onExplore();
 
-    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
     expect(openedOn(session)).toEqual({ written: linkSessionOf(sender), page: page.explore, pendingSwitch: null });
-    expect(notice).toBeNull();
+    expect(notices).toEqual([]);
+    expect(waitingLink).toBeNull();
+  });
+
+  it("with a value out of range and nothing kept is the link's session cut to its bounds, and the cut notice once", () => {
+    const sender = onExplore();
+    // Past PMV (ASHRAE 55)'s 30 °C operative temperature, in slot 1, which Explore compares.
+    heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
+
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+
+    const expected = new Session(linkSessionOf(sender));
+    expect(expected.setAddress(addressOf(sender))).toBe(true);
+    expect(openedOn(session)).toEqual(openedOn(expected));
+    expect(heldSlot(session, 0).values.get(q.operative_tmp)).toBeLessThan(60);
+    expect(notices).toEqual(["valuesCut"]);
     expect(waitingLink).toBeNull();
   });
 
@@ -189,7 +220,7 @@ describe("the first address's load with a link", () => {
     const link = linkSessionOf(sender);
     expect(link.charts.get(pmvPpdAshrae)?.bands).toBeNull();
 
-    const { session, notice } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+    const { session, notices } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
     const chart = link.charts.get(pmvPpdAshrae);
     const bands = startingChartSettings(pmvPpdAshrae).bands;
@@ -199,7 +230,7 @@ describe("the first address's load with a link", () => {
       pendingSwitch: null,
     });
     expect(heldSlot(session, 1).values.get(q.operative_tmp)).toBe(sender.slots[1]?.values.get(q.operative_tmp));
-    expect(notice).toBeNull();
+    expect(notices).toEqual([]);
   });
 
   it("that needed something filled and nothing kept is the link's session, filled, and the notice that says so", () => {
@@ -210,20 +241,33 @@ describe("the first address's load with a link", () => {
     const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
     expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
 
-    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
 
     const [starting] = startingSession(pmvPpdAshrae).slots;
     expect(heldSlot(session, 0).values.get(q.met)).toBe(starting.values.get(q.met));
-    expect(notice).toBe("linkFilled");
+    expect(notices).toEqual(["linkFilled"]);
     expect(waitingLink).toBeNull();
+  });
+
+  it("that needed something filled and holds a value out of range gives both notices, the filling's first", () => {
+    const sender = onExplore();
+    heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
+    const written = linkSessionOf(sender);
+    const [first, ...others] = written.slots;
+    const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== q.met)) };
+    const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
+
+    const { notices } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
+
+    expect(notices).toEqual(["linkFilled", "valuesCut"]);
   });
 
   it("refused and nothing kept is the address's model on its defaults, and the notice", () => {
     for (const text of ["", "v1.not-base64-json", "v2.e30", linkTextOf(onExplore()).slice(0, -12)]) {
-      const { session, notice, waitingLink } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
+      const { session, notices, waitingLink } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
 
       expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
-      expect(notice, text).toBe("linkRefused");
+      expect(notices, text).toEqual(["linkRefused"]);
       expect(waitingLink, text).toBeNull();
     }
   });
@@ -231,20 +275,20 @@ describe("the first address's load with a link", () => {
   it("refused over a kept session is the kept session, and the notice", () => {
     const kept = editedSession();
 
-    const { session, notice, waitingLink } = firstLoadAt(addressOf(kept), { link: "v1.not-base64-json", kept: keptTextOf(kept) }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(kept), { link: "v1.not-base64-json", kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual(openedOn(kept));
-    expect(notice).toBe("linkRefused");
+    expect(notices).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
 
   it("over a kept text that is refused is the link's session, with nothing waiting and no notice", () => {
     const sender = onExplore();
 
-    const { session, notice, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: "v1.not-base64-json" }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: "v1.not-base64-json" }, registeredModels);
 
     expect(openedOn(session)).toEqual({ written: linkSessionOf(sender), page: page.explore, pendingSwitch: null });
-    expect(notice).toBeNull();
+    expect(notices).toEqual([]);
     expect(waitingLink).toBeNull();
   });
 
@@ -252,27 +296,55 @@ describe("the first address's load with a link", () => {
     const kept = editedSession();
     const link = linkTextOf(onExplore());
 
-    const { session, notice, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
+    const { session, notices, declineNotices, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual(openedOn(kept));
-    expect(notice).toBeNull();
+    expect(notices).toEqual([]);
+    expect(declineNotices).toEqual([]);
     expect(waitingLink).toBe(link);
   });
 
-  it("whose text names one model at an address naming another is converted and seeded for the address's model, nothing adjusted, nothing asked", () => {
+  it("over a kept session the address cuts is that session cut, the link waiting, no notice, and the cut notice held for a no", () => {
+    const kept = editedSession();
+    heldSlot(kept, 2).setEntered(q.operative_tmp, 60);
+    const link = linkTextOf(onExplore());
+
+    const { session, notices, declineNotices, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
+
+    expect(kept.setAddress(addressOf(kept))).toBe(true);
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(notices).toEqual([]);
+    expect(declineNotices).toEqual(["valuesCut"]);
+    expect(waitingLink).toBe(link);
+  });
+
+  it("with a value out of range over a kept session is the kept session, the link waiting and no notice, as without one", () => {
+    const kept = editedSession();
+    const sender = onExplore();
+    heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
+    const link = linkTextOf(sender);
+
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
+
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(notices).toEqual([]);
+    expect(waitingLink).toBe(link);
+  });
+
+  it("whose text names one model at an address naming another is converted, seeded and cut for the address's model, nothing asked, and the cut notice", () => {
     const sender = sessionComparingThreeSlots(pmvPpdAshrae);
     // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
     heldSlot(sender, 1).setEntered(q.tdb, 35);
     const text = linkTextOf(sender);
 
-    const { session, notice } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
 
     const expected = new Session(linkSessionOf(sender));
     expected.setAddress(standardAddress(pmvPpdIso));
     expect(openedOn(session)).toEqual(openedOn(expected));
     expect(session.model).toBe(pmvPpdIso);
     expect(session.pendingSwitch).toBeNull();
-    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(35);
-    expect(notice).toBeNull();
+    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(30);
+    expect(notices).toEqual(["valuesCut"]);
   });
 });

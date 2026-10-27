@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -470,7 +469,7 @@ test.describe("the slots' names", () => {
     await expect(markerEntries(page)).toHaveText(["Input 1", "Input 2"]);
   });
 
-  test("at 1440 px, name the switch question's slot column with Compare on, slots 2 and 3 disabled too, and none with it off", async ({ page }) => {
+  test("at 1440 px, name the switch question's slot column by position while the session holds more than one slot, Compare on or off and slot 2 disabled too, and none while it holds one", async ({ page }) => {
     const question = page.getByRole("dialog");
     // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
     async function askSwitch(airSpeed: Locator) {
@@ -503,7 +502,13 @@ test.describe("the slots' names", () => {
     await expect(slot2).toHaveAttribute("aria-pressed", "false");
     await askSwitch(page.getByRole("spinbutton", { name: /^Air speed.*, Input 1$/ }));
     await expect(question.getByRole("columnheader")).toHaveCount(4);
-    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1"]);
+    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1", "Input 2"]);
+    await decline();
+
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    await askSwitch(page.getByRole("spinbutton", { name: /^Air speed/ }));
+    await expect(question.getByRole("columnheader")).toHaveCount(4);
+    await expect(question.getByRole("cell", { name: /^Input \d$/ })).toHaveText(["Input 1", "Input 2"]);
     await decline();
   });
 });
@@ -830,95 +835,7 @@ test.describe("the air-speed chart's Comfort zone", () => {
   });
 });
 
-/**
- * A share link to PMV (ASHRAE 55) at its defaults as Share writes it on the
- * Standard page, one slot per entry of `slots` with its values over the
- * defaults, Compare on for more than one: since a typed value is cut or
- * refused (ADR-0002 decision 84, rule 2), the one way left to an entry out of
- * range, until an arrival cuts it too (`.scratch/input-gate/` ticket 06).
- */
-function pmvLinkWith(slots: readonly Readonly<Record<string, number>>[]): string {
-  const defaults = { tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, rh: 50 };
-  const slot = (values: Readonly<Record<string, number>>) => ({
-    values: { ...defaults, ...values },
-    options: { pmv_ppd_ashrae: { airspeed_control: false } },
-  });
-  const written = {
-    model: "pmv_ppd_ashrae",
-    unitSystem: "si",
-    p_atm: 101325,
-    compare: slots.length > 1,
-    enabled: [slots.length > 1, slots.length > 2],
-    entryModes: { temperature: "separate", airSpeed: "air-speed", clothing: "clothing-insulation", humidity: "relative-humidity" },
-    slots: [0, 1, 2].map((index) => (slots[index] ? slot(slots[index]) : null)),
-    charts: { pmv_ppd_ashrae: { type: "psychrometric", axes: { x: "tdb", y: "v" } } },
-  };
-  return `${PMV_ADDRESS}?share=v1.${Buffer.from(JSON.stringify(written)).toString("base64url")}`;
-}
-
-/** Opens `address` at `width`, whose slots have no result and so no chart to wait for. */
-async function openUncalculated(page: Page, width: number, address: string) {
-  await page.setViewportSize({ width, height: 900 });
-  await page.goto(address);
-  await expect(card(page, "Results").getByRole("alert")).toBeVisible();
-}
-
 test.describe("the applicability summary", () => {
-  test("at 1440 px, a metabolic rate out of range from a link shows Not calculated between the Results heading and the table, and committed back in range it goes", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ met: 5 }]));
-    const results = card(page, "Results");
-    const summary = results.getByRole("alert");
-    const metabolicRate = page.getByRole("spinbutton", { name: /^Metabolic rate/ });
-
-    await expect(summary).toContainText("Not calculated, outside these limits:");
-    await expect(summary).toContainText(/Metabolic rate must be .* met/);
-    await expect(summary).toContainText("This model has no earlier result to show.");
-    const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
-    const alert = await boxOf(summary);
-    const table = await boxOf(results.getByRole("table"));
-    expect(alert.y).toBeGreaterThanOrEqual(heading.y + heading.height);
-    expect(table.y).toBeGreaterThanOrEqual(alert.y + alert.height);
-
-    await metabolicRate.fill("1.1");
-    await metabolicRate.press("Enter");
-
-    await expect(summary).toHaveCount(0);
-  });
-
-  test("at 1440 px, two entries out of range from a link are one list under Not calculated, outside these limits:, the sentence on the result after it, every line at the heading's left edge", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ tdb: 50, met: 5 }]));
-    const summary = card(page, "Results").getByRole("alert");
-
-    const title = summary.locator('[data-slot="alert-title"]');
-    await expect(title).toHaveText("Not calculated, outside these limits:");
-    const items = summary.getByRole("listitem");
-    await expect(items).toHaveText([/Dry-bulb air temperature must be /, /Metabolic rate must be /]);
-    const sentence = summary.getByText("This model has no earlier result to show.", { exact: true });
-    await expect(items.filter({ hasText: "earlier result" })).toHaveCount(0);
-    const left = (await boxOf(title)).x;
-    for (const line of [...(await items.all()), sentence]) {
-      expect((await boxOf(line)).x).toBe(left);
-    }
-    const list = await boxOf(summary.getByRole("list"));
-    expect((await boxOf(sentence)).y).toBeGreaterThanOrEqual(list.y + list.height);
-  });
-
-  test("at 1440 px under Compare, two slots out of range from a link are one list holding both slots' lines, a sentence on the result per slot after it", async ({ page }) => {
-    await openUncalculated(page, 1440, pmvLinkWith([{ met: 5 }, { met: 5 }]));
-    const summary = card(page, "Results").getByRole("alert");
-
-    await expect(summary.getByRole("list")).toHaveCount(1);
-    await expect(summary.getByRole("listitem")).toHaveText([/Input 1: Metabolic rate must be /, /Input 2: Metabolic rate must be /]);
-    const sentences = summary.getByText(/Input \d: This model has no earlier result to show\./);
-    await expect(sentences).toHaveText(["Input 1: This model has no earlier result to show.", "Input 2: This model has no earlier result to show."]);
-    // Every line and every sentence carries its slot's swatch.
-    await expect(summary.locator(".swatch")).toHaveCount(4);
-    const list = await boxOf(summary.getByRole("list"));
-    for (const sentence of await sentences.all()) {
-      expect((await boxOf(sentence)).y).toBeGreaterThanOrEqual(list.y + list.height);
-    }
-  });
-
   test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control shows the ink part between the Results heading and the table, and the Inputs card holds no status alert, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);

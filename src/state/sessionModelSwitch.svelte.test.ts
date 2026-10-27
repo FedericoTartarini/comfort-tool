@@ -232,7 +232,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.model).toBe(acceptsTheSlot);
   });
 
-  it("never asks on the address's path: setting adjusts nothing and holds no question", () => {
+  it("never asks when the model is set: setting adjusts nothing and holds no question", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
 

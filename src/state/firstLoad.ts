@@ -14,14 +14,20 @@ export interface LoadTexts {
 /** What the page opens on after a document load. */
 export interface FirstLoad {
   readonly session: Session;
-  /** The notice the load raises, or `null`. */
-  readonly notice: Notice | null;
+  /** The notices the load raises, in order; none for a load that has nothing to say. */
+  readonly notices: readonly Notice[];
   /**
    * A link's text left waiting on the person's yes, because the tab kept a
    * session it would replace (rule 8), or `null`. Its notice waits with it:
    * a yes runs this load again with the text and nothing kept.
    */
   readonly waitingLink: string | null;
+  /**
+   * The notices a no to the waiting link raises: the cut's, where the address
+   * cut the kept session it keeps (decision 84, rule 4, and the user's ruling
+   * on `.scratch/input-gate/` ticket 06); none while no link waits.
+   */
+  readonly declineNotices: readonly Notice[];
 }
 
 /**
@@ -30,7 +36,9 @@ export interface FirstLoad {
  *
  * - a link and nothing kept: the link's session, and the notice where it
  *   needed something filled or dropped;
- * - a link over a kept session: the kept session, the link waiting;
+ * - a link over a kept session: the kept session, the link waiting, and
+ *   nothing raised: a yes runs the load again, and a no raises the kept
+ *   session's cut;
  * - a link refused: the kept session, else the address's model on its
  *   defaults, and the notice;
  * - no link: the kept session, else the defaults, and nothing raised, since
@@ -38,7 +46,8 @@ export interface FirstLoad {
  *
  * Whichever session opens is built under the model its text names and then
  * follows the address as at any arrival, converted and seeded and never asked
- * (rule 4, decision 32).
+ * (rule 4, decision 32), and cut to its bounds; a cut is one more notice,
+ * after the link's (decision 84, rule 4, as noted 2026-10-28).
  *
  * Touches no browser: the texts are read by the caller and handed in, so this
  * is the whole decision and is tested without one.
@@ -46,21 +55,26 @@ export interface FirstLoad {
 export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly RegisteredModel[]): FirstLoad {
   const kept = texts.kept === undefined ? undefined : toDecodedSession(texts.kept, models);
   if (texts.link === undefined) {
-    return { session: openedAt(address, kept?.session), notice: null, waitingLink: null };
+    return loadAt(address, kept?.session, []);
   }
   const link = toDecodedSession(texts.link, models);
   if (!link) {
-    return { session: openedAt(address, kept?.session), notice: "linkRefused", waitingLink: null };
+    return loadAt(address, kept?.session, ["linkRefused"]);
   }
   if (kept) {
-    return { session: openedAt(address, kept.session), notice: null, waitingLink: texts.link };
+    const load = loadAt(address, kept.session, []);
+    return { ...load, notices: [], waitingLink: texts.link, declineNotices: load.notices };
   }
-  return { session: openedAt(address, link.session), notice: link.exact ? null : "linkFilled", waitingLink: null };
+  return loadAt(address, link.session, link.exact ? [] : ["linkFilled"]);
 }
 
-/** A session built from `written`, else the address's model on its defaults, moved to `address`. */
-function openedAt(address: Address, written: WrittenSession | undefined): Session {
+/**
+ * The load of a session built from `written`, else the address's model on
+ * its defaults, moved to `address`, with nothing waiting: `notices`, and the
+ * cut's after them where the move cut a value.
+ */
+function loadAt(address: Address, written: WrittenSession | undefined, notices: readonly Notice[]): FirstLoad {
   const session = new Session(written ?? address.model);
-  session.setAddress(address);
-  return session;
+  const cut = session.setAddress(address);
+  return { session, notices: cut ? [...notices, "valuesCut"] : notices, waitingLink: null, declineNotices: [] };
 }
