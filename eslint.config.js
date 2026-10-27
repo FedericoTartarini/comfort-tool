@@ -194,8 +194,9 @@ export default [
   {
     // The browser tests and their config sit outside the app's boundaries.
     // Playwright neither type-checks them nor waits for a call the test forgot
-    // to await, so the one typed rule here catches the missing `await`.
-    files: ["tests/**/*.ts", "playwright.config.ts"],
+    // to await, so the one typed rule here catches the missing `await`. The
+    // repository scripts sit outside the boundaries too and take the same rules.
+    files: ["tests/**/*.ts", "scripts/**/*.ts", "playwright.config.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },

@@ -1697,7 +1697,8 @@ then the library; then spec and tickets.
    expected text is written as a literal.
    **Order (2026-10-07)**: the fixture needs a deployed build's text and the merge is item 6, so a preview is deployed
    before the freeze; the exact order is this phase's to settle.
-6. Merge back into `main`, remove the `git worktree`.
+6. Merge back into `main`, remove the `git worktree`, and move the version check to `main` (Version bump and deploy,
+   "At the formal release").
 7. Visual close-out (added 2026-10-07), before item 6: every page and dialog built after Phase 5c (the calculators,
    Time-series) is read against Phase 5c's Done criteria. Not a second design: the criteria are the stop.
 
@@ -1783,3 +1784,26 @@ removed (measured 2026-09-28; Proposal 35, `P031`).
 Phase 4's architecture acceptance is judged by `git diff --stat`, and so are the UTCI acceptance's two runs, at
 Phase 5's close and in Phase 6, and Phase 5d's PHS entry (2026-10-07).
 If either fails, stop and fix the architecture; do not work around it.
+
+## Version bump and deploy (added 2026-10-27)
+
+Pushes to `rewrite/v1` are not checked; the version is raised for a deploy only. The development deploy runs from the
+fork `yehui-h/comfort-tool`, whose `main` is this branch plus `firebase.json`, `.firebaserc` and
+`.github/workflows/firebase-hosting-merge.yml`: every push to the fork's `main` builds and deploys to
+https://comfort-tool-demo.web.app/ (Firebase project `yehui-comfort-tool`, site `comfort-tool-demo`). To deploy:
+
+1. Run `npm version patch|minor|major`, the author choosing the level, commit `package.json` and `package-lock.json`
+   as a Conventional Commit, and push to `rewrite/v1`. `.npmrc` sets `git-tag-version=false`, so `npm version` neither
+   commits nor tags.
+2. On GitHub, sync the fork's `rewrite/v1` with this repository's.
+3. Merge the fork's `rewrite/v1` into the fork's `main`.
+
+The footer shows `package.json`'s version (ADR-0002 decision 64, rule 4), so a deploy without a bump would show an
+old version. Before the build, the fork's workflow runs `node scripts/versionBump.ts "$BEFORE"`, `$BEFORE` being the
+fork `main`'s head before the push, the last deployed state; a version that is not a MAJOR.MINOR.PATCH above it stops
+the run, its message names `npm version patch|minor|major`, and nothing deploys. A run that fails after the check is
+re-run from the fork's Actions page, which compares against the same head.
+
+**At the formal release** (Phase 6 item 6): pull requests into `main` get the check as a required status check,
+`node scripts/versionBump.ts <base ref>`, and the owner sets the branch protection. An automated deploy, if wanted, is
+built then for the formal deploy.

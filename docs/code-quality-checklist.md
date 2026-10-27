@@ -37,8 +37,8 @@ checklist line below turns out to be mechanisable, it should move up into the ma
 | No `enum` / `namespace` / parameter properties | `erasableSyntaxOnly` | ADR §6 |
 | **No assignment to state inside `$effect`; no `untrack`** | eslint `effectPurity` | Svelte Best practices |
 | **Scalar module constants are `CONSTANT_CASE`** | eslint `constantCase` | ADR §6, Google TS Style Guide |
-| Every Playwright call in a browser test is awaited | eslint `no-floating-promises` | Playwright Best Practices |
-| Types check (`src/`, `tests/`, the Playwright config), tests pass, build succeeds | `npm run check` / `test` / `build`; `test:browser` where AGENTS.md's done line says | — |
+| Every Playwright call in a browser test is awaited, and every promise in a repository script | eslint `no-floating-promises` | Playwright Best Practices |
+| Types check (`src/`, `tests/`, `scripts/`, the Playwright config), tests pass, build succeeds | `npm run check` / `test` / `build`; `test:browser` where AGENTS.md's done line says | — |
 
 ## Human pass
 
