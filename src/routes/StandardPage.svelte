@@ -19,6 +19,7 @@ import { palette } from "$lib/core/palette";
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import { raiseNotice } from "$lib/ui/outputs/notices";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Label } from "$lib/ui/primitives/label";
   import { Separator } from "$lib/ui/primitives/separator";
@@ -53,11 +54,7 @@ import { palette } from "$lib/core/palette";
   });
 </script>
 
-<PageFrame
-  notice={tab.notice}
-  onclosenotice={tab.closeNotice}
-  mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}
->
+<PageFrame mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}>
   {#snippet navigation()}
     <PageNavigation {session} onfollow={inApp.follow} />
   {/snippet}
@@ -68,7 +65,7 @@ import { palette } from "$lib/core/palette";
       atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
       onreset={tab.reset}
       link={tab.link}
-      oncopyrefused={() => tab.raiseNotice("copyRefused")}
+      oncopyrefused={() => raiseNotice("copyRefused")}
     />
   {/snippet}
 
@@ -150,7 +147,7 @@ import { palette } from "$lib/core/palette";
       chartType={session.chart.type}
       runs={outputs.drawnRuns}
       unitSystem={session.unitSystem}
-      onfailed={() => tab.raiseNotice("imageFailed")}
+      onfailed={() => raiseNotice("imageFailed")}
     />
   {/snippet}
 

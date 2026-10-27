@@ -11,31 +11,27 @@
   that the page follows as an in-app switch (rule 5 as revised again
   2026-10-12), handed in as the navigation's items are; the separator stands
   after the mark, not the trigger, `h-6` in the band's white at 30 %; the
-  breadcrumb is the title, the `h1`; the search form is the notice line, centred in the room
-  between the title and Documentation, the last item; the row stands in the
-  page's frame, `--frame-width`, which `PageFrame` sets beside the sidebar's
-  width, the band's ground the window's width (rule 10 as revised again
-  2026-10-12). The band's own links and the trigger ring in the paper's
-  white on focus, where the brand's ring would not show; the notice keeps
-  the brand's, on its own white.
+  breadcrumb is the title, the `h1`; the search form goes, and Documentation,
+  the last item, stands at the row's end (decision 84, rule 7: every notice
+  is a toast, so the header holds none); the row stands in the page's frame,
+  `--frame-width`, which `PageFrame` sets beside the sidebar's width, the
+  band's ground the window's width (rule 10 as revised again 2026-10-12).
+  The band's own links and the trigger ring in the paper's white on focus,
+  where the brand's ring would not show.
 -->
 <script lang="ts">
-  import type { Notice } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
-  import NoticeLine from "$lib/ui/outputs/NoticeLine.svelte";
   import { Separator } from "$lib/ui/primitives/separator";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
   import { marks } from "./marks";
   import type { InAppLink } from "./NavGroup.svelte";
 
   interface Props {
-    notice: Notice | null;
-    onclosenotice: () => void;
     /** The mark's link: the default model's address, and what its click does first. */
     mark: InAppLink;
   }
 
-  let { notice, onclosenotice, mark }: Props = $props();
+  let { mark }: Props = $props();
 
   const sidebar = Sidebar.useSidebar();
 </script>
@@ -50,9 +46,6 @@
     </a>
     <Separator orientation="vertical" class="bg-background/30 data-vertical:h-6 data-vertical:self-auto" />
     <h1 class="shrink-0">{copy.appTitle}</h1>
-    <div class="flex min-w-0 flex-1 justify-center">
-      <NoticeLine {notice} onclose={onclosenotice} />
-    </div>
-    <a href={copy.documentationAddress} class="shrink-0 text-background [--ring:var(--background)]">{copy.documentation}</a>
+    <a href={copy.documentationAddress} class="ms-auto shrink-0 text-background [--ring:var(--background)]">{copy.documentation}</a>
   </div>
 </header>

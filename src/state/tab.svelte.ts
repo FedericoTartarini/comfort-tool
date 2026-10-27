@@ -7,31 +7,28 @@ import type { Notice, OpenSession } from "./openSession";
 
 /**
  * What the root holds about the tab beside its open session, and not in it
- * (ADR-0002 decision 63): the open session, what the notice line says, and a
- * share link waiting on the person's answer. It replaces the session one way,
- * which Reset and a link's yes both call (rule 8). Reads and clears what the
- * tab kept; writing it is the app's, at every change of the session.
+ * (ADR-0002 decision 63): the open session and a share link waiting on the
+ * person's answer. It replaces the session one way, which Reset and a link's
+ * yes both call (rule 8), and hands the notice a load gives to the root's
+ * `onnotice`, which raises it (decision 84, rule 7). Reads and clears what
+ * the tab kept; writing it is the app's, at every change of the session.
  */
 export class Tab {
   readonly #models: readonly RegisteredModel[];
+  readonly #onnotice: (notice: Notice) => void;
   /** Set by the first address, and again by each replacement. Replaced whole, so `$state.raw`. */
   #opened = $state.raw<OpenSession>();
-  #notice = $state<Notice | null>(null);
   #waitingLink = $state<string | null>(null);
   #replacements = $state(0);
 
-  constructor(models: readonly RegisteredModel[]) {
+  constructor(models: readonly RegisteredModel[], onnotice: (notice: Notice) => void) {
     this.#models = models;
+    this.#onnotice = onnotice;
   }
 
   /** The open session and its outputs, or `undefined` until the first address opens them. */
   get opened(): OpenSession | undefined {
     return this.#opened;
-  }
-
-  /** What the notice line says, or `null` while it is closed. */
-  get notice(): Notice | null {
-    return this.#notice;
   }
 
   /**
@@ -84,25 +81,18 @@ export class Tab {
     this.#waitingLink = null;
   }
 
-  /** Say `notice`, in place of whatever the line said. */
-  raiseNotice(notice: Notice): void {
-    this.#notice = notice;
-  }
-
-  closeNotice(): void {
-    this.#notice = null;
-  }
-
   /**
    * Run the first address's load at `address`, with `link` and what the tab
-   * kept: the session it opens, the notice it raises and the link it leaves
-   * waiting, each in place of what was there.
+   * kept: the session it opens and the link it leaves waiting, each in place
+   * of what was there, and the notice it raises.
    */
   #openAt(address: Address, link: string | undefined): void {
     const load = firstLoadAt(address, { link, kept: readKeptText() }, this.#models);
     this.#opened = { session: load.session, outputs: new Outputs(load.session) };
-    this.#notice = load.notice;
     this.#waitingLink = load.waitingLink;
+    if (load.notice) {
+      this.#onnotice(load.notice);
+    }
   }
 
   /**

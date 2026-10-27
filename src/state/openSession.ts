@@ -3,10 +3,10 @@ import type { Outputs } from "./compute.svelte";
 import type { Session } from "./session.svelte";
 
 /**
- * What the notice line at the top of every page says (ADR-0002 decision 63,
- * rule 6): a link that could not be read, a link that needed something filled
- * or dropped, a clipboard that refused the link; and an Image that could not
- * be made (decision 64, rule 8). One at a time.
+ * A notice the app gives, as a toast at the top right (ADR-0002 decision 84,
+ * rule 7): a link that could not be read, a link that needed something filled
+ * or dropped, a clipboard that refused the link (decision 63, rule 6); and an
+ * Image that could not be made (decision 64, rule 8).
  */
 export type Notice = "linkRefused" | "linkFilled" | "copyRefused" | "imageFailed";
 
@@ -24,20 +24,15 @@ export interface OpenSession {
 
 /**
  * What the root holds about the tab beside its open session and offers the
- * pages (ADR-0002 decision 63, rules 6 to 8): Reset, the share link to the
- * page, and the notice line. Not the session's: none of it is kept or
- * carried. Plain functions, handed on to the controls as they are.
+ * pages (ADR-0002 decision 63, rules 7 and 8): Reset and the share link to
+ * the page. Not the session's: none of it is kept or carried. Plain
+ * functions, handed on to the controls as they are.
  */
 export interface TabControls {
   /** Replace the tab's session with the defaults, once the person has said yes. */
   readonly reset: () => void;
   /** The share link to the page the open session is on now. */
   readonly link: () => string;
-  /** What the notice line says, or `null` while it is closed. */
-  readonly notice: Notice | null;
-  /** Say `notice`, in place of whatever the line said. */
-  readonly raiseNotice: (notice: Notice) => void;
-  readonly closeNotice: () => void;
 }
 
 const [readContext, writeContext] = createContext<() => OpenSession>();

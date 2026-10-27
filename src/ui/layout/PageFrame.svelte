@@ -14,13 +14,11 @@
   and the footer run the page's width and scroll with it; wider than the
   content needs, the row and the bands' contents stand in one frame,
   `--frame-width`, centred in the window (rule 10 as revised again
-  2026-10-12). The header's row is that fixed height, so a notice appearing
-  or closing in it moves nothing (decision 67, rule 10). The provider's
-  Cmd/Ctrl+B is stopped at the window, so it writes no cookie (rule 6).
+  2026-10-12). The provider's Cmd/Ctrl+B is stopped at the window, so it
+  writes no cookie (rule 6).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import type { Notice } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
   import * as Card from "$lib/ui/primitives/card";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
@@ -31,8 +29,6 @@
   import SiteHeader from "./SiteHeader.svelte";
 
   interface Props {
-    notice: Notice | null;
-    onclosenotice: () => void;
     /** The header's mark's link, which the page writes and follows as its navigation's (decision 73, rule 5). */
     mark: InAppLink;
     navigation: Snippet;
@@ -48,8 +44,7 @@
     chart: Snippet;
   }
 
-  let { notice, onclosenotice, mark, navigation, sessionControls, inputs, inputsActions, results, chartActions, chart }: Props =
-    $props();
+  let { mark, navigation, sessionControls, inputs, inputsActions, results, chartActions, chart }: Props = $props();
 
   const id = $props.id();
 
@@ -75,7 +70,7 @@
   revised again 2026-10-12).
 -->
 <Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem);">
-  <SiteHeader {notice} {onclosenotice} {mark} />
+  <SiteHeader {mark} />
 
   <div class="mx-auto flex w-full max-inline-(--frame-width) flex-1">
     <AppSidebar {navigation} {sessionControls} />

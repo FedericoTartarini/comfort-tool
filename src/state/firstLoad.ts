@@ -14,7 +14,7 @@ export interface LoadTexts {
 /** What the page opens on after a document load. */
 export interface FirstLoad {
   readonly session: Session;
-  /** What the notice line says once the page opens, or `null`. */
+  /** The notice the load raises, or `null`. */
   readonly notice: Notice | null;
   /**
    * A link's text left waiting on the person's yes, because the tab kept a

@@ -24,6 +24,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import { raiseNotice } from "$lib/ui/outputs/notices";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import * as Dialog from "$lib/ui/primitives/dialog";
@@ -41,11 +42,7 @@
   const columns = $derived<readonly [SlotColumn]>([{ inputSlot: session.slots[0], outputs: outputs.slots[0] }]);
 </script>
 
-<PageFrame
-  notice={tab.notice}
-  onclosenotice={tab.closeNotice}
-  mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}
->
+<PageFrame mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}>
   {#snippet navigation()}
     <PageNavigation {session} onfollow={inApp.follow} />
   {/snippet}
@@ -56,7 +53,7 @@
       atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
       onreset={tab.reset}
       link={tab.link}
-      oncopyrefused={() => tab.raiseNotice("copyRefused")}
+      oncopyrefused={() => raiseNotice("copyRefused")}
     />
   {/snippet}
 
@@ -132,7 +129,7 @@
         runs={outputs.drawnRuns}
         unitSystem={session.unitSystem}
         bands={session.chart.bands}
-        onfailed={() => tab.raiseNotice("imageFailed")}
+        onfailed={() => raiseNotice("imageFailed")}
       />
     </Inline>
   {/snippet}

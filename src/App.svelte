@@ -2,9 +2,9 @@
   Root shell: the tab (`state/tab.svelte.ts`) holds the one session, opened at
   the first address from its share link or what the tab kept, and kept for
   every page after it, until Reset or a link's yes replaces it (ADR-0002
-  decisions 57 and 63); beside it what the notice line says, which each page
-  draws, and the question a waiting link asks, which is drawn here; the router
-  renders the page for the current URL.
+  decisions 57 and 63); beside it the question a waiting link asks, and the
+  one toaster every notice is raised in (decision 84, rule 7), both drawn
+  here; the router renders the page for the current URL.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
@@ -16,8 +16,10 @@
   import { Tab } from "$lib/state/tab.svelte";
   import { copy } from "$lib/text/copy";
   import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
+  import Toaster from "$lib/ui/layout/Toaster.svelte";
+  import { raiseNotice } from "$lib/ui/outputs/notices";
 
-  const tab = new Tab(registeredModels);
+  const tab = new Tab(registeredModels, raiseNotice);
 
   /** The share link to the page the session is on: its address, and the session narrowed to it (ADR-0002 decision 63, rule 5). */
   function linkToPage(): string {
@@ -47,11 +49,6 @@
   setTabControls({
     reset: () => tab.reset(),
     link: linkToPage,
-    get notice() {
-      return tab.notice;
-    },
-    raiseNotice: (notice) => tab.raiseNotice(notice),
-    closeNotice: () => tab.closeNotice(),
   });
 </script>
 
@@ -72,3 +69,4 @@
   onaccept={() => tab.acceptLink()}
   ondecline={() => tab.declineLink()}
 />
+<Toaster />

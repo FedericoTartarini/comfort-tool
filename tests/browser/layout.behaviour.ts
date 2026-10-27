@@ -148,18 +148,18 @@ for (const width of [1440, 1366]) {
       await expect(exportDialog).toBeHidden();
     });
 
-    // A clipboard that refuses raises the notice line's copyRefused.
+    // A clipboard that refuses raises copyRefused's toast.
     await page.evaluate(() => {
       navigator.clipboard.writeText = () => Promise.reject(new Error("Refused for the test"));
     });
-    const notice = page.getByRole("banner").getByRole("status");
+    const toast = page.getByRole("region", { name: /^Notifications/ }).getByRole("listitem");
     await expectInPlace(async () => {
       await page.getByRole("button", { name: "Share" }).click();
-      await expect(notice).not.toBeEmpty();
+      await expect(toast).toHaveCount(1);
     });
     await expectInPlace(async () => {
-      await notice.getByRole("button", { name: "Close" }).click();
-      await expect(notice).toBeEmpty();
+      await toast.getByRole("button", { name: "Close" }).click();
+      await expect(toast).toHaveCount(0);
     });
 
     const chartType = (name: string) => page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name });
