@@ -17,7 +17,7 @@
   import { copy } from "$lib/text/copy";
   import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
   import Toaster from "$lib/ui/layout/Toaster.svelte";
-  import { raiseNotice } from "$lib/ui/outputs/notices";
+  import { closeNotices, raiseNotice } from "$lib/ui/outputs/notices";
 
   const tab = new Tab(registeredModels, raiseNotice);
 
@@ -46,8 +46,15 @@
     }
     return tab.opened;
   });
+  // Reset closes the toasts standing, which speak of the session it replaces
+  // (the user's ruling, `.scratch/input-gate/issues/01-…md` Comments). A
+  // link's yes need not: its question stands only at the first address,
+  // whose load raises nothing while a link waits.
   setTabControls({
-    reset: () => tab.reset(),
+    reset: () => {
+      closeNotices();
+      tab.reset();
+    },
     link: linkToPage,
   });
 </script>
