@@ -122,8 +122,8 @@ export function fieldPaintFor(
 /**
  * The note of `charted`, whose Comfort zones are all empty: one sentence,
  * whatever emptied them, named and with the slot's swatch while the slot has
- * a name, as the applicability summary names its lines (ADR-0002 decision 83
- * rule 1, as noted 2026-10-22). The legend keeps the zones' entries.
+ * a name, as a caption about one slot is (ADR-0002 decision 83 rule 1, as
+ * noted 2026-10-22). The legend keeps the zones' entries.
  */
 function emptyZoneNoteFor(charted: ChartedSlot): ChartNote {
   return charted.name === undefined

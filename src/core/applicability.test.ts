@@ -7,6 +7,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { registeredModels } from "$lib/models";
 import {
+  breaksNewLimit,
   enteredBound,
   formatBound,
   isAtmosphericPressureOutOfRange,
@@ -16,6 +17,7 @@ import {
   violationRows,
   warningFor,
   type Bound,
+  type ViolationRow,
 } from "./applicability";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
@@ -611,5 +613,33 @@ describe("splitViolations", () => {
       expect([inputs.includes(row), outputs.includes(row)].filter(Boolean)).toHaveLength(1);
     }
     expect(inputs.length + outputs.length).toBe(rows.length);
+  });
+});
+
+describe("breaksNewLimit", () => {
+  const airSpeedAt = (max: number): ViolationRow => ({ quantity: q.v, bounded: q.vr, role: "derived", value: 0.9, bound: { max } });
+  const pmvOutput: ViolationRow = { quantity: q.pmv, bounded: q.pmv, role: "output", value: 2.4, bound: { min: -2, max: 2 } };
+
+  it("is true when a limit is broken that was not, from none or beside another", () => {
+    expect(breaksNewLimit([], [airSpeedAt(0.64)])).toBe(true);
+    expect(breaksNewLimit([airSpeedAt(0.64)], [airSpeedAt(0.64), pmvOutput])).toBe(true);
+  });
+
+  it("is false while the same limits stay broken, whatever the bound's numbers or the value, and while they shrink", () => {
+    // PMV (ASHRAE 55)'s air-speed rule builds its bound per call, so another temperature moves it.
+    expect(breaksNewLimit([airSpeedAt(0.64)], [airSpeedAt(0.8)])).toBe(false);
+    expect(breaksNewLimit([airSpeedAt(0.64), pmvOutput], [pmvOutput])).toBe(false);
+    expect(breaksNewLimit([pmvOutput], [])).toBe(false);
+    expect(breaksNewLimit([], [])).toBe(false);
+  });
+
+  it("tells a limit apart by the quantity it bounds and its role, not by the row it is reported on", () => {
+    // An air-speed entry-mode switch moves the relative air speed's row from the entered air speed's to its own.
+    const onRelativeAirSpeed: ViolationRow = { ...airSpeedAt(0.64), quantity: q.vr };
+    const asInput: ViolationRow = { ...airSpeedAt(0.64), role: "input" };
+    const ofAnother: ViolationRow = { ...airSpeedAt(0.64), bounded: q.v };
+    expect(breaksNewLimit([airSpeedAt(0.64)], [onRelativeAirSpeed])).toBe(false);
+    expect(breaksNewLimit([airSpeedAt(0.64)], [asInput])).toBe(true);
+    expect(breaksNewLimit([airSpeedAt(0.64)], [ofAnother])).toBe(true);
   });
 });

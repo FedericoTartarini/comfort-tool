@@ -375,9 +375,9 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
 });
 
 /**
- * A slot whose gate is closed keeps its last valid inputs in the entry mode
- * they were entered in, so a request may hold a slot in another temperature
- * entry mode than the session's (ADR-0002 decision 51).
+ * A request may hold a slot in another temperature entry mode than the
+ * session's, which the builder converts rather than refuses (ADR-0002
+ * decision 51).
  */
 describe("a slot in another temperature entry mode than the session's", () => {
   const operative = withTemperatureMode(enteredSlotFor(pmvPpdIso, { tdb: 22, tr: 28 }), temperatureMode.operative, pmvPpdIso);

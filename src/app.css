@@ -151,7 +151,7 @@
 		background-color: var(--swatch-color);
 	}
 	/* A Swatch beside its label: the two never part. A long label wraps beside the swatch where its container lets
-	   text wrap (the not-calculated line), not in a table cell, which keeps its text on one line. */
+	   text wrap (a caption under the chart), not in a table cell, which keeps its text on one line. */
 	.swatch-label {
 		display: inline-flex;
 		align-items: center;
@@ -243,11 +243,6 @@
 	.result-table tr:hover > :first-child {
 		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
 	}
-	/* A row kept from an earlier run (`data-kept`) reads as not current by its numbers' muted ink, without a second
-	   hue; its first cell and the Compliance column keep theirs (decision 73, rule 9). */
-	.result-table tr[data-kept] .value {
-		color: var(--muted-foreground);
-	}
 	/* An input calculator's settings in its tab, the one region of the dialog that scrolls (decision 75, rule 6 (b)),
 	   padded so focus rings are not clipped. */
 	.calculator-settings {
@@ -333,12 +328,6 @@
 }
 [data-slot="field-description"] {
 	font-size: var(--font-size-caption);
-}
-/* The applicability summary's "Calculated, but outside these limits:" part, the default alert, is lettered in ink, its
-   lines too, where Nova mutes an alert's description: a violation is marked by an icon and words, never a hue
-   (decision 83, rule 2). */
-[data-slot="alert"].outside-limits [data-slot="alert-description"] {
-	color: var(--foreground);
 }
 /* The box's step buttons, the two together within the height of the Bands table's smaller box, where the input
    group's icon button is 1.5rem. */
@@ -528,14 +517,19 @@
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
-/* The icon on a dash standing for a violation (decision 83, rule 3): on the text's line, at its size, in the cell's
-   ink, before the dash. */
-.result-table .value svg {
-	display: inline-block;
-	width: 1em;
-	height: 1em;
-	margin-inline-end: 0.25em;
-	vertical-align: -0.125em;
+/* A row's limits button (decision 84, rule 8) stands on the text's line without making the row taller, before what
+   its cell holds: spaced by the gap of the swatch's label, beside the Compliance entries by the lead's, which keeps
+   it on their first line, and in a value cell by its own margin. */
+.result-table .limits-button {
+	margin-block: -0.25rem;
+}
+.result-table .limits-lead {
+	display: flex;
+	align-items: center;
+	gap: 0.4em;
+}
+.result-table .value .limits-button {
+	margin-inline-end: 0.25rem;
 }
 /* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
    tall as its small buttons, and a colour box narrow enough that No colour stands beside it. */

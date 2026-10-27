@@ -10,9 +10,9 @@ import { displayUnitFor, labelWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 /**
- * A slot the chart draws, as its last valid run left it: the slot as it was
- * entered and the atmospheric pressure it ran at (ADR-0002 decision 33), with
- * its slot's name where the slot has one.
+ * A slot the chart draws, as it is: the slot as it was entered and the
+ * atmospheric pressure it ran at, with its slot's name where the slot has
+ * one.
  */
 export interface DrawnRun {
   readonly name?: string;

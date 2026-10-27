@@ -1,11 +1,4 @@
-import {
-  atmosphericPressureRow,
-  outOfRangeRows,
-  violationRows,
-  type OutOfRangeRow,
-  type ViolationRow,
-} from "$lib/core/applicability";
-import { notCalculatedPart, outsideLimitsLines, type ApplicabilitySummary } from "$lib/core/applicabilitySummary";
+import { atmosphericPressureRow, outOfRangeQuantities, violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
@@ -15,26 +8,13 @@ import { psychrometricScanFrameFor, psychrometricSpec } from "$lib/core/charts/p
 import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import type { DrawnRun } from "$lib/core/inputSummary";
-import type { ChartAxes, ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ChartAxes, ModelResult } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { paintsBandsOn } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
-import { areSameEntryModes, panelQuantities, type Slot, type ValueEntryModes } from "$lib/core/slot";
+import { areSameEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadge, type SlotBadge } from "$lib/core/slotBadge";
 import type { InputSlot, Session, SlotPosition } from "./session.svelte";
-
-/**
- * What a completed run leaves behind: the slot it ran on, the model that ran
- * it and the atmospheric pressure it ran at, so the result and the chart kept
- * on screen are of one air (ADR-0002 decision 49). The whole of the app's
- * memory of a run — the result, the rows and the chart are derived from this
- * and nothing is kept of them (ADR-0002 decision 33).
- */
-export interface LastValidRun {
-  readonly model: RegisteredModel;
-  readonly slot: Slot;
-  readonly atmosphericPressure: number;
-}
 
 /**
  * What the axis picker shows: the quantities it offers and the pair it has
@@ -54,29 +34,20 @@ export interface DrawnAxes {
  * stale-result stamp. The decision reopens if a v1 model's scan is ever
  * measured past 300 ms.
  *
- * The gate is asked per slot (ADR-0002 decision 52): each compared slot has
- * its own {@link SlotOutputs}, with its own last valid run and its own scan,
- * so an edit to one slot runs the model and the scan for that slot alone. All
- * three are built up front and kept, so a slot disabled and enabled again
- * finds its memory; one that is not compared is not read, and a derivation
- * not read does not run. What every slot shares is judged here once: the
- * atmospheric pressure, whose being out of range closes every slot's gate
- * (ADR-0002 decision 49), and the frame every slot is scanned in.
+ * Each compared slot has its own {@link SlotOutputs} (ADR-0002 decision 52),
+ * with its own run and its own scan, so an edit to one slot runs the model and
+ * the scan for that slot alone. All three are built up front, so a slot
+ * disabled and enabled again needs nothing built; one that is not compared is
+ * not read, and a derivation not read does not run. What every slot shares is
+ * judged here once: whether the atmospheric pressure is out of range, and the
+ * frame every slot is scanned in.
  *
- * The chart is of every compared slot that has a run (ADR-0002 decision 50),
- * drawn at the atmospheric pressure of the first: slot 1's, unless slot 1 has
- * none. One pressure for the whole chart, so a slot kept from a run at
- * another pressure is drawn at this one. Its axes are resolved from the
- * session's entry modes, which no slot decides (ADR-0002 decision 51).
- *
- * What the gate freezes is the *result*, not the screen (ADR-0002 decision
- * 33). Remembered are the last valid inputs alone; the result, the violation
- * rows and the chart are derived from them and the session's *current* unit
- * system and chart settings, which are how a result is shown rather than
- * inputs to it. So pressing IP, changing the chart type and changing an axis
- * all reach the screen while the gate is closed, and the numbers do not move.
- * The marker is drawn at the remembered slot, the state the kept numbers
- * describe; the out-of-range entry is already shown by its own input.
+ * Nothing is kept (ADR-0002 decision 84, rule 9): the result, the violation
+ * rows and the chart are derived from the slots as they are, at the session's
+ * pressure, in its unit system and chart settings. A committed value is within
+ * its bounds; one a writer let through is run, and the library's rows show it
+ * as a violation. The chart is of every compared slot (decision 50), its axes
+ * resolved from the session's entry modes, which no slot decides (decision 51).
  */
 export class Outputs {
   readonly #session: Session;
@@ -84,30 +55,25 @@ export class Outputs {
   readonly #everySlot: readonly [SlotOutputs, SlotOutputs, SlotOutputs];
 
   /**
-   * The pressure as a row the gate stops, or `undefined` while it is in range.
-   * Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).
+   * Whether the pressure is outside its kind's bound. Judged apart from the
+   * entered values: no slot holds the pressure (ADR-0002 decision 49).
    */
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #atmosphericPressureRow = $derived.by(() => atmosphericPressureRow(this.#session.atmosphericPressure));
+  readonly #atmosphericPressureOutOfRange = $derived.by(
+    () => atmosphericPressureRow(this.#session.atmosphericPressure) !== undefined,
+  );
 
   readonly #compared = $derived.by((): readonly SlotOutputs[] =>
     this.#session.comparedPositions.map((position) => this.#everySlot[position]),
   );
 
-  /** The compared slots the chart is drawn of, each with its run: those that have one. */
-  readonly #charted = $derived.by((): readonly ChartedRun[] =>
-    this.#compared.flatMap((outputs) => (outputs.lastValid ? [{ outputs, last: outputs.lastValid }] : [])),
-  );
-
-  // The session's entry modes and the pressure the chart is drawn at, each
-  // its own derivation: enabling a slot recomputes both, and an edit to the
-  // first recomputes the pressure, each to the same value, and their equality
-  // keeps every other slot's scan from running again. The modes are read into
-  // a new object each time, so the derivation hands back its own last output
-  // while they are the same modes, kept in a plain field as
-  // `SlotOutputs.#remembered` is.
+  // The session's entry modes, their own derivation: enabling a slot
+  // recomputes it to the same modes, and its equality keeps every other
+  // slot's scan from running again. The modes are read into a new object each
+  // time, so the derivation hands back its own last output while they are the
+  // same modes, kept in a plain field, which a derivation may write.
   #rememberedEntryModes: ValueEntryModes | null = null;
   readonly #entryModes = $derived.by((): ValueEntryModes => {
     const modes = this.#session.entryModes;
@@ -115,8 +81,6 @@ export class Outputs {
     this.#rememberedEntryModes = remembered && areSameEntryModes(remembered, modes) ? remembered : modes;
     return this.#rememberedEntryModes;
   });
-  readonly #chartPressure = $derived.by((): number | null => this.#charted[0]?.last.atmosphericPressure ?? null);
-
   /** The Band list the charts paint: the current model's on Explore, none on Standard (ADR-0002 decision 58). */
   readonly #paintedBands = $derived.by((): BandList | null =>
     paintsBandsOn(this.#session.page) ? this.#session.chart.bands : null,
@@ -125,15 +89,12 @@ export class Outputs {
   /**
    * What every slot's scan of the chart on screen shares (ADR-0002 decision
    * 61): the psychrometric chart's frame, the dynamic chart's, or `null`
-   * while it is the adaptive chart, which scans nothing, or none is drawn. It
-   * reads neither the page nor the Band list, so a band edit rescans nothing.
+   * while it is the adaptive chart, which scans nothing. It reads neither the
+   * page nor the Band list, so a band edit rescans nothing.
    */
   readonly #scanFrame = $derived.by((): ScanFrame | null => {
     const session = this.#session;
-    const pressure = this.#chartPressure;
-    if (pressure === null) {
-      return null;
-    }
+    const pressure = session.atmosphericPressure;
     const { type, axes } = session.chart;
     if (type === chartType.psychrometric) {
       return psychrometricScanFrameFor(session.model, this.#entryModes, pressure);
@@ -142,24 +103,18 @@ export class Outputs {
   });
 
   readonly #chart = $derived.by((): ChartSpec | null => {
-    const charted = this.#charted;
-    if (charted.length === 0) {
-      return null;
-    }
+    const compared = this.#compared;
     // A chart with a frame is scanned, and each slot keeps its scan of it.
-    const scans = this.#scanFrame ? charted.map(({ outputs }) => outputs.scan) : undefined;
-    return chartSpecOf(this.#session, charted, this.#paintedBands, scans);
+    const scans = this.#scanFrame ? compared.map((outputs) => outputs.scan) : undefined;
+    return chartSpecOf(this.#session, compared, this.#paintedBands, scans);
   });
 
-  readonly #drawnAxes = $derived.by((): DrawnAxes | null =>
-    this.#charted.length > 0 ? drawnAxesOf(this.#session) : null,
-  );
+  readonly #drawnAxes = $derived.by((): DrawnAxes | null => drawnAxesOf(this.#session));
 
   constructor(session: Session) {
     this.#session = session;
-    const pressureRow = () => this.#atmosphericPressureRow;
     const scanFrame = () => this.#scanFrame;
-    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, pressureRow, scanFrame);
+    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, scanFrame);
     this.#everySlot = [slotAt(0), slotAt(1), slotAt(2)];
   }
 
@@ -170,14 +125,10 @@ export class Outputs {
 
   /** Whether the session's atmospheric pressure is outside its bound. */
   get atmosphericPressureOutOfRange(): boolean {
-    return this.#atmosphericPressureRow !== undefined;
+    return this.#atmosphericPressureOutOfRange;
   }
 
-  /**
-   * The chart of every compared slot's last valid inputs, in the unit system
-   * and the chart settings the session holds now — both pass through a
-   * closed gate.
-   */
+  /** The chart of every compared slot, in the unit system and the chart settings the session holds. */
   get chart(): ChartSpec | null {
     return this.#chart;
   }
@@ -185,13 +136,13 @@ export class Outputs {
   /**
    * The runs {@link chart} is drawn of, in slot order, each with its slot's
    * name where its badge carries one: what an Image's Input summary lists (ADR-0002 decision 64, rule 3).
-   * Read at the click, so nothing is kept of it.
+   * Read at the click, each slot a copy no later edit reaches, so nothing is kept of it.
    */
   get drawnRuns(): readonly DrawnRun[] {
-    return this.#charted.map(({ outputs, last }) => ({
+    return this.#compared.map((outputs) => ({
       name: outputs.badge.name,
-      slot: last.slot,
-      atmosphericPressure: last.atmosphericPressure,
+      slot: outputs.slot.toSlot(),
+      atmosphericPressure: this.#session.atmosphericPressure,
     }));
   }
 
@@ -199,8 +150,7 @@ export class Outputs {
    * The axes {@link chart} is drawn on and the ones the picker offers beside
    * them, resolved from the same entry mode, the session's, so the picker is
    * never in an entry mode the chart is not drawn in. `null` when
-   * the chart on screen has no axis to pick: none is drawn, or it is not the
-   * dynamic chart.
+   * the chart on screen has no axis to pick: it is not the dynamic chart.
    */
   get drawnAxes(): DrawnAxes | null {
     return this.#drawnAxes;
@@ -208,42 +158,17 @@ export class Outputs {
 }
 
 /**
- * What one slot shows: its gate, its last valid run, and the result and the
- * violation rows derived from that run (ADR-0002 decision 52). Read only
- * while its slot is compared, and so holds values.
- *
- * No effect. The single stateful rule — while an entered value is outside the
- * model's applicability, or the atmospheric pressure outside its bound, the
- * slot's last valid result, its rows and the last chart stay on screen — is
- * served by {@link SlotOutputs.#remembered}, a plain field holding
- * {@link SlotOutputs.#lastValid}'s own last output. A plain field rather
- * than `$state` because Svelte disallows a state write inside a derivation,
- * and it needs none: the memory is what that derivation last returned, so
- * recomputing changes nothing when the gate blocks and reproduces the same
- * value when it does not.
- *
- * A run is remembered for one model. A pass whose model differs from the
- * remembered one starts with nothing remembered, so a model reached with an
- * entry out of range — a typed URL, the back button, a share link, none of
- * which passes the switch dialog — shows an empty result rather than the
- * previous model's numbers under the new model's name.
- *
- * The derivation is split so that Svelte's own equality stops a blocked pass
- * at {@link SlotOutputs.#lastValid}: it returns the remembered object *by
- * identity*, so a `$derived` that reads it is not invalidated, and typing
- * further out-of-range values re-runs neither the model nor the 51×51 scan.
- * That is also why the remembered slot is a detached copy — holding the
- * slot's own `SvelteMap` would make every derivation below a reader of the
- * live slot again, and the equality would stop nothing.
+ * What one slot shows: the run of the slot as it is, and the violation rows
+ * the library reported of it (ADR-0002 decisions 52 and 84, rule 9). Read
+ * only while its slot is compared, and so holds values. No effect and no
+ * memory: an edit to the slot runs the model again, an edit to another slot
+ * does not.
  */
 export class SlotOutputs {
   /** Which of the session's slots this is, from 0. */
   readonly position: SlotPosition;
   readonly #session: Session;
-  readonly #atmosphericPressureRow: () => OutOfRangeRow | undefined;
   readonly #scanFrame: () => ScanFrame | null;
-  /** What {@link #lastValid} last returned. Written and read only there. */
-  #remembered: LastValidRun | null = null;
 
   /**
    * The session's slot at {@link position}. A slot is held once it is first
@@ -263,83 +188,38 @@ export class SlotOutputs {
   /** Named as the session says its slots are, so it follows Compare and the page. */
   readonly #badge = $derived.by((): SlotBadge => slotBadge(this.position, this.#session.slotsNamed));
 
-  /** Entered values the gate stops right now — the one thing that is never kept. */
-  readonly #outOfRangeRows = $derived.by(() =>
-    outOfRangeRows(this.#slot, this.#session.model, this.#session.atmosphericPressure),
+  readonly #outOfRangeQuantities = $derived.by(() =>
+    outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
   );
-
-  readonly #outOfRangeQuantities = $derived.by(() => this.#outOfRangeRows.map((row) => row.quantity));
-
-  /** Everything the gate stops right now: the entered values, then the pressure while it is out of range. */
-  readonly #stoppedRows = $derived.by((): readonly OutOfRangeRow[] => {
-    const pressure = this.#atmosphericPressureRow();
-    return pressure ? [...this.#outOfRangeRows, pressure] : this.#outOfRangeRows;
-  });
-
-  readonly #notCalculated = $derived.by(() => this.#stoppedRows.length > 0);
-
-  readonly #lastValid = $derived.by((): LastValidRun | null => {
-    const session = this.#session;
-    const model = session.model;
-    // A remembered run belongs to the model that made it, and to no other.
-    const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered = this.#notCalculated
-      ? kept
-      : { model, slot: detach(this.#slot), atmosphericPressure: session.atmosphericPressure };
-    return this.#remembered;
-  });
 
   // No `$state.raw` guard is needed on what comes out: `$derived` leaves an
   // object as it is rather than wrapping it in a deep proxy, so the results,
   // the chart spec and the Quantity objects keep the identity the library and
   // `core/quantities.ts` gave them.
-  readonly #result = $derived.by((): ModelResult | null => {
-    const last = this.#lastValid;
-    return last ? runOn(last.slot, last.model, last.atmosphericPressure) : null;
-  });
+  readonly #result = $derived.by((): ModelResult =>
+    runOn(this.#slot, this.#session.model, this.#session.atmosphericPressure),
+  );
 
-  readonly #violations = $derived.by((): readonly ViolationRow[] => {
-    const last = this.#lastValid;
-    const result = this.#result;
-    return last && result ? violationRows(last.model, result, this.#session.entryModes) : [];
-  });
+  readonly #violations = $derived.by((): readonly ViolationRow[] =>
+    violationRows(this.#session.model, this.#result, this.#session.entryModes),
+  );
 
-  // The first part of what the gate stops now, never kept, reading the last valid run only to say whether one is
-  // kept; the second of the result shown, so a kept result keeps its lines (ADR-0002 decision 83, rule 2).
-  readonly #applicabilitySummary = $derived.by((): ApplicabilitySummary => {
-    const panel = panelQuantities(this.#session.model, this.#slot);
-    const unitSystem = this.#session.unitSystem;
-    return {
-      notCalculated: notCalculatedPart(this.#stoppedRows, panel, this.#lastValid !== null, unitSystem),
-      outsideLimits: outsideLimitsLines(this.#violations, unitSystem),
-    };
-  });
-
-  // Of the last valid run, so a closed gate stops here too; and of the shared
-  // frame, which an edit to another slot leaves as it was.
+  // Of a detached copy of the slot: a region's boundary runs the scanned slot
+  // again when it is painted, and the live slot read then would make the
+  // painting a reader of the slot's values. Of the shared frame, which an
+  // edit to another slot leaves as it was.
   readonly #scan = $derived.by((): ScannedField => {
     const frame = this.#scanFrame();
-    const last = this.#lastValid;
-    if (!frame || !last) {
-      throw new Error(`The slot at position ${this.position} is scanned while no scanned chart is drawn of a run of it`);
+    if (!frame) {
+      throw new Error(`The slot at position ${this.position} is scanned while no scanned chart is drawn`);
     }
-    return scannedField(frame, last.slot);
+    return scannedField(frame, this.#slot.toSlot());
   });
 
-  /**
-   * The slot at `position` in `session`, whose gate the session-wide
-   * `atmosphericPressureRow` closes as well while it is one, scanned in the
-   * chart's shared `scanFrame`.
-   */
-  constructor(
-    session: Session,
-    position: SlotPosition,
-    atmosphericPressureRow: () => OutOfRangeRow | undefined,
-    scanFrame: () => ScanFrame | null,
-  ) {
+  /** The slot at `position` in `session`, scanned in the chart's shared `scanFrame`. */
+  constructor(session: Session, position: SlotPosition, scanFrame: () => ScanFrame | null) {
     this.position = position;
     this.#session = session;
-    this.#atmosphericPressureRow = atmosphericPressureRow;
     this.#scanFrame = scanFrame;
   }
 
@@ -348,8 +228,13 @@ export class SlotOutputs {
     return this.#badge;
   }
 
-  /** The last valid result. Kept as it is while an input is out of range. */
-  get result(): ModelResult | null {
+  /** The slot this shows, as the session holds it. */
+  get slot(): InputSlot {
+    return this.#slot;
+  }
+
+  /** The model's result on the slot as it is. */
+  get result(): ModelResult {
     return this.#result;
   }
 
@@ -359,95 +244,44 @@ export class SlotOutputs {
   }
 
   /**
-   * Whether the gate is closed: an entered value or the pressure is out of
-   * range, so nothing is calculated and the last valid result stays.
-   */
-  get notCalculated(): boolean {
-    return this.#notCalculated;
-  }
-
-  /**
-   * What qualifies the result, in the words the Results card shows above the
-   * table (ADR-0002 decision 83, rule 2): while the gate is closed, the entries
-   * and the pressure it stops, each with its bound, and whether a result is kept;
-   * then each bound the result shown broke, the {@link violations}.
-   */
-  get applicabilitySummary(): ApplicabilitySummary {
-    return this.#applicabilitySummary;
-  }
-
-  /**
-   * Applicability rows the slot's last run broke (`core/applicability.ts`),
-   * kept with the result they describe: not touched while the gate blocks a
-   * run, and reported on the rows of the session's entry modes, the ones the
-   * person sees (ADR-0002 decision 54).
+   * Applicability rows the slot's run broke (`core/applicability.ts`),
+   * reported on the rows of the session's entry modes, the ones the person
+   * sees (ADR-0002 decision 54).
    */
   get violations(): readonly ViolationRow[] {
     return this.#violations;
   }
 
-  /** The run the result, the rows and the chart are derived from, or `null` before one. */
-  get lastValid(): LastValidRun | null {
-    return this.#lastValid;
-  }
-
   /**
-   * The slot's scan of the chart on screen, of its last valid run (ADR-0002
-   * decision 61): the psychrometric chart's or the dynamic chart's. Read
-   * only while one of the two is on screen, not the adaptive chart, and the
-   * slot has a run.
+   * The slot's scan of the chart on screen (ADR-0002 decision 61): the
+   * psychrometric chart's or the dynamic chart's. Read only while one of the
+   * two is on screen, not the adaptive chart.
    */
   get scan(): ScannedField {
     return this.#scan;
   }
 }
 
-/** A compared slot the chart is drawn of, with the run it is drawn at. */
-interface ChartedRun {
-  readonly outputs: SlotOutputs;
-  readonly last: LastValidRun;
-}
-
 /**
- * `slot`'s entered values and options, detached from the slot: plain `Map`s,
- * so what is remembered stops moving when the slot does, and reading it later
- * subscribes to nothing. The entry-mode objects are replaced rather than mutated
- * (`state/session.svelte.ts`), so they are kept by reference, and an absent
- * humidity stays absent.
- */
-function detach(slot: Slot): Slot {
-  return {
-    values: new Map(slot.values),
-    humidity: slot.humidity,
-    temperature: slot.temperature,
-    airSpeed: slot.airSpeed,
-    clothing: slot.clothing,
-    options: new Map(slot.options),
-  };
-}
-
-/**
- * The spec for the chart the session currently shows of the `charted` slots,
- * built by its type's builder, at the first one's atmospheric pressure,
- * painting `bands` or, for `null`, the Comfort zones. Each run's model is the
- * session's own — {@link SlotOutputs.lastValid} remembers no other — so the
- * session's chart settings are this model's, and its chart type one the
- * model declares. `scans` are the `charted` slots' scans of the chart drawn,
- * in their order, which the builder paints rather than scanning; none for the
- * adaptive chart.
+ * The spec for the chart the session currently shows of the `compared` slots,
+ * built by its type's builder, at the session's atmospheric pressure,
+ * painting `bands` or, for `null`, the Comfort zones. The session's chart
+ * settings are its model's, and its chart type one the model declares.
+ * `scans` are the `compared` slots' scans of the chart drawn, in their order,
+ * which the builder paints rather than scanning; none for the adaptive chart.
  */
 function chartSpecOf(
   session: Session,
-  charted: readonly ChartedRun[],
+  compared: readonly SlotOutputs[],
   bands: BandList | null,
   scans: readonly ScannedField[] | undefined,
 ): ChartSpec | null {
   const request: ChartRequest = {
     model: session.model,
-    slots: charted.map(({ outputs, last }) => ({ ...outputs.badge, slot: last.slot })),
+    slots: compared.map((outputs) => ({ ...outputs.badge, slot: outputs.slot })),
     unitSystem: session.unitSystem,
     entryModes: session.entryModes,
-    atmosphericPressure: charted[0].last.atmosphericPressure,
+    atmosphericPressure: session.atmosphericPressure,
     bands,
   };
   const { type, axes } = session.chart;

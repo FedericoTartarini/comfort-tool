@@ -189,11 +189,11 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
   test(`at ${width} px, the switch question opens and closes moving no region or the plot`, async ({ page }) => {
     await openStandard(page, width);
     // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
-    // Committed before the boxes are held: the run it gives breaks a limit, which the result card shows.
+    // Committed before the boxes are held: the run it gives breaks a limit, which its result row shows.
     const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
     await airSpeed.fill("3");
     await airSpeed.press("Enter");
-    await expect(card(page, "Results").getByRole("status")).toBeVisible();
+    await expect(card(page, "Results").getByRole("button", { name: "Limits broken" })).toBeVisible();
     const expectInPlace = await holdBoxes(page);
     const question = page.getByRole("dialog");
 
@@ -835,64 +835,66 @@ test.describe("the air-speed chart's Comfort zone", () => {
   });
 });
 
-test.describe("the applicability summary", () => {
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control shows the ink part between the Results heading and the table, and the Inputs card holds no status alert, on Standard and Explore", async ({ page }) => {
+/** A run that broke a limit is marked on its result row (ADR-0002 decision 84, rule 8), and the Results card has no alert. */
+test.describe("the result row's limits button", () => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the button first in the row's first cell, the table straight under the Results heading and the compliance dash with no icon of its own, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const results = card(page, "Results");
-      const summary = results.getByRole("status");
-      await page.getByRole("spinbutton", { name: /^Air speed/ }).fill("0.9");
-
-      await expect(summary, address).toContainText("Calculated, but outside these limits:");
-      await expect(summary.getByRole("listitem"), address).toHaveText([/Relative air speed must be ≤ .* m\/s/]);
-      // Lettered in ink, the page's text colour, its lines too: no hue and not the muted caption grey.
-      const ink = await page.locator("body").evaluate((body) => getComputedStyle(body).color);
-      await expect(summary.locator('[data-slot="alert-description"]'), address).toHaveCSS("color", ink);
-      await expect(results.getByRole("alert"), address).toHaveCount(0);
-      await expect(card(page, "Inputs").getByRole("status"), address).toHaveCount(0);
-      const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
-      const part = await boxOf(summary);
-      const table = await boxOf(results.getByRole("table"));
-      expect(part.y, address).toBeGreaterThanOrEqual(heading.y + heading.height);
-      expect(table.y, address).toBeGreaterThanOrEqual(part.y + part.height);
-    }
-  });
-
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control marks the compliance dash with the icon, named, and no input row, on Standard and Explore; at the defaults no dash is marked", async ({ page }) => {
-    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
-      await openStandard(page, 1440, address);
-      const table = card(page, "Results").getByRole("table");
-      const marked = table.getByRole("cell").filter({ has: page.getByRole("img", { name: "The result is outside a limit" }) });
+      const table = results.getByRole("table");
+      const headingBottom = async () => {
+        const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
+        return heading.y + heading.height;
+      };
+      const gap = (await boxOf(table)).y - (await headingBottom());
       await expect(table.getByRole("cell", { name: "Yes", exact: true }), address).toHaveCount(1);
-      await expect(marked, address).toHaveCount(0);
 
       const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
       await airSpeed.fill("0.9");
+      await airSpeed.press("Enter");
 
-      await expect(marked, address).toHaveCount(1);
-      await expect(marked, address).toHaveText("—");
-      // The icon is found where it stands, the Results card's, so none in the Inputs card is a finding.
+      const button = results.getByRole("button", { name: "Limits broken" });
+      await expect(button, address).toBeVisible();
+      const firstCell = table.getByRole("row").nth(1).getByRole("cell").first();
+      await expect(firstCell.getByRole("button", { name: "Limits broken" }), address).toHaveCount(1);
+      // First in its cell and on the line of what the cell holds, not wrapped above it.
+      const box = await boxOf(button);
+      for (const text of await firstCell.locator(".swatch-label").all()) {
+        const entry = await boxOf(text);
+        expect(entry.x, address).toBeGreaterThan(box.x);
+        expect(entry.y, address).toBeLessThan(box.y + box.height);
+      }
+      await expect(results.getByRole("alert"), address).toHaveCount(0);
+      await expect(results.getByRole("status"), address).toHaveCount(0);
+      expect((await boxOf(table)).y - (await headingBottom()), address).toBe(gap);
+      const dash = table.getByRole("cell", { name: "—", exact: true });
+      await expect(dash, address).toHaveCount(1);
+      await expect(dash.locator("svg"), address).toHaveCount(0);
       const icon = "svg.lucide-triangle-alert";
-      await expect(card(page, "Results").locator(icon).first(), address).toBeVisible();
       await expect(card(page, "Inputs").locator(icon), address).toHaveCount(0);
       // The tab keeps its session across pages, so the next page opens at the default again only once it is typed back.
       await airSpeed.fill("0.1");
       await airSpeed.press("Enter");
+      await expect(button, address).toHaveCount(0);
     }
   });
 
-  test("at 1440 px under Compare, only the slot at 0.9 m/s without local control has its compliance dash marked", async ({ page }) => {
+  test("at 1440 px under Compare, the slot at 0.9 m/s without local control has its button before its swatch and its compliance dash, and slot 1 neither", async ({ page }) => {
     await openStandard(page, 1440);
     await page.getByRole("switch", { name: "Compare", exact: true }).click();
     const table = card(page, "Results").getByRole("table");
-    const [first, second] = [/^Input 1/, /^Input 2/].map((name) => table.getByRole("row", { name }));
+    const [first, second] = [/^Input 1/, /Input 2/].map((name) => table.getByRole("row", { name }));
     await expect(second).toBeVisible();
-    const mark = page.getByRole("img", { name: "The result is outside a limit" });
 
-    await page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ }).fill("0.9");
+    const airSpeed = page.getByRole("spinbutton", { name: /^Air speed.*, Input 2$/ });
+    await airSpeed.fill("0.9");
+    await airSpeed.press("Enter");
 
-    await expect(table.getByRole("cell").filter({ has: mark })).toHaveCount(1);
-    await expect(second.getByRole("cell").filter({ has: mark })).toHaveText("—");
+    const button = second.getByRole("button", { name: "Limits broken, Input 2" });
+    await expect(button).toBeVisible();
+    expect((await boxOf(button)).x).toBeLessThan((await boxOf(second.locator(".swatch-marker"))).x);
+    await expect(second.getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
+    await expect(first.getByRole("button")).toHaveCount(0);
     await expect(first.getByRole("cell", { name: "Yes", exact: true })).toHaveCount(1);
   });
 });

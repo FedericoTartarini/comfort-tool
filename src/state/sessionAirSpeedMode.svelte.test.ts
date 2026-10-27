@@ -182,7 +182,7 @@ describe("the session's air-speed entry mode", () => {
       expect(heldSlot(first, position).values.has(q.operative_tmp)).toBe(true);
       expect(heldSlot(first, position).values.has(q.vr)).toBe(true);
     });
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false, false]);
+    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], []]);
     expect(outputs.chart).not.toBeNull();
   });
 

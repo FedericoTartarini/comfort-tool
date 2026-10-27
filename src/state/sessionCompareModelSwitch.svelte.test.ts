@@ -144,7 +144,6 @@ describe("Session.requestModel while Compare is on", () => {
 
     expect(outputs.atmosphericPressureOutOfRange).toBe(false);
     expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], []]);
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false, false]);
   });
 
   it("leaves the model and every slot as they were on a no, entry modes included", () => {

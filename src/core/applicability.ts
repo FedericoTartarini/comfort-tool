@@ -475,6 +475,19 @@ function reportedRow(model: RegisteredModel, keyed: Quantity, modes: ValueEntryM
   return { quantity: keyed, bounded: keyed };
 }
 
+/**
+ * Whether the rows `now` break a limit the rows `before` did not, what a
+ * slot's toast is raised for (ADR-0002 decision 84, rule 8). A limit is the
+ * quantity it bounds and its role: not the row it is reported on, which an
+ * entry-mode switch moves, nor its numbers, as PMV (ASHRAE 55)'s air-speed
+ * rule builds its bound per call, so the same limit moves with the
+ * temperature.
+ */
+export function breaksNewLimit(before: readonly ViolationRow[], now: readonly ViolationRow[]): boolean {
+  const isSameLimit = (a: ViolationRow, b: ViolationRow) => a.bounded === b.bounded && a.role === b.role;
+  return now.some((row) => !before.some((earlier) => isSameLimit(row, earlier)));
+}
+
 /** A run's violation rows by the side they describe: the inputs they came from, or the outputs. */
 export interface ViolationSides {
   readonly inputs: readonly ViolationRow[];

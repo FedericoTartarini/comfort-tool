@@ -68,7 +68,7 @@ function editedSession(): WrittenSession {
   const model = pmvPpdAshrae;
   const [airSpeedControl] = optionsOf(model);
   const first = withEnteredValues(inOtherEntryModes(startingSlot(model), model), new Map([[q.met, 1.2345678901234567]]));
-  // Past PMV (ASHRAE 55)'s 30 °C: the gate closes on slot 2.
+  // Past PMV (ASHRAE 55)'s 30 °C, as a written session may carry it in slot 2.
   const second = withOption(withEnteredValues(first, new Map([[q.operative_tmp, 60]])), airSpeedControl, true);
   const third = withEnteredValues(first, new Map([[q.met, 1.4]]));
   const ashraeBands = startingChartSettings(pmvPpdAshrae).bands;

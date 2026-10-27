@@ -1,7 +1,6 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { splitViolations, warningFor } from "$lib/core/applicability";
-  import type { SummaryLine } from "$lib/core/applicabilitySummary";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
@@ -11,14 +10,15 @@
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import * as Alert from "$lib/ui/primitives/alert";
+  import { Button } from "$lib/ui/primitives/button";
+  import * as Popover from "$lib/ui/primitives/popover";
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
     model: RegisteredModel;
     /**
      * One row per compared slot, in slot order. While their badges carry names, the table has an Input column naming
-     * each row beside its swatch, and the applicability summary names the slot each line is about.
+     * each row beside its swatch.
      */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
@@ -27,12 +27,6 @@
   }
 
   let { model, rows, unitSystem, labelledby }: Props = $props();
-
-  /** One listed slot's lines in a part of the applicability summary. */
-  interface SlotLines {
-    readonly row: SlotOutputs;
-    readonly lines: readonly SummaryLine[];
-  }
 
   // ADR §4.3: the Compliance column appears only when the model has a
   // classified output or a broken output row. An output-role violation also
@@ -46,23 +40,10 @@
   );
   const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
   const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
-  const notCalculatedParts = $derived(
-    rows.flatMap((row): (SlotLines & { readonly result: string })[] => {
-      const part = row.applicabilitySummary.notCalculated;
-      return part ? [{ row, lines: part.lines, result: part.result }] : [];
-    }),
-  );
-  const outsideLimitsParts = $derived(
-    rows.flatMap((row): SlotLines[] => {
-      const lines = row.applicabilitySummary.outsideLimits;
-      return lines.length > 0 ? [{ row, lines }] : [];
-    }),
-  );
+  // A row's limits button stands first in its first cell, the Input cell before the swatch while the rows are named.
+  const limitsInCompliance = $derived(!namesRows && hasCompliance);
+  const limitsInFirstValue = $derived(!namesRows && !hasCompliance);
   const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
-
-  function slotLine(row: SlotOutputs, text: string): string {
-    return row.badge.name === undefined ? text : copy.slotNote(row.badge.name, text);
-  }
 </script>
 
 <!-- A slot's swatch is its chart marker's. -->
@@ -70,56 +51,34 @@
   <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(row.badge.hue)}></span>
 {/snippet}
 
-<!-- A slot's sentence in the summary, named and with its swatch while the slots are named. -->
-{#snippet slotSentence(row: SlotOutputs, text: string)}
-  <span class="swatch-label">
-    {#if row.badge.name !== undefined}
-      {@render slotSwatch(row)}
-    {/if}
-    {slotLine(row, text)}
-  </span>
-{/snippet}
-
-<!-- One part's bound lines as one list: every listed slot's, in slot order. The part's one description holds it, since
-     the alert's grid places only its first description beside the icon (decision 83, rule 2's note of 2026-10-22). -->
-{#snippet boundList(parts: readonly SlotLines[])}
-  <ul>
-    {#each parts as { row, lines } (row)}
-      {#each lines as line (line)}
-        <li>{@render slotSentence(row, line.text)}</li>
-      {/each}
-    {/each}
-  </ul>
+<!-- A row whose run broke a limit opens, by its button, the limits it broke in the bound sentence's words (ADR-0002
+     decision 84, rule 8): activated, not hovered, so a keyboard and a touch reach it. A row that broke none has none. -->
+{#snippet limitsButton(row: SlotOutputs)}
+  {#if row.violations.length > 0}
+    {@const name = row.badge.name === undefined ? copy.limitsBroken : copy.slotControl(copy.limitsBroken, row.badge.name)}
+    <Popover.Root>
+      <Popover.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="ghost" size="icon-xs" class="limits-button" aria-label={name}>
+            <TriangleAlertIcon />
+          </Button>
+        {/snippet}
+      </Popover.Trigger>
+      <Popover.Content align="start">
+        <Popover.Header>
+          <Popover.Title>{copy.limitsBrokenHeading}</Popover.Title>
+        </Popover.Header>
+        <ul>
+          {#each row.violations as violation (violation)}
+            <li>{warningFor(violation, unitSystem)}</li>
+          {/each}
+        </ul>
+      </Popover.Content>
+    </Popover.Root>
+  {/if}
 {/snippet}
 
 <Stack gap="2">
-  <!-- The applicability summary, under the Results heading and above the table (ADR-0002 decision 83, rule 2), each
-       part one alert holding every compared slot's lines. Its "Not calculated, outside these limits:" part is the one
-       place the page asks the person to act: the generated alert in its destructive variant, announced at once
-       (decision 73, rule 9). Its "Calculated, but outside these limits:" part is the default variant in ink with the
-       same icon, told apart by its heading and its colour, and announced politely (`status`), so a caveat interrupts
-       no one's typing. -->
-  {#if notCalculatedParts.length > 0}
-    <Alert.Root variant="destructive">
-      <TriangleAlertIcon />
-      <Alert.Title>{copy.notCalculated}</Alert.Title>
-      <Alert.Description>
-        {@render boundList(notCalculatedParts)}
-        <!-- Whether a result is kept is a slot's, so each listed slot says it after the list, not under the heading. -->
-        {#each notCalculatedParts as { row, result } (row)}
-          <div>{@render slotSentence(row, result)}</div>
-        {/each}
-      </Alert.Description>
-    </Alert.Root>
-  {/if}
-  {#if outsideLimitsParts.length > 0}
-    <Alert.Root role="status" class="outside-limits">
-      <TriangleAlertIcon />
-      <Alert.Title>{copy.outsideLimits}</Alert.Title>
-      <Alert.Description>{@render boundList(outsideLimitsParts)}</Alert.Description>
-    </Alert.Root>
-  {/if}
-
   <!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region
        is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -140,11 +99,11 @@
       </Table.Header>
       <Table.Body>
         {#each tableRows as { row, classified, caveats } (row)}
-          <!-- A row kept from an earlier run is marked, so its numbers read as not current (decision 73, rule 9). -->
-          <Table.Row data-kept={row.notCalculated || undefined}>
+          <Table.Row>
             {#if namesRows}
               <Table.Cell>
                 <span class="swatch-label">
+                  {@render limitsButton(row)}
                   {@render slotSwatch(row)}
                   {row.badge.name}
                 </span>
@@ -152,30 +111,34 @@
             {/if}
             {#if hasCompliance}
               <Table.Cell>
-                <Inline gap="2">
-                  {#each classified as entry (entry.quantity)}
-                    <span class="swatch-label">
-                      {#if entry.color}
-                        <span class="swatch swatch-fill" style:--swatch-color={entry.color}></span>
-                      {/if}
-                      {entry.quantity.label}: {entry.category}
-                    </span>
-                  {/each}
-                  {#each caveats as violation (violation)}
-                    <span class="caption caveat">{warningFor(violation, unitSystem)}</span>
-                  {/each}
-                </Inline>
+                <!-- The button beside the entries, never wrapped above them: the cell is as wide as its widest entry. -->
+                <span class="limits-lead">
+                  {#if limitsInCompliance}
+                    {@render limitsButton(row)}
+                  {/if}
+                  <Inline gap="2">
+                    {#each classified as entry (entry.quantity)}
+                      <span class="swatch-label">
+                        {#if entry.color}
+                          <span class="swatch swatch-fill" style:--swatch-color={entry.color}></span>
+                        {/if}
+                        {entry.quantity.label}: {entry.category}
+                      </span>
+                    {/each}
+                    {#each caveats as violation (violation)}
+                      <span class="caption caveat">{warningFor(violation, unitSystem)}</span>
+                    {/each}
+                  </Inline>
+                </span>
               </Table.Cell>
             {/if}
-            {#each model.table as quantity (quantity)}
-              {@const cell = formatResultCell(row.result, quantity, unitSystem, row.violations)}
-              <!-- A dash standing for a violation carries the summary's icon, named for screen readers; a dash for no
-                   value carries none, so the icon keeps one meaning (decision 83, rule 3). -->
+            {#each model.table as quantity, index (quantity)}
+              <!-- A dash standing for a violation carries no icon of its own: the row's limits button explains it. -->
               <Table.Cell class="value">
-                {#if cell.violation}
-                  <TriangleAlertIcon role="img" aria-label={copy.violationMark} />
+                {#if limitsInFirstValue && index === 0}
+                  {@render limitsButton(row)}
                 {/if}
-                {cell.text}
+                {formatResultCell(row.result, quantity, unitSystem, row.violations)}
               </Table.Cell>
             {/each}
           </Table.Row>

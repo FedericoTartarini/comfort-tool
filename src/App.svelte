@@ -4,20 +4,23 @@
   every page after it, until Reset or a link's yes replaces it (ADR-0002
   decisions 57 and 63); beside it the question a waiting link asks, and the
   one toaster every notice is raised in (decision 84, rule 7), both drawn
-  here; the router renders the page for the current URL.
+  here, with the toast a compared slot raises when its run breaks a new
+  limit, on whichever page; the router renders the page for the current URL.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import { breaksNewLimit, type ViolationRow } from "$lib/core/applicability";
   import { narrowedToPage, toText } from "$lib/core/shareLink";
   import { registeredModels } from "$lib/models";
   import { followAddress, Router, shareLinkTo } from "$lib/routes/navigation";
   import { writeKeptText } from "$lib/state/keptText";
-  import { setOpenSession, setTabControls } from "$lib/state/openSession";
+  import { setOpenSession, setTabControls, type OpenSession } from "$lib/state/openSession";
+  import type { SlotPosition } from "$lib/state/session.svelte";
   import { Tab } from "$lib/state/tab.svelte";
   import { copy } from "$lib/text/copy";
   import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
   import Toaster from "$lib/ui/layout/Toaster.svelte";
-  import { closeNotices, raiseNotice } from "$lib/ui/outputs/notices";
+  import { closeNotices, raiseLimitsBroken, raiseNotice } from "$lib/ui/outputs/notices";
 
   const tab = new Tab(registeredModels, raiseNotice);
 
@@ -38,6 +41,32 @@
     if (tab.opened) {
       writeKeptText(toText(tab.opened.session.toWrittenSession(), registeredModels));
     }
+  });
+
+  // A compared slot's toast when the limits its run breaks gain one against
+  // its run at the last change, a switch's and an arrival's too, and not
+  // while they hold or shrink (ADR-0002 decision 84, rule 8): external
+  // synchronisation, assigning no state. What was broken is remembered in a
+  // plain variable per slot, a slot not compared keeping what it had, so one
+  // compared again with nothing changed is no news; it is forgotten when the
+  // session is replaced, so the new session's first runs are news.
+  let watched: OpenSession | null = null;
+  let brokenBefore: ReadonlyMap<SlotPosition, readonly ViolationRow[]> = new Map();
+  $effect(() => {
+    const opened = tab.opened;
+    if (!opened) {
+      return;
+    }
+    if (opened !== watched) {
+      watched = opened;
+      brokenBefore = new Map();
+    }
+    for (const slot of opened.outputs.slots) {
+      if (breaksNewLimit(brokenBefore.get(slot.position) ?? [], slot.violations)) {
+        raiseLimitsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.badge.name);
+      }
+    }
+    brokenBefore = new Map([...brokenBefore, ...opened.outputs.slots.map((slot) => [slot.position, slot.violations] as const)]);
   });
 
   setOpenSession(() => {

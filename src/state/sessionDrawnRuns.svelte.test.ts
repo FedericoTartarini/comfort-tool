@@ -1,7 +1,6 @@
 /**
  * The drawn runs (ADR-0002 decision 64, rule 3): the compared slots the chart
- * is drawn of, each as its last valid run left it, which the Input summary
- * lists. Asserted at the seam the other session tests use — a session in, its
+ * is drawn of, each as it is, which the Input summary lists. Asserted at the seam the other session tests use — a session in, its
  * outputs out, with no component — and nothing flushes, for the reason
  * `compute.svelte.test.ts` gives.
  */
@@ -32,13 +31,13 @@ function summaryLinesOf(session: Session, outputs: Outputs): string[] {
   return inputSummary({ model: session.model, runs: outputs.drawnRuns, unitSystem: unitSystem.si, bands: null }).flat();
 }
 
-/** A session on `pmvPpdIso` whose slot 1 ran on its defaults and then took a `tdb` out of range. */
-function sessionKeepingItsRun() {
+/** A session on `pmvPpdIso` whose slot 1 was read on its defaults and then written a `tdb` past every bound. */
+function sessionWrittenOutOfRange() {
   const session = new Session(pmvPpdIso);
   const outputs = new Outputs(session);
-  const ran = outputs.drawnRuns;
+  void outputs.drawnRuns;
   session.slots[0].setEntered(q.tdb, OUT_OF_RANGE_TDB);
-  return { session, outputs, ran };
+  return { session, outputs };
 }
 
 describe("Outputs.drawnRuns", () => {
@@ -51,13 +50,12 @@ describe("Outputs.drawnRuns", () => {
     expect(runs[0].atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
   });
 
-  it("is each of three compared slots' run in slot order, and leaves out a compared slot never calculated", () => {
+  it("is each of three compared slots' run in slot order, one written out of range too", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
-    const neverCalculated = sessionComparingThreeSlots(pmvPpdIso);
-    heldSlot(neverCalculated, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
-    expect(new Outputs(neverCalculated).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2"]);
+    heldSlot(session, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
+    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("names each run as its slot's badge does: unnamed with Compare off, named with it on whatever is drawn", () => {
@@ -82,32 +80,22 @@ describe("Outputs.drawnRuns", () => {
     expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual([undefined]);
   });
 
-  it("names slot 2 drawn alone while Compare is on and slot 1 was never calculated", () => {
-    const session = sessionComparingThreeSlots(pmvPpdIso);
-    session.setSlotEnabled(2, false);
-    heldSlot(session, 0).setEntered(q.tdb, OUT_OF_RANGE_TDB);
-    expect(new Outputs(session).drawnRuns.map((run) => run.name)).toEqual(["Input 2"]);
+  it("is the slot as it is, so the summary lists a value written out of range", () => {
+    const { session, outputs } = sessionWrittenOutOfRange();
+    expect(outputs.drawnRuns[0].slot).toEqual(shapeOf(session.slots[0]));
+    expect(summaryLinesOf(session, outputs)).toContain(lineOf(q.tdb, OUT_OF_RANGE_TDB));
   });
 
-  it("keeps a slot's run while a value is out of range, so the summary lists the earlier value and not the entry", () => {
-    const { session, outputs, ran } = sessionKeepingItsRun();
-    expect(outputs.slots[0].notCalculated).toBe(true);
-    expect(outputs.drawnRuns).toEqual(ran);
-    const lines = summaryLinesOf(session, outputs);
-    expect(lines).toContain(lineOf(q.tdb, 25));
-    expect(lines.some((line) => line.includes(String(OUT_OF_RANGE_TDB)))).toBe(false);
-  });
-
-  it("keeps a slot's run at its own pressure when the pressure changes while it is out of range", () => {
-    const { session, outputs } = sessionKeepingItsRun();
+  it("is at the session's pressure", () => {
+    const { session, outputs } = sessionWrittenOutOfRange();
     session.atmosphericPressure = LOWER_PRESSURE;
-    expect(outputs.drawnRuns[0].atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
-    expect(summaryLinesOf(session, outputs)).toContain(lineOf(q.p_atm, DEFAULT_ATMOSPHERIC_PRESSURE));
+    expect(outputs.drawnRuns[0].atmosphericPressure).toBe(LOWER_PRESSURE);
+    expect(summaryLinesOf(session, outputs)).toContain(lineOf(q.p_atm, LOWER_PRESSURE));
   });
 
-  it("drops the runs of the model left at a model switch", () => {
-    const { session, outputs } = sessionKeepingItsRun();
+  it("is the slot the new model runs on after a model switch", () => {
+    const { session, outputs } = sessionWrittenOutOfRange();
     session.setModel(pmvPpdAshrae);
-    expect(outputs.drawnRuns).toEqual([]);
+    expect(outputs.drawnRuns.map((run) => run.slot)).toEqual([shapeOf(session.slots[0])]);
   });
 });

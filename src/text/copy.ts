@@ -118,15 +118,11 @@ export const copy = {
   presetEmpty: "No matches.",
   inputColumn: "Input",
   complianceColumn: "Compliance",
-  // The applicability summary's first part (ADR-0002 decision 83, rule 2): its heading, worded as the second part's
-  // is, and the sentence on the result after the entries it lists. Two sentences for one state (decision 33): the gate keeps
-  // the last valid inputs of the *current* model, so a model reached with an entry out of range has nothing to show.
-  // The caller picks by whether it keeps one.
-  notCalculated: "Not calculated, outside these limits:",
-  notCalculatedKeptResult: "Showing the last valid result.",
-  notCalculatedNoResult: "This model has no earlier result to show.",
-  // The summary's second part (decision 83, rules 2 and 5): "limits", the standards' word for both kinds of bound.
-  outsideLimits: "Calculated, but outside these limits:",
+  // A result row's button for the limits its run broke, its accessible name, and the heading of the popover it opens
+  // (ADR-0002 decision 84, rule 8), the heading in decision 83's words: "limits", the standards' word for both kinds
+  // of bound.
+  limitsBroken: "Limits broken",
+  limitsBrokenHeading: "Calculated, but outside these limits:",
   // One broken applicability row: `bound` already carries its unit.
   applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
@@ -166,6 +162,8 @@ export const copy = {
     reasons.length === 1
       ? `${subject} was not changed to ${value}, which would put another value out of range. ${reasons[0]}. Change it first.`
       : `${subject} was not changed to ${value}, which would put other values out of range. ${reasons.join(". ")}. Change them first.`,
+  // A run that broke a limit it did not break before (decision 84, rule 8): each reason is a bound sentence.
+  limitsBrokenNotice: (reasons: readonly string[]) => `Calculated, but outside ${reasons.length === 1 ? "a limit" : "limits"}. ${reasons.join(". ")}.`,
   // An Image of the chart (ADR-0002 decision 64, rules 6 and 8).
   exportImage: "Export image",
   imageTitle: "Title",
@@ -184,8 +182,6 @@ export const copy = {
   footerLibrary: (version: string, day: string) => `${LIBRARY_NAME} ${version} · ${day}`,
   standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
-  // The accessible name of the icon on a dash standing for a violation (decision 83, rule 3).
-  violationMark: "The result is outside a limit",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).
   yes: "Yes",
   no: "No",

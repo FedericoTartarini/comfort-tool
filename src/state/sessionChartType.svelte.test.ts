@@ -33,14 +33,9 @@ function openAt(session: Session, target: Page): void {
   session.setAddress({ page: target, model: session.model });
 }
 
-/** What `outputs` draw: every compared slot's last valid run under its badge, painting the Band list on Explore. */
+/** What `outputs` draw: every compared slot as it is under its badge, painting the Band list on Explore. */
 function requestOf(session: Session, outputs: Outputs): ChartRequest {
-  const charted = outputs.slots.map((slot) => {
-    if (!slot.lastValid) {
-      throw new Error(`The slot at position ${slot.position} has no run`);
-    }
-    return { ...slot.badge, slot: slot.lastValid.slot };
-  });
+  const charted = outputs.slots.map((slot) => ({ ...slot.badge, slot: heldSlot(session, slot.position).toSlot() }));
   const request = chartRequestForSlots(session.model, charted.map(({ slot }) => slot));
   return { ...request, slots: charted, bands: session.page === page.explore ? session.chart.bands : null };
 }

@@ -52,14 +52,13 @@ function stateOf(session: Session) {
   };
 }
 
-/** What the page shows of the outputs: each compared slot's result, gate and rows, and the chart. */
+/** What the page shows of the outputs: each compared slot's result and rows, and the chart. */
 function shownOf(outputs: Outputs) {
   return {
     atmosphericPressureOutOfRange: outputs.atmosphericPressureOutOfRange,
     slots: outputs.slots.map((slot) => ({
       position: slot.position,
       result: slot.result,
-      notCalculated: slot.notCalculated,
       outOfRangeQuantities: slot.outOfRangeQuantities,
       violations: slot.violations,
     })),
@@ -91,7 +90,7 @@ function editedSession(): Session {
   session.setHumidityMode(humidityMode.dewPoint);
   heldSlot(session, 1).setEntered(q.operative_tmp, 27);
   heldSlot(session, 2).setEntered(q.met, 1.4);
-  // Past PMV (ISO 7730)'s 30 °C: the gate closes on slot 3.
+  // Past PMV (ISO 7730)'s 30 °C, written past the commit's judgement.
   heldSlot(session, 2).setEntered(q.operative_tmp, 60);
   session.unitSystem = unitSystem.ip;
   session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
@@ -136,7 +135,7 @@ describe("a session read out and built again", () => {
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
     again.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
     expect(shownOf(againOutputs)).toEqual(shownOf(outputs));
-    expect(againOutputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false, true]);
+    expect(againOutputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], [q.operative_tmp]]);
     expect(againOutputs.chart).not.toBeNull();
   });
 

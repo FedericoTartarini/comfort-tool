@@ -124,58 +124,43 @@ describe("a change of atmospheric pressure", () => {
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(0.022, TDB, LOWER_PRESSURE)));
   });
-
-  it("does not move a last valid result kept on screen, which was run at the pressure it remembers", () => {
-    const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
-    const kept = resultValueOf(outputs.slots[0].result, q.pmv);
-    // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 closes the gate.
-    session.slots[0].setEntered(q.met, 4.5);
-
-    session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
-
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(kept);
-  });
 });
 
 /** A pressure below the bound's 30 000 Pa. */
 const PRESSURE_OUT_OF_RANGE = 20000;
 
 describe("an atmospheric pressure out of range", () => {
-  it("keeps the last valid result, and the outputs say the pressure is out of range", () => {
+  it("written past the commit's judgement, is run, and the outputs say it is out of range", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
-    const kept = resultValueOf(outputs.slots[0].result, q.pmv);
+    const before = resultValueOf(outputs.slots[0].result, q.pmv);
     expect(outputs.atmosphericPressureOutOfRange).toBe(false);
 
     session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
 
     expect(outputs.atmosphericPressureOutOfRange).toBe(true);
-    // Under a humidity-ratio entry a pressure moves the result, so an unchanged one was not calculated again.
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(kept);
+    // Under a humidity-ratio entry a pressure moves the result, so a changed one was calculated again.
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(before);
   });
 
-  it("with every entry in range, is not calculated, and the list of entries out of range never names it", () => {
+  it("is never named by the list of entries out of range", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    expect(outputs.slots[0].notCalculated).toBe(false);
 
     session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].notCalculated).toBe(true);
     // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 is out of range beside it.
     session.slots[0].setEntered(q.met, 4.5);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
   });
 
-  it("back in range, is calculated again at the new pressure", () => {
+  it("back in range, is calculated at the new pressure", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
     session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
     expect(outputs.atmosphericPressureOutOfRange).toBe(false);
-    expect(outputs.slots[0].notCalculated).toBe(false);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(
       pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, DEFAULT_ATMOSPHERIC_PRESSURE)),
     );
@@ -210,12 +195,11 @@ const NEAR_SATURATION = 0.019;
 
 // No bound is taken at a pressure out of range (ADR-0002 decision 53).
 describe("a humidity-ratio entry while the atmospheric pressure is out of range", () => {
-  it("is not named out of range, and nothing is calculated", () => {
+  it("is not named out of range", () => {
     const { session, outputs } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
     session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
-    expect(outputs.slots[0].notCalculated).toBe(true);
   });
 
   it("is not listed by a requested switch, and a yes leaves it as entered while it adjusts a temperature", () => {
@@ -389,18 +373,5 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, 50, LOWEST_PRESSURE).hr));
     expect(marker?.y).toBeGreaterThan(hrUnit.fromSi(DECLARED_HR_MAX));
     expect(marker?.y).toBeLessThanOrEqual(drawnHrMax(LOWEST_PRESSURE));
-  });
-
-  it("draws a chart kept from the last valid run at the pressure that run remembers", () => {
-    const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
-    const kept = outputs.chart;
-    // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 closes the gate.
-    session.slots[0].setEntered(q.met, 4.5);
-
-    session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
-
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.met]);
-    expect(outputs.chart).toEqual(kept);
-    expect(outputs.chart?.layout.y.range).toEqual([0, drawnHrMax(LOWER_PRESSURE)]);
   });
 });

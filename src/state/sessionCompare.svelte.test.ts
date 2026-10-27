@@ -18,7 +18,7 @@ import { scannedField, type ScanFrame } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { optionsOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
 import { entryModesOf, type ValueEntryModes } from "$lib/core/slot";
@@ -180,31 +180,19 @@ describe("the outputs of the compared slots", () => {
     expect(runs()).toBe(before);
   });
 
-  it("keep an out-of-range slot's last valid result and name its quantities, while slot 1 is calculated", () => {
+  it("each show the run of their own slot as it is, an out-of-range one's too, and name its quantities", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setCompare(true);
-    const kept = outputs.slots[1].result;
 
-    // 35 °C is past ISO 7730's 30 °C.
+    // 35 °C is past ISO 7730's 30 °C, written past the commit's judgement.
     heldSlot(session, 1).setEntered(q.tdb, 35);
     session.slots[0].setEntered(q.tdb, 24);
 
-    expect(outputs.slots[1].notCalculated).toBe(true);
     expect(outputs.slots[1].outOfRangeQuantities).toEqual([q.tdb]);
-    expect(outputs.slots[1].result).toBe(kept);
-    expect(outputs.slots[0].notCalculated).toBe(false);
+    expect(outputs.slots[1].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 35]])));
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 24]])));
-  });
-
-  it("calculate no compared slot while the atmospheric pressure is out of range", () => {
-    const session = sessionComparingThreeSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
-
-    session.atmosphericPressure = 1;
-
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([true, true, true]);
   });
 
   it("run the model once for an edit to one slot, for that slot", () => {
@@ -235,7 +223,7 @@ describe("the outputs of the compared slots", () => {
 
     session.setModel(pmvPpdAshrae);
 
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false]);
+    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], []]);
     expect(outputs.slots[1].result).toEqual(outputs.slots[0].result);
   });
 });
@@ -296,13 +284,6 @@ describe("the compared slots' badges", () => {
     expect(markerEntriesOf(outputs)).toEqual(["Input 1"]);
   });
 
-  it("names slot 2 Input 2 while Compare is on and it is drawn alone, slot 1 never calculated", () => {
-    const session = new Session(pmvPpdIso);
-    session.setCompare(true);
-    session.slots[0].setEntered(q.tdb, 200);
-    expect(markerEntriesOf(new Outputs(session))).toEqual(["Input 2"]);
-  });
-
   it("follows Compare: switched off, the slot is unnamed again, and on, named again", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     const outputs = new Outputs(session);
@@ -346,21 +327,16 @@ describe("the charts of the compared slots", () => {
     expect(markerAt(outputs.chart, 0)).toEqual(markerAt(chartAlone(new Map()), 0));
   });
 
-  it("draw a slot out of range at its last valid run", () => {
+  it("draw a slot out of range at the slot as it is", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.clo, 1);
-    const zones = zoneShapesOf(outputs.chart, 1);
-    const marker = markerAt(outputs.chart, 1);
-    expect(zones).not.toEqual([]);
+    void outputs.chart;
 
-    // 35 °C is past ISO 7730's 30 °C.
+    // 35 °C is past ISO 7730's 30 °C, written past the commit's judgement.
     heldSlot(session, 1).setEntered(q.tdb, 35);
 
-    expect(outputs.slots[1].notCalculated).toBe(true);
-    expect(zoneShapesOf(outputs.chart, 1)).toEqual(zones);
-    expect(markerAt(outputs.chart, 1)).toEqual(marker);
+    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(chartAlone(new Map<Quantity, number>([[q.tdb, 35]])), 0));
   });
 
   it("draw no zone and no marker of a slot that is disabled", () => {
@@ -373,27 +349,6 @@ describe("the charts of the compared slots", () => {
     expect(zoneShapesOf(outputs.chart, 2)).toEqual([]);
     expect(markerAt(outputs.chart, 2)).toBeUndefined();
     expect(markerAt(outputs.chart, 1)).toBeDefined();
-  });
-
-  it("draw a slot kept from a run at another pressure at the chart's one pressure, slot 1's", () => {
-    const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    session.setCompare(true);
-    // Read, as the page reads it, so slot 2 has a run to keep.
-    void outputs.chart;
-    heldSlot(session, 1).setEntered(q.tdb, 35);
-
-    session.atmosphericPressure = 90_000;
-
-    expect(outputs.slots[1].notCalculated).toBe(true);
-    expect(outputs.slots[1].lastValid?.atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
-    const alone = new Session(pmvPpdIso);
-    alone.atmosphericPressure = 90_000;
-    const chartAtPressure = new Outputs(alone).chart;
-    expect(outputs.chart?.layout).toEqual(chartAtPressure?.layout);
-    // Slot 2 holds what slot 1 holds but for its kept temperature, so at one
-    // pressure its marker sits where slot 1's does.
-    expect(markerAt(outputs.chart, 1)?.y).toBe(markerAt(chartAtPressure, 0)?.y);
   });
 
   describe("on the dynamic chart", () => {
@@ -651,14 +606,13 @@ describe("the session's entry modes", () => {
     expect(shapeOf(heldSlot(session, 1))).toEqual(shapeOf(alone.slots[0]));
   });
 
-  it("moves no marker off the value its slot's input shows while every gate is open", () => {
+  it("moves no marker off the value its slot's input shows", () => {
     const session = threeDifferentSlots(pmvPpdIso);
     const outputs = new Outputs(session);
 
     for (const mode of [temperatureMode.operative, temperatureMode.separate]) {
       session.setTemperatureMode(mode);
       slotPositions.forEach((position) => {
-        expect(outputs.slots[position].notCalculated).toBe(false);
         expect(markerAt(outputs.chart, position)?.x).toBe(heldSlot(session, position).values.get(mode.axis));
       });
     }
@@ -666,15 +620,12 @@ describe("the session's entry modes", () => {
 });
 
 describe("the compared slots' scans", () => {
-  /** The slot's scan in `frameOf`'s frame, of its own last valid run. */
-  function expectScansOf(outputs: Outputs, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
+  /** The slot's scan in `frameOf`'s frame, of the slot as it is. */
+  function expectScansOf(session: Session, outputs: Outputs, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
     for (const slot of outputs.slots) {
-      const last = slot.lastValid;
-      if (!last) {
-        throw new Error(`The slot at position ${slot.position} has no run`);
-      }
+      const held = heldSlot(session, slot.position).toSlot();
       // The same scan, whose reader of a Band's region is its own.
-      expect(slot.scan).toEqual({ ...scannedField(frameOf(entryModesOf(last.slot), last.atmosphericPressure), last.slot), regionWithin: expect.any(Function) });
+      expect(slot.scan).toEqual({ ...scannedField(frameOf(entryModesOf(held), session.atmosphericPressure), held), regionWithin: expect.any(Function) });
     }
   }
 
@@ -685,7 +636,7 @@ describe("the compared slots' scans", () => {
     const outputs = new Outputs(session);
 
     expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
-    expectScansOf(outputs, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
+    expectScansOf(session, outputs, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
   });
 
   it("are each drawn slot's own of the dynamic chart while it is on screen", () => {
@@ -696,7 +647,7 @@ describe("the compared slots' scans", () => {
 
     const axes = session.chart.axes;
     if (!axes) throw new Error("PMV (ISO 7730) declares a dynamic chart");
-    expectScansOf(outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
+    expectScansOf(session, outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
   });
 
   it("are none while the adaptive chart is on screen", () => {

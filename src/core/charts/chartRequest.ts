@@ -5,8 +5,8 @@ import type { SlotBadge } from "$lib/core/slotBadge";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
 /**
- * One slot the chart is drawn of: its last valid inputs, and the name and hue
- * its position gives it.
+ * One slot the chart is drawn of: its inputs, and the name and hue its
+ * position gives it.
  */
 export interface ChartedSlot extends SlotBadge {
   readonly slot: Slot;
