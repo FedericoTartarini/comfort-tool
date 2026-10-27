@@ -6,14 +6,18 @@
   decision 67, rule 3). It takes only a number (decision 84, rules 1 and 10):
   a text input, so no spinner, wheel or browser validation, that admits digits,
   one decimal point and a leading minus where its bound allows a negative;
-  ↑ and ↓ step it. It keeps the spinbutton's role the number input had.
+  ↑ and ↓ step it, and so do its own two step buttons in place of the
+  browser's spinner (decision 84's note of 2026-10-27). It keeps the
+  spinbutton's role the number input had, which tells assistive technology
+  the arrows step it, so the buttons are hidden from it, as the browser's are.
 -->
 <script lang="ts">
+  import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
+  import ChevronUpIcon from "@lucide/svelte/icons/chevron-up";
   import type { Snippet } from "svelte";
   import type { Bound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
   import type { DisplayUnit } from "$lib/core/units";
-  import { Input } from "$lib/ui/primitives/input";
   import * as InputGroup from "$lib/ui/primitives/input-group";
 
   interface Props {
@@ -35,6 +39,8 @@
   let { id, value, unit, bound, invalid = false, ariaLabel, end, oncommit }: Props = $props();
 
   const text = $derived(formatNumber(unit.fromSi(value)));
+
+  let box = $state<HTMLInputElement | null>(null);
 
   /** A negative is allowed where the lower end, in the display unit, is below 0 or there is none. */
   const allowsNegative = $derived(bound?.min === undefined || unit.fromSi(bound.min) < 0);
@@ -70,21 +76,37 @@
     }
   }
 
-  // ↑ and ↓ step the committed value by the unit's step, held to the bound in
-  // SI so a step to the end lands on the end itself. A step commits only when
-  // it moves the way its key points: none at the end, and none back from a
-  // value already past it. A modified arrow keeps the caret's own meaning.
-  function step(event: KeyboardEvent) {
-    const direction = { ArrowUp: 1, ArrowDown: -1 }[event.key];
-    if (direction === undefined || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-      return;
-    }
-    event.preventDefault();
+  // A step moves the committed value by the unit's step, held to the bound in
+  // SI so a step to the end lands on the end itself, and commits only when it
+  // moves the way it points: none at the end, and none back from a value
+  // already past it.
+  function stepBy(direction: 1 | -1) {
     const stepped = unit.toSi(unit.fromSi(value) + direction * unit.step);
     const si = Math.min(Math.max(stepped, bound?.min ?? -Infinity), bound?.max ?? Infinity);
     if (Math.sign(si - value) === direction) {
       oncommit(si);
     }
+  }
+
+  // ↑ and ↓ step; a modified arrow keeps the caret's own meaning.
+  function stepByKey(event: KeyboardEvent) {
+    const direction = ({ ArrowUp: 1, ArrowDown: -1 } as const)[event.key];
+    if (direction === undefined || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    stepBy(direction);
+  }
+
+  // A step button focuses the box, as the browser's spinner does, and takes no
+  // focus itself: its mousedown is prevented, and its click focuses the box.
+  function keepFocus(event: MouseEvent) {
+    event.preventDefault();
+  }
+
+  function stepByButton(direction: 1 | -1) {
+    box?.focus();
+    stepBy(direction);
   }
 
   function restore(event: FocusEvent) {
@@ -112,19 +134,23 @@
     "aria-invalid": invalid || undefined,
     onbeforeinput: admit,
     oninput: commit,
-    onkeydown: step,
+    onkeydown: stepByKey,
     onblur: restore,
   });
 </script>
 
-{#if end}
-  <!-- The group draws the border, and the alert colour while the box inside it is invalid. -->
-  <InputGroup.Root>
-    <InputGroup.Input {...boxAttributes} />
-    <InputGroup.Addon align="inline-end">
-      {@render end()}
-    </InputGroup.Addon>
-  </InputGroup.Root>
-{:else}
-  <Input {...boxAttributes} />
-{/if}
+<!-- The group draws the border, and the alert colour while the box inside it is invalid. -->
+<InputGroup.Root>
+  <InputGroup.Input bind:ref={box} {...boxAttributes} />
+  <InputGroup.Addon align="inline-end">
+    <div class="step-buttons" aria-hidden="true">
+      <InputGroup.Button size="icon-xs" tabindex={-1} onmousedown={keepFocus} onclick={() => stepByButton(1)}>
+        <ChevronUpIcon />
+      </InputGroup.Button>
+      <InputGroup.Button size="icon-xs" tabindex={-1} onmousedown={keepFocus} onclick={() => stepByButton(-1)}>
+        <ChevronDownIcon />
+      </InputGroup.Button>
+    </div>
+    {@render end?.()}
+  </InputGroup.Addon>
+</InputGroup.Root>

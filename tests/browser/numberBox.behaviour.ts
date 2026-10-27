@@ -4,7 +4,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * The one number box takes only a number (ADR-0002 decision 84, rules 1 and
  * 10): a text input that admits digits, one decimal point and, where its
  * bound allows a negative or has no lower end, one leading minus; ↑ and ↓
- * step by the unit's step and stop at the bound; a numeric keypad where the
+ * step by the unit's step and stop at the bound, and so do the box's own two
+ * step buttons (decision 84's note of 2026-10-27); a numeric keypad where the
  * lower end is at least 0. The line under a quantity's box is its bound with
  * the display unit, and no preset's name.
  */
@@ -129,6 +130,53 @@ test.describe("the arrow keys", () => {
     await box.fill("10");
     await box.press("ArrowDown");
     await expect(box).toHaveValue("10");
+  });
+});
+
+/** `box`'s step buttons, up then down: hidden from assistive technology, as the browser's spinner is. */
+function stepButtons(box: Locator) {
+  const buttons = box.locator('xpath=ancestor::*[@data-slot="input-group"][1]').locator(".step-buttons button");
+  return { up: buttons.nth(0), down: buttons.nth(1), all: buttons };
+}
+
+test.describe("the step buttons", () => {
+  test("a click steps by the unit's step, stops at the bound, and leaves the focus in the box", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const box = dryBulb(page);
+    await box.fill("39.9");
+    await page.locator("body").click({ position: { x: 1, y: 1 } });
+    const { up, down } = stepButtons(box);
+
+    await up.click();
+    await expect(box).toHaveValue("40");
+    await expect(box).toBeFocused();
+    await up.click();
+    await expect(box).toHaveValue("40");
+    await down.click();
+    await down.click();
+    await expect(box).toHaveValue("39.8");
+    await expect(box).toBeFocused();
+  });
+
+  test("every box has the two, out of the tab order", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const boxes = await page.getByRole("spinbutton").all();
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) {
+      const { all } = stepButtons(box);
+      await expect(all).toHaveCount(2);
+      for (const button of await all.all()) {
+        await expect(button).toHaveAttribute("tabindex", "-1");
+      }
+    }
+  });
+
+  test("an Edge box has the two, stepping by its unit's step", async ({ page }) => {
+    const edge = await openBands(page);
+    // The first Edge, PMV's -2.5: a step up keeps it below the next.
+    await expect(edge).toHaveValue("-2.5");
+    await stepButtons(edge).up.click();
+    await expect(edge).toHaveValue("-2.4");
   });
 });
 

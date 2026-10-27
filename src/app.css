@@ -335,6 +335,28 @@
 [data-slot="alert"].outside-limits [data-slot="alert-description"] {
 	color: var(--foreground);
 }
+/* The box's own step buttons, chevron up over chevron down inside its right end, the two together within the box's
+   height (decision 84's note of 2026-10-27), where the input group's icon button is a box's height alone. */
+.step-buttons {
+	display: flex;
+	flex-direction: column;
+}
+.step-buttons [data-slot="button"] {
+	width: 1.25rem;
+	height: 0.875rem;
+}
+.step-buttons svg {
+	width: 0.75rem;
+	height: 0.75rem;
+}
+/* A row's Presets follows them with no gap, its own padding the space between; at the box's end, with no Presets
+   after them, they stand at its right edge, without the addon's inset. */
+[data-slot="input-group-addon"]:has(> .step-buttons) {
+	gap: 0;
+}
+[data-slot="input-group-addon"]:has(> .step-buttons:last-child) {
+	padding-right: 0;
+}
 /* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
    trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint
    shows. */
