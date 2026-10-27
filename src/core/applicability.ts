@@ -149,21 +149,22 @@ function isInverted(bound: Bound): boolean {
  * conversions do not rise with relative humidity everywhere — saturated air's
  * humidity ratio turns negative from 100 °C — so the converted ends come
  * out inverted there, and the entry has no bound at that temperature. The
- * mode says of itself whether it is bounded at all, and whether its bound
- * reads the pressure, in which case it has none while the pressure is out of
- * range (decision 53).
+ * mode says of itself which ends it is bounded at, both or the upper only,
+ * and whether its bound reads the pressure, in which case it has none while
+ * the pressure is out of range (decision 53).
  * `undefined` for a model without the humidity entry group.
  */
 function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
-  if (!mode.bounded || (mode.readsPressure && isAtmosphericPressureOutOfRange(atmosphericPressure))) {
+  if (mode.readsPressure && isAtmosphericPressureOutOfRange(atmosphericPressure)) {
     return undefined;
   }
   const relativeHumidity = intersect(everyBoundFor(model, q.rh));
   if (!relativeHumidity) {
     return undefined;
   }
+  const ends = mode.bounded === "upper" ? boundOf(undefined, relativeHumidity.max) : relativeHumidity;
   const tdb = resolvedTdb(slot);
-  return convertedBound(relativeHumidity, (end) => mode.fromRelativeHumidity(end, tdb, atmosphericPressure));
+  return convertedBound(ends, (end) => mode.fromRelativeHumidity(end, tdb, atmosphericPressure));
 }
 
 /**
@@ -222,8 +223,8 @@ export function outOfRangeCalculatorInputs(calculator: FormCalculator, inputs: C
  * entry modes. An operative entry stands in for both temperature rows and
  * must satisfy both at once. The humidity entry is held to relative
  * humidity's bound converted into its mode at the slot's dry-bulb
- * temperature and `atmosphericPressure`, so the bound moves with both,
- * except in wet-bulb entry, which is not bounded, and in humidity-ratio entry
+ * temperature and `atmosphericPressure`, so the bound moves with both, at
+ * its upper end only in wet-bulb entry, and not at all in humidity-ratio entry
  * while the pressure is out of range ({@link humidityEntryBoundFor}); a slot that
  * holds no humidity has no humidity entry to bound. An entry of an
  * activity-adjusted group the model has is held to the model's row for what
@@ -268,13 +269,14 @@ function boundingQuantities(quantity: Quantity, slot: Slot): readonly Quantity[]
  * gate, with the bound each value was tested against. Checks what the user
  * typed, not a derived value: a humidity entry is tested in its own mode,
  * against relative humidity's bound converted into it. It says nothing about
- * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, or a
- * humidity-ratio entry while the pressure is out of range. An entered `v` or
- * clothing insulation is tested against the model's bound for what the model
- * is given, converted into it, so the library finds no row of the model's info
- * broken by what the gate passed, at the precision a row shows, which is the
- * precision {@link violationRows} judges the library's rows at; what it still
- * reports of an input is a limit the info does not carry.
+ * a quantity {@link enteredBound} leaves unbounded, as a humidity-ratio entry
+ * while the pressure is out of range, nor about an end it leaves open, as a
+ * wet-bulb entry's lower end. An entered `v` or clothing insulation is tested
+ * against the model's bound for what the model is given, converted into it, so
+ * the library finds no row of the model's info broken by what the gate passed,
+ * at the precision a row shows, which is the precision {@link violationRows}
+ * judges the library's rows at; what it still reports of an input is a limit
+ * the info does not carry.
  *
  * The bounds are read at `boundsAt`, the slot itself unless given: a bound may be
  * read at another entry, and `core/modelSwitch.ts` asks what the entries

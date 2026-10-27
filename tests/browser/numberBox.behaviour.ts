@@ -41,10 +41,12 @@ async function typeAt(box: Locator, where: "start" | "end", keys: string) {
   await box.pressSequentially(keys);
 }
 
-async function enterDewPoint(page: Page) {
+async function enterHumidityAs(page: Page, mode: RegExp) {
   await page.getByRole("button", { name: "Humidity", exact: true }).click();
-  await page.getByRole("menu").getByRole("menuitemradio", { name: /^Dew-point temperature/ }).click();
+  await page.getByRole("menu").getByRole("menuitemradio", { name: mode }).click();
 }
+
+const enterDewPoint = (page: Page) => enterHumidityAs(page, /^Dew-point temperature/);
 
 async function openBands(page: Page) {
   await open(page, EXPLORE_ADDRESS);
@@ -230,5 +232,16 @@ test.describe("the line under the box", () => {
     await expect(captionOf(dryBulb(page))).toHaveText("10 – 40 °C");
     await page.getByRole("radio", { name: "IP" }).click();
     await expect(captionOf(dryBulb(page))).toHaveText("50 – 104 °F");
+  });
+
+  test("under wet-bulb temperature it is the upper end, the library's wet bulb of 100 % at the dry bulb", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    await enterHumidityAs(page, /^Wet-bulb temperature/);
+    const box = page.getByRole("spinbutton", { name: /^Wet-bulb temperature/ });
+    // `psy_ta_rh(t, 100).t_wb` is 25 at 25 °C and 9.9 at 10 °C.
+    await dryBulb(page).fill("25");
+    await expect(captionOf(box)).toHaveText("≤ 25 °C");
+    await dryBulb(page).fill("10");
+    await expect(captionOf(box)).toHaveText("≤ 9.9 °C");
   });
 });

@@ -289,11 +289,22 @@ describe("enteredBound / outOfRangeQuantities, on the humidity entry", () => {
     expect(outOfRangeQuantities(slot, heatIndexRothfusz, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
-  it("does not bound a wet-bulb entry, which the library's inverse clamps to 0 – 100 %", () => {
-    // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the range.
+  it("bounds a wet-bulb entry at the mode's wet bulb of 100 %, and gates above it", () => {
+    const at25 = (wetBulb: number) => withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.wetBulb, wetBulb);
+    const max = humidityMode.wetBulb.fromRelativeHumidity(100, 25, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, at25(20), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ max });
+    // A tenth of a degree above: the library's wet bulb is to one decimal.
+    expect(outOfRangeRows(at25(max + 0.1), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.wet_bulb_tmp, value: max + 0.1, bound: { max } },
+    ]);
+    expect(outOfRangeRows(at25(max), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+  });
+
+  it("leaves a wet-bulb entry's lower end open, as the library's wet bulb of 0 % is approximate", () => {
+    // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the range (open-points B28).
     expect(psy_ta_rh(10, 0).t_wb).toBeGreaterThan(1.5);
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 10, tr: 10 }), humidityMode.wetBulb, 1.5);
-    expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)?.min).toBeUndefined();
     expect(outOfRangeQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
@@ -369,25 +380,25 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
     }
   });
 
-  it("bounds a relative-humidity, dew-point and vapour-pressure entry as in range, and a wet-bulb entry not at all", () => {
-    for (const mode of [humidityMode.rh, humidityMode.dewPoint, humidityMode.vapourPressure]) {
+  it("bounds a relative-humidity, dew-point, wet-bulb and vapour-pressure entry as in range", () => {
+    for (const mode of [humidityMode.rh, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure]) {
       const inRange = enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), DEFAULT_ATMOSPHERIC_PRESSURE);
       expect(inRange, mode.id).toBeDefined();
       for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
         expect(enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), pressure), mode.id).toEqual(inRange);
       }
     }
-    for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
-      expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, at25(humidityMode.wetBulb, 20), pressure)).toBeUndefined();
-    }
   });
 
-  it("reads whether a mode is bounded, and whether its bound reads the pressure, off the mode itself", () => {
+  it("reads which ends a mode is bounded at, and whether its bound reads the pressure, off the mode itself", () => {
+    const vapourPressure = humidityMode.vapourPressure;
+    const bothEnds = enteredBound(pmvPpdIso, vapourPressure.quantity, at25(vapourPressure, 1000), DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(bothEnds?.min).toBeDefined();
+    const upperOnly: HumidityMode = { ...vapourPressure, bounded: "upper" };
+    expect(enteredBound(pmvPpdIso, vapourPressure.quantity, at25(upperOnly, 1000), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ max: bothEnds?.max });
     const dewPoint = humidityMode.dewPoint;
     const inRange = enteredBound(pmvPpdIso, dewPoint.quantity, at25(dewPoint, 10), DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(inRange).toBeDefined();
-    const unbounded: HumidityMode = { ...dewPoint, bounded: false };
-    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(unbounded, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
     const readsPressure: HumidityMode = { ...dewPoint, readsPressure: true };
     expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(inRange);
     expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), PRESSURE_ABOVE_RANGE)).toBeUndefined();

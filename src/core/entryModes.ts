@@ -80,8 +80,11 @@ export const clothingMode = {
 export interface HumidityMode {
   readonly id: string;
   readonly quantity: Quantity;
-  /** Whether the gate bounds an entry in this mode, by relative humidity's bound converted into it. */
-  readonly bounded: boolean;
+  /**
+   * Which ends of relative humidity's bound, converted into this mode, the gate
+   * holds an entry in this mode to: both, or the upper end only.
+   */
+  readonly bounded: "both" | "upper";
   /** Whether that bound reads the atmospheric pressure, so none is taken at a pressure out of range (decision 53). */
   readonly readsPressure: boolean;
   /** The entered value as relative humidity, at this dry-bulb temperature and atmospheric pressure. */
@@ -94,7 +97,7 @@ export const humidityMode = {
   rh: {
     id: "relative-humidity",
     quantity: quantities.rh,
-    bounded: true,
+    bounded: "both",
     readsPressure: false,
     // Every parameter named, the unused ones too, so this stays typed as the
     // three-argument signature `satisfies` narrows to: a shorter arrow here
@@ -107,7 +110,7 @@ export const humidityMode = {
   humidityRatio: {
     id: "humidity-ratio",
     quantity: quantities.hr,
-    bounded: true,
+    bounded: "both",
     readsPressure: true,
     toRelativeHumidity: (hr, tdb, atmosphericPressure) => hr_to_rh(hr, tdb, atmosphericPressure),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh, atmosphericPressure).hr,
@@ -115,7 +118,7 @@ export const humidityMode = {
   dewPoint: {
     id: "dew-point",
     quantity: quantities.dew_point_tmp,
-    bounded: true,
+    bounded: "both",
     readsPressure: false,
     toRelativeHumidity: (dewPoint, tdb, atmosphericPressure) => rh_from_dew_point(dewPoint, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_dp,
@@ -123,10 +126,12 @@ export const humidityMode = {
   wetBulb: {
     id: "wet-bulb",
     quantity: quantities.wet_bulb_tmp,
-    // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
-    // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
-    // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
-    bounded: false,
+    // `rh_from_wet_bulb` clamps to 0 – 100, so a wet bulb above the one of
+    // 100 % would run at 100 %: the entry is held to that upper end (ADR-0002
+    // decision 84 rule 11). `t_wb` at 0 % is approximate (1.9 °C at 10 °C,
+    // which reads back as 16 %), so a lower end would stop valid entries
+    // (`.scratch/open-points.md` B28).
+    bounded: "upper",
     readsPressure: false,
     toRelativeHumidity: (wetBulb, tdb, atmosphericPressure) => rh_from_wet_bulb(wetBulb, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_wb,
@@ -134,7 +139,7 @@ export const humidityMode = {
   vapourPressure: {
     id: "vapour-pressure",
     quantity: quantities.pa,
-    bounded: true,
+    bounded: "both",
     readsPressure: false,
     toRelativeHumidity: (vapourPressure, tdb, atmosphericPressure) => rh_from_vapour_pressure(vapourPressure, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).p_vap,
