@@ -29,7 +29,7 @@ The minimum and maximum a value is tested against; either may be absent. The lib
 _Avoid_: limit, range (that is an axis range)
 
 **Out of range**:
-Said of a draft that breaks its bound: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value is entered in. Its box turns red, and it is never committed as it is. Never said of a value a slot holds, nor of a result.
+Said of a draft that breaks its bound: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value is entered in. Its box turns red once the typing pauses, and it is never committed as it is. Never said of a value a slot holds, nor of a result.
 _Avoid_: invalid, violation
 
 **Violation**:

@@ -1623,6 +1623,10 @@ the local `../comfort_tool` checkout:
     checked on the raw `v` where the library checks `vr`, closes in the library, not in the app: the library is to
     check the average air speed, which the app passes as `v` under either air-speed entry mode. The other three stand.
     *Withdrawn 2026-10-21 by decision 82: the difference stays recorded, not closed.*
+    **Noted 2026-10-28 (decision 84's note of that day, rule 2).** The gate no longer holds an entered air speed or
+    clothing insulation to the model's `vr` or dynamic clothing row converted into it: the entry is held to its kind's
+    bound alone, and a run past the model's row is a violation on the entered row. An entered `vr` or dynamic clothing
+    insulation is held to its row as it is. Both inverses stay, read by the entry-mode switch back.
 55. **A slot holds the number its row shows: at most two decimals in the displayed unit.** *Withdrawn 2026-10-01 by
     decision 56, before its tickets 03 to 06 landed; kept as written for the record.* Taken 2026-10-01 with the
     user after `.scratch/activity-adjusted-inputs/` ticket 09, ahead of the code. Amends ADR-0001 §4.6 ("the stored
@@ -4059,6 +4063,42 @@ notes under decisions 51 and 53:
     `type="number"` box reports `selectionStart` as `null`, so `beforeinput` cannot read the text an edit would leave;
     reads "25e" as `""`; steps on the mouse wheel; and shows the step-mismatch message for a value off its step.
     Rejected: the browser's spinner.
+    **Noted 2026-10-28 (with the user, after `.scratch/input-gate/` ticket 05, `e299915`).** Rules 1, 2, 4 and 7 are
+    revised for the least code that keeps a committed value within its bounds; decision 54's converted bound on an
+    entered air speed or clothing insulation is withdrawn by (2). Facts, from the library's local checkout at `04c8353`.
+    A call reports the applicability rows it broke "whatever `limit_inputs` is" (`src/models/pmv_ppd_iso.ts:25`), and
+    both PMV models carry rows for `vr`, `met` and `clo` (`pmv_ppd_iso.ts:69-71`, `pmv_ppd_ashrae.ts:67-69`), so a `vr`
+    or a dynamic clothing insulation past its row comes back calculated with its `warnings` row. Neither model has a row
+    for `rh` (`pmv_ppd_iso.ts:72`, `pmv_ppd_ashrae.ts:70`), and `rh_from_dew_point` and `rh_from_vapour_pressure`,
+    through which `hr_to_rh` goes, do not clamp (`src/psychrometrics/rh_from_dew_point.ts:31`,
+    `rh_from_vapour_pressure.ts:23`, `hr_to_rh.ts:24-27`): a dew point above the dry bulb runs at a relative humidity
+    above 100 % and no row says so. `rh_from_wet_bulb` returns 100 there (`rh_from_wet_bulb.ts:34`). The computation is
+    under a second (decision 29), and live updating suits a result that fast ("If we expect to be able to deliver the
+    result less than 1 second after each filter has been selected, then we should use live filtering",
+    https://designsystem.maersk.com/guidelines/search-filter-and-sort/filter-patterns/, fetched 2026-10-28); an error is
+    not shown before a field is finished ("It's frustrating to see an error message before being given the opportunity
+    to finish typing", https://www.nngroup.com/articles/errors-forms-design-guidelines/, fetched 2026-10-28). Rules. (1)
+    **A draft is marked when the typing pauses.** A legal draft commits at the pause; an illegal one turns its box red
+    at the pause, not while it is typed, and waits for Enter or blur, which cut or refuse it as rule 2 says. (2)
+    **Refusal is kept for the humidity entry alone.** An entered air speed or clothing insulation is held to its kind's
+    bound alone, not to the `vr` or dynamic clothing row converted into it; a run past that row is a **Violation** (rule
+    8), reported on the entered row as `vr` is on `v` today. An entered `vr` or dynamic clothing insulation is held to
+    its row as it is. The clothing insulation's kind gains its bound, `{ min: 0 }`, as the air speed's has
+    (`src/core/quantities.ts:44-55` has none), so its box is cut at 0 and the line under it reads "≥ 0 clo". So a
+    metabolic rate is never refused for the air speed or the clothing, and what is left to refuse is a draft that would
+    put a humidity entry out of range: a dry-bulb temperature against a dew point, a vapour pressure or a humidity
+    ratio, and a pressure against a humidity ratio, which the library would run above 100 % with no row. The inverses
+    stay, read by the entry-mode switch back. (3) **A cut raises no toast**: the box shows the bound's end, and the line
+    under it the bound. A refusal raises one, with its reason (rule 7). (4) **An arrival cuts without a dialog.** An
+    arrival by address cuts each entry and the pressure to their bounds as rule 4 says, and raises one toast that values
+    were cut; it lists nothing, and over a session the link's question is decision 63 rule 8's as it was. A model
+    switch's dialog and its yes stay as rule 4 says. Rejected: committing only on Enter, blur and a step, the least
+    code, as with no Calculate button the result would not move until the box is left; committing every draft at the
+    pause through the cut and the refusal, which shows the draft beside the result of another value; the box judging its
+    own bound, a second definition of out of range; refusing a metabolic rate for the air speed or the clothing (rule 2
+    as taken); cutting the humidity entry to its moved bound; a violation of the app's own for a relative humidity above
+    100 %; running a relative humidity clamped at 100 %, a value no box shows (the spec's story 30); a dialog listing an
+    arrival's cuts.
 
 ## Consequences
 
