@@ -401,6 +401,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > describes (`a907f79`) landed. `npm test` passes at 1147 tests and `npm run test:browser` at 78. **Next: the
 > Time-series grilling (decision 57 rule 6).**
 
+> **2026-10-27 — position, the input gate decided**: the frontend review (Linear USYD-108) is triaged in
+> `.scratch/frontend-review/README.md`, tickets 01–03 done (`f95f402`, `ab61485`, `c3a4ed4`). Its input-gate principle
+> was grilled with items I1, I3, I4, I6, I7, I8, I10, I11 and I12 and settled on paper as ADR-0002 decision 84: a
+> committed value is always within its bounds and a draft is not an input; an illegal draft waits for Enter or blur,
+> then is cut to its own bound or, where it would break another held value's bound, refused; a limit on a combination
+> stays a violation, calculated and marked on its result row; a model switch and an arrival by address cut and list in
+> the switch's dialog; one notification, a Sonner toast; Bands are edited as a draft; the input card is fixed at the
+> width three slots need to show "Presets". Decision 33 and decision 83 rule 2 are withdrawn, ten decisions noted;
+> GLOSSARY.md follows and gains **Draft**. Ticket 05 (N6) and open-points B28 are new. **Next: the user's `/to-spec`
+> and `/to-tickets` for decision 84, then the README's workflow.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /

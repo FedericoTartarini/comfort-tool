@@ -21,24 +21,20 @@ The library's published metadata for one model (`<MODEL>_INFO`): the model's nam
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
-The bounds within which a model's answer holds, published by the library per quantity. A gate, not a clamp: an entered value outside it is out of range and the model is not run; a value a run derives or returns outside it is a violation, reported with the result in the applicability summary. The app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
-_Avoid_: limit, range check, validation, clamp
+The bounds within which a model's answer holds, published by the library per quantity. Every value a slot holds is within them: a draft past its bound is cut to the bound's end when it is committed, and a draft that would put another held value outside its bound is refused. Where many values change at once, a model switch or an arrival by address, the values are cut to their bounds and the cut is listed for the person. A value a run derives or returns outside a bound is a violation, calculated and marked on its result row.
+_Avoid_: limit, range check, validation, clamp (for the cut, say what it does: cut to the bound)
 
 **Bound**:
 The minimum and maximum a value is tested against; either may be absent. The library's word.
 _Avoid_: limit, range (that is an axis range)
 
 **Out of range**:
-Said of an entered value that breaks its bound before the model is called: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value was entered in. The model is not run, so the result is not calculated. Never said of a result.
+Said of a draft that breaks its bound: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value is entered in. Its box turns red, and it is never committed as it is. Never said of a value a slot holds, nor of a result.
 _Avoid_: invalid, violation
 
 **Violation**:
-A bound a completed run broke, as the library reports it with the result: either the model's applicability, or a requirement the standard sets on the conditions, such as ASHRAE 55's air-speed limit without local control. The number is calculated; no yes-or-no answer is given beside it.
+A bound a completed run broke, as the library reports it with the result: either the model's applicability, on a value the run derives or returns, or a requirement the standard sets on the conditions, such as ASHRAE 55's air-speed limit without local control. The number is calculated and shown; its row in the result table is marked, and no yes-or-no answer is given beside it.
 _Avoid_: warning (that is the sentence shown), error, out of range, non-compliance
-
-**Applicability summary**:
-The one place a slot's out-of-range entries and violations are listed together, with the result they qualify: first what was not calculated, then what was calculated outside a bound. Each line names its bound.
-_Avoid_: error summary, hints, warnings panel
 
 **Axis range**:
 How far a quantity is drawn on a chart. A viewport, declared by the model file; falls back to the applicability bounds only when nothing is declared.
@@ -80,6 +76,10 @@ _Avoid_: modifier, tool, wizard, helper
 A switch a model takes beside its quantities, carrying no unit and never on a chart. Declared by the model, entered in the slot.
 _Avoid_: setting, flag, parameter
 
+**Draft**:
+The text in a number box from the first keystroke until it is committed: after a pause in typing, on Enter or on leaving the box. A draft is not an input: nothing is calculated from it, and the Inputs, the Results and the Chart agree on what was last committed.
+_Avoid_: pending value, uncommitted input
+
 **Slot**:
 One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
@@ -93,7 +93,7 @@ What makes three slots one table, shared by the Standard and Explore pages: the 
 _Avoid_: store, app state
 
 **Share link**:
-An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: no value is asked about and none adjusted. In a tab that already holds a session it asks once, before it replaces that session.
+An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: a value outside its bound is cut to it, and what was cut is listed. In a tab that already holds a session it asks once, before it replaces that session, with that list in the question.
 _Avoid_: export link, permalink, state URL
 
 **Atmospheric pressure**:
@@ -109,7 +109,7 @@ One labelled, coloured interval of an output's scale (for example "Slightly Cool
 _Avoid_: category (the library's word for the label a value falls in), class, level, threshold, unclassified (a band without a colour is uncoloured)
 
 **Band list**:
-The Bands of one model as the Explore page paints them: a copy of the model's Classifier with a colour per band, contiguous Edges, the Classifier's own inclusivity, no gaps. One per model, for both of its charts; it starts as the Classifier's and may be edited, moved, added to and reset. The result table never reads it.
+The Bands of one model as the Explore page paints them: a copy of the model's Classifier with a colour per band, contiguous Edges, the Classifier's own inclusivity, no gaps. One per model, for both of its charts; it starts as the Classifier's and may be edited, moved, added to and reset, each change taking effect when it is applied. The result table never reads it.
 _Avoid_: thresholds, ranges, custom bands, scale
 
 **Classifier**:
@@ -137,11 +137,11 @@ A file a person downloads of the chart a page shows: the chart and its legend an
 _Avoid_: export (alone), screenshot, figure, download
 
 **Input summary**:
-The text in an Image that says what its chart is computed from: the model and its standard and, for each slot drawn, what it was last calculated from: its values as they were entered, its options and its atmospheric pressure. These are not the panel's while a value is Out of range. On the Explore page it gives the Edges too. It never holds a result.
+The text in an Image that says what its chart is computed from: the model and its standard and, for each slot drawn, what it is calculated from: its values as they were entered, its options and its atmospheric pressure, and the bounds its run broke. On the Explore page it gives the Edges too. It never holds a result.
 _Avoid_: parameters, inputs table, caption
 
 **Swatch**:
-The small colour sample that stands for one thing on the page: a slot, a band or a category, drawn as a filled square, a line or a dot to match how the chart draws that thing. The same swatch appears in the legend, the result table, the slot buttons and the not-calculated line.
+The small colour sample that stands for one thing on the page: a slot, a band or a category, drawn as a filled square, a line or a dot to match how the chart draws that thing. The same swatch appears in the legend, the result table and the slot buttons.
 _Avoid_: dot, chip, colour key (a key is a quantity's library name), marker (that is the slot's point on the chart)
 
 **Session controls**:

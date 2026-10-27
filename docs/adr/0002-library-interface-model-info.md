@@ -640,6 +640,9 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     written under, and a path that names another model is this same arrival, not a broken link. An arrival still
     asks about no value and adjusts none. It asks one thing: a share link reaching a tab that kept a session asks
     before it replaces that session, the tab now having a "here" to stay at (decision 63, rules 3 and 8).
+    **Noted 2026-10-27 (decision 84 rule 4).** The dialog lists every slot the session holds, compared or not, and its
+    yes cuts them all. An arrival by address now cuts each entry to its bound and lists what it cut in this dialog,
+    with one button.
 33. **The gate freezes the result, not the screen.** Amends ADR-0001 §4.5's "Outputs are derived entirely from
     Inputs + Chart" and the compute contract decision 29 left unchanged. While an entered value is outside
     Applicability the last valid result stays on screen, as before. What is kept is the last valid *inputs* of the
@@ -662,6 +665,8 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     **Noted 2026-10-21 (decision 83 rule 2).** The note that says a result is kept stands in the applicability
     summary, under the Results heading, not under the table, and names each entry out of range with its bound. A
     kept result's violation rows stand in the summary's second level.
+    **Withdrawn 2026-10-27 by decision 84 rule 9.** A committed value is always within its bounds, so no result is
+    kept and no slot is not calculated.
 34. **`run` stays a function and reads its values by `Quantity`.** Revises decision 3. `run` is
     `(values) => result`, where `values(...quantities)` returns one number per `Quantity` asked for, as a tuple of
     the same length, spread at the head of the library's positional call:
@@ -1358,6 +1363,8 @@ the local `../comfort_tool` checkout:
     not-calculated line has no swatch" reads "while Compare is off" likewise.
     **Amended 2026-10-01 (decision 57).** On the Explore page the compared slots are slot 1 alone: the dialog lists its
     rows, and slots 2 and 3 are converted and seeded as a slot not compared is.
+    **Noted 2026-10-27 (decision 84 rules 4 and 9).** A slot keeps no last valid run; a switch asks once for every
+    slot the session holds, compared or not.
 53. **A bound that depends on the pressure is not taken while the pressure is out of range.** Amends decisions 32, 46
     and 49, and answers the question `.scratch/atmospheric-pressure/issues/04` left open. While the atmospheric
     pressure is outside its bound, a humidity-ratio entry has no bound: it is not marked, a requested switch does not
@@ -1900,6 +1907,8 @@ notes under decisions 51 and 53:
     **Noted 2026-10-17 (decision 77's grilling, question 14; chart audit F13).** A band whose label is empty reads
     "Unlabelled band" in the legend and the hover, one entry in `text/copy.ts`; it read as a blank swatch and a blank
     last line.
+    **Noted 2026-10-27 (decision 84 rule 6).** An edit is no longer effective at once: the Bands dialog edits a copy,
+    written by Apply and discarded by Close.
 60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
     classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
     ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
@@ -2381,6 +2390,8 @@ notes under decisions 51 and 53:
     **Noted 2026-10-27 (`.scratch/frontend-review/` ticket 03).** Rule 7's button reads "Share", at the reviewer's
     request (Linear USYD-108, O6); it still writes the link to the clipboard and says "Link copied", and rule 8's
     "a button beside Copy link" is Reset beside it. The rule's text is kept as written.
+    **Noted 2026-10-27 (decision 84 rules 4 and 7).** Rule 6's entry out of range no longer arrives as written: it is
+    cut to its bound and listed in the model switch's dialog. The notice line is a toast at the top right.
 64. **An image is a figure built for the file from the page's `ChartSpec`, in two printed sizes, and it says what
     its chart is computed from.** Taken 2026-10-07 with the user in the grilling of Phase 5 item 5, ahead of the
     code; notes ADR-0001 §4.4 and §7; `CONTEXT.md` gains **Image** and **Input summary**. Facts. `src/` has no
@@ -2547,6 +2558,8 @@ notes under decisions 51 and 53:
     Comfort zone carries the chart card's line about it, so the file says why no zone is drawn.
     *Withdrawn 2026-10-22 by decision 83's note of that day: an Image does not carry the line (`.scratch/open-points.md`
     B26).*
+    **Noted 2026-10-27 (decision 84 rules 8 and 9).** No value is out of range, so the Input summary is always the
+    panel's; it lists, per slot, the bounds the run broke.
 65. **Appearance lives in tokens, primitives and layout components; a business component carries no `<style>`.**
     Taken 2026-10-08 with the user in the grilling of Phase 5c, ahead of the code; narrows ADR-0001 §2's UI row and
     §5's `app.css` line. Facts. Seven business components carry a `<style>` block (`routes/StandardPage`,
@@ -2758,6 +2771,8 @@ notes under decisions 51 and 53:
     `min(46rem, 100dvh − 2rem)`, centred as every dialog is, the tab's settings its one scrolling region. The
     2026-10-14 note above is revised: the calculators' button stands at the Inputs card's foot, not in its heading
     row.
+    **Noted 2026-10-27 (decision 84 rules 7 and 10).** Rule 1's notice line goes for a toast; rule 3's caption line
+    is the bound with its unit, without a matching preset's name.
 68. **An entry mode is chosen on the row it changes.** Taken 2026-10-08 in the same grilling; amends decision 51's
     "what appears once is the pair of entry-mode controls, `ui/inputs/EntryModeControls.svelte`". Facts. The entry
     modes are a block of four labelled rows above the quantity rows, so the control and the rows it changes are apart,
@@ -3142,6 +3157,9 @@ notes under decisions 51 and 53:
     run's violation rows are the summary's second level, a default `Alert` in ink with the same icon, still
     `role="status"`. Red marks an entry out of range and the first level, never a violation. The summary's arrival
     moves the table and the chart card, on this rule's principle as revised.
+    **Noted 2026-10-27 (decision 84 rules 7, 9 and 12).** Rule 5's notice line goes; rule 7's `24rem` becomes the
+    narrowest width at which three slots show "Presets", about `27rem`; rule 9's kept row goes; rule 10's sum is
+    recomputed with that width, and below it the input card keeps its width.
 74. **Display order: the registry is the one order, a standard is a family, and the Explore select is grouped by
     standard.** Taken 2026-10-12 with the user in the display-order grilling, after `.scratch/shell/` ticket 13
     (`1906b86`) and ahead of the code; revises decision 57 rule 3, notes decisions 6 and 73, and CONTEXT.md's
@@ -3494,6 +3512,8 @@ notes under decisions 51 and 53:
     only the fixed height, the dock and the edge. Upstream #476 to #478 are open; the proposal on #478 is the user's to
     post. The spec's decisions 8 and 10 are corrected to what landed ("No garments chosen", dropped by the user
     2026-10-15, and the bound's words).
+    **Noted 2026-10-27 (decision 84 rule 5).** Apply writes as a typed value commits: past the row's bound the value
+    is cut, and the dock shows the cut value.
 76. **A control is chosen by the question it answers: a switch for one setting on or off at once, a segmented group
     or a select for one of a few, checkboxes for any of a set confirmed by a button.** Taken 2026-10-15 with the user
     on the calculator-entry prototype (`.scratch/prototype-calculator-entry/notes.md`, sections 22 to 26 and the
@@ -3953,6 +3973,84 @@ notes under decisions 51 and 53:
     heading and rule 1 still say the line "says why"; since the note above it says only that there is no zone. Decision 33's note and decision 73 rule 9's revision of 2026-10-21 read
     true, as do GLOSSARY.md's four entries; decision 64's note of that date is withdrawn and decision 77's corrected in
     place. `boundSentence`'s comment cited rule 4 and no longer does (`4feebd2`).
+    **Noted 2026-10-27 (decision 84 rules 8 and 9).** Rule 2's summary is withdrawn, both levels: nothing is out of
+    range, and a violation is marked on its result row. Rule 1's line under the plot stands.
+84. **The input gate: a committed value is always within its bounds, a draft is not an input, and a violation is
+    calculated and marked on its result row.** Taken 2026-10-27 with the user in the grilling of the input-gate
+    principle (`.scratch/frontend-review/README.md`; review items I1, I3, I4, I6, I7, I8, I10, I11 and I12; I9 deferred,
+    today's air-speed bound taken as given). Withdraws decision 33 and decision 83 rule 2; amends decisions 32, 52, 59,
+    63 (rule 6), 64, 67 (rules 1 and 3), 73 (rules 5, 7, 9 and 10), 75 (rule 5) and 83 (rule 3); decision 56's
+    precision stands. GLOSSARY.md's **Applicability**, **Out of range**, **Violation**, **Input summary**, **Share
+    link** and **Band list** change, **Applicability summary** goes and **Draft** is new. Where an earlier decision
+    says an entry is taken out of range, a result is kept or a slot is not calculated, this decision wins. Facts. The
+    box commits on every `input` event (`src/ui/inputs/NumberInput.svelte:68`), so 19 edited to 1 is out of range for
+    one keystroke (review I6). The gate keeps a slot's last valid run while an entry is out of range
+    (`src/state/compute.svelte.ts:281`). Bounds that move with other entries: a humidity entry's with `tdb` and, for
+    the humidity ratio, the pressure (`src/core/applicability.ts:157`); an entered air speed's with `met` (`:182`); an
+    entered clothing insulation's with `met` and, under ISO 7730, the relative air speed (`src/core/slot.ts:297-309`).
+    Every model is called with `limit_inputs: false` (`src/models/pmvPpdAshrae.ts`, `pmvPpdIso.ts`,
+    `adaptiveAshrae.ts`), and the library masks a result only under `limit_inputs`
+    (`jsthermalcomfort/src/models/pmv_ppd.ts:476-495`), so a limit on a combination comes back calculated with its
+    `warnings` row. Past the gate those are PMV (ASHRAE 55)'s air-speed rule without local control and PMV (ISO
+    7730)'s `pa` and `pmv` rows (`lib/esm/models/pmv_ppd_iso.js:31, 40`); Adaptive (ASHRAE 55) has none (inference
+    from its info). The wet-bulb entry has no bound, and `rh_from_wet_bulb` clamps to 0 – 100
+    (`src/core/entryModes.ts:125-130`), so a wet bulb above the dry bulb runs at 100 %. A `type="number"` box takes
+    `e` and shows the browser's step-mismatch message on hover (review I7, I10). GOV.UK's Design System: "Do not use
+    `<input type="number">` unless your user research shows that there's a need for it"; for a decimal, `type="text"`
+    with `inputmode="decimal"`, and no `inputmode` where a negative must be typed
+    (https://design-system.service.gov.uk/components/text-input/, fetched 2026-10-27). Measured in Chromium at
+    1600 × 1000: turning Compare on keeps the input column at 384 px and adds a 15 px vertical scrollbar, which moves
+    the centred frame about 7.5 px (review I1); the Presets addon is 72 px wide, the box's padding 10 and 6 px, the
+    slot gap and the card's padding 12 px, so three slots that show the word "Presets" need an input card of about
+    426 px (inference). shadcn-svelte's toast is Sonner, added by its CLI, `toast` imported from `svelte-sonner`,
+    with a `position` prop (https://www.shadcn-svelte.com/docs/components/sonner, read through context7). Rules.
+    (1) **A committed value is always within its bounds; a draft is not an input.** The text in a box is a draft until
+    it is committed: 400 ms after the last keystroke, on Enter or on blur; an arrow key and a preset commit at once.
+    The Inputs, the Results and the Chart agree on the committed values, and a draft moves none of them. (2) **A legal
+    draft** is within its own bound and leaves every other value the slot holds within its bound, judged as
+    `outOfRangeRows` judges at the candidate, at decision 56's precision. A legal draft commits on the debounce. An
+    illegal draft turns its box red, leaves the line under it as it is and waits for Enter or blur; then a draft past
+    its own bound is cut to the bound's end itself (decision 56), and a draft that would put another held value out of
+    range is refused and the box restored. The other value is never cut. (3) **A violation is calculated.** The gate
+    holds each entered quantity to its bound and nothing more; a row the library reports of a completed run is a
+    **Violation**, shown with its number. No trial run decides an entry. (4) **Many values at once.** A model switch's
+    dialog (decision 32) lists every slot the session holds, compared or not, and its yes cuts them all. An arrival by
+    address (a share link, a typed address, back and forward, a restored tab) cuts each entry to its bound, the
+    entries other bounds depend on first, and lists what it cut in the same dialog with a column for the new value and
+    one button, as there is no state to stay in; over a session, a share link's list joins decision 63 rule 8's one
+    question. Nothing cut, no dialog. (5) **Other writers.** An input calculator's Apply writes as a typed value
+    commits, cut, its dock showing the cut value with the bound. A preset outside its bound, or one that would put
+    another held value out of range, is disabled in the menu. An entry-mode switch, a unit switch and Reset write
+    within bounds (inference); every writer has a test that it leaves no entry out of range. (6) **Bands are edited as
+    a draft.** The Bands dialog edits a copy of the Band list: Reset resets the copy, Apply writes it and closes, Close
+    and Escape discard it; the chart does not preview the copy. An Edge out of order is refused at its commit, its cell
+    saying why. (7) **One notification: a toast.** shadcn-svelte's Sonner, at the top right; the header's notice line
+    goes, and its four notices (`src/state/openSession.ts:11`) are toasts. A cut or a refusal raises a toast that names
+    the quantity, under Compare the slot, and the new value or the reason; it does not time out, and it closes by its
+    button. (8) **A violation is marked on its result row.** The Results card's applicability summary goes. A slot's
+    row in the result table carries, before its swatch, a triangle-alert button whose popover lists the bounds the run
+    broke in `boundSentence`'s words; the chart carries no mark; a toast is raised when a violation appears, not while
+    it stands. An Image's Input summary lists, per slot, the bounds its run broke. Whether a "—" keeps its own icon
+    beside the row's is the spec's. (9) **Nothing is kept.** The last valid run, `notCalculated` and the summary's
+    not-calculated level go. A value a writer let through is run, and the library's rows show it as a violation. (10)
+    **The box** is `type="text"`, with `inputmode="decimal"` where its bound's lower end is at least 0 and none
+    otherwise; `beforeinput` admits digits, one decimal point and, where the bound allows a negative, a leading minus;
+    ↑ and ↓ step by the unit's step and stop at the bound; no spinner, no tooltip. The line under the box is the bound
+    with its unit (`10 – 40 °C`), without a matching preset's name, and changes neither colour nor words. (11) **The
+    wet-bulb entry** takes an upper end, the wet bulb at 100 % by the mode's `fromRelativeHumidity`; its lower end stays
+    open (`.scratch/open-points.md` B28). (12) **Widths.** The root reserves the scrollbar's gutter
+    (`scrollbar-gutter: stable`). The input card is the narrowest at which three slots show the word "Presets", about
+    `27rem`, measured in the spec, at every Compare state and every window width, and the compact Presets icon goes.
+    Two columns while the main area holds the input card and the chart card at its narrowest, decision 73 rule 10's sum
+    recomputed with the new width; narrower, the result and chart cards go under the input card at the main area's
+    width, and the input card keeps its width at the left. A window narrower than the input card overflows sideways,
+    as decision 73's phone does. Rejected: cutting a draft on the debounce while its box has focus, which rewrites the
+    text under the cursor (19 → 1 → 10 → 106 → 20); refusing a draft past its own bound rather than cutting it;
+    cutting the dependent value when its bound moves, which changes a box the person did not touch and does not come
+    back; cutting the driving value to where the others stay legal, an inverse per pair; a trial run that refuses an
+    entry whose run reports any row, or an input or derived row, which bars PMV (ISO 7730) above +2 and makes an
+    option refusable; red for a violation, which reads as not accepted; an icon per result cell; a mark on the chart;
+    keeping the header's notice line; a separate arrival notice; the chart previewing the Bands copy.
 
 ## Consequences
 
