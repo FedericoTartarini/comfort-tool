@@ -25,7 +25,7 @@
     /** Canonical SI value. */
     value: number;
     unit: DisplayUnit;
-    /** The bound in SI an arrow step stops at and the minus is admitted by; none for a band's Edge. */
+    /** The bound in SI a step stops at and the minus and the keypad are judged by; none for a band's Edge. */
     bound?: Bound;
     /** Marked as an out-of-range entry is. */
     invalid?: boolean;
@@ -42,7 +42,11 @@
 
   let box = $state<HTMLInputElement | null>(null);
 
-  /** A negative is allowed where the lower end, in the display unit, is below 0 or there is none. */
+  /**
+   * A negative is allowed where the lower end, in the display unit, is below 0
+   * or there is none; elsewhere a phone shows the decimal keypad, which has no
+   * minus.
+   */
   const allowsNegative = $derived(bound?.min === undefined || unit.fromSi(bound.min) < 0);
   /** A number as it may stand while typed: digits, one decimal point, and the minus only in front. */
   const typedNumber = $derived(allowsNegative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/);

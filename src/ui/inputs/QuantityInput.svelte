@@ -17,7 +17,7 @@
   export interface QuantityEntry {
     /** Canonical SI value. */
     value: number;
-    /** Allowed bound in SI; shown converted, an arrow step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
+    /** Allowed bound in SI; shown converted, a step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
     /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */

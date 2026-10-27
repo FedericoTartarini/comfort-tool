@@ -201,6 +201,12 @@
 	.caption-line {
 		min-height: 1.5em;
 	}
+	/* The box's own step buttons, chevron up over chevron down inside its right end (decision 84's note of
+	   2026-10-27). */
+	.step-buttons {
+		display: flex;
+		flex-direction: column;
+	}
 	/* A value at the end of a list's item, a preset's in the box's unit, its digits one column. */
 	.item-value {
 		margin-left: auto;
@@ -335,28 +341,25 @@
 [data-slot="alert"].outside-limits [data-slot="alert-description"] {
 	color: var(--foreground);
 }
-/* The box's own step buttons, chevron up over chevron down inside its right end, the two together within the box's
-   height (decision 84's note of 2026-10-27), where the input group's icon button is a box's height alone. */
-.step-buttons {
-	display: flex;
-	flex-direction: column;
-}
+/* The box's step buttons, the two together within the height of the Bands table's smaller box, where the input
+   group's icon button is 1.5rem. */
 .step-buttons [data-slot="button"] {
 	width: 1.25rem;
-	height: 0.875rem;
+	height: 0.75rem;
 }
 .step-buttons svg {
 	width: 0.75rem;
 	height: 0.75rem;
 }
 /* The box's end, its step buttons and a row's Presets, with no gap and no inset: the last stands at the box's right
-   edge, and Presets keeps a quarter rem of padding each side as the space around its word. */
-.box-end {
+   edge, and Presets, the end's one button, whose slot is its trigger's, keeps a quarter rem of padding each side as
+   the space around its word. */
+[data-slot="input-group-addon"].box-end {
 	gap: 0;
 	padding-right: 0;
 	margin-right: 0;
 }
-.box-end > button {
+[data-slot="input-group-addon"].box-end > button {
 	padding-inline: 0.25rem;
 }
 /* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
@@ -538,7 +541,7 @@
 .bands-table [data-slot="table-cell"] {
 	padding-block: 0.125rem;
 }
-.bands-table [data-slot="input"] {
+.bands-table :is([data-slot="input"], [data-slot="input-group"]) {
 	height: 1.75rem;
 }
 .bands-table [data-slot="input"][type="color"] {
