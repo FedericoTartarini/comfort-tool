@@ -158,9 +158,8 @@ export const copy = {
   copyRefusedNotice: "The link could not be copied.",
   // A toast's close button (decision 84, rule 7).
   closeToast: "Close",
-  // What a committed value's toast says (decision 84, rules 2 and 7): `subject` is the box's quantity, with its slot
-  // under Compare; `value` carries its unit; each reason is a bound sentence, of what a refused value would break.
-  cutNotice: (subject: string, value: string) => `${subject} was set to ${value}, the nearest allowed value.`,
+  // What a refused value's toast says (decision 84, rules 2 and 7): `subject` is the box's quantity, with its slot
+  // under Compare; `value` carries its unit; each reason is a bound sentence, of what the value would break.
   refusedNotice: (subject: string, value: string, reasons: readonly string[]) =>
     reasons.length === 1
       ? `${subject} was not changed to ${value}, which would put another value out of range. ${reasons[0]}. Change it first.`

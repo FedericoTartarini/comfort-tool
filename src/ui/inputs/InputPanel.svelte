@@ -44,7 +44,7 @@
     atmosphericPressure: number;
     /** The session's: a row's entry group menu button converts every slot (ADR-0002 decision 51). */
     entryModeSetters: EntryModeSetters;
-    /** The session's: a box's value is judged and committed in its slot, and a cut or a refusal told by a toast. */
+    /** The session's: a box's value is judged and committed in its slot, and a refusal told by a toast. */
     entryWriter: EntryWriter;
   }
 

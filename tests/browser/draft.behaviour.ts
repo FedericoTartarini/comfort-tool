@@ -4,12 +4,13 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * What is typed in a box is a draft (ADR-0002 decision 84, rules 1, 2 and 7):
  * a legal one commits 400 ms after the last keystroke, Enter and leaving the
  * box commit at once, and nothing moves before; a draft past its bound is
- * marked and waits, and is cut to the bound's end on leaving the box; a draft
- * that would put a humidity entry out of range is refused, and an air speed
- * past the model's row under a metabolic rate is not: the run is calculated
- * and its broken limit shown. A cut and a refusal each raise a toast. The
- * page's clock is paused once it has drawn, so a pause in the typing is the
- * time the test runs the clock for.
+ * marked once the typing pauses, never while it is typed, and waits, and is
+ * cut to the bound's end on leaving the box; a draft that would put a
+ * humidity entry out of range is refused, and an air speed past the model's
+ * row under a metabolic rate is not: the run is calculated and its broken
+ * limit shown. A refusal raises a toast, a cut none (decision 84's note of
+ * 2026-10-28). The page's clock is paused once it has drawn, so a pause in
+ * the typing is the time the test runs the clock for.
  */
 
 /** PMV (ASHRAE 55): dry-bulb 10 – 40 °C. */
@@ -132,47 +133,58 @@ test.describe("a legal draft", () => {
 });
 
 test.describe("a draft past its bound", () => {
-  test("of 10 – 40 °C, 45 is marked and waits, the line under it and the result unchanged; leaving the box cuts it to 40 and raises a toast at the top right", async ({ page }) => {
+  test("of 10 – 40 °C, 45 is not marked while it is typed and is marked once the typing pauses, the line under it and the result unchanged; a further keystroke takes the mark away until the next pause", async ({ page }) => {
     await open(page);
     const box = dryBulb(page);
     const table = resultTable(page);
     const caption = captionOf(box);
+    const before = await textOf(table);
+    const captionColor = await caption.evaluate((node) => getComputedStyle(node).color);
+
+    await box.fill("45");
+    await page.clock.runFor(COMMIT_PAUSE - 100);
+    await expect(box).not.toHaveAttribute("aria-invalid", "true");
+
+    await page.clock.runFor(100);
+    await expect(box).toHaveAttribute("aria-invalid", "true");
+    await expect(box).toHaveValue("45");
+    await expect(caption).toHaveText("10 – 40 °C");
+    expect(await caption.evaluate((node) => getComputedStyle(node).color)).toBe(captionColor);
+    await expectText(table, before);
+
+    await box.press("0");
+    await expect(box).not.toHaveAttribute("aria-invalid", "true");
+    await page.clock.runFor(COMMIT_PAUSE - 100);
+    await expect(box).not.toHaveAttribute("aria-invalid", "true");
+    await page.clock.runFor(100);
+    await expect(box).toHaveAttribute("aria-invalid", "true");
+    await expect(box).toHaveValue("450");
+    await expectText(table, before);
+  });
+
+  test("leaving the box with 45 cuts it to 40: the box shows 40 over the bound, the result is for 40, and no toast is raised", async ({ page }) => {
+    await open(page);
+    const box = dryBulb(page);
+    const table = resultTable(page);
     const at25 = await textOf(table);
     await commit(box, "40");
     const at40 = await changedFrom(table, at25);
     await commit(box, "25");
     await expectText(table, at25);
-    const captionColor = await caption.evaluate((node) => getComputedStyle(node).color);
 
     await box.fill("45");
-    await page.clock.runFor(COMMIT_PAUSE * 3);
-
-    await expect(box).toHaveAttribute("aria-invalid", "true");
-    await expect(box).toHaveValue("45");
-    await expect(caption).toHaveText("10 – 40 °C");
-    expect(await caption.evaluate((node) => getComputedStyle(node).color)).toBe(captionColor);
-    await expectText(table, at25);
-
     await box.blur();
 
     await expect(box).toHaveValue("40");
+    await expect(captionOf(box)).toHaveText("10 – 40 °C");
     await expect(box).not.toHaveAttribute("aria-invalid", "true");
     await expectText(table, at40);
-    const toast = toasts(page);
-    await expect(toast).toHaveCount(1);
-    await expect(toast).toContainText("Dry-bulb air temperature");
-    await expect(toast).toContainText("40 °C");
-    const banner = await page.getByRole("banner").boundingBox();
-    const toastBox = await toast.boundingBox();
-    expect(banner && toastBox && banner.x + banner.width - (toastBox.x + toastBox.width)).toBeLessThanOrEqual(32);
-    // Past Sonner's own four seconds, which a toast that times out would not outlive.
-    await page.clock.runFor(10_000);
-    await expect(toast).toBeVisible();
+    await expect(toasts(page)).toHaveCount(0);
   });
 });
 
 test.describe("a draft that would put a humidity entry out of range", () => {
-  test("a dry-bulb temperature below the held dew point is refused: the box shows the committed value and a toast says why", async ({ page }) => {
+  test("a dry-bulb temperature below the held dew point is marked once the typing pauses and refused on Enter: the box shows the committed value and a toast at the top right says why until it is closed", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Humidity", exact: true }).click();
     await page.getByRole("menu").getByRole("menuitemradio", { name: /^Dew-point temperature/ }).click();
@@ -182,15 +194,25 @@ test.describe("a draft that would put a humidity entry out of range", () => {
     const before = await textOf(table);
 
     await box.fill("12");
-    await page.clock.runFor(COMMIT_PAUSE * 3);
+    await page.clock.runFor(COMMIT_PAUSE - 100);
+    await expect(box).not.toHaveAttribute("aria-invalid", "true");
+    await page.clock.runFor(100);
     await expect(box).toHaveAttribute("aria-invalid", "true");
     await box.press("Enter");
 
     await expect(box).toHaveValue("25");
+    await expect(box).not.toHaveAttribute("aria-invalid", "true");
     await expectText(table, before);
     const toast = toasts(page);
+    await expect(toast).toHaveCount(1);
     await expect(toast).toContainText("Dry-bulb air temperature was not changed to 12 °C");
     await expect(toast).toContainText("Dew-point temperature must be ≤ 12 °C");
+    const banner = await page.getByRole("banner").boundingBox();
+    const toastBox = await toast.boundingBox();
+    expect(banner && toastBox && banner.x + banner.width - (toastBox.x + toastBox.width)).toBeLessThanOrEqual(32);
+    // Past Sonner's own four seconds, which a toast that times out would not outlive.
+    await page.clock.runFor(10_000);
+    await expect(toast).toBeVisible();
   });
 });
 

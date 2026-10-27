@@ -10,10 +10,11 @@
   browser's spinner (decision 84's note of 2026-10-27). It keeps the
   spinbutton's role the number input had, which tells assistive technology
   the arrows step it, so the buttons are hidden from it, as the browser's are.
-  What is typed is a draft (decision 84, rules 1 and 2): one its owner calls
-  legal commits on a pause in the typing, one it does not is marked invalid
-  and waits, and Enter and leaving the box commit either, the owner cutting
-  or refusing it, after which the box shows what was committed.
+  What is typed is a draft (decision 84, rules 1 and 2, and its note of
+  2026-10-28): on a pause in the typing one its owner calls legal commits,
+  and one it does not is marked invalid and waits, never marked while it is
+  typed; Enter and leaving the box commit either, the owner cutting or
+  refusing it, after which the box shows what was committed.
 -->
 <script lang="ts">
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
@@ -44,14 +45,14 @@
 
   let { id, value, unit, bound, invalid = false, isLegal, ariaLabel, end, oncommit }: Props = $props();
 
-  /** How long typing pauses before a legal draft commits, [ms]. */
+  /** How long typing pauses before a legal draft commits or an illegal one is marked, [ms]. */
   const COMMIT_PAUSE_MS = 400;
 
   const text = $derived(formatNumber(unit.fromSi(value)));
 
   let box = $state<HTMLInputElement | null>(null);
 
-  /** The draft's commit waiting on the pause, while one does. */
+  /** The draft's commit or mark waiting on the pause, while one does. */
   let pause: ReturnType<typeof setTimeout> | undefined;
   /** Whether the draft in the box is one its owner does not call legal. */
   let draftIllegal = $state(false);
@@ -95,24 +96,27 @@
     return si === value ? undefined : si;
   }
 
-  /** The draft dropped: no commit waits on the pause, and the box is not marked for it. */
+  /** The draft dropped: nothing waits on the pause, and the box is not marked for it. */
   function dropDraft() {
     clearTimeout(pause);
     draftIllegal = false;
   }
 
-  // A legal draft commits once the typing pauses; an illegal one is marked and waits.
+  // Once the typing pauses, a legal draft commits and an illegal one is marked
+  // and waits; while it is typed, no draft is marked.
   function judgeDraft(event: Event) {
     dropDraft();
     const si = draftOf(event.currentTarget as HTMLInputElement);
     if (si === undefined) {
       return;
     }
-    if (isLegal && !isLegal(si)) {
-      draftIllegal = true;
-      return;
-    }
-    pause = setTimeout(() => oncommit(si), COMMIT_PAUSE_MS);
+    pause = setTimeout(() => {
+      if (isLegal && !isLegal(si)) {
+        draftIllegal = true;
+      } else {
+        oncommit(si);
+      }
+    }, COMMIT_PAUSE_MS);
   }
 
   // Enter and leaving the box commit whatever the draft is, and the box then
