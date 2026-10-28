@@ -20,7 +20,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { writeKeptText } from "./keptText";
 import type { Notice } from "./openSession";
 import type { Session } from "./session.svelte";
-import { addressOf, heldSlot, keptTextOf, linkSessionOf, openedOn, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessionTestReaders";
+import { addressOf, editBands, heldSlot, keptTextOf, linkSessionOf, openedOn, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessionTestReaders";
 import { Tab } from "./tab.svelte";
 
 const q = quantities;
@@ -53,7 +53,7 @@ function senderSession(): Session {
   const session = sessionComparingThreeSlots(pmvPpdAshrae);
   session.setAddress({ page: page.explore, model: pmvPpdAshrae });
   heldSlot(session, 0).setEntered(q.tdb, 31);
-  session.chart.setBandLabel(0, "Freezing");
+  editBands(session, (draft) => draft.setLabel(0, "Freezing"));
   return session;
 }
 

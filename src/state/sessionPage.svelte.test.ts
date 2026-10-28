@@ -24,7 +24,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
-import { heldSlot, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { editBands, heldSlot, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
@@ -231,7 +231,7 @@ describe("The page in the session", () => {
       openAt(session, page.explore);
       const scan = outputs.slots[0].scan;
 
-      expect(session.chart.moveBandEdge(2, -0.1)).toBe(true);
+      editBands(session, (draft) => draft.moveEdge(2, -0.1));
       const list = session.chart.bands;
       expect(list?.edges[2]).toBe(-0.1);
       if (list) {

@@ -1,6 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ClassifierBins } from "jsthermalcomfort";
-import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
+import { bandListOf, type BandList } from "$lib/core/bands";
 import { shownRow, type Calculator, type CalculatorResult } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
@@ -39,6 +39,7 @@ import {
   type SlotPosition,
   type WrittenSession,
 } from "$lib/core/writtenSession";
+import { BandListDraft } from "./bandListDraft.svelte";
 
 export { slotPositions, type SlotPosition };
 
@@ -163,7 +164,7 @@ export class ChartState {
   type: ChartType;
   /** The dynamic chart's picked axes, its declared ones to begin with; `null` for a model that declares no dynamic chart. */
   axes: ChartAxes | null;
-  /** The classifier the Band list began as, which Add and Reset read; none for a model that scans nothing. */
+  /** The classifier the Band list began as, which a draft's Add and Reset read; none for a model that scans nothing. */
   readonly #classifier: ClassifierBins | null;
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
@@ -184,11 +185,10 @@ export class ChartState {
 
   /**
    * The model's Band list, which Explore paints on its charts and its Bands
-   * panel edits (ADR-0002 decision 59): its scan's classifier to begin with
-   * (decision 61). A model that scans nothing has none, and every edit below
-   * does nothing.
-   * Changed only by the Band list module's operations, through the methods
-   * below.
+   * dialog edits (ADR-0002 decision 59): its scan's classifier to begin with
+   * (decision 61). A model that scans nothing has none, and no draft.
+   * Changed only by an applied draft ({@link draftBands}), whose edits are the
+   * Band list module's operations.
    */
   get bands(): BandList | null {
     return this.#bands;
@@ -203,52 +203,17 @@ export class ChartState {
   }
 
   /**
-   * Band `index`'s Edge moved to `edge`, in the output's SI unit, unless it
-   * falls at or beyond a neighbour: then the list is left as it was. Whether
-   * the move was taken, so the panel can mark a refused one.
+   * A draft of the Band list for the Bands dialog to edit, which its Apply
+   * writes here (ADR-0002 decision 84, rule 6); none for a model that scans
+   * nothing.
    */
-  moveBandEdge(index: number, edge: number): boolean {
-    const list = this.#bands;
-    if (!list) {
-      return false;
+  draftBands(): BandListDraft | null {
+    if (!this.#bands || !this.#classifier) {
+      return null;
     }
-    const moved = moveEdge(list, index, edge);
-    if (moved === list) {
-      return false;
-    }
-    this.#bands = moved;
-    return true;
-  }
-
-  /** Band `index` split at its midpoint, the lower half unlabelled and uncoloured. */
-  addBand(index: number): void {
-    this.#edit((list, classifier) => addEdge(list, index, classifier));
-  }
-
-  /** Band `index` merged into the band above, the last into the one below; the only band stays. */
-  removeBand(index: number): void {
-    this.#edit((list) => removeEdge(list, index));
-  }
-
-  setBandLabel(index: number, label: string): void {
-    this.#edit((list) => setLabel(list, index, label));
-  }
-
-  /** Band `index` recoloured, or painted nowhere for `undefined`. */
-  setBandColor(index: number, color: string | undefined): void {
-    this.#edit((list) => setColor(list, index, color));
-  }
-
-  /** The classifier's bands and colours again: the panel's Reset. */
-  resetBands(): void {
-    this.#bands = this.#classifier && bandListOf(this.#classifier);
-  }
-
-  /** The list replaced by `operation`'s answer; nothing for a model that scans nothing, which has neither list nor classifier. */
-  #edit(operation: (list: BandList, classifier: ClassifierBins) => BandList): void {
-    if (this.#bands && this.#classifier) {
-      this.#bands = operation(this.#bands, this.#classifier);
-    }
+    return new BandListDraft(this.#bands, this.#classifier, (list) => {
+      this.#bands = list;
+    });
   }
 }
 

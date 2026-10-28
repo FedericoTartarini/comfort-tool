@@ -25,6 +25,7 @@ import { firstLoadAt } from "./firstLoad";
 import { Session } from "./session.svelte";
 import {
   addressOf,
+  editBands,
   expectEverySlotInSessionEntryModes,
   heldSlot,
   keptTextOf,
@@ -53,9 +54,9 @@ function editedSession(): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
   session.chart.type = chartType.dynamic;
   session.chart.setAxes({ x: q.met });
-  session.chart.moveBandEdge(3, 0.4);
+  editBands(session, (draft) => draft.moveEdge(3, 0.4));
   session.setModel(pmvPpdAshrae);
-  session.chart.setBandLabel(0, "Freezing");
+  editBands(session, (draft) => draft.setLabel(0, "Freezing"));
   session.setTemperatureMode(temperatureMode.operative);
   session.setAirSpeedMode(airSpeedMode.corrected);
   session.setClothingMode(clothingMode.corrected);

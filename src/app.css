@@ -542,6 +542,13 @@
 .bands-table :is([data-slot="input"], [data-slot="input-group"]) {
 	height: 1.75rem;
 }
+/* Why an Edge was not taken wraps at its column's width and widens no column: width 0 leaves it out of the table's
+   sizing, and min-width 100% gives it the cell's width back (ADR-0002 decision 84, rule 6). */
+.bands-table [data-slot="field-error"] {
+	width: 0;
+	min-width: 100%;
+	white-space: normal;
+}
 .bands-table [data-slot="input"][type="color"] {
 	width: 2.5rem;
 	padding: 0.125rem;

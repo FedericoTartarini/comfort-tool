@@ -46,19 +46,31 @@ export function bandListFrom(bins: ClassifierBins, written: Pick<BandList, "edge
   return wellFormed ? { edges: [...edges], labels: [...labels], right: bins.right, colors: [...colors] } : undefined;
 }
 
+/** The Edges either side of a band's own: `undefined` where there is none, under the first band's and over the last's. */
+export interface EdgeNeighbours {
+  readonly below?: number;
+  readonly above?: number;
+}
+
+/** The Edges band `index`'s own lies between. */
+export function edgeNeighbours(list: BandList, index: number): EdgeNeighbours {
+  const { edges } = list;
+  return { below: index === 0 ? undefined : edges[index - 1], above: index === edges.length - 1 ? undefined : edges[index + 1] };
+}
+
+/** Whether band `index`'s Edge at `edge` keeps the Edges in order: strictly between its neighbours, where each exists. */
+export function isEdgeInOrder(list: BandList, index: number, edge: number): boolean {
+  const { below = Number.NEGATIVE_INFINITY, above = Number.POSITIVE_INFINITY } = edgeNeighbours(list, index);
+  return below < edge && edge < above;
+}
+
 /**
- * Band `index`'s Edge moved to `edge`, which must fall strictly between its
- * neighbours: the Edge below and the Edge above, where each exists. Otherwise
- * the move is refused and `list` itself is returned.
+ * Band `index`'s Edge moved to `edge`, which must keep the Edges in order
+ * ({@link isEdgeInOrder}). Otherwise the move is refused and `list` itself is
+ * returned.
  */
 export function moveEdge(list: BandList, index: number, edge: number): BandList {
-  const { edges } = list;
-  const below = index === 0 ? Number.NEGATIVE_INFINITY : edges[index - 1];
-  const above = index === edges.length - 1 ? Number.POSITIVE_INFINITY : edges[index + 1];
-  if (!(below < edge && edge < above)) {
-    return list;
-  }
-  return { ...list, edges: withReplaced(edges, index, edge) };
+  return isEdgeInOrder(list, index, edge) ? { ...list, edges: withReplaced(list.edges, index, edge) } : list;
 }
 
 /**

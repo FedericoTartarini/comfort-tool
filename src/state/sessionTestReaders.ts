@@ -2,7 +2,7 @@
  * How the session tests read a session's state: a slot as plain data, a slot
  * the session is known to hold, a value the result table would show, what
  * a pending switch lists, and every entry out of range; the session comparing all three slots and the
- * bounded model they start from; the check of the invariant the session's
+ * bounded model they start from; a Band list edited as the Bands dialog edits it; the check of the invariant the session's
  * entry modes rest on; and what a page would open on, the address a session
  * is on, and the texts a tab keeps and a link carries of it. Shared by the
  * state tests so that all of them compare the same way.
@@ -18,6 +18,7 @@ import { entryModesOf } from "$lib/core/slot";
 import type { WrittenSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import type { BandListDraft } from "./bandListDraft.svelte";
 import { Session, type InputSlot, type SlotPosition } from "./session.svelte";
 
 /** Everything a slot holds, as plain data a comparison can be made against. */
@@ -56,6 +57,22 @@ export function sessionComparingThreeSlots(model: RegisteredModel): Session {
   session.setCompare(true);
   session.setSlotEnabled(2, true);
   return session;
+}
+
+/** A draft of `session`'s Band list, as the Bands dialog opens one, or a throw for a model that scans nothing. */
+export function bandsDraftOf(session: Session): BandListDraft {
+  const draft = session.chart.draftBands();
+  if (!draft) {
+    throw new Error("the model scans nothing, so it has no Band list to edit");
+  }
+  return draft;
+}
+
+/** `session`'s Band list edited by `edit` on a draft and applied, as the Bands dialog's Apply applies it. */
+export function editBands(session: Session, edit: (draft: BandListDraft) => void): void {
+  const draft = bandsDraftOf(session);
+  edit(draft);
+  draft.apply();
 }
 
 /** A value the result table would show, read through the app's own accessor. */

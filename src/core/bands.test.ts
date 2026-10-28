@@ -4,7 +4,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { bandColors } from "./bandPalette";
-import { addEdge, bandListFrom, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
+import { addEdge, bandListFrom, bandListOf, isEdgeInOrder, edgeNeighbours, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
 
 /** Every classifier a registered model's scan declares. */
 const classifiers = registeredModels.flatMap((model) => (model.scan ? [model.scan.classifier] : []));
@@ -63,6 +63,24 @@ describe("bandListOf", () => {
   it("is a copy: the library's frozen arrays are not the list's", () => {
     expect(defaultList.edges).not.toBe(sensation.edges);
     expect(defaultList.labels).not.toBe(sensation.labels);
+  });
+});
+
+describe("edgeNeighbours and isEdgeInOrder", () => {
+  // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10.
+  it("name the Edges either side, none under the first band's and none over the last's", () => {
+    expect(edgeNeighbours(defaultList, 3)).toEqual({ below: -0.5, above: 1.5 });
+    expect(edgeNeighbours(defaultList, 0)).toEqual({ below: undefined, above: -1.5 });
+    expect(edgeNeighbours(defaultList, 6)).toEqual({ below: 2.5, above: undefined });
+  });
+
+  it("take an Edge strictly between its neighbours alone", () => {
+    expect(isEdgeInOrder(defaultList, 3, 0.7)).toBe(true);
+    for (const edge of [-0.5, 1.5, 2, Number.NaN]) {
+      expect(isEdgeInOrder(defaultList, 3, edge)).toBe(false);
+    }
+    expect(isEdgeInOrder(defaultList, 0, -40)).toBe(true);
+    expect(isEdgeInOrder(defaultList, 6, Number.POSITIVE_INFINITY)).toBe(false);
   });
 });
 

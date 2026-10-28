@@ -20,7 +20,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type ChartState } from "./session.svelte";
-import { expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { editBands, expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
@@ -77,13 +77,17 @@ function editedSession(): Session {
   heldSlot(session, 1).setOption(airSpeedControl, true);
   session.chart.type = chartType.dynamic;
   session.chart.setAxes({ y: q.rh });
-  session.chart.moveBandEdge(3, 0.4);
-  session.chart.setBandColor(1, undefined);
+  editBands(session, (draft) => {
+    draft.moveEdge(3, 0.4);
+    draft.setColor(1, undefined);
+  });
   session.setModel(pmvPpdIso);
   session.chart.type = chartType.dynamic;
   session.chart.setAxes({ x: q.met });
-  session.chart.addBand(2);
-  session.chart.setBandLabel(0, "Freezing");
+  editBands(session, (draft) => {
+    draft.addBand(2);
+    draft.setLabel(0, "Freezing");
+  });
   session.setTemperatureMode(temperatureMode.operative);
   session.setAirSpeedMode(airSpeedMode.corrected);
   session.setClothingMode(clothingMode.corrected);
@@ -214,7 +218,7 @@ describe("Session.toWrittenSession", () => {
       () => (session.atmosphericPressure = 90000),
       () => (session.chart.type = chartType.dynamic),
       () => session.chart.setAxes({ y: q.met }),
-      () => session.chart.moveBandEdge(3, 0.4),
+      () => editBands(session, (draft) => draft.moveEdge(3, 0.4)),
       () => session.setModel(pmvPpdIso),
     ];
 

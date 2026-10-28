@@ -1,9 +1,10 @@
 /**
- * The Bands panel's edits (ADR-0002 decision 59), asserted at the seam the
- * other session tests use: a session on Explore, edited through its chart
- * settings as the panel edits it, its Band list and its chart spec out, with
- * no component and no router. The expected lists are the Band list module's
- * own operations on the default list, and a list's lines are its own Edges.
+ * The Bands dialog's edits (ADR-0002 decision 59, and decision 84, rule 6),
+ * asserted at the seam the other session tests use: a session on Explore,
+ * edited through a draft of its Band list as the dialog edits it and applied
+ * as its Apply applies it, its Band list and its chart spec out, with no
+ * component and no router. The expected lists are the Band list module's own
+ * operations on the default list, and a list's lines are its own Edges.
  */
 import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
@@ -14,7 +15,9 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { Outputs } from "./compute.svelte";
-import { Session, type ChartState } from "./session.svelte";
+import type { BandListDraft } from "./bandListDraft.svelte";
+import { Session } from "./session.svelte";
+import { bandsDraftOf } from "./sessionTestReaders";
 
 const sensation = pmvPpdIso.scan.classifier;
 // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10; band 3 is Neutral.
@@ -73,33 +76,43 @@ function fillsOf(list: BandList, outputs: Outputs) {
   });
 }
 
-const edits: readonly { name: string; edit: (chart: ChartState) => void; expected: BandList }[] = [
-  { name: "moves an Edge", edit: (chart) => chart.moveBandEdge(3, 0.7), expected: moveEdge(defaultList, 3, 0.7) },
-  { name: "adds a band", edit: (chart) => chart.addBand(3), expected: addEdge(defaultList, 3, sensation) },
-  { name: "removes a band", edit: (chart) => chart.removeBand(3), expected: removeEdge(defaultList, 3) },
-  { name: "relabels a band", edit: (chart) => chart.setBandLabel(3, "Fine"), expected: setLabel(defaultList, 3, "Fine") },
+const edits: readonly { name: string; edit: (draft: BandListDraft) => void; expected: BandList }[] = [
+  { name: "moves an Edge", edit: (draft) => draft.moveEdge(3, 0.7), expected: moveEdge(defaultList, 3, 0.7) },
+  { name: "adds a band", edit: (draft) => draft.addBand(3), expected: addEdge(defaultList, 3, sensation) },
+  { name: "removes a band", edit: (draft) => draft.removeBand(3), expected: removeEdge(defaultList, 3) },
+  { name: "relabels a band", edit: (draft) => draft.setLabel(3, "Fine"), expected: setLabel(defaultList, 3, "Fine") },
   {
     name: "recolours a band",
-    edit: (chart) => chart.setBandColor(3, "#123456"),
+    edit: (draft) => draft.setColor(3, "#123456"),
     expected: setColor(defaultList, 3, "#123456"),
   },
   {
     name: "clears a band's colour",
-    edit: (chart) => chart.setBandColor(3, undefined),
+    edit: (draft) => draft.setColor(3, undefined),
     expected: setColor(defaultList, 3, undefined),
   },
 ];
 
-describe("The Bands panel's edits through the session", () => {
+describe("The Bands dialog's edits through a draft of the Band list", () => {
   for (const type of [chartType.dynamic, chartType.psychrometric]) {
     for (const { name, edit, expected } of edits) {
-      it(`${name} in the current model's Band list and the ${type.title} chart's spec at once, rescanning nothing`, () => {
+      it(`${name} in the draft alone, and Apply writes it to the current model's Band list and the ${type.title} chart's spec, rescanning nothing`, () => {
         const { session, outputs } = exploreSession(type);
         expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
         expect(strokedEdges(outputs, defaultList)).toEqual(edgesOf(defaultList));
         const { result, scan } = outputs.slots[0];
+        const list = session.chart.bands;
+        const spec = outputs.chart;
+        const draft = bandsDraftOf(session);
 
-        edit(session.chart);
+        edit(draft);
+
+        expect(draft.bands).toEqual(expected);
+        // The chart never reads the draft.
+        expect(session.chart.bands).toBe(list);
+        expect(outputs.chart).toBe(spec);
+
+        draft.apply();
 
         expect(session.chart.bands).toEqual(expected);
         expect(paintedFills(outputs)).toEqual(fillsOf(expected, outputs));
@@ -111,10 +124,107 @@ describe("The Bands panel's edits through the session", () => {
     }
   }
 
+  it("leaves the Band list as it was when the draft is discarded, and the next draft starts from it", () => {
+    const { session, outputs } = exploreSession();
+    const spec = outputs.chart;
+    const discarded = bandsDraftOf(session);
+    discarded.setLabel(3, "Fine");
+    discarded.addBand(2);
+    discarded.moveEdge(0, -3);
+
+    expect(session.chart.bands).toEqual(defaultList);
+    expect(outputs.chart).toBe(spec);
+    expect(bandsDraftOf(session).bands).toEqual(defaultList);
+  });
+
+  it("starts a draft from the applied list, not the default", () => {
+    const { session } = exploreSession();
+    const first = bandsDraftOf(session);
+    first.setLabel(3, "Fine");
+    first.apply();
+
+    expect(bandsDraftOf(session).bands).toEqual(setLabel(defaultList, 3, "Fine"));
+  });
+
+  it("resets the draft alone to the classifier's on Reset, and Apply writes the reset", () => {
+    const { session, outputs } = exploreSession();
+    const edited = bandsDraftOf(session);
+    edited.addBand(3);
+    edited.setColor(0, undefined);
+    edited.moveEdge(6, 4);
+    edited.apply();
+    const list = session.chart.bands;
+    const draft = bandsDraftOf(session);
+
+    draft.reset();
+
+    expect(draft.bands).toEqual(defaultList);
+    expect(session.chart.bands).toBe(list);
+
+    draft.apply();
+
+    expect(session.chart.bands).toEqual(defaultList);
+    expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
+  });
+
+  it("refuses an Edge at or beyond a neighbour, the draft as it was, and says which Edges it must fall between", () => {
+    const { session } = exploreSession();
+    const draft = bandsDraftOf(session);
+    const list = draft.bands;
+
+    for (const edge of [2, 1.5, -0.5, -1]) {
+      expect(draft.isInOrder(3, edge)).toBe(false);
+      draft.moveEdge(3, edge);
+      expect(draft.bands).toBe(list);
+      expect(draft.refusalAt(3)).toEqual({ edge, below: -0.5, above: 1.5 });
+    }
+    expect(draft.isInOrder(3, 0.7)).toBe(true);
+    expect(draft.refusalAt(2)).toBeUndefined();
+  });
+
+  it("says the first Edge has none below and the last none above", () => {
+    const draft = bandsDraftOf(exploreSession().session);
+
+    draft.moveEdge(0, -1);
+    draft.moveEdge(6, 2);
+
+    expect(draft.refusalAt(0)).toEqual({ edge: -1, below: undefined, above: -1.5 });
+    expect(draft.refusalAt(6)).toEqual({ edge: 2, below: 2.5, above: undefined });
+  });
+
+  it("keeps an Edge's refusal until that Edge is next moved, through another Edge's moves and a band's label and colour", () => {
+    const draft = bandsDraftOf(exploreSession().session);
+    draft.moveEdge(3, 2);
+    draft.moveEdge(1, -3);
+
+    draft.moveEdge(4, 1.4);
+    draft.setLabel(3, "Fine");
+    draft.setColor(3, undefined);
+    expect(draft.refusalAt(3)).toEqual({ edge: 2, below: -0.5, above: 1.5 });
+    expect(draft.refusalAt(1)).toEqual({ edge: -3, below: -2.5, above: -0.5 });
+
+    draft.moveEdge(3, 0.7);
+    expect(draft.refusalAt(3)).toBeUndefined();
+    expect(draft.refusalAt(1)).toBeDefined();
+  });
+
+  it("drops every refusal on Add, Remove and Reset, which move the Edges' places", () => {
+    for (const edit of [(draft: BandListDraft) => draft.addBand(5), (draft: BandListDraft) => draft.removeBand(5), (draft: BandListDraft) => draft.reset()]) {
+      const draft = bandsDraftOf(exploreSession().session);
+      draft.moveEdge(3, 2);
+
+      edit(draft);
+
+      expect(draft.refusalAt(3)).toBeUndefined();
+    }
+  });
+
   it("leaves the Standard page's dynamic chart to its Comfort zones, whatever the list holds", () => {
     const { session, outputs } = exploreSession();
-    session.chart.setBandLabel(3, "Fine");
-    session.chart.addBand(2);
+    const draft = bandsDraftOf(session);
+    draft.setLabel(3, "Fine");
+    draft.addBand(2);
+    draft.apply();
 
     session.setAddress({ page: page.standard, model: pmvPpdIso });
     const traces = outputs.chart?.traces ?? [];
@@ -127,35 +237,11 @@ describe("The Bands panel's edits through the session", () => {
     expect(strokedEdges(outputs, defaultList)).toEqual([]);
   });
 
-  it("refuses an Edge at or beyond a neighbour, leaving the list and the spec as they were", () => {
+  it("keeps an applied list across a model switch and back, and the other model's list its own", () => {
     const { session, outputs } = exploreSession();
-    const list = session.chart.bands;
-    const spec = outputs.chart;
-
-    for (const edge of [2, 1.5, -0.5, -1]) {
-      expect(session.chart.moveBandEdge(3, edge)).toBe(false);
-    }
-
-    expect(session.chart.bands).toBe(list);
-    expect(outputs.chart).toBe(spec);
-    expect(session.chart.moveBandEdge(3, 0.7)).toBe(true);
-  });
-
-  it("returns the default list on Reset", () => {
-    const { session, outputs } = exploreSession();
-    session.chart.addBand(3);
-    session.chart.setBandColor(0, undefined);
-    session.chart.moveBandEdge(6, 4);
-
-    session.chart.resetBands();
-
-    expect(session.chart.bands).toEqual(defaultList);
-    expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
-  });
-
-  it("keeps an edited list across a model switch and back, and the other model's list its own", () => {
-    const { session, outputs } = exploreSession();
-    session.chart.setBandLabel(3, "Fine");
+    const draft = bandsDraftOf(session);
+    draft.setLabel(3, "Fine");
+    draft.apply();
     const edited = session.chart.bands;
 
     session.requestModel(pmvPpdAshrae);
