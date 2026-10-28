@@ -426,6 +426,14 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > `docs/design.md` and GLOSSARY.md follow the code. Open for the user: a toast still covers part of the Results card at
 > 1440 px (story 18), and the PMV pages' input cards end below 780 px. **Next: the frontend review's ticket 05 (N6),
 > then its themes (result table, edition, shell, link) and I9.**
+>
+> **2026-10-28 — position, the result table decided**: ticket 05 (N6) landed as `5483eb3`. The result-table theme
+> (review items R1 to R4) is grilled into ADR-0002 decision 85: the Compliance column goes and each classified output
+> is a column of the model's `table`, first, its category a Band badge; `pmv` and `ppd` are labelled "PMV" and "PPD",
+> `compliance` "Compliance" and `category` "Category"; a violation is an amber icon, `warning` `#d97706`, once per row
+> and no control, its words in its `title`; the table keeps one row per slot. Decisions 8, 66, 83 and 84 and ADR-0001
+> §4.3 are amended; GLOSSARY.md gains **Band badge**; `docs/design.md` follows. **Next: the user's `/to-spec` in
+> `.scratch/result-table/`, then the edition, shell and link themes and I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 

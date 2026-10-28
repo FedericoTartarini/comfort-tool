@@ -313,6 +313,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 60** (2026-10-01): "from the app's one band palette" in the second rule is one palette per classifier, chosen from a table in `core/bandPalette.ts` keyed by the classifier object, diverging or sequential, read at the band count; ISO 7730's "none" has no swatch. "Explore's output selection" in the third rule: there is none (decision 31).
 >
 > **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decision 60's note of the same day; `.scratch/explore/` ticket 09): built as `e39791a`. "Diverging or sequential" holds for the table's families but one: the thermal-sensation bins keep the CBE fills (`palettes.cbeSensation`, `core/bandPalette.ts:56`), decision 60 rule 3's exception, and no registered classifier is painted diverging yet.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 85** (2026-10-28): the **Compliance** section of the second rule is withdrawn, and with it the 2026-09-25 marker's `Thermal sensation: Neutral` and the swatches of the decision 60 marker. A classified output is a column of the model's `table`, listed first, headed by its `Quantity.label` and holding its category alone as a Band badge; the columns are the Input column while Compare is on, then the `table` in declaration order. A row whose run broke a bound carries an amber triangle-alert icon first in its first cell. One row per slot stands. In §4.1.3, "the Compliance column of the result table displays them directly" now reads: the classified outputs' columns display them.
 
 ### 4.4 Chart types (closed set, v1)
 

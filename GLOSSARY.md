@@ -113,8 +113,12 @@ The Bands of one model as the Explore page paints them: a copy of the model's Cl
 _Avoid_: thresholds, ranges, custom bands, scale
 
 **Classifier**:
-The library's bins that cut one output into categories: its Edges, its labels and which end of each interval is included. A model's default Band list is a copy of one, and the Compliance column's category is read against one.
+The library's bins that cut one output into categories: its Edges, its labels and which end of each interval is included. A model's default Band list is a copy of one, and a Band badge is read against one.
 _Avoid_: scale, interval scale, bins (in prose)
+
+**Band badge**:
+How the result table shows a classified output: the label of the Classifier's band the value falls in (for example "Neutral"), on a pill filled with that band's colour from its Palette, in that output's own column. A band without a colour gives an outlined pill. It reads the Classifier, never the Explore page's Band list.
+_Avoid_: swatch (that is a sample with no words), chip, tag, compliance (a yes or no is a column of its own)
 
 **Palette**:
 The colours a Classifier's Bands start with: one colour family per Classifier, diverging for a scale around neutral and sequential for a one-sided one, taken by band position, never by label; a sequential family is read without its lightest colour, a diverging one centred on its neutral band.
@@ -141,7 +145,7 @@ The text in an Image that says what its chart is computed from: the model and it
 _Avoid_: parameters, inputs table, caption
 
 **Swatch**:
-The small colour sample that stands for one thing on the page: a slot, a band or a category, drawn as a filled square, a line or a dot to match how the chart draws that thing. The same swatch appears in the legend, the result table and the slot buttons.
+The small colour sample that stands for one thing on the page: a slot or a band, drawn as a filled square, a line or a dot to match how the chart draws that thing. A slot's swatch appears in the legend, the result table and the slot buttons; a band's in the legend, as the result table shows a band by its Band badge.
 _Avoid_: dot, chip, colour key (a key is a quantity's library name), marker (that is the slot's point on the chart)
 
 **Session controls**:

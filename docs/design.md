@@ -14,17 +14,17 @@ The user's ask, in translation: an elegant sense of design that still fits a rig
 design language, and a style without the look of generated AI output. The reading agreed with the prototype: an instrument panel, not a product dashboard. References by
 name: Dieter Rams (unobtrusive, thorough down to the last detail, as little design as possible); Apple's grouped
 panels (System Settings, Finder: white groups on a barely tinted ground, no shadow, one radius, equal padding);
-Tufte's smallest effective difference. Not references: SaaS dashboards, stat tiles, badges, trend arrows, decorative
+Tufte's smallest effective difference. Not references: SaaS dashboards, stat tiles, badges (the Band badge, decision 85, the one exception), trend arrows, decorative
 icons, cream grounds with warm accents, display fonts.
 
 ## Principles
 
 1. **Colour means data.** Hue appears where it carries information: a slot's zones and marker, a band's fill, a
-   category's swatch. The interface is grey, white and black. The one blue, the brand, is spent on the current
+   category's Band badge. The interface is grey, white and black. The one blue, the brand, is spent on the current
    navigation item, the primary button, the focus ring, links, the header's and footer's bands, and every chosen or
    pressed toggle; red marks a box whose draft is past its bound or would be refused, once the typing pauses, and a
-   refused Edge's reason; a violation is marked by a button with an icon on its result row and by words in ink, never
-   a hue (decision 84).
+   refused Edge's reason; amber, the one other hue of the chrome, marks a violation by an icon on its result row, its
+   words in ink (decisions 84 and 85).
 2. **Structure is information.** The modules are white panels on a faint ground, each bounded by a ring at 10 % ink;
    no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the Inputs card's under the
    model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above
@@ -60,6 +60,7 @@ The named colours of `core/palette.ts` and the stylesheet's tokens, one set of h
 | paper | `#ffffff` | a panel's ground and the plot's ground; a box in the sidebar, which stands on the ground |
 | ground | `#f8fafc` | the page's ground and a field's tint, one value |
 | alert | `#dc2626` | a box marked at the pause (a draft past its bound or one that would be refused), a refused Edge's reason |
+| warning | `#d97706` | the violation icon on a result row (decision 85); 3.19:1 against `paper` |
 | slot 1, 2, 3 | `#0072b2`, `#009e73`, `#cc79a7` | Okabe–Ito's blue, bluish green and reddish purple: one hex per slot, from which the marker, the zone line and the zone fill are derived; safe for colour-blind readers and apart from RdBu's and YlOrRd's |
 
 A panel's ring is the ink at 10 %, the card primitive's own. The band families stay ColorBrewer's, read by decision
@@ -99,8 +100,8 @@ footer's text share one 12 px line; the sidebar's first group label's top meets 
 │ [CBE] │ CBE Thermal Comfort Tool                                     Documentation       │  brand band, 3.5rem
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ Standard   ┌─ Inputs ──────────── ◉ Compare┐ ┌─ Results ───────────────────────────────┐ │
-│ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Compliance     PMV    PPD  …            │ │
-│  ISO 7730  │ ───────────────────────────── │ │ ▢ Neutral    −0.24  6.15 %              │ │
+│ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Thermal sensation  PMV   PPD Compliance │ │
+│  ISO 7730  │ ───────────────────────────── │ │ (Neutral)        −0.24  6.15 %      Yes │ │
 │            │ Air temp (°C) [Temperature ▾] │ │ ASHRAE 55:2023                          │ │
 │ Tools      │ [25                      ↕]   │ └─────────────────────────────────────────┘ │
 │  Explore   │ 10 – 40 °C                    │ ┌─ Chart ────────────────── [Export image]┐ │
@@ -158,13 +159,15 @@ card ends with the Input calculators button, full width, outline, "Input calcula
 the model declares, which opens one tabbed dialog of one fixed height (decision 75); a model that declares none has no
 button.
 
-**Results.** A card: the Results heading; the table (decision 70: headings wrap, numbers right-aligned, the first
-column sticky, the region scrolls sideways with its clipped edge faded); then the standard's caption. A row whose run
-broke a limit carries a ghost button with the triangle-alert icon, named "Limits broken": before the slot's swatch in
-the Input column while the slots are named, else first in its Compliance cell, else in its first value cell. Activated,
-not hovered, it opens a popover, "Calculated, but outside these limits:" over the limits in their bound sentences
-(decision 84, rule 8). A "—" a violation causes has no icon of its own, and an output's broken bound is a caption in
-its Compliance cell too.
+**Results.** A card: the Results heading, nothing at its right; the table (decision 70: headings wrap, numbers
+right-aligned, the first column sticky, the region scrolls sideways with its clipped edge faded); then the standard's
+caption. The columns are the model's `table`, its classified outputs first, each cell of theirs a Band badge: the
+generated Badge filled with the band's colour, lettered in ink or white by contrast, outlined for a band without a
+colour, in sentence case (decision 85). Headings are the quantities' labels, "PMV", "PPD", "Compliance", so PMV's fit
+one line. A row whose run broke a limit carries the triangle-alert icon in `warning`, first in its first cell: before
+the slot's swatch while the slots are named, else before the first column's content. It is no control; its `title`
+holds "Calculated, but outside these limits:" over the limits in their bound sentences (decision 85, rule 5). A "—" a
+violation causes has no icon of its own.
 
 **Chart.** A card: the heading row carries Chart, then at the right, on Explore, the Bands button, and Export image;
 under it a view row, on every chart, holds the chart type toggle-group, named "Chart type", then the axis selects where
@@ -225,7 +228,7 @@ later pass.
 ## Self-check against the generic
 
 Removed from the earlier look: the bare white-on-white frame, the column rules, the navigation's icons, the empty line
-reserved for Time-series. Not used: shadows, stat tiles, badges, eyebrow labels, a collapsible sidebar, a cream ground
+reserved for Time-series. Not used: shadows, stat tiles, badges but the Band badge, eyebrow labels, a collapsible sidebar, a cream ground
 with a warm accent, a monospace face for data. Kept and recorded: the middle dot the copy uses as a separator; the
-generated components' own insides. What is this tool's: principle 1, hue only on data, with one blue for the chrome; and
+generated components' own insides. What is this tool's: principle 1, hue only on data, with one blue for the chrome and red and amber for its two marks; and
 a chart shape shared by the screen and the exported file.
