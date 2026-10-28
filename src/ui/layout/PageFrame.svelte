@@ -15,8 +15,18 @@
   content needs, the row and the bands' contents stand in one frame,
   `--frame-width`, centred in the window (rule 10 as revised again
   2026-10-12). The provider's Cmd/Ctrl+B is stopped at the window, so it
-  writes no cookie (rule 6).
+  writes no cookie (rule 6). On a desktop the header's toggle collapses the
+  sidebar (decision 87, rule 1): the column goes and the inset takes its room
+  in the unchanged frame, as its first child with the gutter on its left; the
+  provider's `open` is never set, as its setter writes a cookie.
 -->
+<script module lang="ts">
+  // Whether the sidebar's column stands on a desktop (decision 87, rule 1). Each page mounts its own frame, so the
+  // module keeps it across a page switch and a rebuild by Reset or a link's yes, and a load opens it; it is not session
+  // state, so no storage entry and no share link holds it.
+  let sidebarOpen = $state(true);
+</script>
+
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { copy } from "$lib/text/copy";
@@ -49,9 +59,9 @@
   const id = $props.id();
 
   // The tool sets no cookie (decision 73, rule 6), and the sidebar provider's Cmd/Ctrl+B writes `sidebar_state`
-  // whatever its `open`, at a width where the sidebar never collapses. The key stops at the window, before the
-  // provider's listener hears it, and does what the browser does with it; below `md` it no longer opens the sheet,
-  // which the trigger does.
+  // whatever its `open`, and the header's toggle alone collapses the sidebar (decision 87, rule 1). The key stops at
+  // the window, before the provider's listener hears it, and does what the browser does with it; below `md` it no
+  // longer opens the sheet, which the toggle does.
   function stopSidebarShortcut(event: KeyboardEvent) {
     if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) event.stopPropagation();
   }
@@ -70,10 +80,10 @@
   revised again 2026-10-12).
 -->
 <Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem);">
-  <SiteHeader {mark} />
+  <SiteHeader {mark} bind:sidebarOpen />
 
   <div class="mx-auto flex w-full max-inline-(--frame-width) flex-1">
-    <AppSidebar {navigation} {sessionControls} />
+    <AppSidebar open={sidebarOpen} {navigation} {sessionControls} />
     <!--
       The inset is the block's content area, the page's `main`, on the ground,
       and a container: two columns, the input card and the results and the
@@ -88,8 +98,9 @@
       gutter is the spacing token on three sides; on the fourth the sidebar's
       own insets make it, so its fills stand that far from the cards and its
       first group label's top is level with theirs. Below `md` the sidebar is
-      a sheet out of the row, the inset its first child, and the token makes
-      the fourth side too.
+      a sheet out of the row, and on a desktop collapsed it is not rendered:
+      the inset is then the row's first child, and the token makes the fourth
+      side too.
     -->
     <Sidebar.Inset class="@container min-w-0 bg-transparent first:pl-(--space-page)">
       <div

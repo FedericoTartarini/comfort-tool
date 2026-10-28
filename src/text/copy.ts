@@ -26,6 +26,8 @@ export const copy = {
   // The page's header and footer (ADR-0002 decision 67, rules 6 and 7). The licence's
   // name and target, the Code link's target and the citation's text are placeholders
   // until the user decides them (the Phase 5c spec, Out of Scope).
+  // The header's first control, which collapses the sidebar, is named for it (decision 87, rule 1).
+  sidebar: "Sidebar",
   documentation: "Documentation",
   documentationAddress: `${REPOSITORY}/blob/main/docs/user-guide.md`,
   libraryName: LIBRARY_NAME,

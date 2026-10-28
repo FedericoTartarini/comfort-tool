@@ -5,7 +5,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * at one width, a click moves no region and not the plot; the legend stands
  * beside the plot while the room there holds its basis; the input card goes
  * above the others below the two-column threshold; the sidebar is the
- * primitive's sheet below `md`. Geometry is read off the page and compared
+ * primitive's sheet below `md`, and the header's toggle collapses it above
+ * (decision 87, rule 1). Geometry is read off the page and compared
  * with itself before and after a click; nothing is a screenshot.
  */
 
@@ -373,51 +374,155 @@ for (const width of [2560, 1920, 1440, 1366, 1280, 1024, 768, 767]) {
   });
 }
 
-test("at 768 px, the sidebar is fixed and the header has no trigger", async ({ page }) => {
+/** The header's toggle of the sidebar (decision 87, rule 1). */
+function sidebarToggle(page: Page) {
+  return page.getByRole("banner").getByRole("button", { name: "Sidebar", exact: true });
+}
+
+test("at 768 px, the sidebar is the column, open, as the header's toggle says", async ({ page }) => {
   await openStandard(page, 768);
 
   await expect(page.getByRole("group", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
+  await expect(sidebarToggle(page)).toHaveAttribute("aria-expanded", "true");
   expect((await boxOf(page.getByRole("main"))).x).toBeGreaterThan(0);
 });
 
-test("below 768 px, the sidebar is a sheet that its trigger in the header opens and Escape closes", async ({ page }) => {
+test("below 768 px, the sidebar is a sheet that the header's toggle opens and Escape closes", async ({ page }) => {
   await openStandard(page, 767);
-  const trigger = page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" });
+  const toggle = sidebarToggle(page);
   const sheet = page.getByRole("dialog", { name: "Sidebar" });
 
   expect((await boxOf(page.getByRole("main"))).x).toBe(0);
   await expect(page.getByRole("group", { name: "Settings" })).toHaveCount(0);
-  expect((await boxOf(trigger)).x).toBeLessThan(
+  expect((await boxOf(toggle)).x).toBeLessThan(
     (await boxOf(page.getByRole("link", { name: "Center for the Built Environment" }).first())).x,
   );
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
 
-  // The trigger is the page's first stop by keyboard.
+  // The toggle is the page's first stop by keyboard.
   await page.keyboard.press("Tab");
-  await expect(trigger).toBeFocused();
+  await expect(toggle).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(sheet).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(sheet.getByRole("group", { name: "Settings" })).toBeVisible();
   await expect(sheet.getByRole("link", { name: "Explore" })).toBeVisible();
 
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
-  await expect(trigger).toBeFocused();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
 
-test("at 375 × 800, the sheet shows the sheet primitive's Close, which closes it as Escape does", async ({ page }) => {
+test("at 375 × 800, the header's first control is the toggle, and the sheet shows the sheet primitive's Close, which closes it as Escape does", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto(PMV_ADDRESS);
-  const trigger = page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" });
+  const toggle = sidebarToggle(page);
   const sheet = page.getByRole("dialog", { name: "Sidebar" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
 
-  await trigger.click();
+  await page.keyboard.press("Tab");
+  await expect(toggle).toBeFocused();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
   const close = sheet.getByRole("button", { name: "Close" });
   await expect(close).toBeVisible();
 
   await close.click();
   await expect(sheet).toBeHidden();
-  await expect(trigger).toBeFocused();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+/**
+ * The header's toggle collapses the sidebar on a desktop, and only it: one
+ * state in the page frame, open at a load, kept by a page switch and by
+ * Reset, in no cookie, no storage entry and no share link (ADR-0002 decision
+ * 87, rule 1).
+ */
+test.describe("the sidebar's toggle", () => {
+  const sidebar = (page: Page) => page.locator('[data-slot="sidebar-content"]');
+
+  test("at 1440 px, the header's first control collapses the sidebar, the input card at the gutter and the result and chart cards wider, and a second click restores the page", async ({ page }) => {
+    await openStandard(page, 1440);
+    const toggle = sidebarToggle(page);
+    await page.keyboard.press("Tab");
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const before = await boxes(page);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(sidebar(page)).toHaveCount(0);
+    // The toggle stands at the header row's gutter; the input card is now as far in.
+    expect((await boxOf(card(page, "Inputs"))).x).toBe((await boxOf(toggle)).x);
+    expect((await boxOf(card(page, "Results").locator(".."))).width).toBeGreaterThan(before.results.width);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect.poll(() => boxes(page)).toEqual(before);
+  });
+
+  test("collapsed, the header's mark keeps it collapsed, Reset's yes leaves it collapsed, and a reload opens it", async ({ page }) => {
+    await openStandard(page, 1440, EXPLORE_ADDRESS);
+    const toggle = sidebarToggle(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    await page.getByRole("banner").getByRole("link", { name: "Center for the Built Environment" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === DEFAULT_ADDRESS);
+    await expect(card(page, "Inputs")).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(sidebar(page)).toHaveCount(0);
+
+    // At a desktop width Reset stands in the sidebar; collapsed there, it is reached in the sheet.
+    await page.setViewportSize({ width: 375, height: 900 });
+    await toggle.click();
+    await page.getByRole("dialog", { name: "Sidebar" }).getByRole("button", { name: "Reset" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Yes, reset" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(sidebar(page)).toHaveCount(0);
+
+    await page.reload();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(sidebar(page)).toBeVisible();
+  });
+
+  test("a collapse and a reopen set no cookie, write no storage entry beyond the session's, and leave the share link as it was", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openStandard(page, 1440);
+    const share = async () => {
+      await page.getByRole("group", { name: "Settings" }).getByRole("button", { name: "Share" }).click();
+      return page.evaluate(() => navigator.clipboard.readText());
+    };
+    const stored = async () => ({
+      cookies: await page.context().cookies(),
+      ...(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))),
+    });
+    const link = await share();
+    const before = await stored();
+    expect(before.cookies).toEqual([]);
+
+    const toggle = sidebarToggle(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    expect(await stored()).toEqual(before);
+    expect(await share()).toBe(link);
+  });
+
+  // The column reads the frame's state, not the provider's, so only the cookie shows whether the key reached it.
+  test("at 1440 px, Cmd/Ctrl+B sets no cookie", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.keyboard.press("ControlOrMeta+b");
+
+    expect(await page.context().cookies()).toEqual([]);
+  });
 });
 
 test("at 1440 px, the sidebar's Standard items read ASHRAE 55:2023 then ISO 7730:2025, the registry's order", async ({ page }) => {
