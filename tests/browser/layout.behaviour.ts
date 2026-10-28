@@ -871,14 +871,15 @@ test.describe("the result table's columns", () => {
     ["Standard", PMV_ADDRESS, ISO_ADDRESS],
     ["Explore", EXPLORE_ADDRESS, ISO_EXPLORE_ADDRESS],
   ] as const) {
-    test(`at 1440 × 900 on ${name}, PMV (ASHRAE 55) reads Thermal sensation, PMV, PPD and Compliance on one line, Neutral at the defaults, and PMV (ISO 7730) Thermal sensation, Category, PMV and PPD`, async ({ page }) => {
+    test(`at 1440 × 900 on ${name}, PMV (ASHRAE 55) reads Thermal sensation, PMV, PPD and Compliance on one line, a Band badge reading Neutral at the defaults with no swatch beside it, and PMV (ISO 7730) Thermal sensation, Category, PMV and PPD`, async ({ page }) => {
       await openStandard(page, 1440, ashrae);
       await expect(headings(page)).toHaveText(["Thermal sensation", "PMV", "PPD", "Compliance"]);
       for (const heading of await headings(page).all()) {
         expect(await linesOf(heading), (await heading.textContent()) ?? undefined).toBe(1);
       }
       const firstCell = card(page, "Results").getByRole("table").getByRole("row").nth(1).getByRole("cell").first();
-      await expect(firstCell).toHaveText("Neutral");
+      await expect(firstCell.locator('[data-slot="badge"]')).toHaveText("Neutral");
+      await expect(firstCell.locator(".swatch")).toHaveCount(0);
 
       await openStandard(page, 1440, iso);
       await expect(headings(page)).toHaveText(["Thermal sensation", "Category", "PMV", "PPD"]);
@@ -909,17 +910,10 @@ test.describe("the result row's limits button", () => {
       await expect(button, address).toBeVisible();
       const firstCell = table.getByRole("row").nth(1).getByRole("cell").first();
       await expect(firstCell.getByRole("button", { name: "Limits broken" }), address).toHaveCount(1);
-      // First in its cell, before the band's label, and on the label's line, not wrapped above it.
+      // First in its cell, before the band's badge, and on the badge's line, not wrapped above it.
       await expect(firstCell, address).toHaveText("Slightly Cool");
       const box = await boxOf(button);
-      const label = await firstCell.evaluate((element) => {
-        const text = [...element.childNodes].reverse().find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
-        if (!text) throw new Error("the first cell holds no text");
-        const range = document.createRange();
-        range.selectNodeContents(text);
-        const { x, y, height } = range.getBoundingClientRect();
-        return { x, y, height };
-      });
+      const label = await boxOf(firstCell.locator('[data-slot="badge"]'));
       expect(box.x + box.width, address).toBeLessThanOrEqual(label.x);
       expect(box.y + box.height / 2, address).toBeGreaterThan(label.y);
       expect(box.y + box.height / 2, address).toBeLessThan(label.y + label.height);

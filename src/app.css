@@ -520,6 +520,14 @@
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
+/* A Band badge (decision 85, rule 3) in the fill and lettering the table sets on it, `--band-fill` and
+   `--band-lettering`, edged as a fill swatch is, so a near-white band shows on the paper. Unlayered, as the
+   primitive's default fill is a utility. */
+.result-table .band-badge {
+	border-color: var(--border);
+	background-color: var(--band-fill);
+	color: var(--band-lettering);
+}
 /* A row's limits button (decision 84, rule 8) stands on the text's line without making the row taller, before what
    its cell holds: spaced by the gap of the swatch's label, and in a value cell by its own margin. */
 .result-table .limits-button {

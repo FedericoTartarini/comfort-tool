@@ -8,7 +8,8 @@ import {
   type ClassifierBins,
 } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { bandColors, chartInk, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
+import { bandColors, chartInk, colorForBand, letteringOn, palettes, type PaletteEntry } from "./bandPalette";
+import { palette } from "./palette";
 
 // ColorBrewer's RdBu-7, read cold to hot: the thermal-sensation scale's Cold … Hot.
 const rdBu7 = ["#2166ac", "#67a9cf", "#d1e5f0", "#f7f7f7", "#fddbc7", "#ef8a62", "#b2182b"];
@@ -119,6 +120,21 @@ describe("colorForBand", () => {
     expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, "none")).toBeUndefined();
     expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, Number.NaN)).toBeUndefined();
     expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Freezing")).toBeUndefined();
+  });
+});
+
+describe("letteringOn", () => {
+  // The pairs ADR-0002 decision 85's Facts computed by WCAG 2's contrast ratio.
+  it("letters a pale fill and #f03b20 in ink", () => {
+    for (const fill of ["#f7f7f7", "#fddbc7", "#fecc5c", "#f03b20"]) {
+      expect(letteringOn(fill), fill).toBe(palette.ink);
+    }
+  });
+
+  it("letters a dark fill in white", () => {
+    for (const fill of ["#b2182b", "#2166ac", "#bd0026"]) {
+      expect(letteringOn(fill), fill).toBe("#ffffff");
+    }
   });
 });
 

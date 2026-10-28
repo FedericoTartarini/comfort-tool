@@ -3,12 +3,13 @@
   import { warningFor } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
-  import { formatResultCell } from "$lib/core/resultCell";
+  import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
   import { standardCaptionFor } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import { Badge } from "$lib/ui/primitives/badge";
   import { Button } from "$lib/ui/primitives/button";
   import * as Popover from "$lib/ui/primitives/popover";
   import * as Table from "$lib/ui/primitives/table";
@@ -34,6 +35,18 @@
 <!-- A slot's swatch is its chart marker's. -->
 {#snippet slotSwatch(row: SlotOutputs)}
   <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(row.badge.hue)}></span>
+{/snippet}
+
+<!-- A Band badge's fill and lettering are its band's, set here as a swatch's colour is; a band without a colour is
+     outlined. -->
+{#snippet resultCell(cell: ResultCell)}
+  {#if cell.kind === "text"}
+    {cell.text}
+  {:else if cell.paint}
+    <Badge class="band-badge" style="--band-fill: {cell.paint.fill}; --band-lettering: {cell.paint.lettering}">{cell.label}</Badge>
+  {:else}
+    <Badge variant="outline">{cell.label}</Badge>
+  {/if}
 {/snippet}
 
 <!-- A row whose run broke a limit opens, by its button, the limits it broke in the bound sentence's words (ADR-0002
@@ -99,7 +112,7 @@
                 {#if !namesRows && index === 0}
                   {@render limitsButton(row)}
                 {/if}
-                {formatResultCell(model, row.result, quantity, unitSystem, row.violations)}
+                {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
               </Table.Cell>
             {/each}
           </Table.Row>

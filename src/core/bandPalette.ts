@@ -15,8 +15,9 @@ import type { SlotHue } from "./slotBadge";
  * library's classifier object, by identity, as the quantity table is, and read
  * by its entry's rule; they are assigned by position in its bins, never by
  * label text, so the library owns the bands and the app owns only the paint.
- * The result table's Compliance swatches read from here, as Explore's default
- * Band list does (`core/bands.ts`), and both charts' chrome ink; a slot's own
+ * The result table's Band badges read their fill and lettering from here
+ * (`core/resultCell.ts`), as Explore's default Band list does its colours
+ * (`core/bands.ts`), and both charts' chrome ink; a slot's own
  * ink is its hue (`core/slotBadge.ts`).
  */
 
@@ -148,9 +149,33 @@ export function colorForBand(bins: ClassifierBins, category: string | number): s
   return index === -1 ? undefined : bandColors(bins)[index];
 }
 
-/** A `#rrggbb` hex as the `r, g, b` an `rgba()` takes. */
-function channelsOf(hex: string): string {
-  return [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16)).join(", ");
+/** A `#rrggbb` hex as its three channels, 0 to 255. */
+function channelsOf(hex: string): readonly number[] {
+  return [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+}
+
+/** A `#rrggbb` hex's relative luminance, as WCAG 2 defines it (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance). */
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = channelsOf(hex).map((channel) => {
+    const srgb = channel / 255;
+    return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG 2's contrast ratio of two `#rrggbb` colours, 1 to 21. */
+function contrastRatio(one: string, other: string): number {
+  const [lighter, darker] = [relativeLuminance(one), relativeLuminance(other)].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * The lettering of a Band badge filled with `fill` (ADR-0002 decision 85,
+ * rule 3): the palette's ink or white, the paper's, whichever has the higher
+ * contrast ratio with the fill; ink on a tie.
+ */
+export function letteringOn(fill: string): string {
+  return contrastRatio(palette.paper, fill) > contrastRatio(palette.ink, fill) ? palette.paper : palette.ink;
 }
 
 /**
@@ -175,7 +200,7 @@ export const chartInk = {
    * 0.4 (ADR-0002 decision 71).
    */
   zoneFill: (hue: SlotHue, level: number, levels: number): string =>
-    `rgba(${channelsOf(hue)}, ${0.2 + 0.2 * (levels === 1 ? 1 : level / (levels - 1))})`,
+    `rgba(${channelsOf(hue).join(", ")}, ${0.2 + 0.2 * (levels === 1 ? 1 : level / (levels - 1))})`,
   /** The plot area's ground, which a band painted nowhere shows: the page's paper. */
   ground: palette.paper,
   isoline: palette.lineStrong,
