@@ -169,6 +169,9 @@ export const copy = {
   imageDownload: "Download",
   imageFailedNotice: "The image could not be made.",
   imageIncludesSummaryAndFooter: "Include input summary and footer",
+  // A standard's name, `ASHRAE 55:2023`, as the sidebar, the Explore select's group heading and the Input summary write
+  // it (decision 86, rule 2): the colon for every body.
+  standardName: (bodyAndNumber: string, year: string) => `${bodyAndNumber}:${year}`,
   // The Input summary's lines (decision 64, rule 3): `label` is a quantity's with its unit, or an option's.
   summaryModel: (model: string, standard: string) => `${model} · ${standard}`,
   summaryValue: (label: string, value: string) => `${label}: ${value}`,
@@ -177,7 +180,6 @@ export const copy = {
   // The Image's footer, two lines (decision 64, rule 4): `day` as `2026-10-07`.
   footerTool: (name: string, version: string) => `${name} ${version}`,
   footerLibrary: (version: string, day: string) => `${LIBRARY_NAME} ${version} · ${day}`,
-  standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).
   yes: "Yes",

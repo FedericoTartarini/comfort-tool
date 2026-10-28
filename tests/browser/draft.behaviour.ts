@@ -14,7 +14,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  */
 
 /** PMV (ASHRAE 55): dry-bulb 10 – 40 °C. */
-const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
+const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
 
 /** How long typing pauses before a legal draft commits, [ms]: the box's `COMMIT_PAUSE_MS`. */
 const COMMIT_PAUSE = 400;

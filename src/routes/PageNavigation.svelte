@@ -28,7 +28,7 @@
     return { label, current: ariaCurrentOf(target, session), ...inAppLinkTo(target, onfollow) };
   }
 
-  const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.displayName)));
+  const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.name)));
   const toolItems = $derived([itemTo({ page: page.explore, model: session.model }, page.explore.title)]);
 </script>
 

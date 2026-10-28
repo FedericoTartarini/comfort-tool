@@ -2,7 +2,6 @@ import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
-import { isSameStandard } from "$lib/core/standard";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -28,8 +27,8 @@ const fixtureWithoutStandard = {
   info: { ...pmvPpdIso.info, name: "fixture_no_standard", standards: [] },
 };
 
-// The other edition of pmvPpdIso's standard: both editions share the route
-// segment `iso-7730`, because the segment carries no year (ADR-0002 decision 6).
+// pmvPpdIso's body and number in another year: a standard of its own,
+// with its own route segment, sidebar link and select group (ADR-0002 decision 86).
 const fixtureIso2005 = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_iso_2005", standards: [Standard.iso_7730_2005] },
@@ -43,11 +42,10 @@ const fixtureIso7933 = {
 
 const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
 
-/** Whether `a` and `b` both have a standard, and it is one standard, of whichever edition. */
+/** Whether `a` and `b` both have a standard, and it is one standard. */
 function shareAStandard(a: RegisteredModel, b: RegisteredModel): boolean {
-  const standardA = standardOf(a);
-  const standardB = standardOf(b);
-  return standardA !== undefined && standardB !== undefined && isSameStandard(standardA, standardB);
+  const standard = standardOf(a);
+  return standard !== undefined && standard === standardOf(b);
 }
 
 /** Whether no model without a standard comes before a model with one. */
@@ -77,7 +75,7 @@ describe("toRouteSegment", () => {
 
 describe("routeSegmentsOf", () => {
   it("pairs the standard's route segment with the model's own", () => {
-    expect(routeSegmentsOf(pmvPpdIso)).toEqual({ standard: "iso-7730", model: "pmv-ppd-iso" });
+    expect(routeSegmentsOf(pmvPpdIso)).toEqual({ standard: "iso-7730-2025", model: "pmv-ppd-iso" });
   });
 
   it("throws for a model with no standard, which has no Standard page", () => {
@@ -87,22 +85,24 @@ describe("routeSegmentsOf", () => {
 
 describe("modelBySegment", () => {
   it("returns the model the standard's and the model's route segments name", () => {
-    expect(modelBySegment("iso-7730", "pmv-ppd-iso", fixtures)).toBe(pmvPpdIso);
+    expect(modelBySegment("iso-7730-2025", "pmv-ppd-iso", fixtures)).toBe(pmvPpdIso);
   });
 
-  it("finds a model of either edition of a standard by its own address", () => {
+  it("finds a model of each of two years of one standard by its own address, and neither by the other's", () => {
     for (const model of [pmvPpdIso, fixtureIso2005]) {
       const segments = routeSegmentsOf(model);
       expect(modelBySegment(segments.standard, segments.model, fixtures)).toBe(model);
     }
+    expect(routeSegmentsOf(fixtureIso2005).standard).toBe("iso-7730-2005");
+    expect(modelBySegment("iso-7730-2005", "pmv-ppd-iso", fixtures)).toBeUndefined();
   });
 
   it("returns nothing for a segment no model of that standard declares", () => {
-    expect(modelBySegment("iso-7730", "no-such-model", fixtures)).toBeUndefined();
+    expect(modelBySegment("iso-7730-2025", "no-such-model", fixtures)).toBeUndefined();
   });
 
   it("returns nothing for a segment of another standard", () => {
-    expect(modelBySegment("ashrae-55", "pmv-ppd-iso", fixtures)).toBeUndefined();
+    expect(modelBySegment("ashrae-55-2023", "pmv-ppd-iso", fixtures)).toBeUndefined();
   });
 
   it("returns nothing for a standard segment no standard names", () => {
@@ -110,8 +110,13 @@ describe("modelBySegment", () => {
     expect(modelBySegment(undefined, "pmv-ppd-iso", fixtures)).toBeUndefined();
   });
 
+  it("returns nothing for an address in the old form, whose standard segment has no year", () => {
+    expect(modelBySegment("ashrae-55", "pmv-ppd-ashrae")).toBeUndefined();
+    expect(modelBySegment("iso-7730", "pmv-ppd-iso")).toBeUndefined();
+  });
+
   it("never returns a standard-less model, whatever the URL names", () => {
-    for (const standardSegment of [undefined, "", "iso-7730"]) {
+    for (const standardSegment of [undefined, "", "iso-7730-2025"]) {
       expect(modelBySegment(standardSegment, "fixture-no-standard", fixtures)).toBeUndefined();
     }
   });
@@ -156,9 +161,9 @@ describe("modelByExploreSegment", () => {
 
 describe("standardLinks", () => {
   it("gives each standard with a model one link, in the registry's order, to its first registered model on the Standard page", () => {
-    expect(standardLinks().map(({ standard, address }) => [standard.displayName, address.page, address.model])).toEqual([
-      ["ASHRAE 55", page.standard, pmvPpdAshrae],
-      ["ISO 7730", page.standard, pmvPpdIso],
+    expect(standardLinks().map(({ standard, address }) => [standard.name, address.page, address.model])).toEqual([
+      ["ASHRAE 55:2023", page.standard, pmvPpdAshrae],
+      ["ISO 7730:2025", page.standard, pmvPpdIso],
     ]);
   });
 
@@ -173,19 +178,20 @@ describe("standardLinks", () => {
     ]);
   });
 
-  it("gives a standard one link whichever edition its models have, named by its model registered first", () => {
+  it("gives two years of one body and number two links, each named with its own year", () => {
     expect(
-      standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.id, address.model]),
+      standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.name, address.model]),
     ).toEqual([
-      [Standard.iso_7730_2005, fixtureIso2005],
-      [Standard.ashrae_55_2023, adaptiveAshrae],
+      ["ISO 7730:2005", fixtureIso2005],
+      ["ISO 7730:2025", pmvPpdIso],
+      ["ASHRAE 55:2023", adaptiveAshrae],
     ]);
   });
 
   it("gives a standard no other model has its own link", () => {
-    expect(standardLinks([pmvPpdAshrae, fixtureIso7933]).map(({ standard, address }) => [standard.displayName, address.model])).toEqual([
-      ["ASHRAE 55", pmvPpdAshrae],
-      ["ISO 7933", fixtureIso7933],
+    expect(standardLinks([pmvPpdAshrae, fixtureIso7933]).map(({ standard, address }) => [standard.name, address.model])).toEqual([
+      ["ASHRAE 55:2023", pmvPpdAshrae],
+      ["ISO 7933:2023", fixtureIso7933],
     ]);
   });
 
@@ -207,21 +213,28 @@ describe("modelChoicesOn", () => {
     expect(byStandard(modelChoicesOn({ page: page.standard, model: pmvPpdIso }))).toEqual([[Standard.iso_7730_2025, [pmvPpdIso]]]);
   });
 
-  it("offers one group of either edition's models on the Standard page, whichever is open, named by its model registered first", () => {
-    for (const model of [pmvPpdIso, fixtureIso2005]) {
-      expect(byStandard(modelChoicesOn({ page: page.standard, model }, fixtures)), model.info.label).toEqual([
-        [Standard.iso_7730_2025, [pmvPpdIso, fixtureIso2005]],
-      ]);
-    }
+  it("offers on the Standard page the open standard's models only, not another year's of its body and number", () => {
+    expect(byStandard(modelChoicesOn({ page: page.standard, model: pmvPpdIso }, fixtures))).toEqual([
+      [Standard.iso_7730_2025, [pmvPpdIso]],
+    ]);
+    expect(byStandard(modelChoicesOn({ page: page.standard, model: fixtureIso2005 }, fixtures))).toEqual([
+      [Standard.iso_7730_2005, [fixtureIso2005]],
+    ]);
   });
 
   it("offers on Explore one group per standard in the order the registry first names each, the standard-less group last", () => {
     const models = [fixtureWithoutStandard, pmvPpdIso, adaptiveAshrae, fixtureIso2005];
     expect(byStandard(modelChoicesOn({ page: page.explore, model: pmvPpdIso }, models))).toEqual([
-      [Standard.iso_7730_2025, [pmvPpdIso, fixtureIso2005]],
+      [Standard.iso_7730_2025, [pmvPpdIso]],
       [Standard.ashrae_55_2023, [adaptiveAshrae]],
+      [Standard.iso_7730_2005, [fixtureIso2005]],
       [undefined, [fixtureWithoutStandard]],
     ]);
+  });
+
+  it("heads the groups of two years of one body and number on Explore each with its own year", () => {
+    const groups = modelChoicesOn({ page: page.explore, model: pmvPpdIso }, fixtures);
+    expect(groups.map(({ standard }) => standard?.name)).toEqual(["ISO 7730:2025", "ISO 7730:2005", undefined]);
   });
 
   it("offers on Explore no standard-less group when every model has a standard", () => {
@@ -230,10 +243,10 @@ describe("modelChoicesOn", () => {
     ]);
   });
 
-  it("offers on Explore ASHRAE 55, ISO 7730 and then Heat Index alone, every registered model once in registry order", () => {
+  it("offers on Explore ASHRAE 55:2023, ISO 7730:2025 and then Heat Index alone, every registered model once in registry order", () => {
     for (const model of registeredModels) {
       const groups = modelChoicesOn({ page: page.explore, model });
-      expect(groups.map(({ standard }) => standard?.displayName)).toEqual(["ASHRAE 55", "ISO 7730", undefined]);
+      expect(groups.map(({ standard }) => standard?.name)).toEqual(["ASHRAE 55:2023", "ISO 7730:2025", undefined]);
       expect(groups[groups.length - 1].models).toEqual([heatIndexRothfusz]);
       expect(groups.flatMap(({ models }) => models)).toEqual(registeredModels);
     }
@@ -250,11 +263,12 @@ describe("isCurrentLink", () => {
     }
   });
 
-  it("marks a standard's link current on a model of either of its editions", () => {
-    const [isoFixtureLink] = standardLinks(fixtures).map(({ address }) => address);
-    for (const model of [pmvPpdIso, fixtureIso2005]) {
-      expect(isCurrentLink(isoFixtureLink, { page: page.standard, model }), model.info.label).toBe(true);
-    }
+  it("marks a standard's link current on its own model and not on another year's of its body and number", () => {
+    const [iso2025Link, iso2005Link] = standardLinks(fixtures).map(({ address }) => address);
+    expect(isCurrentLink(iso2025Link, { page: page.standard, model: pmvPpdIso })).toBe(true);
+    expect(isCurrentLink(iso2005Link, { page: page.standard, model: pmvPpdIso })).toBe(false);
+    expect(isCurrentLink(iso2005Link, { page: page.standard, model: fixtureIso2005 })).toBe(true);
+    expect(isCurrentLink(iso2025Link, { page: page.standard, model: fixtureIso2005 })).toBe(false);
   });
 
   it("marks no standard's link current on Explore, and the Explore link there alone, a model with no standard included", () => {
@@ -310,9 +324,9 @@ describe("the registry's order", () => {
     expect(hasStandardModelsFirst([pmvPpdAshrae, heatIndexRothfusz, pmvPpdIso])).toBe(false);
   });
 
-  it("keeps the models of one standard together, of whichever edition", () => {
+  it("keeps the models of one standard together", () => {
     expect(keepsStandardsTogether(registeredModels)).toBe(true);
-    expect(keepsStandardsTogether([pmvPpdIso, pmvPpdAshrae, fixtureIso2005])).toBe(false);
+    expect(keepsStandardsTogether([pmvPpdAshrae, pmvPpdIso, adaptiveAshrae])).toBe(false);
     expect(keepsStandardsTogether([pmvPpdAshrae, pmvPpdIso, fixtureIso2005, heatIndexRothfusz])).toBe(true);
   });
 });

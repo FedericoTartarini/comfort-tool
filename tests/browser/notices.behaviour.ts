@@ -12,8 +12,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * Reset takes the toasts standing with it.
  */
 
-const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
-const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
+const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
+const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
 
 /** PMV (ISO 7730) as Share writes it, slot 1 holding `values` alone. */
 function isoLinkWith(values: Record<string, number>): string {

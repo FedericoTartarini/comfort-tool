@@ -6,7 +6,7 @@ import { optionsOf, standardOf, type RegisteredModel } from "./modelDeclaration"
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 import { enteredValue, panelQuantities, type Slot } from "./slot";
-import { standardCaptionFor } from "./standard";
+import { standardEntryFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
@@ -48,7 +48,7 @@ export function inputSummary(parts: {
 }): InputSummary {
   const { model, runs, unitSystem, bands } = parts;
   const standard = standardOf(model);
-  const modelLine = standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardCaptionFor(standard));
+  const modelLine = standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardEntryFor(standard).name);
   const edges = bands && model.scan ? [[edgesLine(model.scan.output, bands, unitSystem)]] : [];
   return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem)), ...edges];
 }

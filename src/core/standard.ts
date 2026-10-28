@@ -2,14 +2,14 @@ import { Standard } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 
 /**
- * Display name, edition year and route segment for a library `Standard`,
- * derived from its key rather than written down per standard (ADR-0002
- * decision 6): `iso_7730_2005` → "ISO 7730", "2005", `iso-7730`.
+ * Name and route segment for a library `Standard`, its year included, derived
+ * from its key rather than written down per standard (ADR-0002 decisions 6 and 86):
+ * `iso_7730_2005` → "ISO 7730:2005", `iso-7730-2005`.
  */
 export interface StandardEntry {
   readonly id: Standard;
-  readonly displayName: string;
-  readonly year: string;
+  /** As the sidebar, the Explore select's group heading and the Input summary write it. */
+  readonly name: string;
   readonly routeSegment: string;
 }
 
@@ -21,7 +21,7 @@ function parseStandardKey(key: string): Omit<StandardEntry, "id"> {
     throw new Error(`Cannot parse standard key "${key}" as "<body>_<number>_<year>"`);
   }
   const [, body, number, year] = match;
-  return { displayName: `${body.toUpperCase()} ${number}`, year, routeSegment: `${body}-${number}` };
+  return { name: copy.standardName(`${body.toUpperCase()} ${number}`, year), routeSegment: `${body}-${number}-${year}` };
 }
 
 /** Every standard the library names, in `Standard`'s own key order. */
@@ -30,25 +30,7 @@ export const standards: readonly StandardEntry[] = (Object.keys(Standard) as (ke
   return { id: Standard[key], ...parsed };
 });
 
-export function routeSegmentFor(standard: Standard): string {
-  return entryFor(standard).routeSegment;
-}
-
-/**
- * Whether `a` and `b` are editions of one standard (ADR-0002 decision 74, rule
- * 2): `iso_7730_2005` and `iso_7730_2025` are, by their shared route segment.
- */
-export function isSameStandard(a: Standard, b: Standard): boolean {
-  return routeSegmentFor(a) === routeSegmentFor(b);
-}
-
-/** `standard` as the Input summary writes it: `ASHRAE 55:2023`. */
-export function standardCaptionFor(standard: Standard): string {
-  const { displayName, year } = entryFor(standard);
-  return copy.standardCaption(displayName, year);
-}
-
-function entryFor(standard: Standard): StandardEntry {
+export function standardEntryFor(standard: Standard): StandardEntry {
   const row = standards.find((entry) => entry.id === standard);
   if (!row) {
     throw new Error(`No entry declared for standard "${standard}"`);

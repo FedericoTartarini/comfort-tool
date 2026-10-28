@@ -10,12 +10,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  */
 
 /** ASHRAE 55's two models: PMV has a chart of both types, and a switch from Adaptive can ask. */
-const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
-const ADAPTIVE_ADDRESS = "/standard/ashrae-55/adaptive-ashrae";
+const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
+const ADAPTIVE_ADDRESS = "/standard/ashrae-55-2023/adaptive-ashrae";
 /** The default model's Standard page, where the header's mark goes: PMV (ASHRAE 55)'s. */
 const DEFAULT_ADDRESS = PMV_ADDRESS;
 /** PMV (ISO 7730), whose bounds the default model's do not all contain: metabolic rate from 0.8 met, not 1. */
-const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
+const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
 /** Explore, whose model select offers every registered model. */
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 /** PMV (ISO 7730) on Explore, which draws the same result table as Standard. */
@@ -411,21 +411,37 @@ test("at 375 × 800, the sheet shows the sheet primitive's Close, which closes i
   await expect(trigger).toBeFocused();
 });
 
-test("at 1440 px, the sidebar's Standard items read ASHRAE 55 then ISO 7730, the registry's order", async ({ page }) => {
+test("at 1440 px, the sidebar's Standard items read ASHRAE 55:2023 then ISO 7730:2025, the registry's order", async ({ page }) => {
   await openStandard(page, 1440);
 
   await expect(page.getByRole("navigation").getByRole("group", { name: "Standard" }).getByRole("link")).toHaveText([
-    "ASHRAE 55",
-    "ISO 7730",
+    "ASHRAE 55:2023",
+    "ISO 7730:2025",
   ]);
 });
 
-test("at 1440 px, Explore's model select lists its models under ASHRAE 55, ISO 7730 and Other, Heat Index under the last", async ({ page }) => {
+/** A standard's route segment carries its year, and an address without one names no model (ADR-0002 decision 86, rules 2 and 5). */
+test("at 1440 px, a click on the sidebar's ISO 7730:2025 puts its segment with the year in the address bar", async ({ page }) => {
+  await openStandard(page, 1440);
+
+  await page.getByRole("navigation").getByRole("group", { name: "Standard" }).getByRole("link", { name: "ISO 7730:2025" }).click();
+
+  await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+});
+
+test("an address in the old form, without a year, opens the default model with the address corrected", async ({ page }) => {
+  await openStandard(page, 1440, "/standard/iso-7730/pmv-ppd-iso");
+
+  await expect(page).toHaveURL((url) => url.pathname === DEFAULT_ADDRESS);
+  await expect(page.getByRole("button", { name: "Model", exact: true })).toHaveText("PMV / PPD (ASHRAE 55)");
+});
+
+test("at 1440 px, Explore's model select lists its models under ASHRAE 55:2023, ISO 7730:2025 and Other, Heat Index under the last", async ({ page }) => {
   await openStandard(page, 1440, EXPLORE_ADDRESS);
   await page.getByRole("button", { name: "Model", exact: true }).click();
   const list = page.getByRole("listbox");
 
-  await expect(list.locator('[data-slot="select-group-heading"]')).toHaveText(["ASHRAE 55", "ISO 7730", "Other"]);
+  await expect(list.locator('[data-slot="select-group-heading"]')).toHaveText(["ASHRAE 55:2023", "ISO 7730:2025", "Other"]);
   // The heading names its group, as a screen reader announces it.
   await expect(list.getByRole("group", { name: "Other" }).getByRole("option")).toHaveText(["Heat Index (Rothfusz)"]);
 });

@@ -12,7 +12,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  */
 
 /** PMV (ASHRAE 55): dry-bulb 10 – 40 °C, air speed from 0, so neither takes a minus. */
-const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
+const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
 async function open(page: Page, address: string) {

@@ -11,9 +11,9 @@ import { formatNumber } from "../../src/core/numberFormat";
  * two decimals.
  */
 
-const PMV_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
-const ISO_ADDRESS = "/standard/iso-7730/pmv-ppd-iso";
-const ADAPTIVE_ADDRESS = "/standard/ashrae-55/adaptive-ashrae";
+const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
+const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
+const ADAPTIVE_ADDRESS = "/standard/ashrae-55-2023/adaptive-ashrae";
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
 const SOLAR = "Solar gain on occupants";

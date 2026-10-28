@@ -45,7 +45,7 @@
 
   const groups = $derived(
     choices.map((group) => ({
-      heading: choices.length > 1 ? (group.standard?.displayName ?? copy.otherModels) : undefined,
+      heading: choices.length > 1 ? (group.standard?.name ?? copy.otherModels) : undefined,
       options: group.models.map((choice) => ({ key: String(models.indexOf(choice)), label: choice.info.label })),
     })),
   );

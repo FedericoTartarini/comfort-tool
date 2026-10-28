@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * without `Proxy` or `toSorted` its text only has to look like one.
  */
 const SHARE_ADDRESS =
-  "/standard/iso-7730/pmv-ppd-iso?share=v1.eyJtb2RlbCI6InBtdl9wcGRfaXNvIiwidW5pdFN5c3RlbSI6InNpIiwicF9hdG0iOjEwMTMyNSwiY29tcGFyZSI6ZmFsc2UsImVuYWJsZWQiOltmYWxzZSxmYWxzZV0sImVudHJ5TW9kZXMiOnsidGVtcGVyYXR1cmUiOiJzZXBhcmF0ZSIsImFpclNwZWVkIjoiYWlyLXNwZWVkIiwiY2xvdGhpbmciOiJjbG90aGluZy1pbnN1bGF0aW9uIiwiaHVtaWRpdHkiOiJyZWxhdGl2ZS1odW1pZGl0eSJ9LCJzbG90cyI6W3sidmFsdWVzIjp7InRkYiI6MjUsInRyIjoyNSwidiI6MC4xLCJtZXQiOjEuMSwiY2xvIjowLjUsInJoIjo1MH0sIm9wdGlvbnMiOnt9fSxudWxsLG51bGxdLCJjaGFydHMiOnsicG12X3BwZF9pc28iOnsidHlwZSI6InBzeWNocm9tZXRyaWMiLCJheGVzIjp7IngiOiJ0ZGIiLCJ5IjoidiJ9fX19";
+  "/standard/iso-7730-2025/pmv-ppd-iso?share=v1.eyJtb2RlbCI6InBtdl9wcGRfaXNvIiwidW5pdFN5c3RlbSI6InNpIiwicF9hdG0iOjEwMTMyNSwiY29tcGFyZSI6ZmFsc2UsImVuYWJsZWQiOltmYWxzZSxmYWxzZV0sImVudHJ5TW9kZXMiOnsidGVtcGVyYXR1cmUiOiJzZXBhcmF0ZSIsImFpclNwZWVkIjoiYWlyLXNwZWVkIiwiY2xvdGhpbmciOiJjbG90aGluZy1pbnN1bGF0aW9uIiwiaHVtaWRpdHkiOiJyZWxhdGl2ZS1odW1pZGl0eSJ9LCJzbG90cyI6W3sidmFsdWVzIjp7InRkYiI6MjUsInRyIjoyNSwidiI6MC4xLCJtZXQiOjEuMSwiY2xvIjowLjUsInJoIjo1MH0sIm9wdGlvbnMiOnt9fSxudWxsLG51bGxdLCJjaGFydHMiOnsicG12X3BwZF9pc28iOnsidHlwZSI6InBzeWNocm9tZXRyaWMiLCJheGVzIjp7IngiOiJ0ZGIiLCJ5IjoidiJ9fX19";
 
 /** What a person opens: the tool itself, or a share link to it. */
 const openings = [
@@ -60,7 +60,7 @@ test("with Proxy and toSorted, a share link shows the app on the model it names,
 
   await expect(page.locator("#app")).not.toBeEmpty();
   await expect(page.getByRole("button", { name: "Model", exact: true })).toHaveText("PMV / PPD (ISO 7730)");
-  await expect(page).toHaveURL((url) => url.pathname === "/standard/iso-7730/pmv-ppd-iso");
+  await expect(page).toHaveURL((url) => url.pathname === "/standard/iso-7730-2025/pmv-ppd-iso");
   await expect(page.locator("#browser-notice")).toBeAttached();
   await expect(page.locator("#browser-notice")).toBeHidden();
 });

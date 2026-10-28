@@ -16,7 +16,7 @@ import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
 import { slotNames } from "./slotBadge";
-import { standardCaptionFor } from "./standard";
+import { standardEntryFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 import type { SlotPosition } from "./writtenSession";
@@ -66,7 +66,7 @@ describe("inputSummary", () => {
   it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
     const summary = summaryOf(pmvPpdAshrae, [runOf(startingSlot(pmvPpdAshrae))]);
     expect(summary).toEqual([
-      [copy.summaryModel(pmvPpdAshrae.info.label, standardCaptionFor(Standard.ashrae_55_2023))],
+      [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).name)],
       [
         ...inputsOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,

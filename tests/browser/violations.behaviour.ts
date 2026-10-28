@@ -10,7 +10,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * Standard's alone.
  */
 
-const STANDARD_ADDRESS = "/standard/ashrae-55/pmv-ppd-ashrae";
+const STANDARD_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
 /**
