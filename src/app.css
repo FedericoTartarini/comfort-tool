@@ -227,10 +227,6 @@
 			linear-gradient(to left, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) right / 1.5rem
 				100% no-repeat scroll;
 	}
-	/* A caveat in the Compliance column wraps, so a long warning does not widen the table (decision 70, rule 1). */
-	.result-table .caveat {
-		white-space: normal;
-	}
 	/* The first column, the slot's name, stays in view while the region scrolls (decision 70, rule 3), opaque so the
 	   columns under it do not show through: on the paper, or on the colour the row primitive's `hover:bg-muted/50`
 	   gives a hovered row, changing with the row's own `transition-colors` so the cell does not lead the row. */
@@ -514,8 +510,8 @@
 	overflow-x: visible;
 }
 /* The result table's headings wrap, standing at the foot of their cell over the column they name; a result's
-   value, a number, Yes or No, or a dash, is right-aligned in tabular figures under its heading, so decimals line
-   up (decision 70, rule 1). Unlayered, as the heading's `text-left` and `whitespace-nowrap` are the primitive's. */
+   value, a category, a number, Yes or No, or a dash, is right-aligned in tabular figures under its heading, so
+   decimals line up (decision 70, rule 1). Unlayered, as the heading's `text-left` and `whitespace-nowrap` are the primitive's. */
 .result-table [data-slot="table-head"] {
 	white-space: normal;
 	vertical-align: bottom;
@@ -525,15 +521,9 @@
 	font-variant-numeric: tabular-nums;
 }
 /* A row's limits button (decision 84, rule 8) stands on the text's line without making the row taller, before what
-   its cell holds: spaced by the gap of the swatch's label, beside the Compliance entries by the lead's, which keeps
-   it on their first line, and in a value cell by its own margin. */
+   its cell holds: spaced by the gap of the swatch's label, and in a value cell by its own margin. */
 .result-table .limits-button {
 	margin-block: -0.25rem;
-}
-.result-table .limits-lead {
-	display: flex;
-	align-items: center;
-	gap: 0.4em;
 }
 .result-table .value .limits-button {
 	margin-inline-end: 0.25rem;

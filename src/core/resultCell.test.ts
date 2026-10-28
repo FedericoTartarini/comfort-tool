@@ -1,21 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
-import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { violationRows, type ViolationRow } from "./applicability";
-import { bandColors } from "./bandPalette";
 import type { RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { classifiedOutputs, formatResultCell } from "./resultCell";
+import { formatResultCell } from "./resultCell";
 import { startingSlot, withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
 
 const q = quantities;
-
-const sensation = bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO);
-const isoCategory = bandColors(PMV_CATEGORY_BINS_ISO_7730_2025);
 
 const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
@@ -29,29 +23,29 @@ describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {
     const result = { acceptability_80: true, compliance: false };
     for (const system of [unitSystem.si, unitSystem.ip]) {
-      expect(formatResultCell(result, q.acceptability_80, system, noViolations)).toBe("Yes");
-      expect(formatResultCell(result, q.compliance, system, noViolations)).toBe("No");
+      expect(formatResultCell(pmvPpdAshrae, result, q.acceptability_80, system, noViolations)).toBe("Yes");
+      expect(formatResultCell(pmvPpdAshrae, result, q.compliance, system, noViolations)).toBe("No");
     }
   });
 
   it("reads PMV (ASHRAE 55)'s compliance, a column of its table, as Yes inside the interval and No outside", () => {
     expect(pmvPpdAshrae.table).toContain(q.compliance);
-    expect(formatResultCell(atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si, noViolations)).toBe("Yes");
-    expect(formatResultCell(atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si, noViolations)).toBe("No");
+    expect(formatResultCell(pmvPpdAshrae, atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si, noViolations)).toBe("Yes");
+    expect(formatResultCell(pmvPpdAshrae, atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si, noViolations)).toBe("No");
   });
 
   it("shows every boolean result as a dash beside a violation row, whatever its value", () => {
     const result = { acceptability_80: true, compliance: false };
     for (const system of [unitSystem.si, unitSystem.ip]) {
-      expect(formatResultCell(result, q.acceptability_80, system, brokenAirSpeed)).toBe("—");
-      expect(formatResultCell(result, q.compliance, system, brokenAirSpeed)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, result, q.acceptability_80, system, brokenAirSpeed)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, result, q.compliance, system, brokenAirSpeed)).toBe("—");
     }
   });
 
   it("formats a number the same beside a violation row as without one", () => {
     const result = { tmp_cmf: 24.567, pmv: 0.5 };
-    expect(formatResultCell(result, q.tmp_cmf, unitSystem.ip, brokenAirSpeed)).toEqual(formatResultCell(result, q.tmp_cmf, unitSystem.ip, noViolations));
-    expect(formatResultCell(result, q.pmv, unitSystem.si, brokenAirSpeed)).toBe("0.5");
+    expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, brokenAirSpeed)).toEqual(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, noViolations));
+    expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, brokenAirSpeed)).toBe("0.5");
   });
 
   // ADR-0002 decision 77 rule 2: as pythermalcomfort's NaN under its own gate, the row says why.
@@ -63,65 +57,56 @@ describe("formatResultCell", () => {
     const result = runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     const rows = violationRows(pmvPpdAshrae, result, slot);
     expect(rows.map((row) => row.bounded)).toEqual([q.vr]);
-    expect(formatResultCell(result, q.compliance, unitSystem.si, rows)).toBe("—");
-    expect(formatResultCell(result, q.compliance, unitSystem.si, noViolations)).toBe("Yes");
+    expect(formatResultCell(pmvPpdAshrae, result, q.compliance, unitSystem.si, rows)).toBe("—");
+    expect(formatResultCell(pmvPpdAshrae, result, q.compliance, unitSystem.si, noViolations)).toBe("Yes");
     for (const quantity of [q.pmv, q.ppd]) {
-      expect(formatResultCell(result, quantity, unitSystem.si, rows)).toEqual(formatResultCell(result, quantity, unitSystem.si, noViolations));
-      expect(formatResultCell(result, quantity, unitSystem.si, rows)).not.toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, result, quantity, unitSystem.si, rows)).toEqual(formatResultCell(pmvPpdAshrae, result, quantity, unitSystem.si, noViolations));
+      expect(formatResultCell(pmvPpdAshrae, result, quantity, unitSystem.si, rows)).not.toBe("—");
     }
   });
 
   it("formats a number in the display unit", () => {
     const result = { tmp_cmf: 24.567, pmv: 0.5 };
-    expect(formatResultCell(result, q.tmp_cmf, unitSystem.si, noViolations)).toBe("24.57 °C");
-    expect(formatResultCell(result, q.tmp_cmf, unitSystem.ip, noViolations)).toBe("76.22 °F");
-    expect(formatResultCell(result, q.pmv, unitSystem.si, noViolations)).toBe("0.5");
+    expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.si, noViolations)).toBe("24.57 °C");
+    expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, noViolations)).toBe("76.22 °F");
+    expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, noViolations)).toBe("0.5");
   });
 
-  it("shows a dash for a category, a non-finite number, a missing key and no result, beside a violation row too", () => {
-    const result = { tsv: "Neutral", pmv: Number.NaN };
+  it("shows a dash for a non-finite number, a missing key and no result, beside a violation row too", () => {
+    const result = { pmv: Number.NaN };
     for (const violations of [noViolations, brokenAirSpeed]) {
-      expect(formatResultCell(result, q.tsv, unitSystem.si, violations)).toBe("—");
-      expect(formatResultCell(result, q.pmv, unitSystem.si, violations)).toBe("—");
-      expect(formatResultCell(result, q.ppd, unitSystem.si, violations)).toBe("—");
-      expect(formatResultCell(null, q.pmv, unitSystem.si, violations)).toBe("—");
-      expect(formatResultCell(null, q.compliance, unitSystem.si, violations)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, violations)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, result, q.ppd, unitSystem.si, violations)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, null, q.pmv, unitSystem.si, violations)).toBe("—");
+      expect(formatResultCell(pmvPpdAshrae, null, q.compliance, unitSystem.si, violations)).toBe("—");
     }
   });
-});
 
-describe("classifiedOutputs", () => {
-  it("reads each classified output's category and colours it from the output's own classifier's palette", () => {
+  it("shows a classified output's category as its band's label", () => {
     // Neutral is the fourth of the seven sensation labels, II the second of I, II, III, IV, none.
-    expect(classifiedOutputs(pmvPpdIso, atDefaults(pmvPpdIso))).toEqual([
-      { quantity: q.tsv, category: "Neutral", color: sensation[3] },
-      { quantity: q.category, category: "II", color: isoCategory[1] },
-    ]);
-    expect(classifiedOutputs(pmvPpdAshrae, atDefaults(pmvPpdAshrae))).toEqual([
-      { quantity: q.tsv, category: "Neutral", color: sensation[3] },
-    ]);
+    expect(formatResultCell(pmvPpdIso, atDefaults(pmvPpdIso), q.tsv, unitSystem.si, noViolations)).toBe("Neutral");
+    expect(formatResultCell(pmvPpdIso, atDefaults(pmvPpdIso), q.category, unitSystem.si, noViolations)).toBe("II");
+    expect(formatResultCell(pmvPpdAshrae, atDefaults(pmvPpdAshrae), q.tsv, unitSystem.si, noViolations)).toBe("Neutral");
   });
 
-  it("keeps a point outside every category, with no colour", () => {
-    // A tdb of 5 °C puts PMV near -4.3: Cold, and past category C, so "none".
-    expect(classifiedOutputs(pmvPpdIso, atTdb(pmvPpdIso, 5))).toEqual([
-      { quantity: q.tsv, category: "Cold", color: sensation[0] },
-      { quantity: q.category, category: "none", color: undefined },
-    ]);
+  it("shows a point outside every category by the band its classifier names for it", () => {
+    // A tdb of 5 °C puts PMV near -4.3: Cold, and past category IV, so "none".
+    const result = atTdb(pmvPpdIso, 5);
+    expect(formatResultCell(pmvPpdIso, result, q.tsv, unitSystem.si, noViolations)).toBe("Cold");
+    expect(formatResultCell(pmvPpdIso, result, q.category, unitSystem.si, noViolations)).toBe("none");
   });
 
-  it("keeps a category the classifier does not name, with no colour", () => {
-    const result = { pmv: 12, tsv: Number.NaN, category: "none" };
-    expect(classifiedOutputs(pmvPpdIso, result)[0]).toEqual({ quantity: q.tsv, category: Number.NaN, color: undefined });
+  it("shows a dash for a NaN, a category its classifier does not name, and no result", () => {
+    const result = { pmv: 12, tsv: Number.NaN, category: "VI" };
+    expect(formatResultCell(pmvPpdIso, result, q.tsv, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(pmvPpdIso, result, q.category, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(pmvPpdIso, null, q.tsv, unitSystem.si, noViolations)).toBe("—");
+    expect(formatResultCell(pmvPpdIso, null, q.category, unitSystem.si, noViolations)).toBe("—");
   });
 
-  it("lists no output the info gives no classifier, yes-or-no outputs among them", () => {
-    // Adaptive's acceptability outputs and ASHRAE's compliance are booleans with no classifier.
-    expect(classifiedOutputs(adaptiveAshrae, atDefaults(adaptiveAshrae))).toEqual([]);
-    expect(classifiedOutputs(pmvPpdAshrae, atTdb(pmvPpdAshrae, 35)).map((entry) => entry.quantity)).toEqual([q.tsv]);
-  });
-
-  it("lists nothing before the first run", () => {
-    expect(classifiedOutputs(pmvPpdIso, null)).toEqual([]);
+  it("keeps a category beside a violation row, where a yes or no reads the dash", () => {
+    const result = { tsv: "Neutral", compliance: true };
+    expect(formatResultCell(pmvPpdAshrae, result, q.tsv, unitSystem.si, brokenAirSpeed)).toBe("Neutral");
+    expect(formatResultCell(pmvPpdAshrae, result, q.compliance, unitSystem.si, brokenAirSpeed)).toBe("—");
   });
 });

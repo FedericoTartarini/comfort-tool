@@ -1,28 +1,36 @@
 import { copy } from "$lib/text/copy";
 import type { ViolationRow } from "./applicability";
-import { colorForBand } from "./bandPalette";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultValue } from "./modelRun";
-import { quantityFor, type Quantity } from "./quantities";
+import type { Quantity } from "./quantities";
 import { displayUnitFor, numberWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 /**
- * What the results table shows for `quantity`: a boolean as "Yes" or "No",
- * the same in both unit systems; a finite number in its display unit; a dash
- * for anything else — a category is read in the Compliance column, not here.
- * `violations` are the rows the result shows broken: while there is one, a
- * boolean reads the dash too, as pythermalcomfort's NaN under its own gate
- * (ADR-0002 decision 77, rule 2), which the row's limits button explains
- * (decision 84, rule 8).
+ * What the results table shows for `quantity`, one column of `model`'s table:
+ * a classified output's category as its band's label, read against the
+ * output's own classifier in the model info (ADR-0002 decision 85, rule 1); a
+ * boolean as "Yes" or "No", the same in both unit systems; a finite number in
+ * its display unit; a dash for anything else, a NaN or a category its
+ * classifier does not name among them. `violations` are the rows the result
+ * shows broken: while there is one, a boolean reads the dash too, as
+ * pythermalcomfort's NaN under its own gate (ADR-0002 decision 77, rule 2),
+ * which the row's limits button explains (decision 84, rule 8); a category
+ * stays.
  */
 export function formatResultCell(
+  model: RegisteredModel,
   result: ModelResult | null,
   quantity: Quantity,
   system: UnitSystem,
   violations: readonly ViolationRow[],
 ): string {
   const value = result ? resultValue(result, quantity) : undefined;
+  const classifier = model.info.outputs[quantity.key]?.classifier;
+  if (classifier) {
+    // `labels` holds strings; a NaN or a boolean is no label, and so the dash.
+    return typeof value === "string" && classifier.labels.includes(value) ? value : copy.notAvailable;
+  }
   if (typeof value === "boolean") {
     if (violations.length > 0) {
       return copy.notAvailable;
@@ -33,36 +41,4 @@ export function formatResultCell(
     return copy.notAvailable;
   }
   return numberWithUnit(value, displayUnitFor(quantity, system));
-}
-
-/** One entry of the Compliance column: a classified output's category and its band's fill. */
-export interface ClassifiedOutput {
-  readonly quantity: Quantity;
-  readonly category: string | number;
-  /** As {@link colorForBand} gives it; `undefined` shows no swatch. */
-  readonly color: string | undefined;
-}
-
-/**
- * The outputs `model`'s info classifies, in the info's order, each with the
- * category `result` carries and that category's colour from the output's own
- * classifier's palette (ADR-0002 decisions 8 and 60). Empty before the first run.
- */
-export function classifiedOutputs(model: RegisteredModel, result: ModelResult | null): readonly ClassifiedOutput[] {
-  if (!result) {
-    return [];
-  }
-  return Object.entries(model.info.outputs).flatMap(([key, variable]) => {
-    const classifier = variable.classifier;
-    const quantity = classifier ? quantityFor(key) : undefined;
-    if (!classifier || !quantity) {
-      return [];
-    }
-    const category = resultValue(result, quantity);
-    // Narrows the type: a classified output carries a category, never a boolean.
-    if (category === undefined || typeof category === "boolean") {
-      return [];
-    }
-    return [{ quantity, category, color: colorForBand(classifier, category) }];
-  });
 }

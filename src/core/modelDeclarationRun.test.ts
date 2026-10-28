@@ -2,8 +2,8 @@
  * What every registered declaration's `run` returns, in the two ways the
  * compiler cannot see: the bands a model's scan declares have to cut its
  * output into the category the run itself returned (ADR-0002 decision 27), and
- * the number in the table's first column has to come back unrounded (decisions
- * 35 and 38). How it calls its library function is the sibling
+ * the table's first number column has to come back unrounded (decisions 35
+ * and 38). How it calls its library function is the sibling
  * `modelDeclarationCall.test.ts`'s.
  *
  * What a declaration says about itself — its library name, its standard, the
@@ -174,11 +174,21 @@ const ROUNDED_GRID_PER_UNIT = 100;
 const SAMPLES_ALONG_THE_AXIS = 25;
 
 /**
+ * The first column of `model`'s table whose result is a number: a classified
+ * output's category leads the table (ADR-0002 decision 85, rule 1), and a
+ * category or a yes or no has no decimals to round.
+ */
+function firstNumberColumn(model: RegisteredModel): Quantity | undefined {
+  return model.table.find((column) => column.kind !== "category" && column.kind !== "yesNo");
+}
+
+/**
  * How many of `quantity`'s values, sampled along the x axis `axes` has
  * ({@link chartAxesOf}), carry more decimals than any rounding the library
- * applies would leave. The first table column by default, because every model declares one, whatever
- * its chart scans or draws, and what the table shows is what must be
- * unrounded (ADR-0002 decision 38); the scan's output beside it, which every
+ * applies would leave. The table's first number column by default
+ * ({@link firstNumberColumn}), because every model declares one, whatever its
+ * chart scans or draws, and what the table shows is what must be unrounded
+ * (ADR-0002 decision 38); the scan's output beside it, which every
  * scanned chart draws its regions from (decision 61). A count over the whole sample rather
  * than an assertion per value: an unrounded kernel still returns a value on
  * the grid now and then, and one such value says nothing.
@@ -186,17 +196,17 @@ const SAMPLES_ALONG_THE_AXIS = 25;
 function unroundedSampleCount(
   model: RegisteredModel,
   axes: ChartAxes,
-  quantity: Quantity | undefined = model.table[0],
+  quantity: Quantity | undefined = firstNumberColumn(model),
 ): number {
   const { range, valueAt } = alongTheXAxis(model, axes);
   if (!quantity) {
-    throw new Error(`${model.info.label} declares no table column`);
+    throw new Error(`${model.info.label} declares no number column in its table`);
   }
   // A kernel out of its domain returns NaN, which is off no grid and on every
   // one; left to the comparison below it would read as rounding. Heat Index
   // returns NaN below 27 °C unless the call turns `limit_inputs` off, so the
-  // next model would fail this test with the wrong reason printed. A first
-  // column that is a category or a yes-or-no answer has no decimals to check.
+  // next model would fail this test with the wrong reason printed. A column
+  // that is a category or a yes-or-no answer has no decimals to check.
   const finite = (position: number) => {
     const value = valueAt(position, quantity);
     if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -243,7 +253,7 @@ function isoRounding(round_output: boolean) {
 }
 
 describe("run's numbers", () => {
-  it("come back unrounded in the table's first column and the scan's output, for every registered model", () => {
+  it("come back unrounded in the table's first number column and the scan's output, for every registered model", () => {
     for (const model of registeredModels) {
       const axes = chartAxesOf(model);
       if (!axes) continue;
@@ -253,7 +263,7 @@ describe("run's numbers", () => {
       // 35). What it costs is silent: within half a rounding step of an Edge
       // the chart's band and the table's category disagree, and the dynamic
       // chart's surface becomes a staircase.
-      expect(unroundedSampleCount(model, axes), `${model.info.label} first table column`).toBeGreaterThan(0);
+      expect(unroundedSampleCount(model, axes), `${model.info.label} first number column`).toBeGreaterThan(0);
       if (model.scan) {
         expect(unroundedSampleCount(model, axes, model.scan.output), `${model.info.label} scan output`).toBeGreaterThan(0);
       }

@@ -13,7 +13,6 @@ import {
   isAtmosphericPressureOutOfRange,
   outOfRangeQuantities,
   outOfRangeRows,
-  splitViolations,
   violationRows,
   warningFor,
   type Bound,
@@ -591,28 +590,6 @@ describe("formatBound, across the registry", () => {
         expect(isShownBeyond(unit.toSi(end), bound, displayUnitFor(quantity, unitSystem.si)), `${quantity.key}: ${range}`).toBe(false);
       }
     }
-  });
-});
-
-describe("splitViolations", () => {
-  it("puts every violation row on exactly one side: input and derived rows on inputs, output rows on outputs", () => {
-    const rows = violationRows(pmvPpdIso, {
-      warnings: [
-        { key: "clo", role: "input", value: 2.5, bound: { max: 2 } },
-        { key: "pa", role: "derived", value: 3000, bound: { max: 2700 } },
-        { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
-      ],
-    }, defaultEntryModes);
-    const { inputs, outputs } = splitViolations(rows);
-    expect(inputs.map(({ quantity, role }) => [quantity, role])).toEqual([
-      [q.clo, "input"],
-      [q.pa, "derived"],
-    ]);
-    expect(outputs.map(({ quantity, role }) => [quantity, role])).toEqual([[q.pmv, "output"]]);
-    for (const row of rows) {
-      expect([inputs.includes(row), outputs.includes(row)].filter(Boolean)).toHaveLength(1);
-    }
-    expect(inputs.length + outputs.length).toBe(rows.length);
   });
 });
 

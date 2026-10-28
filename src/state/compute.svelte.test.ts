@@ -267,7 +267,7 @@ describe("the violation rows, in the words of the limits popover", () => {
     expect(sentencesOf(outputs.slots[0])).toEqual(["Water vapour partial pressure must be 0 – 2.7 kPa"]);
   });
 
-  it("name an output's broken bound, as its Compliance cell does", () => {
+  it("name an output's broken bound, as an input's", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.tdb, 30], [q.tr, 40], [q.met, 2], [q.clo, 1]] as const) {

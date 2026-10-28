@@ -1,14 +1,13 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
-  import { splitViolations, warningFor } from "$lib/core/applicability";
+  import { warningFor } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
-  import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
+  import { formatResultCell } from "$lib/core/resultCell";
   import { standardCaptionFor } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
-  import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import * as Popover from "$lib/ui/primitives/popover";
@@ -28,21 +27,7 @@
 
   let { model, rows, unitSystem, labelledby }: Props = $props();
 
-  // ADR §4.3: the Compliance column appears only when the model has a
-  // classified output or a broken output row. An output-role violation also
-  // opens the column: a PMV of 2.4 is shown, with the row it broke as its caveat.
-  const tableRows = $derived(
-    rows.map((row) => ({
-      row,
-      classified: classifiedOutputs(model, row.result),
-      caveats: splitViolations(row.violations).outputs,
-    })),
-  );
   const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
-  const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
-  // A row's limits button stands first in its first cell, the Input cell before the swatch while the rows are named.
-  const limitsInCompliance = $derived(!namesRows && hasCompliance);
-  const limitsInFirstValue = $derived(!namesRows && !hasCompliance);
   const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 </script>
 
@@ -89,16 +74,15 @@
           {#if namesRows}
             <Table.Head>{copy.inputColumn}</Table.Head>
           {/if}
-          {#if hasCompliance}
-            <Table.Head>{copy.complianceColumn}</Table.Head>
-          {/if}
           {#each model.table as quantity (quantity)}
             <Table.Head class="value">{quantity.label}</Table.Head>
           {/each}
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {#each tableRows as { row, classified, caveats } (row)}
+        <!-- A row's limits button stands first in its first cell: the Input cell before the swatch while the rows are
+             named, else the first value cell. -->
+        {#each rows as row (row)}
           <Table.Row>
             {#if namesRows}
               <Table.Cell>
@@ -109,36 +93,13 @@
                 </span>
               </Table.Cell>
             {/if}
-            {#if hasCompliance}
-              <Table.Cell>
-                <!-- The button beside the entries, never wrapped above them: the cell is as wide as its widest entry. -->
-                <span class="limits-lead">
-                  {#if limitsInCompliance}
-                    {@render limitsButton(row)}
-                  {/if}
-                  <Inline gap="2">
-                    {#each classified as entry (entry.quantity)}
-                      <span class="swatch-label">
-                        {#if entry.color}
-                          <span class="swatch swatch-fill" style:--swatch-color={entry.color}></span>
-                        {/if}
-                        {entry.quantity.label}: {entry.category}
-                      </span>
-                    {/each}
-                    {#each caveats as violation (violation)}
-                      <span class="caption caveat">{warningFor(violation, unitSystem)}</span>
-                    {/each}
-                  </Inline>
-                </span>
-              </Table.Cell>
-            {/if}
             {#each model.table as quantity, index (quantity)}
               <!-- A dash standing for a violation carries no icon of its own: the row's limits button explains it. -->
               <Table.Cell class="value">
-                {#if limitsInFirstValue && index === 0}
+                {#if !namesRows && index === 0}
                   {@render limitsButton(row)}
                 {/if}
-                {formatResultCell(row.result, quantity, unitSystem, row.violations)}
+                {formatResultCell(model, row.result, quantity, unitSystem, row.violations)}
               </Table.Cell>
             {/each}
           </Table.Row>

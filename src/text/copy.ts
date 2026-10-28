@@ -117,7 +117,6 @@ export const copy = {
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
   inputColumn: "Input",
-  complianceColumn: "Compliance",
   // A result row's button for the limits its run broke, its accessible name, and the heading of the popover it opens
   // and of a slot's broken limits in an Image's Input summary (ADR-0002 decision 84, rule 8), the heading in decision
   // 83's words: "limits", the standards' word for both kinds of bound.

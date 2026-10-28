@@ -72,7 +72,7 @@ export const pmvPpdIso = {
     { quantity: q.clo, min: 0, max: 4 },
     { quantity: q.clo_dynamic, min: 0, max: 4 },
   ],
-  table: [q.pmv, q.ppd],
+  table: [q.tsv, q.category, q.pmv, q.ppd],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the
   // kernel classifies `tsv` with. The category bins cannot be the classifier:
   // they cut |PMV|, not the signed `pmv` scanned here, and the drift test

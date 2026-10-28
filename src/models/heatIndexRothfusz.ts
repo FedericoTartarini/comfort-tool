@@ -34,7 +34,7 @@ export const heatIndexRothfusz = {
     { quantity: q.tdb, min: tdbMin, max: 50 },
     { quantity: q.rh, min: 0, max: 100 },
   ],
-  table: [q.hi],
+  table: [q.stress_category, q.hi],
   // The scanned number is `hi`, cut by the same stress-category bins the
   // kernel classifies `stress_category` with. No Comfort zones: the model has
   // no standard to draw a limit on it.

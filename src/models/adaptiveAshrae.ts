@@ -50,9 +50,8 @@ export const adaptiveAshrae = {
     { quantity: q.operative_tmp, min: 10, max: 40 },
   ],
   // The library's outputs, in its order. The two acceptabilities are the
-  // reading, as Yes or No: the compliance column appears only for a classified
-  // output or a broken output row, and Adaptive has neither, so there is no
-  // compliance line (Phase 4b spec, Out of Scope).
+  // reading, as Yes or No; Adaptive classifies no output, so no category
+  // column leads (ADR-0002 decision 85, rule 1).
   table: [
     q.tmp_cmf,
     q.tmp_cmf_80_low,

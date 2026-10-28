@@ -57,12 +57,13 @@ describe("standard", () => {
 });
 
 describe("table", () => {
-  it("names no output its model info classifies, for every registered model", () => {
-    // A category is never shown in a cell (`formatResultCell`); the Compliance
-    // column reads it, so a table column for it would be a dash on every run.
+  it("names every output its model info classifies, those columns first, for every registered model", () => {
+    // A classified output is a column of its own, first in the table
+    // (ADR-0002 decision 85, rule 1): one left out would be lost from the page.
     for (const model of registeredModels) {
-      const classified = model.table.filter((column) => model.info.outputs[column.key]?.classifier);
-      expect(classified.map((column) => column.label), model.info.label).toEqual([]);
+      const classifiedKeys = Object.entries(model.info.outputs).flatMap(([key, variable]) => (variable.classifier ? [key] : []));
+      const leading = model.table.slice(0, classifiedKeys.length).map((column) => column.key);
+      expect(leading, model.info.label).toEqual(classifiedKeys);
     }
   });
 });

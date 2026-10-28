@@ -87,7 +87,7 @@ export const pmvPpdAshrae = {
     { quantity: q.clo_dynamic, min: 0, max: 2.2 },
   ],
   // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
-  table: [q.pmv, q.ppd, q.compliance],
+  table: [q.tsv, q.pmv, q.ppd, q.compliance],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the
   // kernel classifies `tsv` with: ISO's Edges, right-inclusive where ISO's
   // are not, so a PMV of exactly 0.5 is Neutral here. The zone is cut from

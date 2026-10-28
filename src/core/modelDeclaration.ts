@@ -283,8 +283,8 @@ interface CommonDeclaration {
    * The contract: the model's own result object, carrying the model's numbers
    * unrounded (ADR-0002 decision 18), with the library's `round_output`
    * written off in the call (decision 35). A registry-wide test samples the
-   * table's first column and fails when it was left on (decision 38). Called by
-   * `state/compute` and by the chart spec builders.
+   * table's first number column and fails when it was left on (decision 38).
+   * Called by `state/compute` and by the chart spec builders.
    */
   readonly run: (values: Values, options: OptionsReader) => ModelResult;
   /**
@@ -301,7 +301,11 @@ interface CommonDeclaration {
    * two ranges for one quantity.
    */
   readonly axisRanges: readonly AxisRange[];
-  /** Result table columns, in order. Required (ADR §4.3). */
+  /**
+   * Result table columns, in order. Required (ADR §4.3). A classified output
+   * is a column, and the classified outputs come first, in the model info's
+   * order (ADR-0002 decision 85, rule 1).
+   */
   readonly table: readonly Quantity[];
 }
 

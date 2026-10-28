@@ -91,7 +91,7 @@ describe("bandColors", () => {
   });
 
   it("has an entry whose colour count is its band count for every classifier a registered model paints", () => {
-    // The Compliance column paints each classified output; the scan's
+    // Each classified output is a column of the result table; the scan's
     // declared bands are Explore's default Band list.
     for (const model of registeredModels) {
       const painted = Object.entries(model.info.outputs).flatMap(([key, variable]) =>
