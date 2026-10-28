@@ -135,14 +135,17 @@ export class Outputs {
 
   /**
    * The runs {@link chart} is drawn of, in slot order, each with its slot's
-   * name where its badge carries one: what an Image's Input summary lists (ADR-0002 decision 64, rule 3).
-   * Read at the click, each slot a copy no later edit reaches, so nothing is kept of it.
+   * name where its badge carries one and the violation rows of its run: what
+   * an Image's Input summary lists (ADR-0002 decision 64, rule 3; decision
+   * 84, rule 8). Read at the click, each slot a copy no later edit reaches,
+   * so nothing is kept of it.
    */
   get drawnRuns(): readonly DrawnRun[] {
     return this.#compared.map((outputs) => ({
       name: outputs.badge.name,
       slot: outputs.slot.toSlot(),
       atmosphericPressure: this.#session.atmosphericPressure,
+      violations: outputs.violations,
     }));
   }
 

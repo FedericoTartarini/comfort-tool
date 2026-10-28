@@ -1,4 +1,5 @@
 import { copy } from "$lib/text/copy";
+import { warningFor, type ViolationRow } from "./applicability";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
 import { optionsOf, type RegisteredModel } from "./modelDeclaration";
@@ -10,14 +11,15 @@ import { displayUnitFor, labelWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 /**
- * A slot the chart draws, as it is: the slot as it was entered and the
- * atmospheric pressure it ran at, with its slot's name where the slot has
- * one.
+ * A slot the chart draws, as it is: the slot as it was entered, the
+ * atmospheric pressure it ran at and the violation rows its run reported,
+ * with its slot's name where the slot has one.
  */
 export interface DrawnRun {
   readonly name?: string;
   readonly slot: Slot;
   readonly atmosphericPressure: number;
+  readonly violations: readonly ViolationRow[];
 }
 
 /**
@@ -30,12 +32,13 @@ export type InputSummary = readonly (readonly string[])[];
 /**
  * What the chart of `runs` is computed from, as an Image writes it under its
  * legend (ADR-0002 decision 64, rule 3): the model's name and its standard;
- * then each run's rows as the input panel lists them for its slot, its
- * options and its pressure, headed by its slot's name where the run has one;
- * then, given the Band list the chart paints, its Edges. It reads the
- * runs and never the session's slots, so what is being typed out of range
- * cannot appear in it, and no line names an entry mode: a run's rows are
- * those of its own modes, and their quantities say which. It holds no result.
+ * then each run's group, headed by its slot's name where the run has one:
+ * its rows as the input panel lists them for its slot, its options and its
+ * pressure, and, where its run broke a limit, the limits popover's heading and
+ * one line per limit in its row's sentence (decision 84, rule 8); then, given
+ * the Band list the chart paints, its Edges. No line names an entry mode: a
+ * run's rows are those of its own modes, and their quantities say which. It
+ * holds no result.
  */
 export function inputSummary(parts: {
   model: RegisteredModel;
@@ -50,7 +53,7 @@ export function inputSummary(parts: {
 }
 
 function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem): string[] {
-  const { slot, atmosphericPressure } = run;
+  const { slot, atmosphericPressure, violations } = run;
   const options = optionsReader(slot.options);
   return [
     ...(run.name === undefined ? [] : [run.name]),
@@ -59,6 +62,8 @@ function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem)
     ),
     ...optionsOf(model).map((option) => copy.summaryValue(option.label, options(option) ? copy.yes : copy.no)),
     valueLine(quantities.p_atm, atmosphericPressure, unitSystem),
+    // One line a limit: a line holding them all runs off the single-column Image, which wraps nothing.
+    ...(violations.length === 0 ? [] : [copy.limitsBrokenHeading, ...violations.map((row) => warningFor(row, unitSystem))]),
   ];
 }
 

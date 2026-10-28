@@ -1,6 +1,7 @@
 /**
  * The drawn runs (ADR-0002 decision 64, rule 3): the compared slots the chart
- * is drawn of, each as it is, which the Input summary lists. Asserted at the seam the other session tests use — a session in, its
+ * is drawn of, each as it is with the violation rows of its run (decision 84,
+ * rule 8), which the Input summary lists. Asserted at the seam the other session tests use — a session in, its
  * outputs out, with no component — and nothing flushes, for the reason
  * `compute.svelte.test.ts` gives.
  */
@@ -91,6 +92,16 @@ describe("Outputs.drawnRuns", () => {
     session.atmosphericPressure = LOWER_PRESSURE;
     expect(outputs.drawnRuns[0].atmosphericPressure).toBe(LOWER_PRESSURE);
     expect(summaryLinesOf(session, outputs)).toContain(lineOf(q.p_atm, LOWER_PRESSURE));
+  });
+
+  it("carries each compared slot's violation rows, none for a slot whose run broke nothing", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.commitEntry(1, q.rh, 95);
+
+    const runs = outputs.drawnRuns;
+    expect(runs.map((run) => run.violations)).toEqual(outputs.slots.map((slot) => slot.violations));
+    expect(runs.map((run) => run.violations.map((row) => row.bounded))).toEqual([[], [q.pa], []]);
   });
 
   it("is the slot the new model runs on after a model switch", () => {

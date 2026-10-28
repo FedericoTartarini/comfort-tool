@@ -119,8 +119,8 @@ export const copy = {
   inputColumn: "Input",
   complianceColumn: "Compliance",
   // A result row's button for the limits its run broke, its accessible name, and the heading of the popover it opens
-  // (ADR-0002 decision 84, rule 8), the heading in decision 83's words: "limits", the standards' word for both kinds
-  // of bound.
+  // and of a slot's broken limits in an Image's Input summary (ADR-0002 decision 84, rule 8), the heading in decision
+  // 83's words: "limits", the standards' word for both kinds of bound.
   limitsBroken: "Limits broken",
   limitsBrokenHeading: "Calculated, but outside these limits:",
   // One broken applicability row: `bound` already carries its unit.
