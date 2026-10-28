@@ -181,7 +181,7 @@ describe("the scanned dynamic chart given a Band list", () => {
     expect(hoverText[4][32]).toEqual([
       "Dry-bulb air temperature: 26 °C",
       "Air speed: 0.08 m/s",
-      "Predicted Mean Vote: -0.15",
+      "PMV: -0.15",
       "Neutral",
     ]);
   });

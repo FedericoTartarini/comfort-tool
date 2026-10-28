@@ -104,10 +104,10 @@ export const quantities = {
   // insulation keeps, as every declaration's inputs and the presets name it.
   clo_dynamic: { key: "clo_dynamic", kind: "clothingInsulation", label: "Dynamic clothing insulation" },
   wme: { key: "wme", kind: "metabolicRate", label: "External work" },
-  pmv: { key: "pmv", kind: "thermalSensation", label: "Predicted Mean Vote" },
-  ppd: { key: "ppd", kind: "percentage", label: "Predicted Percentage of Dissatisfied" },
+  pmv: { key: "pmv", kind: "thermalSensation", label: "PMV" },
+  ppd: { key: "ppd", kind: "percentage", label: "PPD" },
   tsv: { key: "tsv", kind: "category", label: "Thermal sensation" },
-  category: { key: "category", kind: "category", label: "ISO 7730 category" },
+  category: { key: "category", kind: "category", label: "Category" },
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
   utci: { key: "utci", kind: "temperature", label: "Universal Thermal Climate Index" },
   // UTCI's `derived` key: the library bounds `tr` by its difference from `tdb`.
@@ -121,7 +121,7 @@ export const quantities = {
   tmp_cmf_90_up: { key: "tmp_cmf_90_up", kind: "temperature", label: "90% acceptability upper limit" },
   acceptability_80: { key: "acceptability_80", kind: "yesNo", label: "80% acceptability" },
   acceptability_90: { key: "acceptability_90", kind: "yesNo", label: "90% acceptability" },
-  compliance: { key: "compliance", kind: "yesNo", label: "ASHRAE 55 compliance" },
+  compliance: { key: "compliance", kind: "yesNo", label: "Compliance" },
   // The input calculators' quantities, named by `CLO_TOUT_INFO` and
   // `SOLAR_GAIN_INFO` (ADR-0002 decision 75). The labels are the deployed
   // tool's words less their ranges and symbols, SHARP kept as the standard's

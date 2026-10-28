@@ -111,6 +111,11 @@ describe("quantity labels", () => {
   it("labels stress_category 'Thermal stress category', which reads for UTCI's cold-to-heat range too", () => {
     expect(quantities.stress_category.label).toBe("Thermal stress category");
   });
+
+  it("labels PMV and PPD by the standards' abbreviation, and compliance and category with no standard, which the page names through its model", () => {
+    expect([quantities.pmv, quantities.ppd, quantities.compliance, quantities.category].map((quantity) => quantity.label))
+      .toEqual(["PMV", "PPD", "Compliance", "Category"]);
+  });
 });
 
 describe("dynamic clothing insulation", () => {

@@ -202,7 +202,7 @@ describe("inputSummary", () => {
     expect(last).toHaveLength(1);
     expect(last[0]).toContain(labelWithUnit(scan.output, displayUnitFor(scan.output, si)));
     expect(last[0]).toContain(bands.edges.map(formatNumber).join(", "));
-    expect(summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso))]).flat().some((line) => line.includes(scan.output.label))).toBe(false);
+    expect(summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso))]).flat().some((line) => line.includes(rowOf(scan.output)))).toBe(false);
   });
 
   it("holds no result of the model", () => {
@@ -213,7 +213,8 @@ describe("inputSummary", () => {
       for (const key of Object.keys(model.info.outputs)) {
         const output = quantityFor(key);
         if (output && !entered.includes(output)) {
-          expect(lines.some((line) => line.startsWith(`${output.label}`)), `${model.info.label} ${key}`).toBe(false);
+          // A value line, not the label alone: the model line "PMV / PPD (…)" starts with PMV's label.
+          expect(hasRowOf(lines, output), `${model.info.label} ${key}`).toBe(false);
         }
       }
     }

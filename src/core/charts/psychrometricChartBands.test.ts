@@ -280,7 +280,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(hoverText[10][30]).toEqual([
       "Dry-bulb air temperature: 25 °C",
       "Humidity ratio: 6 g/kg",
-      "Predicted Mean Vote: -0.56",
+      "PMV: -0.56",
       "Slightly Cool",
     ]);
   });
@@ -290,7 +290,7 @@ describe("the psychrometric chart given a Band list", () => {
     trace.values.forEach((row, yIndex) =>
       row.forEach((_, xIndex) => {
         if (isSupersaturated(trace, xIndex, yIndex, p)) {
-          expect(hoverText[yIndex][xIndex].slice(2)).toEqual(["Predicted Mean Vote: —"]);
+          expect(hoverText[yIndex][xIndex].slice(2)).toEqual(["PMV: —"]);
         }
       }),
     );

@@ -274,7 +274,7 @@ describe("the violation rows, in the words of the limits popover", () => {
       session.commitEntry(0, quantity, value);
     }
 
-    expect(sentencesOf(outputs.slots[0])).toEqual(["Predicted Mean Vote must be -2 – 2"]);
+    expect(sentencesOf(outputs.slots[0])).toEqual(["PMV must be -2 – 2"]);
   });
 
   it("under Compare, are only the rows of the slot whose run broke a bound", () => {

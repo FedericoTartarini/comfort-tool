@@ -387,7 +387,7 @@ describe("the scanned chart's hover readout", () => {
     expect(grid.hoverText[4][32]).toEqual([
       "Dry-bulb air temperature: 26 °C",
       "Air speed: 0.08 m/s",
-      "Predicted Mean Vote: -0.15",
+      "PMV: -0.15",
     ]);
   });
 
@@ -396,7 +396,7 @@ describe("the scanned chart's hover readout", () => {
     expect(grid.hoverText[4][32]).toEqual([
       "Dry-bulb air temperature: 78.8 °F",
       "Air speed: 15.75 fpm",
-      "Predicted Mean Vote: -0.15",
+      "PMV: -0.15",
     ]);
   });
 });
