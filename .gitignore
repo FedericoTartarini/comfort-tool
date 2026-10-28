@@ -6,7 +6,6 @@ playwright-report/
 test-results/
 .idea/
 .cursor/
-local-docs/
 
 # Playwright MCP session output
 .playwright-mcp/
