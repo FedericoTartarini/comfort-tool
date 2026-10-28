@@ -53,8 +53,11 @@ function inOtherEntryModes(slot: Slot, model: RegisteredModel): Slot {
   return withHumidityMode(corrected, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
 }
 
-/** A Band list label outside Latin-1. */
-const FAR_LABEL = "很冷 ❄️";
+/**
+ * A Band list label outside Latin-1, whose bytes also put a `-` or `_` in the
+ * session's text, which the classic-Base64 refusal test needs.
+ */
+const FAR_LABEL = "Freezing ❄️";
 
 /**
  * A session on PMV (ASHRAE 55) with three slots, slot 3 held and disabled,

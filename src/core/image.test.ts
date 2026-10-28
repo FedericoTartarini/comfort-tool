@@ -109,7 +109,7 @@ describe("imageFileName", () => {
   });
 
   it("falls back to thermal-comfort-chart for a title with nothing in a-z or 0-9", () => {
-    expect(imageFileName("温度 · ¿?", imageSize.singleColumn, imageFormat.png)).toBe(
+    expect(imageFileName("❄️ · ¿?", imageSize.singleColumn, imageFormat.png)).toBe(
       "thermal-comfort-chart-single-column.png",
     );
   });
