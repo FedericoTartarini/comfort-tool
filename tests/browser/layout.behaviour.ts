@@ -145,7 +145,7 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
 
     const menu = page.getByRole("menu");
     await expectInPlace(async () => {
-      await page.getByRole("button", { name: "Humidity", exact: true }).click();
+      await page.getByRole("button", { name: "Change humidity", exact: true }).click();
       await expect(menu).toBeVisible();
     });
     await expectInPlace(async () => {
@@ -623,6 +623,31 @@ test.describe("controls by their question", () => {
     }
   });
 
+  test("at 1440 px, on PMV (ASHRAE 55) every entry group's button reads Change, is named for its group, and its menu chooses a mode, Compare off and on", async ({ page }) => {
+    await openStandard(page, 1440);
+    for (const compareOn of [false, true]) {
+      if (compareOn) {
+        await compareSwitch(page).click();
+        await expect(page.getByRole("row", { name: /^Input 2/ })).toBeVisible();
+      }
+      for (const group of ["temperature", "humidity", "air speed", "clothing"]) {
+        const button = page.getByRole("button", { name: `Change ${group}`, exact: true });
+        await expect(button).toHaveText("Change");
+
+        const menu = page.getByRole("menu");
+        await button.click();
+        const choice = menu.getByRole("menuitemradio", { checked: false }).first();
+        const chosen = (await choice.textContent()) ?? "";
+        await choice.click();
+        await expect(menu).toBeHidden();
+        await button.click();
+        await expect(menu.getByRole("menuitemradio", { checked: true })).toHaveText(chosen);
+        await page.keyboard.press("Escape");
+        await expect(menu).toBeHidden();
+      }
+    }
+  });
+
   test("at 1440 px, the option is a switch under the air speed row at the field gap, under either air-speed mode", async ({ page }) => {
     await openStandard(page, 1440);
     const option = page.getByRole("switch", { name: OPTION, exact: true });
@@ -640,7 +665,7 @@ test.describe("controls by their question", () => {
       expect(line.y - (row.y + row.height)).toBeCloseTo(4, 0);
       await expect(page.getByText(OPTION, { exact: true })).toBeVisible();
 
-      await page.getByRole("button", { name: "Air speed", exact: true }).click();
+      await page.getByRole("button", { name: "Change air speed", exact: true }).click();
       await page.getByRole("menu").getByRole("menuitemradio", { checked: false }).first().click();
     }
   });

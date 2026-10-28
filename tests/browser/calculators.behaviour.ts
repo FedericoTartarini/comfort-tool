@@ -546,7 +546,7 @@ test.describe("the dock's row under the entry modes", () => {
   test("under dynamic clothing entry, it is the dynamic clothing insulation, and Apply writes the corrected value", async ({ page }) => {
     await open(page);
     await page.getByRole("spinbutton", { name: /^Metabolic rate/ }).fill("2");
-    await page.getByRole("button", { name: "Clothing", exact: true }).click();
+    await page.getByRole("button", { name: "Change clothing", exact: true }).click();
     await page.getByRole("menuitemradio", { name: /^Dynamic clothing insulation/ }).click();
 
     const dialog = await openDialog(page, CLOTHING);
@@ -558,7 +558,7 @@ test.describe("the dock's row under the entry modes", () => {
 
   test("under dynamic clothing entry, an ensemble past the row's bound shows the bound's end with the bound, and Apply writes that end", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "Clothing", exact: true }).click();
+    await page.getByRole("button", { name: "Change clothing", exact: true }).click();
     await page.getByRole("menuitemradio", { name: /^Dynamic clothing insulation/ }).click();
 
     // 0.49 + 0.48 + 0.69 clo at the default 1.1 met, which the standard leaves as it is: 1.66, past ASHRAE 55's 1.5.
@@ -580,7 +580,7 @@ test.describe("the dock's row under the entry modes", () => {
 
   test("under operative entry, it is the operative temperature, and Apply folds the raise at the model's standard", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "Temperature", exact: true }).click();
+    await page.getByRole("button", { name: "Change temperature", exact: true }).click();
     await page.getByRole("menuitemradio", { name: /^Operative temperature/ }).click();
 
     const dialog = await openDialog(page, SOLAR);

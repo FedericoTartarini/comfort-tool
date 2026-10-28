@@ -186,7 +186,7 @@ test.describe("a draft past its bound", () => {
 test.describe("a draft that would put a humidity entry out of range", () => {
   test("a dry-bulb temperature below the held dew point is marked once the typing pauses and refused on Enter: the box shows the committed value and a toast at the top right says why until it is closed", async ({ page }) => {
     await open(page);
-    await page.getByRole("button", { name: "Humidity", exact: true }).click();
+    await page.getByRole("button", { name: "Change humidity", exact: true }).click();
     await page.getByRole("menu").getByRole("menuitemradio", { name: /^Dew-point temperature/ }).click();
     await commit(page.getByRole("spinbutton", { name: /^Dew-point temperature/ }), "15");
     const box = dryBulb(page);

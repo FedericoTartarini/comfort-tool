@@ -1,8 +1,8 @@
 <!--
   The menu button beside the label of a row that can be entered in another
-  mode: named for the entry group, it lists every mode of the group, the
-  current one checked, each by its quantities with a line on what is held or
-  follows when another input changes (ADR-0002 decision 72). A choice is the session's and converts every slot
+  mode: it reads "Change", is named for the entry group, and lists every mode
+  of the group, the current one checked, each by its quantities with a line on
+  what is held or follows when another input changes (ADR-0002 decision 72). A choice is the session's and converts every slot
   (decision 51); the menu shows the mode it is given.
 -->
 <script module lang="ts">
@@ -28,7 +28,7 @@
 
   let { group, setters }: Props = $props();
 
-  /** The button's visible text and so its whole accessible name (decision 72, rule 1). */
+  /** The group's name, read into the button's accessible name (decision 72, rule 1, as decision 87 rule 7 revised it). */
   const groupNames = {
     temperature: copy.temperatureGroup,
     humidity: copy.humidityGroup,
@@ -62,8 +62,8 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
-      <Button {...props} variant="outline" size="sm">
-        {groupNames[group.field]}
+      <Button {...props} variant="outline" size="sm" aria-label={copy.entryGroupButtonName(groupNames[group.field])}>
+        {copy.entryGroupButton}
         <ChevronDownIcon data-icon="inline-end" />
       </Button>
     {/snippet}

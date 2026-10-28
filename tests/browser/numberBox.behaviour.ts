@@ -50,7 +50,7 @@ async function typeAt(box: Locator, where: "start" | "end", keys: string) {
 }
 
 async function enterHumidityAs(page: Page, mode: RegExp) {
-  await page.getByRole("button", { name: "Humidity", exact: true }).click();
+  await page.getByRole("button", { name: "Change humidity", exact: true }).click();
   await page.getByRole("menu").getByRole("menuitemradio", { name: mode }).click();
 }
 

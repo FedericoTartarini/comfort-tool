@@ -14,6 +14,7 @@ export type EntryModeId =
 /** The repository's address, a placeholder target for the footer's links (the Phase 5c spec, Out of Scope). */
 const REPOSITORY = "https://github.com/FedericoTartarini/comfort-tool";
 const LIBRARY_NAME = "jsthermalcomfort";
+const CHANGE = "Change";
 
 /**
  * UI copy, English only in v1 (ADR §2). Quantity names never appear here:
@@ -52,11 +53,16 @@ export const copy = {
   units: "Units",
   // The Explore model select's heading over the models with no standard (ADR-0002 decision 74, rule 4).
   otherModels: "Other",
-  // The entry groups' names, each its menu button's whole text (ADR-0002 decision 72, rule 1).
+  // The entry groups' names, each read into its menu button's name (ADR-0002 decision 72, rule 1, as decision 87
+  // rule 7 revised it).
   temperatureGroup: "Temperature",
   humidityGroup: "Humidity",
   airSpeedGroup: "Air speed",
   clothingGroup: "Clothing",
+  // An entry group's menu button: "Change" on every group, named "Change air speed" so the visible word is in the name
+  // (WCAG 2.5.3).
+  entryGroupButton: CHANGE,
+  entryGroupButtonName: (groupName: string) => `${CHANGE} ${groupName.toLowerCase()}`,
   // An entry mode in its group's menu, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
   entryModeChoice: (labels: readonly string[]) =>
     labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
