@@ -1,12 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
- * The page answers the window intrinsically (ADR-0002 decision 73, rule 10):
- * at one width, a click moves no region and not the plot; the legend stands
- * beside the plot while the room there holds its basis; the input card goes
- * above the others below the two-column threshold; the sidebar is the
+ * The page answers the window (ADR-0002 decision 73, rule 10): at one width,
+ * a click moves no region and not the plot; the legend stands beside the plot
+ * while the room there holds its basis; a desktop keeps two columns and
+ * scrolls sideways where they do not fit, and a phone, the sidebar
+ * primitive's check, stands the cards in one column (decision 87, rules 2 and
+ * 3); the sidebar is the
  * primitive's sheet below `md`, and the header's toggle collapses it above
- * (decision 87, rule 1). Geometry is read off the page and compared
+ * (rule 1). Geometry is read off the page and compared
  * with itself before and after a click; nothing is a screenshot.
  */
 
@@ -134,14 +136,36 @@ async function holdBoxes(page: Page) {
  * Playwright's Chromium: the page is the window less it.
  */
 const SCROLLBAR_GUTTER = 15;
-/** The narrowest window in two columns: the main area's `74.5rem`, the `14rem` sidebar and the gutter. */
-const TWO_COLUMNS_FROM = (74.5 + 14) * 16 + SCROLLBAR_GUTTER;
+/**
+ * The narrowest window with the legend beside the plot: the main area's
+ * `74.5rem`, the input card, the plot and the legend's basis with their gaps
+ * and the cards' padding; the `14rem` sidebar; and the gutter.
+ */
+const LEGEND_BESIDE_FROM = (74.5 + 14) * 16 + SCROLLBAR_GUTTER;
 
-for (const width of [1440, TWO_COLUMNS_FROM]) {
+/** Whether the result and chart cards stand to the input card's right, their tops level, not under it. */
+async function isResultBesideInputs(page: Page) {
+  const inputs = await boxOf(card(page, "Inputs"));
+  const results = await boxOf(card(page, "Results"));
+  return inputs.x + inputs.width <= results.x && results.y === inputs.y;
+}
+
+/**
+ * Whether the page is wider than the root's box, so it scrolls sideways: the
+ * box, as {@link pageWidth} reads it, since headless Chromium counts the hidden
+ * scrollbar's gutter in the root's `clientWidth`.
+ */
+function scrollsSideways(page: Page) {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    return root.scrollWidth > root.getBoundingClientRect().width;
+  });
+}
+
+for (const width of [1440, LEGEND_BESIDE_FROM]) {
   test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare moves the plot down, and the legend stays beside it`, async ({ page }) => {
     await openStandard(page, width);
-    const inputs = await boxOf(card(page, "Inputs"));
-    expect(inputs.x + inputs.width).toBeLessThanOrEqual((await boxOf(card(page, "Results"))).x);
+    expect(await isResultBesideInputs(page)).toBe(true);
     const expectInPlace = await holdBoxes(page);
 
     const compare = page.getByRole("switch", { name: "Compare", exact: true });
@@ -224,14 +248,60 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
   });
 }
 
-for (const width of [1366, 1280, 1024]) {
-  test(`at ${width} px, the input card is above the result card and the legend beside the plot`, async ({ page }) => {
+/**
+ * A desktop keeps two columns at every width (decision 87, rule 3): on a
+ * laptop with the sidebar open the result and chart cards stand beside the
+ * input card, the legend under the plot where the room beside it is too
+ * narrow, and Compare moves neither card sideways.
+ */
+for (const width of [1366, 1280]) {
+  test(`at ${width} px, the result card is beside the input card, nothing scrolls sideways, and Compare off and on move neither card sideways`, async ({ page }) => {
     await openStandard(page, width);
-    const inputs = await boxOf(card(page, "Inputs"));
-    const results = await boxOf(card(page, "Results"));
+    expect(await isResultBesideInputs(page)).toBe(true);
+    expect(await scrollsSideways(page)).toBe(false);
+    expect(isLegendBesidePlot(await boxes(page))).toBe(false);
+    const horizontalBoxes = async () => {
+      const { inputs, results } = await boxes(page);
+      return { inputs: { x: inputs.x, width: inputs.width }, results: { x: results.x, width: results.width } };
+    };
+    const off = await horizontalBoxes();
 
+    const compare = page.getByRole("switch", { name: "Compare", exact: true });
+    await compare.click();
+    await expect(page.getByRole("row", { name: /^Input 2/ })).toBeVisible();
+    expect(await horizontalBoxes()).toEqual(off);
+    await compare.click();
+    await expect(page.getByRole("row", { name: /^Input 2/ })).toHaveCount(0);
+    expect(await horizontalBoxes()).toEqual(off);
+  });
+}
+
+// The bands' width at 1024 px is the bands' test's below.
+test("at 1024 px, the page scrolls sideways and the result and chart column is 33.5rem with the plot at its full size", async ({ page }) => {
+  await openStandard(page, 1024);
+  expect(await isResultBesideInputs(page)).toBe(true);
+  expect(await scrollsSideways(page)).toBe(true);
+
+  const { results, plot } = await boxes(page);
+  expect(results.width).toBe(33.5 * 16);
+  // The plot at its cap, `24rem` tall, at 4:3.
+  expect({ width: plot.width, height: plot.height }).toEqual({ width: 32 * 16, height: 24 * 16 });
+});
+
+/**
+ * A phone, a window under 768 px, stands the input, result and chart cards
+ * in one column at the left, in that order (decision 87, rule 2); at 768 px
+ * they are a desktop's two columns.
+ */
+for (const width of [767, 375]) {
+  test(`at ${width} px, the input, result and chart cards are one column`, async ({ page }) => {
+    await openStandard(page, width);
+    const [inputs, results, chart] = await Promise.all(["Inputs", "Results", "Chart"].map((name) => boxOf(card(page, name))));
+
+    expect(results.x).toBe(inputs.x);
+    expect(chart.x).toBe(inputs.x);
     expect(inputs.y + inputs.height).toBeLessThanOrEqual(results.y);
-    expect(isLegendBesidePlot(await boxes(page))).toBe(true);
+    expect(results.y + results.height).toBeLessThanOrEqual(chart.y);
   });
 }
 
@@ -266,19 +336,16 @@ test.describe("the input card's width", () => {
     }
   });
 
-  test("just below the two-column threshold, the result card is under the input card, and the input card is as wide as above it, at the left", async ({ page }) => {
-    await openStandard(page, TWO_COLUMNS_FROM);
+  test("just narrower than the legend's room beside the plot, the legend goes under it, the result card stays beside the input card, and the input card is as wide and where it was", async ({ page }) => {
+    await openStandard(page, LEGEND_BESIDE_FROM);
     const above = await boxOf(card(page, "Inputs"));
-    expect(above.x + above.width).toBeLessThanOrEqual((await boxOf(card(page, "Results"))).x);
 
-    await openStandard(page, TWO_COLUMNS_FROM - 1);
+    await openStandard(page, LEGEND_BESIDE_FROM - 1);
     const inputs = await boxOf(card(page, "Inputs"));
-    const results = await boxOf(card(page, "Results"));
 
-    expect(inputs.y + inputs.height).toBeLessThanOrEqual(results.y);
-    expect(inputs.width).toBe(above.width);
-    expect(inputs.x).toBe(results.x);
-    expect(results.width).toBeGreaterThan(inputs.width);
+    expect(isLegendBesidePlot(await boxes(page))).toBe(false);
+    expect(await isResultBesideInputs(page)).toBe(true);
+    expect({ x: inputs.x, width: inputs.width }).toEqual({ x: above.x, width: above.width });
   });
 
   test("with Compare on and three slots, every Presets reads Presets and no four-character value beside it is cut off", async ({ page }) => {
@@ -363,13 +430,15 @@ for (const width of [1920, 2560]) {
   });
 }
 
+// Where the page scrolls sideways, at 1024 and 768 px, the page's scroll width is wider than the window.
 for (const width of [2560, 1920, 1440, 1366, 1280, 1024, 768, 767]) {
-  test(`at ${width} px, the header and footer bands span the page`, async ({ page }) => {
+  test(`at ${width} px, the header and footer bands span the page's scroll width`, async ({ page }) => {
     await openStandard(page, width);
     expect(await pageWidth(page)).toBe(width - SCROLLBAR_GUTTER);
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
 
     for (const band of [page.getByRole("banner"), page.getByRole("contentinfo")]) {
-      expect(await boxOf(band)).toMatchObject({ x: 0, width: width - SCROLLBAR_GUTTER });
+      expect(await boxOf(band)).toMatchObject({ x: 0, width: scrollWidth });
     }
   });
 }
@@ -379,12 +448,13 @@ function sidebarToggle(page: Page) {
   return page.getByRole("banner").getByRole("button", { name: "Sidebar", exact: true });
 }
 
-test("at 768 px, the sidebar is the column, open, as the header's toggle says", async ({ page }) => {
+test("at 768 px, the sidebar is the column, open, as the header's toggle says, and the cards are two columns", async ({ page }) => {
   await openStandard(page, 768);
 
   await expect(page.getByRole("group", { name: "Settings" })).toBeVisible();
   await expect(sidebarToggle(page)).toHaveAttribute("aria-expanded", "true");
   expect((await boxOf(page.getByRole("main"))).x).toBeGreaterThan(0);
+  expect(await isResultBesideInputs(page)).toBe(true);
 });
 
 test("below 768 px, the sidebar is a sheet that the header's toggle opens and Escape closes", async ({ page }) => {

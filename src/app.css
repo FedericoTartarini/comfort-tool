@@ -20,12 +20,13 @@
 	--header-height: 3.5rem;
 
 	/* The type sizes (decision 73, rule 2), and the plot's height cap, which its 4:3 shape, the exported image's
-	   plot area, is derived from (rule 8). */
+	   plot area, is derived from (rule 8), with the width that shape gives it at the cap. */
 	--font-size-title: 1.125rem;
 	--font-size-heading: 0.875rem;
 	--font-size-body: 0.875rem;
 	--font-size-caption: 0.75rem;
 	--chart-cap: 24rem;
+	--plot-width: calc(var(--chart-cap) * 4 / 3);
 
 	--background: #ffffff;
 	--foreground: #0f172a;
@@ -176,7 +177,7 @@
 	   edge; it shrinks at 4:3 only where its column is narrower than it. */
 	.chart-plot {
 		flex: none;
-		inline-size: calc(var(--chart-cap) * 4 / 3);
+		inline-size: var(--plot-width);
 		max-inline-size: 100%;
 		aspect-ratio: 4 / 3;
 	}

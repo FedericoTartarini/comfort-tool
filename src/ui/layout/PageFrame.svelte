@@ -31,6 +31,7 @@
   import type { Snippet } from "svelte";
   import { copy } from "$lib/text/copy";
   import * as Card from "$lib/ui/primitives/card";
+  import { IsMobile } from "$lib/ui/primitives/hooks/is-mobile.svelte";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
   import { SIDEBAR_KEYBOARD_SHORTCUT } from "$lib/ui/primitives/sidebar/constants";
   import AppSidebar from "./AppSidebar.svelte";
@@ -58,6 +59,10 @@
 
   const id = $props.id();
 
+  // A phone, the sidebar primitive's own check (decision 87, rule 2): the frame renders the provider, so it cannot
+  // read the provider's state, and asks the class that state asks.
+  const isMobile = new IsMobile();
+
   // The tool sets no cookie (decision 73, rule 6), and the sidebar provider's Cmd/Ctrl+B writes `sidebar_state`
   // whatever its `open`, and the header's toggle alone collapses the sidebar (decision 87, rule 1). The key stops at
   // the window, before the provider's listener hears it, and does what the browser does with it; below `md` it no
@@ -77,20 +82,26 @@
 <!--
   The frame: the sidebar and the main area's `76rem`, the main area's width at
   1440 px, so a wide monitor keeps those proportions (decision 73, rule 10 as
-  revised again 2026-10-12).
+  revised again 2026-10-12). The result and chart column's least width is the
+  plot at its cap with the chart card's padding on both sides (decision 87,
+  rule 3). On a desktop the page is at least as wide as its content needs, so
+  a narrower window scrolls it sideways and the header's and footer's bands
+  run under the whole of it.
 -->
-<Sidebar.Provider class="flex-col" style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem);">
+<Sidebar.Provider
+  class={["flex-col", !isMobile.current && "min-w-min"]}
+  style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem); --result-column-min: calc(var(--plot-width) + 2 * var(--space-page));"
+>
   <SiteHeader {mark} bind:sidebarOpen />
 
   <div class="mx-auto flex w-full max-inline-(--frame-width) flex-1">
     <AppSidebar open={sidebarOpen} {navigation} {sessionControls} />
     <!--
-      The inset is the block's content area, the page's `main`, on the ground,
-      and a container: two columns, the input card and the results and the
-      chart beside them, while it is at least `74.5rem` wide, the input card,
-      the chart card's plot and the legend's basis with their gaps (decision
-      73, rule 10, the sum recomputed by decision 84, rule 12); one column
-      below, the input card above the others at the left. The input card is
+      The inset is the block's content area, the page's `main`, on the ground:
+      on a desktop two columns at every width, the input card and the results
+      and the chart beside them, the latter alone shrinking as the window
+      narrows, down to its least width (decision 87, rule 3); on a phone one column, the
+      input card above the others (rule 2). The input card is
       `28.75rem` at every width, the narrowest at which three slots show
       Presets beside a four-character value
       (`.scratch/input-gate/issues/04-…md` Comments); its column is `auto`,
@@ -102,9 +113,12 @@
       the inset is then the row's first child, and the token makes the fourth
       side too.
     -->
-    <Sidebar.Inset class="@container min-w-0 bg-transparent first:pl-(--space-page)">
+    <Sidebar.Inset class="min-w-0 bg-transparent first:pl-(--space-page)">
       <div
-        class="grid grid-cols-[minmax(0,1fr)] items-start gap-(--space-page) p-(--space-page) pl-0 @min-[74.5rem]:grid-cols-[auto_minmax(0,1fr)]"
+        class={[
+          "grid items-start gap-(--space-page) p-(--space-page) pl-0",
+          isMobile.current ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[auto_minmax(var(--result-column-min),1fr)]",
+        ]}
       >
         <Card.Root class="w-[28.75rem]">
           <Card.Header class="items-center">
