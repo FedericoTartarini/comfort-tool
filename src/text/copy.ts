@@ -223,7 +223,7 @@ export const copy = {
   bandNoColor: "No colour",
   bandAdd: "Add",
   bandRemove: "Remove",
-  // Why an Edge typed out of order was not taken, in its cell until that Edge is next moved (ADR-0002 decision 84,
+  // Why an Edge typed out of order was not taken, in its cell until that Edge is next typed in (ADR-0002 decision 84,
   // rule 6): `edge` and its neighbours carry the unit; the first band has no Edge below, the last none above.
   bandEdgeRefused: (edge: string, below: string | undefined, above: string | undefined) =>
     below === undefined

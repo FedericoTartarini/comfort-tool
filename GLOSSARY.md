@@ -21,7 +21,7 @@ The library's published metadata for one model (`<MODEL>_INFO`): the model's nam
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
-The bounds within which a model's answer holds, published by the library per quantity. Every value a slot holds is within them: a draft past its bound is cut to the bound's end when it is committed, and a draft that would put another held value outside its bound is refused. Where many values change at once, a model switch or an arrival by address, the values are cut to their bounds and the cut is listed for the person. A value a run derives or returns outside a bound is a violation, calculated and marked on its result row.
+The bounds within which a model's answer holds, published by the library per quantity. Every value a slot holds is within them: a draft past its bound is cut to the bound's end when it is committed, and a draft that would put a held humidity entry outside its bound, or whose cut would, is refused. An air speed or a clothing insulation is held to its kind's bound alone, a run whose relative air speed or dynamic clothing insulation breaks the model's applicability being a violation. Where many values change at once, the values are cut to their bounds: a model switch lists the cut and asks first; an arrival by address cuts and says so in one toast; an entry-mode switch cuts what its conversion puts past a bound. A value a run derives or returns outside a bound is a violation, calculated and marked on its result row.
 _Avoid_: limit, range check, validation, clamp (for the cut, say what it does: cut to the bound)
 
 **Bound**:
@@ -29,11 +29,11 @@ The minimum and maximum a value is tested against; either may be absent. The lib
 _Avoid_: limit, range (that is an axis range)
 
 **Out of range**:
-Said of a draft that breaks its bound: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value is entered in. Its box turns red once the typing pauses, and it is never committed as it is. Never said of a value a slot holds, nor of a result.
+Said of a draft that breaks its bound: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value is entered in; an entered air speed or clothing insulation by its kind's bound alone. Its box turns red once the typing pauses, and it is never committed as it is. Never said of a value a slot holds, nor of a result.
 _Avoid_: invalid, violation
 
 **Violation**:
-A bound a completed run broke, as the library reports it with the result: either the model's applicability, on a value the run derives or returns, or a requirement the standard sets on the conditions, such as ASHRAE 55's air-speed limit without local control. The number is calculated and shown; its row in the result table is marked, and no yes-or-no answer is given beside it.
+A bound a completed run broke, as the library reports it with the result: either the model's applicability, on a value the run derives or returns, or a requirement the standard sets on the conditions, such as ASHRAE 55's air-speed limit without local control. The number is calculated and shown; its row in the result table is marked, a bound on a corrected value reported on the value entered, and no yes-or-no answer is given beside it.
 _Avoid_: warning (that is the sentence shown), error, out of range, non-compliance
 
 **Axis range**:
@@ -69,7 +69,7 @@ A named reference value the library publishes for a quantity (a typical task for
 _Avoid_: default, option, template
 
 **Input calculator**:
-A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slots chosen for it, converted into the entry mode each slot is in. Those a model declares are offered together, apart from the rows they write, each in its own tab of one dialog. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
+A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slots chosen for it, converted into the entry mode each slot is in and cut to the row's bound. Those a model declares are offered together, apart from the rows they write, each in its own tab of one dialog. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
 _Avoid_: modifier, tool, wizard, helper
 
 **Option**:
@@ -77,7 +77,7 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Draft**:
-The text in a number box from the first keystroke until it is committed: after a pause in typing, on Enter or on leaving the box. A draft is not an input: nothing is calculated from it, and the Inputs, the Results and the Chart agree on what was last committed.
+The text in a number box from the first keystroke until it is committed: after a pause in typing when it is within its bounds, and on Enter or on leaving the box whatever it is, when it is written, cut or refused. A draft is not an input: nothing is calculated from it, and the Inputs, the Results and the Chart agree on what was last committed.
 _Avoid_: pending value, uncommitted input
 
 **Slot**:
@@ -93,7 +93,7 @@ What makes three slots one table, shared by the Standard and Explore pages: the 
 _Avoid_: store, app state
 
 **Share link**:
-An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: a value outside its bound is cut to it, and what was cut is listed. In a tab that already holds a session it asks once, before it replaces that session, with that list in the question.
+An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: a value outside its bound is cut to it, and one toast says values were cut. In a tab that already holds a session it asks once, before it replaces that session.
 _Avoid_: export link, permalink, state URL
 
 **Atmospheric pressure**:

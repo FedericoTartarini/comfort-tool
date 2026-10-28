@@ -411,6 +411,21 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > width three slots need to show "Presets". Decision 33 and decision 83 rule 2 are withdrawn, ten decisions noted;
 > GLOSSARY.md follows and gains **Draft**. Ticket 05 (N6) and open-points B28 are new. **Next: the user's `/to-spec`
 > and `/to-tickets` for decision 84, then the README's workflow.**
+>
+> **2026-10-28 — position, the input gate done**: `.scratch/input-gate/` landed on `rewrite/v1`, tickets 01 to 13:
+> every notice a toast at the window's top right (`10eb789`, `32508d5`, `0f83fba`); the box takes only a number and
+> carries its own step buttons, the line under it the bound with its unit (`173c517`, `dd83b9a`, `e2fbcf1`, `d2b795b`);
+> the wet bulb's upper end (`89e45a6`); the input card at `28.75rem` and two columns from a `74.5rem` main area
+> (`ab38a5f`); a draft committed at the pause, cut or refused (`e299915`, `abf01b9`); air speed and clothing held to
+> their kinds, a run past the model's row a violation (`6dea251`); the switch over every held slot and the arrival's
+> cut with one toast (`feee2a7`); Apply, presets and the entry-mode switch kept within bounds (`f351fed`); nothing kept,
+> a violation's button on its result row and a toast when a limit is first broken (`4535b5d`); the Image's broken
+> limits (`5ae5254`); the Bands dialog's draft (`94710e1`, `b791664`, `9f461e4`). Decision 84 carries the user's
+> rulings of 2026-10-28 and a close-out note naming the commits and where the code says more or less than the rules;
+> decision 73 has a note, decisions 32's and 63's notes of 2026-10-27 are marked; ADR-0001 §4.5 and §5 are noted;
+> `docs/design.md` and GLOSSARY.md follow the code. Open for the user: a toast still covers part of the Results card at
+> 1440 px (story 18), and the PMV pages' input cards end below 780 px. **Next: the frontend review's ticket 05 (N6),
+> then its themes (result table, edition, shell, link) and I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 

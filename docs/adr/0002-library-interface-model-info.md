@@ -643,6 +643,8 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     **Noted 2026-10-27 (decision 84 rule 4).** The dialog lists every slot the session holds, compared or not, and its
     yes cuts them all. An arrival by address now cuts each entry to its bound and lists what it cut in this dialog,
     with one button.
+    *Revised 2026-10-28 by decision 84's note of that day, rule 4: an arrival cuts and raises one toast; it lists nothing
+    and opens no dialog.*
 33. **The gate freezes the result, not the screen.** Amends ADR-0001 §4.5's "Outputs are derived entirely from
     Inputs + Chart" and the compute contract decision 29 left unchanged. While an entered value is outside
     Applicability the last valid result stays on screen, as before. What is kept is the last valid *inputs* of the
@@ -2396,6 +2398,8 @@ notes under decisions 51 and 53:
     "a button beside Copy link" is Reset beside it. The rule's text is kept as written.
     **Noted 2026-10-27 (decision 84 rules 4 and 7).** Rule 6's entry out of range no longer arrives as written: it is
     cut to its bound and listed in the model switch's dialog. The notice line is a toast at the top right.
+    *Revised 2026-10-28 by decision 84's note of that day, rule 4: an arrival cuts and raises one toast; it lists nothing
+    and opens no dialog.*
 64. **An image is a figure built for the file from the page's `ChartSpec`, in two printed sizes, and it says what
     its chart is computed from.** Taken 2026-10-07 with the user in the grilling of Phase 5 item 5, ahead of the
     code; notes ADR-0001 §4.4 and §7; `CONTEXT.md` gains **Image** and **Input summary**. Facts. `src/` has no
@@ -3164,6 +3168,13 @@ notes under decisions 51 and 53:
     **Noted 2026-10-27 (decision 84 rules 7, 9 and 12).** Rule 5's notice line goes; rule 7's `24rem` becomes the
     narrowest width at which three slots show "Presets", about `27rem`; rule 9's kept row goes; rule 10's sum is
     recomputed with that width, and below it the input card keeps its width.
+    *Measured 2026-10-28 (decision 84's close-out): the width is `28.75rem`, and rule 10's sum `74.5rem`.*
+    **Noted 2026-10-28 (decision 84's notes of that day).** Rule 8's Bands dialog, given "Reset bands and Close in its
+    footer" by decision 59's note of 2026-10-12, has Reset bands at its footer's left and Apply at its right, the
+    corner's X and Escape its only Close (the user's ruling, `b791664`), so the 2026-10-12 note's "the generated X
+    beside its footer's Close" is history. Rule 5's bands, "full width", and rule 10's grounds run the page's width:
+    the window less the scrollbar's gutter the root now reserves, a strip of the page's ground at the right where the
+    browser's scrollbars take room and the page does not scroll.
 74. **Display order: the registry is the one order, a standard is a family, and the Explore select is grouped by
     standard.** Taken 2026-10-12 with the user in the display-order grilling, after `.scratch/shell/` ticket 13
     (`1906b86`) and ahead of the code; revises decision 57 rule 3, notes decisions 6 and 73, and CONTEXT.md's
@@ -4099,6 +4110,69 @@ notes under decisions 51 and 53:
     as taken); cutting the humidity entry to its moved bound; a violation of the app's own for a relative humidity above
     100 %; running a relative humidity clamped at 100 %, a value no box shows (the spec's story 30); a dialog listing an
     arrival's cuts.
+    **Noted 2026-10-28 (with the user; the rulings in `.scratch/input-gate/` ticket 11's Comments).** Rule 7's toast
+    stands at the window's top right at Sonner's own offset, 24 px and 16 px under 600 px, over the header; this
+    supersedes ticket 01's "under the header, level with the cards" (`0f83fba`). Rule 7's "shadcn-svelte's Sonner" is
+    `svelte-sonner`'s own `Toaster`, mounted from `src/ui/layout/Toaster.svelte`, not the primitive the CLI generates,
+    whose theme reads `mode-watcher`, which wrote two `localStorage` entries the tool never writes (the user's choice,
+    ticket 01). Toasts stack, Sonner showing three; a notice raised again replaces its own toast; Reset closes those
+    standing (ticket 01's ruling 3, `32508d5`, `src/App.svelte:84`), and a link's yes has none to close; the Comments'
+    "Reset or a link's yes closes none" restates ticket 01's first review, which that ruling corrected. Rule 2's "The other value is never cut" has one exception, the
+    entry-mode switch: it cuts what its conversion puts past a bound, as an arrival does, so the temperature switch may
+    cut a dependent humidity entry, a dew point against the new dry bulb (the user's ruling at ticket 07); rule 5's
+    "an entry-mode switch … write within bounds (inference)" is withdrawn for it. Rule 2 also: a draft past its own
+    bound whose end would put another entry out of range is refused, not cut (`src/core/applicability.ts:324-336`).
+    Rule 8: the row's button, "Limits broken", stands before the swatch in the Input cell while the slots are named,
+    else first in the Compliance cell, else in the first value cell; the toast's words are `copy.limitsBrokenNotice`,
+    "Calculated, but outside a limit." and the bound sentences. The spec's four choices stand: a "—" a violation causes
+    has no icon of its own, the row's button marking the run; an Edge's refusal raises no toast; an input calculator's
+    Apply raises none; the switch's dialog names slots by position, Compare on or off, whenever the session holds more
+    than one, so a dialog listing one slot of several still names it (`src/ui/inputs/ModelSwitchDialog.svelte:59`).
+    **Noted 2026-10-28 (close-out; `.scratch/input-gate/` ticket 11).** Built in `10eb789` and `32508d5` (the toast;
+    ticket 01), `173c517`, `dd83b9a`, `e2fbcf1` and `d2b795b` (the box and its step buttons; 02), `89e45a6` (the wet
+    bulb's upper end; 03), `ab38a5f` and `1b8b4ca` (the input card's width; 04), `e299915` (the draft, its commit and
+    the verdict; 05), `abf01b9` (marked at the pause, a cut silent; 12), `6dea251` (air speed and clothing held to their
+    kinds; 13), `feee2a7` (the switch over every held slot, the arrival's cut; 06), `f351fed` (Apply, the presets and
+    the entry-mode switch; 07), `4535b5d` (nothing kept, the row's button, the limit toast; 08), `5ae5254` (the Image;
+    09), `94710e1`, `b791664` and `9f461e4` (the Bands draft; 10) and `0f83fba` (the toast's place), with the notes in
+    `c3475fe` and `6c15d0d`. `npm test` passes at 1182 tests and `npm run test:browser` at 117; the walk, both
+    pages in SI and IP, Compare off and on, by mouse and keyboard, is in `.scratch/input-gate/11-walk/`, its console
+    holding Vite's own debug lines alone. Measured: the input card is `28.75rem`, the narrowest at which no
+    four-character value nor Presets is cut being 458 px with Presets' `0.5rem` padding, the user's (ticket 04); the
+    two-column threshold is `74.5rem` of main area, a 1431 px window in Playwright's Chromium with the 15 px gutter, so
+    1366 px is now one column (with overlay scrollbars, unconfirmed). The toaster's options are `position="top-right"`,
+    `duration={Number.POSITIVE_INFINITY}`, `closeButton`, `closeButtonAriaLabel` and `theme="light"`, with the popover's and the border's tokens as its
+    `style`, on `svelte-sonner` 1.2.2. Read
+    against the code at `c7916e4`, the rules and notes say less or more than it in these places, beyond the rulings
+    above. Rule 1: the box keeps the `spinbutton` role the number input had; an IME's composition cannot be refused in
+    `beforeinput`, so a composed "e" may land (unconfirmed; ticket 02). Rule 4: a link over a tab that kept a session
+    moves that session to the link's address and cuts it there while the question waits, raising nothing; its "No"
+    raises the cut's toast, its "Yes" the link's own notices alone (the user's ruling, ticket 06). The arrival's passes
+    are the switch's settling loop (`settledOutOfRangeRows`, `src/core/modelSwitch.ts`). Rule 6: the footer holds Reset
+    bands at its left and Apply at its right, the corner's X and Escape the only Close (decision 73's note of this
+    date); an Edge's refusal stands in its cell as the field's error, the box unmarked since it shows the Edge as it
+    was, until a new value is typed in that box, and Add, Remove and Reset drop every refusal (`9f461e4`); it names the
+    Edges at full precision (decision 59's note), so in IP its two numbers can read alike. Rule 8: a slot's limit toast
+    replaces its own, and is neither closed nor rewritten when its limits clear or the bound it names moves: walked, a
+    toast for Input 3 stood after a switch to Adaptive (ASHRAE 55) had cleared every limit (`.scratch/open-points.md`
+    B30). An Image's Input summary writes, per slot, `copy.limitsBrokenHeading` and then one line per limit, not one
+    line, which ran off the single-column Image (the user's ruling, ticket 09). Rule 11: the library's `t_wb` is to
+    0.1 °C, so at a 40 °C dry bulb the upper end reads 40.2 °C, above the dry bulb, where story 30 says "by the dry
+    bulb". Rule 12: the header's and footer's bands stop at the gutter (decision 73's note of this date); the tooltip
+    primitive's `Tooltip.Root` is no longer rendered by the app, the sidebar primitive still mounting its
+    `Tooltip.Provider`. Rule 7 against story 18, "so that they never cover the inputs or the results":
+    at 1440 px a toast reaches about 40 px below the 56 px header (ticket 11's Comments, from a screenshot), and
+    walked with Compare on, Input 3's limit toast lay over the Results table's headings and Input 1's PMV and PPD;
+    under 600 px Sonner spans the window over the Inputs card. Open for the user. Seen and left: the switch's dialog
+    writes its allowed range without a unit (`src/ui/inputs/ModelSwitchDialog.svelte:54`), where rule 10 gave the line
+    under the box one; at 1440 × 780 PMV (ASHRAE 55)'s input card ends at 856 px and PMV (ISO 7730)'s at 817, so
+    `docs/design.md`'s one screen holds for the result and chart cards alone (not bisected). Read through rule 11:
+    decision 32's amendment of 2026-09-28, decision 46's three limits and decision 53's notes of 2026-09-30 and
+    2026-10-02 say a wet-bulb entry is not bounded, and `HumidityMode.bounded` is `"both" | "upper"`, not a boolean
+    (`src/core/entryModes.ts:87`). Rule 4 as noted revises decision 32's and 63's notes of 2026-10-27, marked there.
+    Two comments that said more than the code are corrected with this note: the switch dialog's allowed range is no
+    longer "character for character" the line under the box, and an Edge's refusal stands until that Edge is typed
+    in, not "next moved" (`src/text/copy.ts`).
 
 ## Consequences
 

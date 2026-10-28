@@ -341,6 +341,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 62** (2026-10-02): the closed set gains `chartType.adaptive`, the chart the `chartType.dynamic` row below folds into its last sentence: locked axes `t_running_mean × operative_tmp`; each Comfort zone the two limit lines the declaration returns (`limits`), both stroked, the region between them filled, and the closing sides at the ends of the x range never stroked; marker points; no scan. It is named for the chart the deployed tool and the prototype draw under that name, not for a model; an EN 16798 adaptive model declares the same type. `chartType.dynamic` is scanned only. Every chart is drawn in one order — fills, chrome, outlines, hover grid, the psychrometric chart's cover and saturation line, markers — so the RH isolines are cut only by an outline.
 >
 > **Noted 2026-10-06** ([ADR-0002](0002-library-interface-model-info.md) decisions 37, 38 and 62, as noted the same day; `.scratch/three-chart-types/` ticket 06): built as `fd36196`, `ede7891`, `04d48f6`, `6f61623`, `4f97433`, `c1186a9` and `17f3380`. "**Every model gets it by default**" in the dynamic row below no longer holds: no chart is a default. A model declares its charts, the first shown first, each type at most once (`core/modelDeclaration.test.ts:86`); a model with a scan may declare any, one without only adaptive charts (`core/modelDeclaration.ts:290-299`). Registered today: PMV (ISO 7730) and PMV (ASHRAE 55) declare the psychrometric and the dynamic chart, Heat Index the dynamic chart, Adaptive (ASHRAE 55) the adaptive chart alone. The row's last sentence is the adaptive chart, whose "locked axes" in the marker above are the axes it declares, with no lock in the state, and whose chart picker shows one button, "Adaptive", and no axis picker.
+>
+> **Noted 2026-10-28** ([ADR-0002](0002-library-interface-model-info.md) decision 84): no slot keeps a last valid run, so the 2026-09-30 note's "every compared slot that has a last valid run" is every compared slot.
 
 
 | Type | Definition |
@@ -437,6 +439,8 @@ Legend rules:
 > **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decisions 57 and 59, as noted the same day; `.scratch/explore/` ticket 09): built as `eb9ecd4`, `47498cb` and `9f95582`. The session lives as long as the document: it survives a page change made in the app, by a link, the select or the back and forward buttons, and a typed address or a new tab starts a new one. "Carried by the link" waits for the link, Phase 5 item 4. The panel sits under the chart's legend.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 63** (2026-10-06): a session lasts as long as its tab. The tab keeps it in `sessionStorage`, so it survives a reload and an address typed into the tab, where the note above has both start a new one; and it is replaced only on the person's yes, by a share link opened in the tab or by Reset, which puts a new session on the defaults in its place. `Session` is built from a decoded text or from a model's defaults. "Carried by the link" in the marker of 2026-10-01 is a link copied on the Explore page.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 84** (2026-10-27, as noted 2026-10-28; `.scratch/input-gate/` ticket 11): the decisions 32–34 marker's decision-33 sentence ("While an entry is out of range the gate keeps the last valid inputs …") is withdrawn, decision 32's rehearsal on a copy standing, and "Outputs are derived entirely from Inputs + Chart" holds again without exception. A slot holds only values within their bounds, so nothing is kept: `SlotOutputs` derives the result, the violation rows and the scan from the slot as it is, with no last valid run and no not-calculated flag. A typed value is a draft until it is committed (a pause, Enter, leaving the box), then cut to its bound or, where it would put a humidity entry out of range, refused (`Session.commitEntry`, `Session.commitAtmosphericPressure`); the "Switching models" rule's dialog lists every slot the session holds and its yes cuts them all; an arrival by address and an entry-mode switch cut. The 2026-10-06 note's tab no longer holds a notice: it raises each through a callback as a toast (`ui/outputs/notices.ts`). The "Explore thresholds" rule's Band list is edited as a draft (`state/bandListDraft.svelte.ts`), written to `ChartState` by Apply.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -627,6 +631,18 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > `core/resultCell.ts` also says whether a cell's "—" stands for a violation (`31a5f5a`), and `core/charts/chartSpec.ts`
 > gains `ChartNote`, a line under the plot (`4f6595f`). The 2026-10-09 note's `ui/layout/SlotColumns.svelte` no longer
 > lays out hints: `ui/inputs/InputPanel.svelte` draws no applicability alert (`c1f8445`).
+>
+> **Noted 2026-10-28** ([ADR-0002](0002-library-interface-model-info.md) decision 84, as noted the same day;
+> `.scratch/input-gate/` ticket 11): the tree loses `core/applicabilitySummary.ts` (`4535b5d`) and
+> `ui/outputs/NoticeLine.svelte` (`10eb789`), so the 2026-10-06 and 2026-10-22 notes' glosses of them are history, and
+> `state/tab.svelte.ts` holds no notice. It gains `state/bandListDraft.svelte.ts`, the Bands dialog's draft of a Band
+> list (`94710e1`); `ui/layout/Toaster.svelte`, the app's one toaster, `svelte-sonner`'s, not a generated primitive
+> (`10eb789`); and `ui/outputs/notices.ts`, which raises every notice, a refusal and a broken limit as a toast
+> (`10eb789`, `e299915`, `4535b5d`). `svelte-sonner` is a dependency. `core/applicability.ts` also judges a value a
+> person would commit (`Verdict`, `entryVerdict`, `atmosphericPressureVerdict`; `e299915`), and `core/modelSwitch.ts`
+> also settles a held slot's cuts (`settledOutOfRangeRows`; `feee2a7`). `ui/inputs/BandsDialog.svelte` is left out by
+> the 2026-09-28 marker's rule. The generated `tooltip` primitive's `Tooltip.Root` is no longer rendered by the app; the sidebar primitive still
+> mounts its `Tooltip.Provider`.
 
 ```
 src/
@@ -711,6 +727,8 @@ index.html              embedded ES5 feature check + read-only summary page
 > **Noted 2026-10-09** (ADR-0002 decisions 65 to 72; `.scratch/interface-design/` ticket 13): the scope's designed interface landed as Phase 5c, `04eb13d` to `b373ccc`: the header and footer, the three columns and their breakpoints, and one palette in `core/palette.ts` that the stylesheet's tokens and the charts both read. Criterion 8's lint also fails a `<style>` block in a business component (`styleBlockSyntax`). The footer's licence, Code link and citation are placeholders until the user decides them (the rewrite plan's Phase 5c).
 >
 > **Amended 2026-10-18** ([ADR-0002](0002-library-interface-model-info.md) decision 78): criterion 3 reads the traced zone's vertices. 3a holds every vertex on a limit to its bound in PMV, 3b compares the deployed tool's vertices as before, and a criterion 3c holds every vertex on a bound to the library: a run one bisection step inside it returns no `warnings` row, one step outside returns one.
+>
+> **Noted 2026-10-28** ([ADR-0002](0002-library-interface-model-info.md) decision 84): no slot keeps a last valid run, so an Image draws each slot's run as it is, and its Input summary lists, per slot, the limits that run broke.
 
 
 Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;

@@ -38,7 +38,8 @@
   // Each value as the input panel shows it: converted to the display unit and
   // formatted by the same formatters, so the dialog and the boxes behind it
   // never read differently. The symbol rides on the current value alone — the
-  // allowed range is character for character the one printed under the box.
+  // allowed range is the bound under the box without the unit that line
+  // carries since ADR-0002 decision 84, rule 10.
   const groups = $derived(
     (pending?.slots ?? [])
       .filter(({ listedRows }) => listedRows.length > 0)
