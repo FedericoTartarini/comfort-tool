@@ -5,7 +5,8 @@ import { expect, test, type Page } from "@playwright/test";
  * 6): the chart changes only on Apply, at the footer's right with Reset bands
  * at its left, and the corner's Close and Escape discard the draft.
  * An Edge typed out of order is refused when it is committed, its box showing
- * the Edge as it was and its cell saying why, with no toast.
+ * the Edge as it was and its cell saying why, with no toast, until a new value
+ * is typed in it.
  */
 
 /** PMV (ASHRAE 55)'s thermal sensation: band 4, Neutral, has its upper Edge at 0.5, between -0.5 and 1.5. */
@@ -88,7 +89,7 @@ test("moving an Edge in the dialog leaves the chart as it was until Apply, and C
   await expect(edgeBox(page, 4)).toHaveValue("0.7");
 });
 
-test("an Edge typed past its neighbour is refused on leaving its box, and its cell says why until that Edge is next moved", async ({ page }) => {
+test("an Edge typed past its neighbour is refused on leaving its box, and its cell says why until that Edge is typed in again", async ({ page }) => {
   await open(page);
   await openBands(page);
   const box = edgeBox(page, 4);
@@ -101,8 +102,6 @@ test("an Edge typed past its neighbour is refused on leaving its box, and its ce
   await expect(cell.getByRole("alert")).toHaveText("Not taken: 2 is not between -0.5 and 1.5, the edges beside it.");
   await expect(toasts(page)).toHaveCount(0);
 
-  await box.fill("0.7");
-  await box.press("Enter");
-  await expect(box).toHaveValue("0.7");
+  await box.pressSequentially("7");
   await expect(cell.getByRole("alert")).toHaveCount(0);
 });

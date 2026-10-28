@@ -208,6 +208,19 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
     expect(draft.refusalAt(1)).toBeDefined();
   });
 
+  it("drops an Edge's refusal once a new value is typed in its box, the list and the other refusals as they were", () => {
+    const draft = bandsDraftOf(exploreSession().session);
+    draft.moveEdge(3, 2);
+    draft.moveEdge(1, -3);
+    const list = draft.bands;
+
+    draft.startTypingEdge(3);
+
+    expect(draft.refusalAt(3)).toBeUndefined();
+    expect(draft.refusalAt(1)).toEqual({ edge: -3, below: -2.5, above: -0.5 });
+    expect(draft.bands).toBe(list);
+  });
+
   it("drops every refusal on Add, Remove and Reset, which move the Edges' places", () => {
     for (const edit of [(draft: BandListDraft) => draft.addBand(5), (draft: BandListDraft) => draft.removeBand(5), (draft: BandListDraft) => draft.reset()]) {
       const draft = bandsDraftOf(exploreSession().session);

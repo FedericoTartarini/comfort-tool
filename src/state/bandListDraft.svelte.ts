@@ -53,7 +53,7 @@ export class BandListDraft {
   /**
    * Band `index`'s Edge moved to `edge`, in the output's SI unit, unless it
    * falls at or beyond a neighbour: then the list is left as it was, and the
-   * refusal is kept until that Edge is next moved.
+   * refusal is kept until that Edge is next moved or typed.
    */
   moveEdge(index: number, edge: number): void {
     const refusals = new Map(this.#refusals);
@@ -67,7 +67,20 @@ export class BandListDraft {
     this.#refusals = refusals;
   }
 
-  /** Why band `index`'s Edge was last refused, or `undefined` where its last move was taken or none was made. */
+  /**
+   * A new value begun in band `index`'s Edge box: the refusal of the last one,
+   * whose words name it, is dropped, so the cell never speaks of a value no
+   * longer typed.
+   */
+  startTypingEdge(index: number): void {
+    if (this.#refusals.has(index)) {
+      const refusals = new Map(this.#refusals);
+      refusals.delete(index);
+      this.#refusals = refusals;
+    }
+  }
+
+  /** Why band `index`'s Edge was last refused, or `undefined` where its last move was taken or none was made, or it has been typed since. */
   refusalAt(index: number): EdgeRefusal | undefined {
     return this.#refusals.get(index);
   }

@@ -7,7 +7,7 @@
   dialog's Apply (decision 84, rule 6). An Edge box's verdict is whether the
   Edge stays in order: one out of order is refused at its commit, the box
   shows the Edge as it was, and the cell says why until that Edge is next
-  moved. It is the table alone: the dialog it is opened in carries its title,
+  moved or typed in. It is the table alone: the dialog it is opened in carries its title,
   Reset bands, Close and Apply (decision 73, rule 8).
 -->
 <script lang="ts">
@@ -97,7 +97,8 @@
               </Toggle>
             </Inline>
           </Table.Cell>
-          <Table.Cell>
+          <!-- A keystroke in the box begins a new value, so the words on the last one go. -->
+          <Table.Cell oninput={() => draft.startTypingEdge(index)}>
             <Field.Field>
               <NumberInput
                 value={bands.edges[index]}
