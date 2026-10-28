@@ -131,13 +131,13 @@ describe("dynamic clothing insulation", () => {
 });
 
 describe("atmospheric pressure", () => {
-  it("is p_atm, of its own kind, in Pa and inHg, stepped by 100 Pa and 0.01 inHg, bounded 30 000 to 110 000 Pa", () => {
+  it("is p_atm, of its own kind, in kPa and inHg, stepped by 0.1 kPa and 0.01 inHg, bounded 30 000 to 110 000 Pa", () => {
     const pressure = quantities.p_atm;
     expect(pressure.key).toBe("p_atm");
     expect(pressure.kind).toBe("atmosphericPressure");
-    const pascals = displayUnitFor(pressure, unitSystem.si);
+    const kilopascals = displayUnitFor(pressure, unitSystem.si);
     const inchesOfMercury = displayUnitFor(pressure, unitSystem.ip);
-    expect([pascals.symbol, pascals.step]).toEqual(["Pa", 100]);
+    expect([kilopascals.symbol, kilopascals.step]).toEqual(["kPa", 0.1]);
     expect([inchesOfMercury.symbol, inchesOfMercury.step]).toEqual(["inHg", 0.01]);
     expect(kindBounds[pressure.kind]).toEqual({ min: 30000, max: 110000 });
   });

@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -272,5 +273,55 @@ test.describe("the row's presets", () => {
     await walking.click();
     await expect(list).toHaveCount(0);
     await expect(metabolicRate).toHaveValue("1.7");
+  });
+});
+
+/** The toasts standing: a closed one stays a moment for Sonner's exit animation, marked `data-removed`. */
+function toasts(page: Page) {
+  return page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
+}
+
+const pressure = (page: Page) => page.getByRole("spinbutton", { name: /^Atmospheric pressure/ });
+
+/**
+ * The pressure the page holds, in pascals: the `p_atm` of the text the tab
+ * keeps, which is the link's. Read from the tab's storage, not by Share: a
+ * click there takes the focus from the box, and leaving the box commits its
+ * shown text.
+ */
+async function heldPressure(page: Page): Promise<number> {
+  const kept = await page.evaluate(() => sessionStorage.getItem("comfort-tool.session") ?? "");
+  return JSON.parse(Buffer.from(kept.slice("v1.".length), "base64url").toString()).p_atm;
+}
+
+// In SI the pressure is shown in kPa and held in pascals (ADR-0002 decision 87, rule 6).
+test.describe("the atmospheric pressure", () => {
+  test("at the default reads 101.33 kPa within 30 – 110 kPa, a step up moves the held value by 100 Pa, and 101.325 typed holds 101 325 Pa", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const box = pressure(page);
+    await expect(page.getByText("Atmospheric pressure (kPa)", { exact: true })).toBeVisible();
+    await expect(box).toHaveValue("101.33");
+    await expect(captionOf(box)).toHaveText("30 – 110 kPa");
+    await expect.poll(() => heldPressure(page)).toBe(101325);
+
+    // The box's last digit is the formatter's rounding of 101.425, so the held value is read, not the text.
+    await stepButtons(box).up.click();
+    await expect.poll(() => heldPressure(page)).toBeCloseTo(101425, 6);
+
+    await commit(box, "101.325");
+    await expect.poll(() => heldPressure(page)).toBe(101325);
+  });
+
+  test("a pressure refused for a humidity ratio it would put out of range is written in kPa in the toast", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    await commit(dryBulb(page), "25");
+    await enterHumidityAs(page, /^Humidity ratio/);
+    // At 25 °C saturated air holds 20.08 g/kg at 101 325 Pa and 18.45 g/kg at 110 000 Pa.
+    await commit(page.getByRole("spinbutton", { name: /^Humidity ratio/ }), "19.5");
+
+    await commit(pressure(page), "110");
+    await expect(toasts(page)).toHaveCount(1);
+    await expect(toasts(page)).toContainText("Atmospheric pressure was not changed to 110 kPa");
+    await expect(pressure(page)).toHaveValue("101.33");
   });
 });

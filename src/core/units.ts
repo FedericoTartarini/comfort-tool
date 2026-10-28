@@ -36,12 +36,24 @@ const PASCALS_PER_KILOPASCAL = 1000;
 const GRAMS_PER_KILOGRAM = 1000;
 const POUNDS_PER_KILOPOUND = 1000;
 
-// Both pressure kinds, vapour and atmospheric, are shown in inHg in IP.
-const inchesOfMercury: DisplayUnit = {
-  symbol: "inHg",
-  step: 0.01,
-  toSi: (inches) => inches * PASCALS_PER_INCH_OF_MERCURY,
-  fromSi: (pascals) => pascals / PASCALS_PER_INCH_OF_MERCURY,
+// Both pressure kinds, vapour and atmospheric, are held in the library's
+// pascals and shown in kPa and inHg: vapour pressure as in the deployed tool,
+// atmospheric pressure by ADR-0002 decision 87, rule 6, where the deployed
+// tool shows pascals. The two decimals of kPa read 101 325 Pa as 101.33; a
+// typed value is not rounded, so 101.325 typed holds 101 325 Pa.
+const pressureUnits: UnitPair = {
+  si: {
+    symbol: "kPa",
+    step: 0.1,
+    toSi: (kilopascals) => kilopascals * PASCALS_PER_KILOPASCAL,
+    fromSi: (pascals) => pascals / PASCALS_PER_KILOPASCAL,
+  },
+  ip: {
+    symbol: "inHg",
+    step: 0.01,
+    toSi: (inches) => inches * PASCALS_PER_INCH_OF_MERCURY,
+    fromSi: (pascals) => pascals / PASCALS_PER_INCH_OF_MERCURY,
+  },
 };
 
 // `satisfies Record<QuantityKind, …>`: a kind added to `QuantityKind` fails
@@ -109,22 +121,8 @@ const displayUnits = {
   // A boolean output (`acceptability_80`, `compliance`), shown as "Yes" or
   // "No": no unit, and like a category never an editable input.
   yesNo: sameInBothSystems({ symbol: "", step: 0 }),
-  // `pa` is in pascals; kPa is the display unit, as in the deployed tool.
-  pressure: {
-    si: {
-      symbol: "kPa",
-      step: 0.1,
-      toSi: (kilopascals) => kilopascals * PASCALS_PER_KILOPASCAL,
-      fromSi: (pascals) => pascals / PASCALS_PER_KILOPASCAL,
-    },
-    ip: inchesOfMercury,
-  },
-  // `p_atm` is in pascals and shown in them: in kPa the formatter's two
-  // decimals would show 101 325 Pa as 101.33 (ADR-0002 decision 49).
-  atmosphericPressure: {
-    si: { symbol: "Pa", step: 100, toSi: identity, fromSi: identity },
-    ip: inchesOfMercury,
-  },
+  pressure: pressureUnits,
+  atmosphericPressure: pressureUnits,
 } satisfies Record<QuantityKind, UnitPair>;
 
 export function displayUnitFor(quantity: Quantity, system: UnitSystem): DisplayUnit {

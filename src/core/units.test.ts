@@ -44,11 +44,12 @@ describe("displayUnitFor", () => {
     expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
   });
 
-  it("shows atmospheric pressure in the library's pascals in SI, so 101325 reads as 101325, and in inHg in IP", () => {
-    const pascals = displayUnitFor(quantities.p_atm, unitSystem.si);
-    expect(pascals.fromSi(101325)).toBe(101325);
-    expect(pascals.toSi(101325)).toBe(101325);
-    expect(formatNumber(pascals.fromSi(101325))).toBe("101325");
+  it("shows atmospheric pressure in kPa in SI, stepping by 0.1 and keeping 101325 Pa whole, and in inHg in IP", () => {
+    const kilopascals = displayUnitFor(quantities.p_atm, unitSystem.si);
+    expect([kilopascals.symbol, kilopascals.step]).toEqual(["kPa", 0.1]);
+    expect(kilopascals.fromSi(101325)).toBe(101.325);
+    expect(kilopascals.toSi(101.325)).toBe(101325);
+    expect(formatNumber(kilopascals.fromSi(101325))).toBe("101.33");
     const inchesOfMercury = displayUnitFor(quantities.p_atm, unitSystem.ip);
     expect(inchesOfMercury.fromSi(101325)).toBeCloseTo(29.92, 2);
     expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);

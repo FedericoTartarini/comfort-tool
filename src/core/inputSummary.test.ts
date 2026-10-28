@@ -61,6 +61,9 @@ function hasRowOf(lines: readonly string[], quantity: Quantity): boolean {
 
 const [ashraeOption] = optionsOf(pmvPpdAshrae);
 const LOWER_PRESSURE = 90_000;
+/** The default and the lower pressure as a row shows them, in kPa. */
+const DEFAULT_PRESSURE_SHOWN = "101.33";
+const LOWER_PRESSURE_SHOWN = "90";
 
 describe("inputSummary", () => {
   it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
@@ -70,7 +73,7 @@ describe("inputSummary", () => {
       [
         ...inputsOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,
-        `${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE}`,
+        `${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`,
       ],
     ]);
   });
@@ -151,8 +154,8 @@ describe("inputSummary", () => {
     const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off), runOf(on, LOWER_PRESSURE)]);
     expect(first).toContain(`${ashraeOption.label}: ${copy.no}`);
     expect(second).toContain(`${ashraeOption.label}: ${copy.yes}`);
-    expect(first).toContain(`${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE}`);
-    expect(second).toContain(`${rowOf(q.p_atm)}${LOWER_PRESSURE}`);
+    expect(first).toContain(`${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`);
+    expect(second).toContain(`${rowOf(q.p_atm)}${LOWER_PRESSURE_SHOWN}`);
   });
 
   it("writes the limits a run broke after its values, under the popover's heading, one line a limit", () => {
@@ -174,7 +177,7 @@ describe("inputSummary", () => {
     expect(run.violations).toEqual([]);
     const [, lines] = summaryOf(pmvPpdIso, [run]);
     expect(lines).not.toContain(copy.limitsBrokenHeading);
-    expect(lines[lines.length - 1]).toBe(`${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE}`);
+    expect(lines[lines.length - 1]).toBe(`${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`);
   });
 
   it("writes, under Compare, each run's own limits after its own values", () => {

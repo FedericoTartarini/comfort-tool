@@ -322,19 +322,19 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
 
 // Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).
 describe("isAtmosphericPressureOutOfRange", () => {
-  it("answers out of range below 30 000 Pa and above 110 000 Pa, and in range at both ends", () => {
-    expect(isAtmosphericPressureOutOfRange(29999)).toBe(true);
+  it("answers out of range below 30 kPa and above 110 kPa, and in range at both ends", () => {
+    expect(isAtmosphericPressureOutOfRange(29990)).toBe(true);
     expect(isAtmosphericPressureOutOfRange(30000)).toBe(false);
     expect(isAtmosphericPressureOutOfRange(DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(false);
     expect(isAtmosphericPressureOutOfRange(110000)).toBe(false);
-    expect(isAtmosphericPressureOutOfRange(110001)).toBe(true);
+    expect(isAtmosphericPressureOutOfRange(110010)).toBe(true);
   });
 
-  it("answers in range within half a shown step of either end, at two decimals of a pascal", () => {
-    expect(isAtmosphericPressureOutOfRange(29999.996)).toBe(false);
-    expect(isAtmosphericPressureOutOfRange(110000.004)).toBe(false);
-    expect(isAtmosphericPressureOutOfRange(29999.99)).toBe(true);
-    expect(isAtmosphericPressureOutOfRange(110000.01)).toBe(true);
+  it("answers in range within half a shown step of either end, at two decimals of a kPa", () => {
+    expect(isAtmosphericPressureOutOfRange(29996)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(110004)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(29994)).toBe(true);
+    expect(isAtmosphericPressureOutOfRange(110006)).toBe(true);
   });
 });
 

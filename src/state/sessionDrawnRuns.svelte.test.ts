@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { inputSummary } from "$lib/core/inputSummary";
+import { formatNumber } from "$lib/core/numberFormat";
 import { page } from "$lib/core/page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor, labelWithUnit } from "$lib/core/units";
@@ -22,9 +23,10 @@ const q = quantities;
 const OUT_OF_RANGE_TDB = 200;
 const LOWER_PRESSURE = 90_000;
 
-/** The line of `quantity` at `value`, as the panel labels it in SI. */
+/** The line of `quantity` at the SI `value`, as the panel labels and shows it in SI. */
 function lineOf(quantity: Quantity, value: number): string {
-  return `${labelWithUnit(quantity, displayUnitFor(quantity, unitSystem.si))}: ${value}`;
+  const unit = displayUnitFor(quantity, unitSystem.si);
+  return `${labelWithUnit(quantity, unit)}: ${formatNumber(unit.fromSi(value))}`;
 }
 
 /** The lines of `outputs`' drawn runs on `session`'s model, in SI, as Standard gives them. */
