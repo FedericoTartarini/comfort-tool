@@ -228,7 +228,7 @@
 			linear-gradient(to left, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) right / 1.5rem
 				100% no-repeat scroll;
 	}
-	/* The first column, the slot's name, stays in view while the region scrolls (decision 70, rule 3), opaque so the
+	/* The first column, the Input column, stays in view while the region scrolls (decision 70, rule 3), opaque so the
 	   columns under it do not show through: on the paper, or on the colour the row primitive's `hover:bg-muted/50`
 	   gives a hovered row, changing with the row's own `transition-colors` so the cell does not lead the row. */
 	.result-table tr > :first-child {
@@ -239,6 +239,11 @@
 	}
 	.result-table tr:hover > :first-child {
 		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
+	}
+	/* While the slots are not named, the Input heading's word is a screen reader's alone (decision 85, as amended
+	   2026-10-28), hidden from the eye by the utility the primitives use. */
+	.result-table .input-heading-hidden {
+		@apply sr-only;
 	}
 	/* An input calculator's settings in its tab, the one region of the dialog that scrolls (decision 75, rule 6 (b)),
 	   padded so focus rings are not clipped. */
@@ -530,7 +535,7 @@
 	color: var(--band-lettering);
 }
 /* A row's limits icon (decision 85, rule 5), in the warning's amber, stands on the text's line at the text's size,
-   before what its cell holds: spaced by the gap of the swatch's label, and in a value cell by its own margin. */
+   first in the Input cell: before the swatch, spaced by the gap of the swatch's label, where the rows are named. */
 .result-table .limits-icon {
 	display: inline-flex;
 	vertical-align: middle;
@@ -539,9 +544,6 @@
 .result-table .limits-icon svg {
 	width: 1em;
 	height: 1em;
-}
-.result-table .value .limits-icon {
-	margin-inline-end: 0.25rem;
 }
 /* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
    tall as its small buttons, and a colour box narrow enough that No colour stands beside it. */

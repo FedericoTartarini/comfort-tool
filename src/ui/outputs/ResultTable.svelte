@@ -15,8 +15,8 @@
   interface Props {
     model: RegisteredModel;
     /**
-     * One row per compared slot, in slot order. While their badges carry names, the table has an Input column naming
-     * each row beside its swatch.
+     * One row per compared slot, in slot order. While their badges carry names, the Input column names each row beside
+     * its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's limits icon or nothing.
      */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
@@ -67,34 +67,32 @@
     <Table.Root class="result-table">
       <Table.Header>
         <Table.Row>
-          {#if namesRows}
-            <Table.Head>{copy.inputColumn}</Table.Head>
-          {/if}
+          <Table.Head>
+            <span class:input-heading-hidden={!namesRows}>{copy.inputColumn}</span>
+          </Table.Head>
           {#each model.table as quantity (quantity)}
             <Table.Head class="value">{quantity.label}</Table.Head>
           {/each}
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        <!-- A row's limits icon stands first in its first cell: the Input cell before the swatch while the rows are
-             named, else the first value cell. -->
+        <!-- A row's limits icon stands first in its Input cell, before the swatch while the rows are named. -->
         {#each rows as row (row)}
           <Table.Row>
-            {#if namesRows}
-              <Table.Cell>
+            <Table.Cell>
+              {#if namesRows}
                 <span class="swatch-label">
                   {@render limitsIcon(row)}
                   {@render slotSwatch(row)}
                   {row.badge.name}
                 </span>
-              </Table.Cell>
-            {/if}
-            {#each model.table as quantity, index (quantity)}
+              {:else}
+                {@render limitsIcon(row)}
+              {/if}
+            </Table.Cell>
+            {#each model.table as quantity (quantity)}
               <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
               <Table.Cell class="value">
-                {#if !namesRows && index === 0}
-                  {@render limitsIcon(row)}
-                {/if}
                 {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
               </Table.Cell>
             {/each}

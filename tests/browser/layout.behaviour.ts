@@ -441,9 +441,10 @@ test("at 1440 px, the Standard page's model select lists its models under no hea
 
 /**
  * A slot is named only on the Standard page while Compare is on (ADR-0002
- * decision 50): the result table's Input column with each row's name and
+ * decision 50): the result table's Input heading's word and each row's name and
  * swatch, the legend's marker entries by name, and the switch question's slot
- * column come and go together.
+ * column come and go together. The Input column itself stays, its heading
+ * named for a screen reader alone (decision 85, as amended 2026-10-28).
  */
 test.describe("the slots' names", () => {
   const resultTable = (page: Page) => card(page, "Results").getByRole("table");
@@ -451,8 +452,12 @@ test.describe("the slots' names", () => {
   const markerEntries = (page: Page) => page.locator(".chart-legend li").filter({ has: page.locator(".swatch-marker") });
 
   async function expectUnnamed(page: Page) {
-    await expect(inputColumn(page)).toHaveCount(0);
+    await expect(inputColumn(page)).toHaveCount(1);
+    // The heading's word stands in a box too small to show it.
+    const word = await boxOf(inputColumn(page).getByText("Input", { exact: true }));
+    expect(Math.max(word.width, word.height)).toBeLessThanOrEqual(1);
     await expect(resultTable(page).getByRole("row", { name: /^Input 1/ })).toHaveCount(0);
+    await expect(resultTable(page).getByRole("cell", { name: /Input/ })).toHaveCount(0);
     await expect(markerEntries(page)).toHaveText(["Input"]);
   }
 
@@ -871,18 +876,20 @@ test.describe("the result table's columns", () => {
     ["Standard", PMV_ADDRESS, ISO_ADDRESS],
     ["Explore", EXPLORE_ADDRESS, ISO_EXPLORE_ADDRESS],
   ] as const) {
-    test(`at 1440 × 900 on ${name}, PMV (ASHRAE 55) reads Thermal sensation, PMV, PPD and Compliance on one line, a Band badge reading Neutral at the defaults with no swatch beside it, and PMV (ISO 7730) Thermal sensation, Category, PMV and PPD`, async ({ page }) => {
+    test(`at 1440 × 900 on ${name}, PMV (ASHRAE 55) reads Input, Thermal sensation, PMV, PPD and Compliance on one line, an empty Input cell, a Band badge reading Neutral at the defaults with no swatch beside it, and PMV (ISO 7730) Input, Thermal sensation, Category, PMV and PPD`, async ({ page }) => {
       await openStandard(page, 1440, ashrae);
-      await expect(headings(page)).toHaveText(["Thermal sensation", "PMV", "PPD", "Compliance"]);
-      for (const heading of await headings(page).all()) {
+      await expect(headings(page)).toHaveText(["Input", "Thermal sensation", "PMV", "PPD", "Compliance"]);
+      // The Input heading shows no word with Compare off; each value heading stands on one line.
+      for (const heading of (await headings(page).all()).slice(1)) {
         expect(await linesOf(heading), (await heading.textContent()) ?? undefined).toBe(1);
       }
-      const firstCell = card(page, "Results").getByRole("table").getByRole("row").nth(1).getByRole("cell").first();
-      await expect(firstCell.locator('[data-slot="badge"]')).toHaveText("Neutral");
-      await expect(firstCell.locator(".swatch")).toHaveCount(0);
+      const cells = card(page, "Results").getByRole("table").getByRole("row").nth(1).getByRole("cell");
+      await expect(cells.first().locator("*")).toHaveCount(0);
+      await expect(cells.nth(1).locator('[data-slot="badge"]')).toHaveText("Neutral");
+      await expect(cells.nth(1).locator(".swatch")).toHaveCount(0);
 
       await openStandard(page, 1440, iso);
-      await expect(headings(page)).toHaveText(["Thermal sensation", "Category", "PMV", "PPD"]);
+      await expect(headings(page)).toHaveText(["Input", "Thermal sensation", "Category", "PMV", "PPD"]);
       await expect(headings(page).filter({ hasText: "Compliance" })).toHaveCount(0);
     });
   }
@@ -890,17 +897,22 @@ test.describe("the result table's columns", () => {
 
 /** A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no alert. */
 test.describe("the result row's limits icon", () => {
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon first in the row's first cell, the table straight under the Results heading and the compliance dash with no icon of its own, on Standard and Explore", async ({ page }) => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the limit leaves the Input cell empty and the column in place, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const results = card(page, "Results");
       const table = results.getByRole("table");
+      const inputHeading = table.getByRole("columnheader", { name: "Input", exact: true });
+      const cells = table.getByRole("row").nth(1).getByRole("cell");
+      const inputCell = cells.first();
       const headingBottom = async () => {
         const heading = await boxOf(results.getByRole("heading", { name: "Results", exact: true }));
         return heading.y + heading.height;
       };
       const gap = (await boxOf(table)).y - (await headingBottom());
       await expect(table.getByRole("cell", { name: "Yes", exact: true }), address).toHaveCount(1);
+      await expect(inputHeading, address).toHaveCount(1);
+      await expect(inputCell.locator("*"), address).toHaveCount(0);
 
       const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
       await airSpeed.fill("0.9");
@@ -908,12 +920,14 @@ test.describe("the result row's limits icon", () => {
 
       const icon = results.getByRole("img", { name: "Calculated, but outside these limits:" });
       await expect(icon, address).toBeVisible();
-      const firstCell = table.getByRole("row").nth(1).getByRole("cell").first();
-      await expect(firstCell.getByRole("img", { name: "Calculated, but outside these limits:" }), address).toHaveCount(1);
-      // First in its cell, before the band's badge, and on the badge's line, not wrapped above it.
-      await expect(firstCell, address).toHaveText("Slightly Cool");
+      await expect(inputCell.getByRole("img", { name: "Calculated, but outside these limits:" }), address).toHaveCount(1);
+      await expect(inputCell, address).toHaveText("");
+      // The Input cell's icon is the table's one drawing: no value cell holds an icon.
+      await expect(table.locator("svg"), address).toHaveCount(1);
+      // Before the band's badge, and on the badge's line.
+      await expect(cells.nth(1), address).toHaveText("Slightly Cool");
       const box = await boxOf(icon);
-      const label = await boxOf(firstCell.locator('[data-slot="badge"]'));
+      const label = await boxOf(cells.nth(1).locator('[data-slot="badge"]'));
       expect(box.x + box.width, address).toBeLessThanOrEqual(label.x);
       expect(box.y + box.height / 2, address).toBeGreaterThan(label.y);
       expect(box.y + box.height / 2, address).toBeLessThan(label.y + label.height);
@@ -928,6 +942,8 @@ test.describe("the result row's limits icon", () => {
       await airSpeed.fill("0.1");
       await airSpeed.press("Enter");
       await expect(icon, address).toHaveCount(0);
+      await expect(inputHeading, address).toHaveCount(1);
+      await expect(inputCell.locator("*"), address).toHaveCount(0);
     }
   });
 
