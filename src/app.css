@@ -42,6 +42,7 @@
 	--accent: #e2e8f0;
 	--accent-foreground: #0f172a;
 	--destructive: #dc2626;
+	--warning: #d97706;
 	--border: #e2e8f0;
 	--input: #e2e8f0;
 	--ring: var(--brand);
@@ -528,12 +529,18 @@
 	background-color: var(--band-fill);
 	color: var(--band-lettering);
 }
-/* A row's limits button (decision 84, rule 8) stands on the text's line without making the row taller, before what
-   its cell holds: spaced by the gap of the swatch's label, and in a value cell by its own margin. */
-.result-table .limits-button {
-	margin-block: -0.25rem;
+/* A row's limits icon (decision 85, rule 5), in the warning's amber, stands on the text's line at the text's size,
+   before what its cell holds: spaced by the gap of the swatch's label, and in a value cell by its own margin. */
+.result-table .limits-icon {
+	display: inline-flex;
+	vertical-align: middle;
+	color: var(--warning);
 }
-.result-table .value .limits-button {
+.result-table .limits-icon svg {
+	width: 1em;
+	height: 1em;
+}
+.result-table .value .limits-icon {
 	margin-inline-end: 0.25rem;
 }
 /* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as

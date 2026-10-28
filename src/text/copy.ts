@@ -117,10 +117,8 @@ export const copy = {
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
   inputColumn: "Input",
-  // A result row's button for the limits its run broke, its accessible name, and the heading of the popover it opens
-  // and of a slot's broken limits in an Image's Input summary (ADR-0002 decision 84, rule 8), the heading in decision
-  // 83's words: "limits", the standards' word for both kinds of bound.
-  limitsBroken: "Limits broken",
+  // The heading of the limits a run broke, in a result row's icon name (ADR-0002 decision 85, rule 5) and in an Image's
+  // Input summary (decision 84, rule 8), in decision 83's words: "limits", the standards' word for both kinds of bound.
   limitsBrokenHeading: "Calculated, but outside these limits:",
   // One broken applicability row: `bound` already carries its unit.
   applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,

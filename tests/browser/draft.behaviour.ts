@@ -232,8 +232,7 @@ test.describe("an air speed held under a metabolic rate", () => {
     await expect(captionOf(airSpeed)).toHaveText("≥ 0 m/s");
     await expect(captionOf(page.getByRole("spinbutton", { name: /^Clothing insulation/ }))).toHaveText("≥ 0 clo");
     // 1.5 m/s at 3 met is a relative air speed of 2.1 m/s, past the model's 2.
-    await table.getByRole("button", { name: "Limits broken" }).click();
-    await expect(page.locator(`[data-slot="popover-content"]`).getByRole("listitem")).toHaveText([/Relative air speed must be 0 – 2 m\/s/]);
+    await expect(table.getByRole("img", { name: "Calculated, but outside these limits:" })).toHaveAttribute("title", "Calculated, but outside these limits:\nRelative air speed must be 0 – 2 m/s");
     // One toast, the air speed's own commit's, past the limit without local control at 1.1 met; the metabolic rate
     // keeps the relative air speed's limit broken, so it raises none.
     await expect(toasts(page)).toHaveCount(1);

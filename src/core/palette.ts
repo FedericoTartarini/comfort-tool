@@ -4,7 +4,8 @@
  * (`core/slotBadge.ts`); the interface reads the same hex values as the
  * stylesheet's tokens (`app.css`), and a test holds the two files to one
  * another. Hue is spent on data alone: the slots' hues here, the bands' in
- * the band palette; the interface itself is the brand blue and slate.
+ * the band palette; the interface itself is the brand blue and slate, with
+ * red and amber for its two marks, `alert` and `warning`.
  */
 export const palette = {
   /**
@@ -28,6 +29,8 @@ export const palette = {
   paper: "#ffffff",
   /** An entry out of range, a refused Edge. */
   alert: "#dc2626",
+  /** A result row's violation icon (ADR-0002 decision 85, rule 5): the interface's second hue, beside `alert`. */
+  warning: "#d97706",
   /**
    * One hue per slot, by position: Okabe–Ito's blue, bluish green and reddish
    * purple, which colour-blind readers tell apart, and none of them a colour

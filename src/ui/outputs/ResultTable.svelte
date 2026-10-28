@@ -1,6 +1,6 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
-  import { warningFor } from "$lib/core/applicability";
+  import { limitsBrokenLines } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
@@ -10,8 +10,6 @@
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Badge } from "$lib/ui/primitives/badge";
-  import { Button } from "$lib/ui/primitives/button";
-  import * as Popover from "$lib/ui/primitives/popover";
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
@@ -49,30 +47,15 @@
   {/if}
 {/snippet}
 
-<!-- A row whose run broke a limit opens, by its button, the limits it broke in the bound sentence's words (ADR-0002
-     decision 84, rule 8): activated, not hovered, so a keyboard and a touch reach it. A row that broke none has none. -->
-{#snippet limitsButton(row: SlotOutputs)}
+<!-- A row whose run broke a limit carries an amber icon named by the limits it broke, in the bound sentence's words,
+     one per line: a mouse reads them on hover, a screen reader as the image's name. It is no control (ADR-0002
+     decision 85, rule 5); the toast and the Image's Input summary carry the words for a keyboard and a touch. A row
+     that broke none has none. -->
+{#snippet limitsIcon(row: SlotOutputs)}
   {#if row.violations.length > 0}
-    {@const name = row.badge.name === undefined ? copy.limitsBroken : copy.slotControl(copy.limitsBroken, row.badge.name)}
-    <Popover.Root>
-      <Popover.Trigger>
-        {#snippet child({ props })}
-          <Button {...props} variant="ghost" size="icon-xs" class="limits-button" aria-label={name}>
-            <TriangleAlertIcon />
-          </Button>
-        {/snippet}
-      </Popover.Trigger>
-      <Popover.Content align="start">
-        <Popover.Header>
-          <Popover.Title>{copy.limitsBrokenHeading}</Popover.Title>
-        </Popover.Header>
-        <ul>
-          {#each row.violations as violation (violation)}
-            <li>{warningFor(violation, unitSystem)}</li>
-          {/each}
-        </ul>
-      </Popover.Content>
-    </Popover.Root>
+    <span class="limits-icon" role="img" title={limitsBrokenLines(row.violations, unitSystem).join("\n")}>
+      <TriangleAlertIcon aria-hidden="true" />
+    </span>
   {/if}
 {/snippet}
 
@@ -93,24 +76,24 @@
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        <!-- A row's limits button stands first in its first cell: the Input cell before the swatch while the rows are
+        <!-- A row's limits icon stands first in its first cell: the Input cell before the swatch while the rows are
              named, else the first value cell. -->
         {#each rows as row (row)}
           <Table.Row>
             {#if namesRows}
               <Table.Cell>
                 <span class="swatch-label">
-                  {@render limitsButton(row)}
+                  {@render limitsIcon(row)}
                   {@render slotSwatch(row)}
                   {row.badge.name}
                 </span>
               </Table.Cell>
             {/if}
             {#each model.table as quantity, index (quantity)}
-              <!-- A dash standing for a violation carries no icon of its own: the row's limits button explains it. -->
+              <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
               <Table.Cell class="value">
                 {#if !namesRows && index === 0}
-                  {@render limitsButton(row)}
+                  {@render limitsIcon(row)}
                 {/if}
                 {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
               </Table.Cell>

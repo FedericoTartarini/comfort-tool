@@ -1,5 +1,5 @@
 import { copy } from "$lib/text/copy";
-import { warningFor, type ViolationRow } from "./applicability";
+import { limitsBrokenLines, type ViolationRow } from "./applicability";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
 import { optionsOf, type RegisteredModel } from "./modelDeclaration";
@@ -63,7 +63,7 @@ function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem)
     ...optionsOf(model).map((option) => copy.summaryValue(option.label, options(option) ? copy.yes : copy.no)),
     valueLine(quantities.p_atm, atmosphericPressure, unitSystem),
     // One line a limit: a line holding them all runs off the single-column Image, which wraps nothing.
-    ...(violations.length === 0 ? [] : [copy.limitsBrokenHeading, ...violations.map((row) => warningFor(row, unitSystem))]),
+    ...limitsBrokenLines(violations, unitSystem),
   ];
 }
 

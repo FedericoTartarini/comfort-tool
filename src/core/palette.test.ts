@@ -36,6 +36,7 @@ describe("the stylesheet", () => {
     "--border": palette.line,
     "--input": palette.line,
     "--destructive": palette.alert,
+    "--warning": palette.warning,
   };
 
   for (const [token, color] of Object.entries(shared)) {

@@ -521,3 +521,11 @@ export function boundSentence(quantity: Quantity, bound: Bound, system: UnitSyst
 export function warningFor(row: ViolationRow, unitSystem: UnitSystem): string {
   return boundSentence(row.bounded, row.bound, unitSystem);
 }
+
+/**
+ * The lines naming the limits a run broke, a result row's icon's and an Image's Input summary's: the heading, then
+ * one sentence a limit; none for a run that broke none.
+ */
+export function limitsBrokenLines(rows: readonly ViolationRow[], unitSystem: UnitSystem): string[] {
+  return rows.length === 0 ? [] : [copy.limitsBrokenHeading, ...rows.map((row) => warningFor(row, unitSystem))];
+}

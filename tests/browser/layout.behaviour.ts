@@ -195,7 +195,7 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
     const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
     await airSpeed.fill("3");
     await airSpeed.press("Enter");
-    await expect(card(page, "Results").getByRole("button", { name: "Limits broken" })).toBeVisible();
+    await expect(card(page, "Results").getByRole("img", { name: "Calculated, but outside these limits:" })).toBeVisible();
     const expectInPlace = await holdBoxes(page);
     const question = page.getByRole("dialog");
 
@@ -888,9 +888,9 @@ test.describe("the result table's columns", () => {
   }
 });
 
-/** A run that broke a limit is marked on its result row (ADR-0002 decision 84, rule 8), and the Results card has no alert. */
-test.describe("the result row's limits button", () => {
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the button first in the row's first cell, the table straight under the Results heading and the compliance dash with no icon of its own, on Standard and Explore", async ({ page }) => {
+/** A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no alert. */
+test.describe("the result row's limits icon", () => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon first in the row's first cell, the table straight under the Results heading and the compliance dash with no icon of its own, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const results = card(page, "Results");
@@ -906,13 +906,13 @@ test.describe("the result row's limits button", () => {
       await airSpeed.fill("0.9");
       await airSpeed.press("Enter");
 
-      const button = results.getByRole("button", { name: "Limits broken" });
-      await expect(button, address).toBeVisible();
+      const icon = results.getByRole("img", { name: "Calculated, but outside these limits:" });
+      await expect(icon, address).toBeVisible();
       const firstCell = table.getByRole("row").nth(1).getByRole("cell").first();
-      await expect(firstCell.getByRole("button", { name: "Limits broken" }), address).toHaveCount(1);
+      await expect(firstCell.getByRole("img", { name: "Calculated, but outside these limits:" }), address).toHaveCount(1);
       // First in its cell, before the band's badge, and on the badge's line, not wrapped above it.
       await expect(firstCell, address).toHaveText("Slightly Cool");
-      const box = await boxOf(button);
+      const box = await boxOf(icon);
       const label = await boxOf(firstCell.locator('[data-slot="badge"]'));
       expect(box.x + box.width, address).toBeLessThanOrEqual(label.x);
       expect(box.y + box.height / 2, address).toBeGreaterThan(label.y);
@@ -923,16 +923,15 @@ test.describe("the result row's limits button", () => {
       const dash = table.getByRole("cell", { name: "—", exact: true });
       await expect(dash, address).toHaveCount(1);
       await expect(dash.locator("svg"), address).toHaveCount(0);
-      const icon = "svg.lucide-triangle-alert";
-      await expect(card(page, "Inputs").locator(icon), address).toHaveCount(0);
+      await expect(card(page, "Inputs").locator("svg.lucide-triangle-alert"), address).toHaveCount(0);
       // The tab keeps its session across pages, so the next page opens at the default again only once it is typed back.
       await airSpeed.fill("0.1");
       await airSpeed.press("Enter");
-      await expect(button, address).toHaveCount(0);
+      await expect(icon, address).toHaveCount(0);
     }
   });
 
-  test("at 1440 px under Compare, the slot at 0.9 m/s without local control has its button before its swatch and its compliance dash, and slot 1 neither", async ({ page }) => {
+  test("at 1440 px under Compare, the slot at 0.9 m/s without local control has its icon before its swatch and its compliance dash, and slot 1 neither", async ({ page }) => {
     await openStandard(page, 1440);
     await page.getByRole("switch", { name: "Compare", exact: true }).click();
     const table = card(page, "Results").getByRole("table");
@@ -943,11 +942,11 @@ test.describe("the result row's limits button", () => {
     await airSpeed.fill("0.9");
     await airSpeed.press("Enter");
 
-    const button = second.getByRole("button", { name: "Limits broken, Input 2" });
-    await expect(button).toBeVisible();
-    expect((await boxOf(button)).x).toBeLessThan((await boxOf(second.locator(".swatch-marker"))).x);
+    const icon = second.getByRole("img", { name: "Calculated, but outside these limits:" });
+    await expect(icon).toBeVisible();
+    expect((await boxOf(icon)).x).toBeLessThan((await boxOf(second.locator(".swatch-marker"))).x);
     await expect(second.getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
-    await expect(first.getByRole("button")).toHaveCount(0);
+    await expect(first.getByRole("img")).toHaveCount(0);
     await expect(first.getByRole("cell", { name: "Yes", exact: true })).toHaveCount(1);
   });
 });
