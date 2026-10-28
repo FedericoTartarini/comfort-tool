@@ -455,6 +455,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > model (`873b175`). Decision 86 carries a close-out note; ADR-0001's `model.standard` sentences are marked; GLOSSARY.md
 > and `docs/design.md` follow the code. Review items O5, N5 and R5 are done, for the Linear reply. `npm test` passes at
 > 1184 tests and `npm run test:browser` at 125. **Next: the shell and link themes and I9.**
+>
+> **2026-10-29 — position, the shell decided**: the shell theme (review items N1, N3, N4, N7 and I5), with the layout
+> points the input gate, the result table and the shell's second grilling left open, is grilled into ADR-0002 decision
+> 87: the sidebar collapses by a toggle first in the header, by the user's hand alone, never by a desktop's width; a
+> phone is a window under 768 px, where the sidebar is the sheet, the cards one column, Documentation in the sheet and
+> the title on two lines; a desktop keeps two columns, the result and chart cards at least `33.5rem`, and scrolls
+> sideways below, the `74.5rem` container query gone; the chart type is a `ChoiceSelect`; the sidebar's group labels
+> are `h2` headings; the pressure is shown in kPa; the entry-mode button reads "Change"; the footer wraps; the Input
+> cell keeps the violation icon's room; the dialog and the toast take the one radius. Decisions 49, 67, 72, 73, 76, 84
+> and 85 are revised; `docs/design.md` follows; GLOSSARY.md is unchanged. **Next: the user's `/to-spec` for the shell,
+> then the link theme and I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
