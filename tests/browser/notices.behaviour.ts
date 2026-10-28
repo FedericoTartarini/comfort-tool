@@ -2,9 +2,10 @@ import { Buffer } from "node:buffer";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
- * Every notice the app gives is a toast at the top right, under the header
- * and level with the cards, kept until its close button closes it, and the
- * header holds none (ADR-0002 decision 84, rule 7). Each notice is raised
+ * Every notice the app gives is a toast at the window's top right, over the
+ * header's right end while the page is at its top, kept until its close
+ * button closes it, and the header holds none (ADR-0002 decision 84, rule 7).
+ * Each notice is raised
  * where the page raises it: a link at the first address, and a value it held
  * out of range, cut (rule 4, as noted 2026-10-28); Share's clipboard; the
  * Image's download. A notice raised again replaces its own toast, and
@@ -78,7 +79,7 @@ async function boxOf(locator: Locator) {
   return box;
 }
 
-test("a refused share link raises a toast at the top right, under the header and level with the cards, that stays until its close button closes it, and the header holds no notice", async ({ page }) => {
+test("a refused share link raises a toast at the window's top right, over the header, that stays until its close button closes it, and the header holds no notice", async ({ page }) => {
   await page.clock.install();
   await open(page, `${ISO_ADDRESS}?share=v1.not-base64-json`);
 
@@ -87,12 +88,12 @@ test("a refused share link raises a toast at the top right, under the header and
   await expect(toast).toContainText("The shared link could not be read, so nothing was opened from it.");
   const box = await boxOf(toast);
   const banner = page.getByRole("banner");
-  const inputs = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Inputs", exact: true }) });
   const header = await boxOf(banner);
   // From the page's right edge, the header band's: the window less the scrollbar's gutter the root keeps.
   expect(header.x + header.width - (box.x + box.width)).toBeLessThanOrEqual(32);
-  expect(box.y).toBeGreaterThanOrEqual(header.y + header.height);
-  expect(box.y).toBeCloseTo((await boxOf(inputs)).y, 0);
+  // Its top within the header band.
+  expect(box.y).toBeGreaterThan(header.y);
+  expect(box.y).toBeLessThan(header.y + header.height);
 
   // Past Sonner's own four seconds, which a toast that times out would not outlive.
   await page.clock.fastForward(10_000);

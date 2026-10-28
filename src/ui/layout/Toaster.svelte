@@ -1,8 +1,10 @@
 <!--
   The app's one toaster (ADR-0002 decision 84, rule 7): `svelte-sonner`'s,
-  mounted once at the root, at the top right, every toast kept until its
-  close button closes it. With the page at its top, its top is the cards'
-  top, under the header, so a toast covers no header link. Not shadcn-svelte's generated Sonner (`npx
+  mounted once at the root, at the window's top right at Sonner's own offset,
+  over the header's right end while the page is at its top (the user's ruling
+  of 2026-10-28, `.scratch/input-gate/issues/11-…md` Comments, superseding
+  ticket 01's "under the header"), every toast kept until its
+  close button closes it. Not shadcn-svelte's generated Sonner (`npx
   shadcn-svelte add sonner`, CLI 1.6.0, Nova), which takes its theme from
   `mode-watcher`, which wrote two entries to `localStorage` in Chromium, where
   the tool writes none. Both the user's choices,
@@ -13,15 +15,10 @@
 <script lang="ts">
   import { Toaster } from "svelte-sonner";
   import { copy } from "$lib/text/copy";
-
-  const TOP_OFFSET = "calc(var(--header-height) + var(--space-page))";
 </script>
 
-<!-- Sonner writes an offset into a custom property as it is given, so it can be the page's own tokens. -->
 <Toaster
   position="top-right"
-  offset={{ top: TOP_OFFSET }}
-  mobileOffset={{ top: TOP_OFFSET }}
   theme="light"
   duration={Number.POSITIVE_INFINITY}
   closeButton
