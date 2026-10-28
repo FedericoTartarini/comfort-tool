@@ -515,14 +515,26 @@
 .table-scroll > [data-slot="table-container"] {
 	overflow-x: visible;
 }
-/* The result table's headings wrap, standing at the foot of their cell over the column they name; a result's
-   value, a category, a number, Yes or No, or a dash, is right-aligned in tabular figures under its heading, so
-   decimals line up (decision 70, rule 1). Unlayered, as the heading's `text-left` and `whitespace-nowrap` are the primitive's. */
+/* The result table's headings wrap, standing at the foot of their cell over the column they name, padded as the body
+   cells are rather than held to the primitive's 40 px; a result's value, a category, a number, Yes or No, or a dash,
+   is right-aligned in tabular figures under its heading, so decimals line up (decision 70, rule 1). Unlayered, as the
+   heading's `h-10`, `text-left` and `whitespace-nowrap` are the primitive's. */
 .result-table [data-slot="table-head"] {
+	height: auto;
+	padding-block: 0.5rem;
 	white-space: normal;
 	vertical-align: bottom;
 }
+/* The Input column is as wide as what it holds, the value columns share the rest equally (decision 85, as amended
+   2026-10-28). Chromium's auto layout, as measured, gives a table of percentage columns its spare width by their
+   percentages: a 0% column keeps its content's width, equal ones stay equal, and their sum, one share short of the
+   whole, leaves the Input column its room. A badge or a number wider than its share widens its column. The table
+   sets `--value-columns`. */
+.result-table tr > :first-child {
+	width: 0%;
+}
 .result-table .value {
+	width: calc(100% / (var(--value-columns) + 1));
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }

@@ -893,6 +893,30 @@ test.describe("the result table's columns", () => {
       await expect(headings(page).filter({ hasText: "Compliance" })).toHaveCount(0);
     });
   }
+
+  // The Input column is as wide as what it holds, the value columns share the rest (decision 85, as amended
+  // 2026-10-28), and the heading row is as tall as its line and the body cells' padding, not the primitive's 40 px.
+  // Explore compares slot 1 alone, so it has no Compare to turn on.
+  for (const [name, address, compares] of [
+    ["Standard", PMV_ADDRESS, ["off", "on"]],
+    ["Explore", EXPLORE_ADDRESS, ["off"]],
+  ] as const) {
+    test(`at 1440 × 900 on ${name}, PMV (ASHRAE 55) at its defaults, Compare ${compares.join(" and ")}, has an Input column narrower than any value column, value columns within 1 px of one another and a one-line heading row under 40 px`, async ({ page }) => {
+      await openStandard(page, 1440, address);
+      for (const compare of compares) {
+        if (compare === "on") {
+          await page.getByRole("switch", { name: "Compare", exact: true }).click();
+          await expect(card(page, "Results").getByRole("row", { name: /Input 2/ })).toBeVisible();
+        }
+        const [input, ...values] = await Promise.all((await headings(page).all()).map(async (heading) => (await boxOf(heading)).width));
+        const widest = Math.max(...values);
+        const narrowest = Math.min(...values);
+        expect(input, `Compare ${compare}`).toBeLessThan(narrowest);
+        expect(widest - narrowest, `Compare ${compare}: ${values.join(", ")}`).toBeLessThanOrEqual(1);
+        expect((await boxOf(headings(page).first())).height, `Compare ${compare}`).toBeLessThan(40);
+      }
+    });
+  }
 });
 
 /** A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no alert. */

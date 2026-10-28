@@ -64,7 +64,7 @@
        is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div class="table-scroll" role="region" tabindex="0" aria-labelledby={labelledby}>
-    <Table.Root class="result-table">
+    <Table.Root class="result-table" style="--value-columns: {model.table.length}">
       <Table.Header>
         <Table.Row>
           <Table.Head>
