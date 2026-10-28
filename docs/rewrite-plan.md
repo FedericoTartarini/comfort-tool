@@ -434,6 +434,19 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > and no control, its words in its `title`; the table keeps one row per slot. Decisions 8, 66, 83 and 84 and ADR-0001
 > §4.3 are amended; GLOSSARY.md gains **Band badge**; `docs/design.md` follows. **Next: the user's `/to-spec` in
 > `.scratch/result-table/`, then the edition, shell and link themes and I9.**
+>
+> **2026-10-28 — position, the result table done**: `.scratch/result-table/` landed on `rewrite/v1`, tickets 01 to 07:
+> the labels "PMV", "PPD", "Compliance" and "Category" (`b9432b2`); each classified output a column of `table`, first,
+> and the Compliance column gone (`b4621af`); its category a Band badge (`e8a6150`); a violation an amber icon once per
+> row, no control, its words in its `title` (`10bc4e1`); then, after decision 85's amendment of that day (`f7ec7ff`),
+> the Input column in both Compare states with the icon always in it (`c8f75dd`) and the value columns in equal shares
+> under a heading row as tall as its line (`ee09684`). Decision 85 carries a close-out note: Chromium names the icon by
+> its `title`; at 1440 × 900 every PMV heading fits one line, Adaptive's still wrap and its table scrolls; ADR-0001
+> §4.3's notes are marked; `docs/design.md` follows the code. Review items R1, R3 and R4 are done, for the Linear reply. `npm test`
+> passes at 1184 tests and `npm run test:browser` at 122. Open for the user: the icon widens the Input column, so the
+> value columns move by 14 to 16 px when a violation appears, where the amendment says the table does not shift; and
+> whether the Results heading row's right side still reads as empty. **Next: the edition, shell and link themes and
+> I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 

@@ -163,12 +163,13 @@ button.
 right-aligned, the region scrolls sideways with its clipped edge faded; the Input column first and sticky in both
 Compare states, unheaded while the slots are not named; the value columns share the width left equally, decision 85's
 2026-10-28 amendment); then the standard's caption. The columns are the model's `table`, its classified outputs first,
-each cell of theirs a Band badge: the generated Badge filled with the band's colour, lettered in ink or white by
-contrast, outlined for a band without a colour, in sentence case (decision 85). Headings are the quantities' labels,
-"PMV", "PPD", "Compliance", so PMV's fit one line. A row whose run broke a limit carries the triangle-alert icon in
-`warning`, in its Input cell, before the slot's swatch where there is one. It is no control; its `title` holds
-"Calculated, but outside these limits:" over the limits in their bound sentences (decision 85, rule 5). A "—" a
-violation causes has no icon of its own.
+each cell of theirs a Band badge: the generated Badge filled with the band's colour and edged in the border token as
+a fill swatch is, so Neutral's near white shows, lettered in ink or white by contrast, outlined for a band without a
+colour, its label as the library writes it, "Slightly Cool" (decision 85). Headings are the quantities' labels, "PMV",
+"PPD", "Compliance", so PMV's fit one line. A row whose run broke a limit carries the triangle-alert icon in `warning`,
+in its Input cell, before the slot's swatch where there is one. It is no control; its `title` holds "Calculated, but
+outside these limits:" over the limits in their bound sentences (decision 85, rule 5). A "—" a violation causes has no
+icon of its own.
 
 **Chart.** A card: the heading row carries Chart, then at the right, on Explore, the Bands button, and Export image;
 under it a view row, on every chart, holds the chart type toggle-group, named "Chart type", then the axis selects where

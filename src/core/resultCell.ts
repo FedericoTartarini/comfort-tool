@@ -32,8 +32,8 @@ export type ResultCell =
  * a NaN or a category its classifier does not name among them. `violations`
  * are the rows the result shows broken: while there is one, a boolean reads
  * the dash too, as pythermalcomfort's NaN under its own gate (ADR-0002
- * decision 77, rule 2), which the row's limits button explains (decision 84,
- * rule 8); a Band badge stays.
+ * decision 77, rule 2), which the row's limits icon explains (decision 85,
+ * rule 5); a Band badge stays.
  */
 export function formatResultCell(
   model: RegisteredModel,
