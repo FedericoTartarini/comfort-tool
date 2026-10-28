@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -65,7 +66,7 @@ describe("inputSummary", () => {
   it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
     const summary = summaryOf(pmvPpdAshrae, [runOf(startingSlot(pmvPpdAshrae))]);
     expect(summary).toEqual([
-      [copy.summaryModel(pmvPpdAshrae.info.label, standardCaptionFor(pmvPpdAshrae.standard))],
+      [copy.summaryModel(pmvPpdAshrae.info.label, standardCaptionFor(Standard.ashrae_55_2023))],
       [
         ...inputsOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,

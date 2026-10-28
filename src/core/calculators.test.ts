@@ -7,6 +7,7 @@ import {
   CLO_TOUT_INFO,
   solar_gain,
   SOLAR_GAIN_INFO,
+  Standard,
   t_o,
 } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -286,7 +287,7 @@ describe("withCalculatorResult", () => {
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
     const entered = operative.values.get(q.operative_tmp)!;
     const written = withCalculatorResult(operative, solarGainOnOccupants, increase, pmvPpdAshrae);
-    expect(written.values.get(q.operative_tmp)).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, pmvPpdAshrae.standard), 2);
+    expect(written.values.get(q.operative_tmp)).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, Standard.ashrae_55_2023), 2);
     expect(written.values.has(q.tdb)).toBe(false);
     expect(written.values.has(q.tr)).toBe(false);
     expect(written.temperature.mode).toBe(temperatureMode.operative);
@@ -348,7 +349,7 @@ describe("shownRow", () => {
     const row = shownRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae, P);
     expect(row.quantity).toBe(q.operative_tmp);
     expect(row.before).toBe(entered);
-    expect(row.after).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, pmvPpdAshrae.standard), 2);
+    expect(row.after).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, Standard.ashrae_55_2023), 2);
   });
 
   it("is what the next Apply starts from once written: a second raise from the raised value", () => {

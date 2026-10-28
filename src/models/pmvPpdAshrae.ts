@@ -3,7 +3,6 @@ import {
   pmv_ppd_ashrae,
   PMV_PPD_ASHRAE_INFO,
   PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
-  Standard,
 } from "jsthermalcomfort";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
@@ -13,9 +12,6 @@ import { quantities } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
 
 const q = quantities;
-
-// The one version `pmv_ppd_ashrae` accepts.
-const ASHRAE_55 = Standard.ashrae_55_2023;
 
 // Off by default, the deployed CBE tool's default, where the library's own is
 // on (Phase 4b spec, PMV (ASHRAE 55)'s declaration).
@@ -35,7 +31,6 @@ const airSpeedControl: OptionSpec = {
 
 export const pmvPpdAshrae = {
   info: PMV_PPD_ASHRAE_INFO,
-  standard: ASHRAE_55,
   // After the quantities and the option, the app's fixed policy: `wme: 0`,
   // since external work is not an input of the app; `limit_inputs: false`,
   // since the app gates entered values itself and reads the rows the run
@@ -43,7 +38,9 @@ export const pmvPpdAshrae = {
   // false`, since the charts trace the zone on a scan of this `pmv` and
   // the display rounds; `suppress_warnings: true`, since the cooling effect logs
   // each time it assumes 0 and a chart scan calls it per cell. No `units`: the
-  // library's default is SI, and so is the boundary (ADR-0002 decision 1).
+  // library's default is SI, and so is the boundary (ADR-0002 decision 1). No
+  // `standard`: the library's default edition, the one its info lists first
+  // (decision 86, rule 3).
   run: (values, options) =>
     pmv_ppd_ashrae({
       tdb: values.tdb,
@@ -53,7 +50,6 @@ export const pmvPpdAshrae = {
       met: values.met,
       clo: values.clo,
       wme: 0,
-      standard: ASHRAE_55,
       limit_inputs: false,
       round_output: false,
       suppress_warnings: true,

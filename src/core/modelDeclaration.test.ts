@@ -1,13 +1,13 @@
 /**
  * What a declaration says about itself: the name its model info gives it,
- * unique across the registry; the standard edition it picks, checked against
- * that model info for every registered model; the table columns it lists;
+ * unique across the registry; the standard that model info lists first, for
+ * every registered model; the table columns it lists;
  * the charts it offers; the input calculators its rows offer; and the axis
  * range a chart reads off it. What its `run` does is the sibling
  * `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
+import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -16,6 +16,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants, type Calculator } from "./calculators";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor } from "./clothingCorrection";
+import { categoryZones } from "./comfortZones";
 import {
   adaptiveChartOf,
   axisRangeFor,
@@ -26,6 +27,7 @@ import {
   optionsOf,
   psychrometricChartOf,
   requireAxisRange,
+  standardOf,
   takesRelativeAirSpeed,
   type DeclaredChart,
   type RegisteredModel,
@@ -44,15 +46,19 @@ describe("name", () => {
 });
 
 describe("standard", () => {
-  it("is one of the editions the model's library function accepts, for every registered model", () => {
+  it("is the first its model info lists, the library's default, or none when it lists none, for every registered model", () => {
     for (const model of registeredModels) {
-      if (model.standard === undefined) continue;
-      expect(model.info.standards, model.info.label).toContain(model.standard);
+      const [first] = model.info.standards;
+      expect(standardOf(model), model.info.label).toBe(first);
     }
+    expect(standardOf(heatIndexRothfusz)).toBeUndefined();
   });
 
-  it("pins ISO 7730:2025 for PMV (ISO 7730)", () => {
-    expect(pmvPpdIso.standard).toBe(Standard.iso_7730_2025);
+  it("is ISO 7730:2025 for PMV (ISO 7730), whose comfort zones are its info's category classifier's, that edition's bins", () => {
+    expect(standardOf(pmvPpdIso)).toBe(Standard.iso_7730_2025);
+    const classifier = pmvPpdIso.info.outputs.category.classifier;
+    expect(classifier).toBe(PMV_CATEGORY_BINS_ISO_7730_2025);
+    expect(pmvPpdIso.scan.comfortZones).toEqual(categoryZones(classifier));
   });
 });
 
@@ -226,7 +232,7 @@ describe("inputs", () => {
 
 /** Whether the model's info names the clothing insulation and its standard has a clothing correction. */
 function takesClothingUnderACorrectingStandard(model: RegisteredModel): boolean {
-  return model.info.inputs[q.clo.key] !== undefined && clothingCorrectionFor(model.standard) !== undefined;
+  return model.info.inputs[q.clo.key] !== undefined && clothingCorrectionFor(standardOf(model)) !== undefined;
 }
 
 /**
@@ -257,8 +263,8 @@ describe("the clothing entry group", () => {
   });
 
   it("is not on a model whose standard has no correction, which is given the clothing as entered", () => {
-    expect(clothingCorrectionOf({ ...pmvPpdIso, standard: undefined })).toBeUndefined();
-    expect(hasClothingGroup({ ...pmvPpdIso, standard: Standard.iso_7933_2023 })).toBe(false);
+    expect(clothingCorrectionOf({ ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } })).toBeUndefined();
+    expect(hasClothingGroup({ ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [Standard.iso_7933_2023] } })).toBe(false);
   });
 
   it("enters met, and v where its standard's correction takes it, for every registered model", () => {

@@ -25,6 +25,10 @@ describe("categoryZones", () => {
   it("refuses bins with no edge below the sentinel", () => {
     expect(() => categoryZones({ edges: [10], labels: ["A", "none"], right: false })).toThrow("|PMV|");
   });
+
+  it("refuses an output with no classifier", () => {
+    expect(() => categoryZones(undefined)).toThrow("|PMV|");
+  });
 });
 
 describe("intervalZone", () => {

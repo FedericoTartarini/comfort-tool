@@ -1,6 +1,6 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { isSameStandard } from "$lib/core/standard";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -25,35 +25,36 @@ import {
 
 const fixtureWithoutStandard = {
   ...pmvPpdIso,
-  standard: undefined,
-  info: { ...pmvPpdIso.info, name: "fixture_no_standard" },
+  info: { ...pmvPpdIso.info, name: "fixture_no_standard", standards: [] },
 };
 
 // The other edition of pmvPpdIso's standard: both editions share the route
 // segment `iso-7730`, because the segment carries no year (ADR-0002 decision 6).
 const fixtureIso2005 = {
   ...pmvPpdIso,
-  standard: Standard.iso_7730_2005,
-  info: { ...pmvPpdIso.info, name: "fixture_iso_2005" },
+  info: { ...pmvPpdIso.info, name: "fixture_iso_2005", standards: [Standard.iso_7730_2005] },
 };
 
-// A standard no registered model declares.
+// A standard no registered model has.
 const fixtureIso7933 = {
   ...pmvPpdIso,
-  standard: Standard.iso_7933_2023,
-  info: { ...pmvPpdIso.info, name: "fixture_iso_7933" },
+  info: { ...pmvPpdIso.info, name: "fixture_iso_7933", standards: [Standard.iso_7933_2023] },
 };
 
 const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
 
 /** Whether `a` and `b` both have a standard, and it is one standard, of whichever edition. */
 function shareAStandard(a: RegisteredModel, b: RegisteredModel): boolean {
-  return a.standard !== undefined && b.standard !== undefined && isSameStandard(a.standard, b.standard);
+  const standardA = standardOf(a);
+  const standardB = standardOf(b);
+  return standardA !== undefined && standardB !== undefined && isSameStandard(standardA, standardB);
 }
 
 /** Whether no model without a standard comes before a model with one. */
 function hasStandardModelsFirst(models: readonly RegisteredModel[]): boolean {
-  return models.every((model, i) => model.standard === undefined || models.slice(0, i).every((earlier) => earlier.standard !== undefined));
+  return models.every(
+    (model, i) => standardOf(model) === undefined || models.slice(0, i).every((earlier) => standardOf(earlier) !== undefined),
+  );
 }
 
 /** Whether each model of a standard follows another of it, or is the first of its standard. */
@@ -89,7 +90,7 @@ describe("modelBySegment", () => {
     expect(modelBySegment("iso-7730", "pmv-ppd-iso", fixtures)).toBe(pmvPpdIso);
   });
 
-  it("finds a model pinned to either edition of a standard by its own address", () => {
+  it("finds a model of either edition of a standard by its own address", () => {
     for (const model of [pmvPpdIso, fixtureIso2005]) {
       const segments = routeSegmentsOf(model);
       expect(modelBySegment(segments.standard, segments.model, fixtures)).toBe(model);
@@ -172,7 +173,7 @@ describe("standardLinks", () => {
     ]);
   });
 
-  it("gives a standard one link whichever edition its models are pinned to, named by its model registered first", () => {
+  it("gives a standard one link whichever edition its models have, named by its model registered first", () => {
     expect(
       standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.id, address.model]),
     ).toEqual([

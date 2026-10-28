@@ -1,4 +1,4 @@
-import { adaptive_ashrae, ADAPTIVE_ASHRAE_INFO, Standard } from "jsthermalcomfort";
+import { adaptive_ashrae, ADAPTIVE_ASHRAE_INFO } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel, ZoneLimits } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
@@ -18,8 +18,6 @@ function toZoneLimits(band: AdaptiveAshraeBand, label: string): ZoneLimits {
 
 export const adaptiveAshrae = {
   info: ADAPTIVE_ASHRAE_INFO,
-  // The one version `adaptive_ashrae` implements.
-  standard: Standard.ashrae_55_2023,
   // After the quantities, the app's fixed policy: `limit_inputs: false`, since
   // the app gates entered values itself and reads the rows the run breaks off
   // `warnings`; `round_output: false`, since the library rounds `tmp_cmf`

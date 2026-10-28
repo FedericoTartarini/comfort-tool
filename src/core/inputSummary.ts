@@ -2,7 +2,7 @@ import { copy } from "$lib/text/copy";
 import { limitsBrokenLines, type ViolationRow } from "./applicability";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
-import { optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { optionsOf, standardOf, type RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 import { enteredValue, panelQuantities, type Slot } from "./slot";
@@ -47,7 +47,8 @@ export function inputSummary(parts: {
   bands: BandList | null;
 }): InputSummary {
   const { model, runs, unitSystem, bands } = parts;
-  const modelLine = model.standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardCaptionFor(model.standard));
+  const standard = standardOf(model);
+  const modelLine = standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardCaptionFor(standard));
   const edges = bands && model.scan ? [[edgesLine(model.scan.output, bands, unitSystem)]] : [];
   return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem)), ...edges];
 }

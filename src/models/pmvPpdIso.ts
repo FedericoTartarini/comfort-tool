@@ -1,10 +1,4 @@
-import {
-  PMV_CATEGORY_BINS_ISO_7730_2025,
-  pmv_ppd_iso,
-  PMV_PPD_ISO_INFO,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-  Standard,
-} from "jsthermalcomfort";
+import { pmv_ppd_iso, PMV_PPD_ISO_INFO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { customEnsemble } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { categoryZones } from "$lib/core/comfortZones";
@@ -13,16 +7,13 @@ import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
 
-// 7730-2025, the library's default: its kernel follows ISO 7730:2025 Annex D
-// (ADR-0002 decision 6). The category bins are this edition's, the ones the
-// library classifies `category` with under it (decision 80): a change of
-// edition changes both.
-const ISO_EDITION = Standard.iso_7730_2025;
-const ISO_CATEGORY_BINS = PMV_CATEGORY_BINS_ISO_7730_2025;
-
 export const pmvPpdIso = {
+  // The edition and the category bins are the library's default: `run` passes
+  // no `standard`, so the library picks its default edition, the one its info
+  // lists first (ADR-0002 decision 86, rule 3), and the zones are cut from the
+  // bins its info classifies `category` with, that edition's (decision 80). A
+  // library release that changes its default changes both.
   info: PMV_PPD_ISO_INFO,
-  standard: ISO_EDITION,
   // After the quantities, the app's fixed policy: `wme: 0`, since external
   // work is not an input of the app; `limit_inputs: false`, since the app
   // gates entered values itself and reads the rows the run breaks off
@@ -38,7 +29,6 @@ export const pmvPpdIso = {
       met: values.met,
       clo: values.clo,
       wme: 0,
-      standard: ISO_EDITION,
       limit_inputs: false,
       round_output: false,
     }),
@@ -87,7 +77,7 @@ export const pmvPpdIso = {
   scan: {
     output: q.pmv,
     classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-    comfortZones: categoryZones(ISO_CATEGORY_BINS),
+    comfortZones: categoryZones(PMV_PPD_ISO_INFO.outputs.category.classifier),
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;

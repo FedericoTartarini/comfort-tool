@@ -28,6 +28,7 @@ import {
   hasTemperatureGroup,
   inputsOf,
   optionsOf,
+  standardOf,
   takesRelativeAirSpeed,
   type DeclaredOption,
   type DeclaredQuantity,
@@ -218,8 +219,8 @@ export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): num
 
 /**
  * The slot's operative temperature: the entry itself under operative entry,
- * else the library's `t_o(tdb, tr, v, model.standard)`, weighed by the model's
- * own standard, or by the library's default for a model that declares none.
+ * else the library's `t_o(tdb, tr, v, standardOf(model))`, weighed by the
+ * model's own standard, or by the library's default for a model that has none.
  * The air speed it weighs by is the slot's air-speed entry: the relative air
  * speed under relative air speed entry, the one air speed the slot then holds,
  * as the library's own ASHRAE 55 check weighs by the `vr` it is given.
@@ -237,9 +238,9 @@ export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): numb
   if (slot.temperature.mode === temperatureMode.operative) {
     return requireValue(slot.values, q.operative_tmp);
   }
-  // `t_o` names fewer standards than a model may pin (not ISO 7933), and
+  // `t_o` names fewer standards than a model may have (not ISO 7933), and
   // throws on one it does not; the cast leaves that call to the library.
-  const standard = model.standard as Parameters<typeof t_o>[3];
+  const standard = standardOf(model) as Parameters<typeof t_o>[3];
   const airSpeed = requireValue(slot.values, slot.airSpeed.mode.axis);
   return t_o(requireValue(slot.values, q.tdb), requireValue(slot.values, q.tr), airSpeed, standard);
 }

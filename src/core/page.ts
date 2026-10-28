@@ -1,4 +1,4 @@
-import type { RegisteredModel } from "./modelDeclaration";
+import { standardOf, type RegisteredModel } from "./modelDeclaration";
 
 /**
  * The app's pages (ADR-0002 decision 57). A closed set in the same shape as
@@ -38,7 +38,7 @@ export interface Address {
  */
 export function pagesOf(model: RegisteredModel): Page[] {
   return [
-    ...(model.standard === undefined ? [] : [page.standard]),
+    ...(standardOf(model) === undefined ? [] : [page.standard]),
     page.explore,
     ...(model.timeSeries ? [page.timeSeries] : []),
   ];

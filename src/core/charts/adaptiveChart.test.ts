@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, t_o } from "jsthermalcomfort";
+import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, Standard, t_o } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
@@ -146,7 +146,7 @@ describe("a declared limits source", () => {
     // leaves the plain mean 27 the deployed chart puts it at.
     const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]));
     const marker = markerOf(adaptiveSpec(chartRequestFor(model, moving)));
-    expect(marker?.x).toBe(t_o(24, 30, 0.6, pmvPpdIso.standard));
+    expect(marker?.x).toBe(t_o(24, 30, 0.6, Standard.iso_7730_2025));
     expect(marker?.x).not.toBeCloseTo(27, 1);
     expect(marker?.y).toBe(0.6);
   });

@@ -135,7 +135,7 @@ describe("the session's clothing entry mode", () => {
     // The anchor: the same model under no standard has no clothing correction,
     // so it is given the clothing insulation as entered, as before this group.
     it("gives the model an entered dynamic clothing insulation unchanged", () => {
-      const passedThrough = new Session({ ...model, standard: undefined });
+      const passedThrough = new Session({ ...model, info: { ...model.info, standards: [] } });
       passedThrough.slots[0].setEntered(q.met, 3);
       passedThrough.slots[0].setEntered(q.clo, 0.7);
       const entered = enteringDynamic(model, { v: 0.1, met: 3 }, 0.7);

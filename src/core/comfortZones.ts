@@ -10,8 +10,15 @@ import type { ComfortZone } from "./modelDeclaration";
  * final edge is the sentinel closing the open-ended outside bin ("none", then
  * NaN), the library's convention for every v1 classifier and the one thing
  * read here that no field states.
+ *
+ * Takes the classifier as a model info types it, optional, so a declaration
+ * passes `<MODEL>_INFO.outputs.<key>.classifier` with no cast or `!`; throws
+ * for an output the library does not classify.
  */
-export function categoryZones(bins: ClassifierBins): readonly [ComfortZone, ...ComfortZone[]] {
+export function categoryZones(bins: ClassifierBins | undefined): readonly [ComfortZone, ...ComfortZone[]] {
+  if (!bins) {
+    throw new Error("No classifier to read as |PMV| category limits");
+  }
   const [first, ...rest] = bins.edges
     .slice(0, -1)
     .map((limit, index) => ({ label: copy.categoryZone(bins.labels[index]), limit, inclusive: bins.right }));

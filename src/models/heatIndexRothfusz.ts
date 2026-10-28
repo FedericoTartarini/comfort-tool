@@ -12,7 +12,7 @@ if (tdbMin === undefined) {
 
 export const heatIndexRothfusz = {
   info: HEAT_INDEX_ROTHFUSZ_INFO,
-  // No `standard`: `HEAT_INDEX_ROTHFUSZ_INFO.standards` is empty. The Rothfusz
+  // No standard: `HEAT_INDEX_ROTHFUSZ_INFO.standards` is empty. The Rothfusz
   // regression is not published by one, so the model has no Standard page and
   // is reached through Explore alone.
   // `round_output: false`: `run` returns the unrounded number and the display

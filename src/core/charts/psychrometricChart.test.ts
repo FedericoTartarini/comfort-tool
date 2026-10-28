@@ -148,7 +148,6 @@ function pmvAt(db: number, rh: number, tr: number): number {
     met,
     clo,
     wme: 0,
-    standard: pmvPpdIso.standard,
     limit_inputs: false,
     round_output: false,
   }).pmv;

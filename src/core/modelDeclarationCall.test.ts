@@ -109,7 +109,6 @@ describe("run's params object", () => {
           met: values.met,
           clo: values.clo,
           wme: 0,
-          standard: pmvPpdIso.standard,
           limit_inputs: false,
           round_output: false,
         }),
@@ -129,13 +128,12 @@ describe("run's params object", () => {
  * only because `noUnusedLocals` would otherwise flag it.
  */
 export function valuesTypeProof(values: Values, options: OptionsReader): void {
-  const standard = pmvPpdIso.standard;
   // Spread only where every key is a required quantity, which a wrong key
   // turns into a missing one; the key under test is always written inline.
   const withoutClo = { tdb: values.tdb, tr: values.tr, vr: values.vr, rh: values.rh, met: values.met };
-  pmv_ppd_iso({ ...withoutClo, clo: values.clo, wme: 0, standard, limit_inputs: false });
+  pmv_ppd_iso({ ...withoutClo, clo: values.clo, wme: 0, limit_inputs: false });
   // @ts-expect-error a missing required key: the quantity `clo` is forgotten
-  pmv_ppd_iso({ ...withoutClo, wme: 0, standard });
+  pmv_ppd_iso({ ...withoutClo, wme: 0 });
   // @ts-expect-error a misspelt key: the library spells it `limit_inputs`
   pmv_ppd_iso({ ...withoutClo, clo: values.clo, limit_input: false });
   const ashrae = { ...withoutClo, clo: values.clo };

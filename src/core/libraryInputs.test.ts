@@ -64,7 +64,7 @@ describe("resolveQuantities", () => {
   });
 
   it("passes the clothing through untouched for a model whose standard has no correction", () => {
-    const uncorrected = { ...pmvPpdIso, standard: undefined };
+    const uncorrected = { ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } };
     const resolved = resolveQuantities(enteredSlotFor(pmvPpdIso, { met: 2, clo: 1 }), uncorrected, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.get(q.clo)).toBe(1);
   });

@@ -245,7 +245,6 @@ function isoRounding(round_output: boolean) {
         met: values.met,
         clo: values.clo,
         wme: 0,
-        standard: pmvPpdIso.standard,
         limit_inputs: false,
         round_output,
       }),

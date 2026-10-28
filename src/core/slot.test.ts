@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clo_dynamic_ashrae, clo_dynamic_iso, clo_dynamic_iso_vr, hr_to_rh, psy_ta_rh, t_o, v_relative } from "jsthermalcomfort";
+import { clo_dynamic_ashrae, clo_dynamic_iso, clo_dynamic_iso_vr, hr_to_rh, psy_ta_rh, Standard, t_o, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -42,7 +42,7 @@ const q = quantities;
 const LOWER_PRESSURE = 80000;
 
 /** A model with a temperature entry group and no standard: the library's default decides. */
-const withoutStandard = { ...pmvPpdIso, standard: undefined };
+const withoutStandard = { ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
 const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
@@ -58,7 +58,7 @@ describe("operativeTemperatureOf", () => {
     expect(operativeTemperatureOf(room, pmvPpdIso)).toBeCloseTo(25.16, 2);
   });
 
-  it("passes no standard for a model that declares none, and the library's default decides", () => {
+  it("passes no standard for a model that has none, and the library's default decides", () => {
     expect(operativeTemperatureOf(room, withoutStandard)).toBe(t_o(24, 28, 0.6));
   });
 
@@ -66,7 +66,7 @@ describe("operativeTemperatureOf", () => {
     const entered = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, vr: 0.6 });
     expect(operativeTemperatureOf(entered, pmvPpdIso)).toBe(operativeTemperatureOf(room, pmvPpdIso));
     const operative = withTemperatureMode(entered, temperatureMode.operative, pmvPpdIso);
-    expect(operative.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6, pmvPpdIso.standard));
+    expect(operative.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6, Standard.iso_7730_2025));
     expect(operative.values.get(q.vr)).toBe(0.6);
   });
 
@@ -380,7 +380,7 @@ describe("withTemperatureMode", () => {
     expect(withTemperatureMode(room, temperatureMode.operative, pmvPpdIso).values.get(q.operative_tmp)).toBeCloseTo(25.16, 2);
   });
 
-  it("passes no standard for a model that declares none, and the library's default decides", () => {
+  it("passes no standard for a model that has none, and the library's default decides", () => {
     const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard);
     expect(converted.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6));
   });
@@ -541,8 +541,7 @@ describe("withClothingMode", () => {
   // Nothing corrects it, so nothing is inverted: the group's conversion for a
   // model without the group, which the model switch never asks for.
   it("keeps the number going back for a model whose standard has no correction", () => {
-    const uncorrecting = { ...pmvPpdIso, standard: undefined };
-    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, uncorrecting);
+    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, withoutStandard);
     expect(converted.values.get(q.clo)).toBe(0.8);
   });
 
@@ -562,7 +561,7 @@ describe("withClothingMode", () => {
   });
 
   it("answers the clothing insulation as entered for a model whose standard has no correction", () => {
-    expect(dynamicClothingOf(enteredSlotFor(pmvPpdIso, active), { ...pmvPpdIso, standard: undefined })).toBe(active.clo);
+    expect(dynamicClothingOf(enteredSlotFor(pmvPpdIso, active), withoutStandard)).toBe(active.clo);
   });
 });
 
@@ -605,7 +604,7 @@ describe("the entry groups held among the values", () => {
       false,
       false,
     ]);
-    expect(clothing?.appliesTo({ ...pmvPpdIso, standard: undefined })).toBe(false);
+    expect(clothing?.appliesTo(withoutStandard)).toBe(false);
   });
 
   it("have the air-speed group on a model whose info names the relative air speed, and on no other", () => {
