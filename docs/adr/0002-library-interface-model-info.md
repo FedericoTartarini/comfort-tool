@@ -4115,10 +4115,11 @@ notes under decisions 51 and 53:
     supersedes ticket 01's "under the header, level with the cards" (`0f83fba`). Rule 7's "shadcn-svelte's Sonner" is
     `svelte-sonner`'s own `Toaster`, mounted from `src/ui/layout/Toaster.svelte`, not the primitive the CLI generates,
     whose theme reads `mode-watcher`, which wrote two `localStorage` entries the tool never writes (the user's choice,
-    ticket 01). Toasts stack, Sonner showing three; a notice raised again replaces its own toast; Reset closes those
-    standing (ticket 01's ruling 3, `32508d5`, `src/App.svelte:84`), and a link's yes has none to close; the Comments'
-    "Reset or a link's yes closes none" restates ticket 01's first review, which that ruling corrected. Rule 2's "The other value is never cut" has one exception, the
-    entry-mode switch: it cuts what its conversion puts past a bound, as an arrival does, so the temperature switch may
+    ticket 01). Toasts stack, Sonner showing three; a notice raised again replaces its own toast. Reset closes those
+    standing and a link's yes closes none, as the code does (`src/App.svelte:82-86`; the user's ruling, the code being
+    the reference over the Comments' "Reset or a link's yes closes none"): walked, a limit toast the kept session
+    raised while the link's question waited stood after its yes, the new session breaking no limit (B30). Rule 2's
+    "The other value is never cut" has one exception, the entry-mode switch: it cuts what its conversion puts past a bound, as an arrival does, so the temperature switch may
     cut a dependent humidity entry, a dew point against the new dry bulb (the user's ruling at ticket 07); rule 5's
     "an entry-mode switch … write within bounds (inference)" is withdrawn for it. Rule 2 also: a draft past its own
     bound whose end would put another entry out of range is refused, not cut (`src/core/applicability.ts:324-336`).

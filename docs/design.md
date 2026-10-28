@@ -184,8 +184,8 @@ readout stays on the pointer, lettered at the caption's size.
 px under 600 px), over the header's right end while the page is at its top; on the popover's ground with the border's
 edge, kept until its close button, "Close", closes it, Sonner showing three at once (decision 84, rule 7, and its notes
 of 2026-10-28). The notices: a link refused or filled, values cut by an arrival, a copy refused, an Image that failed,
-a value refused with its reason, and a slot's run breaking a limit it did not break before. A cut and an input
-calculator's Apply raise none for a committed value's cut; Reset closes those standing.
+a value refused with its reason, and a slot's run breaking a limit it did not break before. A typed value's cut and an
+input calculator's Apply raise none. Reset closes the toasts standing; a link's yes closes none.
 
 **Footer.** A band of the brand: the tool's name and version, the library and its version, Licence and Code on one
 line, the citation on the next, at the left; the white CBE and UC Berkeley marks at the right, links to

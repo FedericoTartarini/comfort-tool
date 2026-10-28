@@ -77,8 +77,8 @@
   });
   // Reset closes the toasts standing, which speak of the session it replaces
   // (the user's ruling, `.scratch/input-gate/issues/01-…md` Comments). A
-  // link's yes need not: its question stands only at the first address,
-  // whose load raises nothing while a link waits.
+  // link's yes closes none, so a limit toast the kept session raised while
+  // the question waited stands after it (`.scratch/open-points.md` B30).
   setTabControls({
     reset: () => {
       closeNotices();
