@@ -834,6 +834,72 @@ test("a row's Presets is the word at the box's end, and its list's values end at
 });
 
 /**
+ * The sidebar's groups are headings in the cards' title style, and every panel
+ * has the one radius but the checkbox (ADR-0002 decision 87, rules 5 and 10).
+ */
+test.describe("the sidebar's headings and the one radius", () => {
+  for (const [name, address] of [
+    ["Standard", PMV_ADDRESS],
+    ["Explore", EXPLORE_ADDRESS],
+  ]) {
+    test(`at 1440 px on ${name}, the sidebar's groups are level-two headings Standard, Tools and Settings, 14 px at 600 in ink, and the Units and Atmospheric pressure labels share one weight`, async ({ page }) => {
+      await openStandard(page, 1440, address);
+      const sidebar = page.locator('[data-slot="sidebar-content"]');
+      const headings = sidebar.getByRole("heading", { level: 2 });
+
+      await expect(headings).toHaveText(["Standard", "Tools", "Settings"]);
+      const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+      for (const heading of await headings.all()) {
+        expect(await heading.evaluate((element) => {
+          const { fontSize, fontWeight, color } = getComputedStyle(element);
+          return { fontSize, fontWeight, color };
+        })).toEqual({ fontSize: "14px", fontWeight: "600", color: ink });
+      }
+      // The groups keep their names.
+      for (const group of ["Standard", "Tools", "Settings"]) {
+        await expect(sidebar.getByRole("group", { name: group, exact: true })).toHaveCount(1);
+      }
+
+      const settings = sidebar.getByRole("group", { name: "Settings" });
+      const weightOf = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).fontWeight);
+      expect(await weightOf(settings.getByText("Units", { exact: true }))).toBe(
+        await weightOf(settings.locator('[data-slot="field-label"]').filter({ hasText: /^Atmospheric pressure/ })),
+      );
+    });
+  }
+
+  test("at 1440 px, Reset's dialog and a toast are rounded as a card is, and a checkbox keeps 4 px", async ({ page }) => {
+    await openStandard(page, 1440);
+    const radiusOf = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).borderTopLeftRadius);
+    const cardRadius = await radiusOf(card(page, "Inputs"));
+    expect(cardRadius).toBe("6px");
+
+    const settings = page.getByRole("group", { name: "Settings" });
+    await settings.getByRole("button", { name: "Reset" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    expect(await radiusOf(dialog)).toBe(cardRadius);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // A clipboard that refuses raises copyRefused's toast.
+    await page.evaluate(() => {
+      navigator.clipboard.writeText = () => Promise.reject(new Error("Refused for the test"));
+    });
+    await settings.getByRole("button", { name: "Share" }).click();
+    const toast = page.getByRole("region", { name: /^Notifications/ }).getByRole("listitem");
+    await expect(toast).toHaveCount(1);
+    expect(await radiusOf(toast)).toBe(cardRadius);
+    await toast.getByRole("button", { name: "Close" }).click();
+
+    // Apply to under Compare holds the checkboxes.
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    await page.getByRole("button", { name: /^Input calculators/ }).click();
+    expect(await radiusOf(page.getByRole("dialog").getByRole("checkbox", { name: "Input 1" }))).toBe("4px");
+  });
+});
+
+/**
  * The header's mark is a link to the default model's address, and a plain
  * click on it is an in-app switch as a Standard link's is (ADR-0002 decision
  * 73, rule 5): the values travel, and a value the default model cannot judge

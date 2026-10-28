@@ -10,6 +10,7 @@
   the tool writes none. Both the user's choices,
   `.scratch/input-gate/issues/01-…md` Comments. Kept from the generated part:
   the toast's ground, text and edge in the popover's and the border's tokens.
+  Its radius is the one radius, where Sonner's is 8 px (decision 87, rule 10).
   The theme is the light, the app's one (ADR-0001 §1).
 -->
 <script lang="ts">
@@ -23,5 +24,5 @@
   duration={Number.POSITIVE_INFINITY}
   closeButton
   closeButtonAriaLabel={copy.closeToast}
-  style="--normal-bg: var(--color-popover); --normal-text: var(--color-popover-foreground); --normal-border: var(--color-border);"
+  style="--normal-bg: var(--color-popover); --normal-text: var(--color-popover-foreground); --normal-border: var(--color-border); --border-radius: var(--radius);"
 />

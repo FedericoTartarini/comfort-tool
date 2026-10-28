@@ -17,7 +17,7 @@
 </script>
 
 <Inline gap="2" align="center">
-  <span id="{id}-units">{copy.units}</span>
+  <span id="{id}-units" class="units-label">{copy.units}</span>
   <!--
     A function binding, as the model select's: a click on the chosen item asks
     the group for no choice at all (an empty value), which the setter ignores,

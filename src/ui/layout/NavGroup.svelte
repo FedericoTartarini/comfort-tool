@@ -3,7 +3,8 @@
   sidebar-16 block's `nav-secondary.svelte` (`npx shadcn-svelte add sidebar-16`,
   CLI 1.6.0, Nova), changed for the tool. Kept: a `Sidebar.Group` of a
   `Sidebar.Menu` whose items are `Sidebar.MenuButton`s with a link for their
-  child. Changed: the group has a label, which names it (`role="group"`); no
+  child. Changed: the group has a label, which names it (`role="group"`), an
+  `h2` inside it as a card title's is, in ink (decision 87, rule 5); no
   icons, the item's name alone; an item carries `aria-current`, is drawn
   active while it has one, and hands its click to the caller; the menu's
   items are `gap-1` (Vega's and Maia's sidebar menu; Nova's is `gap-0`); the
@@ -39,7 +40,7 @@
 </script>
 
 <Sidebar.Group role="group" aria-labelledby="{id}-label">
-  <Sidebar.GroupLabel id="{id}-label">{label}</Sidebar.GroupLabel>
+  <Sidebar.GroupLabel id="{id}-label" class="text-foreground"><h2>{label}</h2></Sidebar.GroupLabel>
   <Sidebar.GroupContent>
     <Sidebar.Menu class="gap-1">
       {#each items as item (item.href)}
