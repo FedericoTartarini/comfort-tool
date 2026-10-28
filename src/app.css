@@ -168,6 +168,10 @@
 		align-items: center;
 		gap: var(--space-page);
 	}
+	/* The chart type select's label, a screen reader's alone: the card's heading says Chart (decision 87, rule 4). */
+	.chart-type-label {
+		@apply sr-only;
+	}
 	/* The node Plotly draws the chart on: the exported image's 4:3 plot area, the cap tall, on the card's leading
 	   edge; it shrinks at 4:3 only where its column is narrower than it. */
 	.chart-plot {

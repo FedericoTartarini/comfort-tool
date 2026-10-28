@@ -8,7 +8,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import { Label } from "$lib/ui/primitives/label";
   import * as Select from "$lib/ui/primitives/select";
-  import * as ToggleGroup from "$lib/ui/primitives/toggle-group";
+  import ChoiceSelect from "./ChoiceSelect.svelte";
 
   interface Props {
     model: RegisteredModel;
@@ -21,9 +21,10 @@
 
   const id = $props.id();
   // Options are addressed by position in these lists rather than by any string
-  // id: a select's or a toggle group's value is text, and a chart type or a
-  // Quantity is compared by identity.
+  // id: a select's value is text, and a chart type or a Quantity is compared by
+  // identity.
   const types: readonly ChartType[] = $derived(model.charts.map((declaredChart) => declaredChart.type));
+  const typeGroups = $derived([{ options: types.map((type, index) => ({ key: String(index), label: type.title })) }]);
   // ADR §4.4: each axis excludes the quantity the other one holds — x === y is
   // not a chart.
   const xChoices = $derived(drawnAxes?.choices.filter((quantity) => quantity !== drawnAxes.selected.y) ?? []);
@@ -36,26 +37,16 @@
   one height on both chart types and a switch between them moves no row and not the plot.
 -->
 <Inline gap="2" align="center">
-  <!-- Named, not labelled: the card's heading says "Chart" once. A click on the chosen type asks for none (an empty
-       value), which the setter ignores. -->
-  <ToggleGroup.Root
-    type="single"
-    variant="outline"
+  <!-- Named, not labelled: the card's heading says "Chart" once, so the label is a screen reader's alone (ADR-0002
+       decision 87, rule 4). -->
+  <Label for="{id}-type" class="chart-type-label">{copy.chartType}</Label>
+  <ChoiceSelect
+    id="{id}-type"
     size="sm"
-    aria-label={copy.chartType}
-    bind:value={
-      () => String(types.indexOf(chart.type)),
-      (value) => {
-        if (value !== "") {
-          chart.type = types[Number(value)];
-        }
-      }
-    }
-  >
-    {#each types as type, index (type)}
-      <ToggleGroup.Item value={String(index)}>{type.title}</ToggleGroup.Item>
-    {/each}
-  </ToggleGroup.Root>
+    groups={typeGroups}
+    chosen={String(types.indexOf(chart.type))}
+    onchoose={(key) => (chart.type = types[Number(key)])}
+  />
   {#if drawnAxes}
     {@render axisPicker("x", copy.xAxis, xChoices, drawnAxes.selected.x)}
     {@render axisPicker("y", copy.yAxis, yChoices, drawnAxes.selected.y)}

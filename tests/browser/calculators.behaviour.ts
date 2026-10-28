@@ -223,7 +223,10 @@ test.describe("Solar gain on occupants", () => {
       "Average shortwave absorptivity",
     ]);
     await expect(panel.locator(".caption-line")).toHaveText(["", "0 – 90 °", "0 – 180 °", "200 – 1000 W/m²", "0 – 1", "0 – 1", "0 – 1", "0.2 – 0.9"]);
-    await expect(panel.getByRole("button", { name: "Posture", exact: true })).toHaveText("Seated");
+    const posture = panel.getByRole("button", { name: "Posture", exact: true });
+    await expect(posture).toHaveText("Seated");
+    // The choice select's default size, a box's height, where the chart type's is the small one.
+    expect((await posture.boundingBox())?.height).toBe((await panel.getByRole("spinbutton").first().boundingBox())?.height);
 
     await expect(dockLine(dialog, "ERF (W/m²)")).toBeVisible();
     await expect(dockLine(dialog, "Mean radiant temperature delta (°C)")).toHaveText(formatNumber(increaseAt(0)));

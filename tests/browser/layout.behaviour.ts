@@ -103,6 +103,16 @@ async function openStandard(page: Page, width: number, address = PMV_ADDRESS) {
 }
 
 /**
+ * Chooses a chart type by its select and waits for the list to close: the
+ * select reopened while its list is still leaving scrolls the window.
+ */
+async function chooseChartType(page: Page, name: string) {
+  await page.getByRole("button", { name: "Chart type", exact: true }).click();
+  await page.getByRole("option", { name, exact: true }).click();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+}
+
+/**
  * Records the boxes as they are, with the legend beside the plot; the check
  * it returns runs a click, which waits for its own effect, and expects the
  * page to settle with every held box where it was and the legend still
@@ -177,13 +187,12 @@ for (const width of [1440, TWO_COLUMNS_FROM]) {
       await expect(toast).toHaveCount(0);
     });
 
-    const chartType = (name: string) => page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name });
     await expectInPlace(async () => {
-      await chartType("Dynamic").click();
+      await chooseChartType(page, "Dynamic");
       await expect(page.getByLabel("X axis")).toBeVisible();
     });
     await expectInPlace(async () => {
-      await chartType("Psychrometric").click();
+      await chooseChartType(page, "Psychrometric");
       await expect(page.getByLabel("X axis")).toHaveCount(0);
     });
   });
@@ -648,6 +657,41 @@ test.describe("controls by their question", () => {
     }
   });
 
+  test("at 1440 px, the chart type is a select named Chart type, first in the view row and as tall as the axis selects, that draws the type it chooses, on Standard and Explore; the Model select keeps its own height", async ({ page }) => {
+    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+      await openStandard(page, 1440, address);
+      const chart = card(page, "Chart");
+      const chartType = chart.getByRole("button", { name: "Chart type", exact: true });
+      await expect(chartType).toHaveText("Psychrometric");
+      await expect(chart.getByLabel("X axis")).toHaveCount(0);
+
+      await chooseChartType(page, "Dynamic");
+      await expect(chartType).toHaveText("Dynamic");
+      const typeBox = await boxOf(chartType);
+      const xAxis = await boxOf(chart.getByLabel("X axis"));
+      const yAxis = await boxOf(chart.getByLabel("Y axis"));
+      // First in the row, at the card's leading edge where the plot starts; one height with the axis selects.
+      expect(typeBox.x).toBeCloseTo((await boxOf(page.locator(".chart-plot"))).x, 0);
+      expect(typeBox.x + typeBox.width).toBeLessThan(xAxis.x);
+      expect(typeBox.y).toBe(xAxis.y);
+      expect(typeBox.height).toBe(xAxis.height);
+      expect(typeBox.height).toBe(yAxis.height);
+      expect((await boxOf(card(page, "Inputs").getByRole("button", { name: "Model", exact: true }))).height).toBeGreaterThan(typeBox.height);
+
+      await chooseChartType(page, "Psychrometric");
+      await expect(chartType).toHaveText("Psychrometric");
+      await expect(chart.getByLabel("X axis")).toHaveCount(0);
+    }
+  });
+
+  test("at 1440 px, Heat Index on Explore, with one chart type, shows a chart type select of that one option", async ({ page }) => {
+    await openStandard(page, 1440, "/explore/heat-index-rothfusz");
+    const chartType = card(page, "Chart").getByRole("button", { name: "Chart type", exact: true });
+    await expect(chartType).toHaveText("Dynamic");
+    await chartType.click();
+    await expect(page.getByRole("option")).toHaveText(["Dynamic"]);
+  });
+
   test("at 1440 px, the option is a switch under the air speed row at the field gap, under either air-speed mode", async ({ page }) => {
     await openStandard(page, 1440);
     const option = page.getByRole("switch", { name: OPTION, exact: true });
@@ -883,7 +927,7 @@ test.describe("the air-speed chart's Comfort zone", () => {
 
   test("at PMV (ASHRAE 55)'s defaults, follows local control of the air speed off, on and off again", async ({ page }) => {
     await openStandard(page, 1440);
-    await page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name: "Dynamic" }).click();
+    await chooseChartType(page, "Dynamic");
     await expect(page.getByLabel("X axis")).toBeVisible();
     const option = page.getByRole("switch", { name: OPTION, exact: true });
     await expect(option).toHaveAttribute("aria-checked", "false");
@@ -1092,7 +1136,7 @@ test.describe("the empty-zone line", () => {
   test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control says under the psychrometric plot that there is no comfort zone, and at the defaults says nothing", async ({ page }) => {
     await openStandard(page, 1440);
     const chart = card(page, "Chart");
-    await expect(page.getByRole("group", { name: "Chart type" }).getByRole("radio", { name: "Psychrometric" })).toHaveAttribute("aria-checked", "true");
+    await expect(chart.getByRole("button", { name: "Chart type", exact: true })).toHaveText("Psychrometric");
     const line = chart.getByText("No comfort zone at these inputs.", { exact: true });
     await expect(line).toHaveCount(0);
 

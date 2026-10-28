@@ -23,9 +23,11 @@
     /** The chosen option's key. */
     chosen: string;
     onchoose: (key: string) => void;
+    /** The trigger's size: the small one in a row of small controls, such as the chart card's view row. */
+    size?: "sm" | "default";
   }
 
-  let { id, groups, chosen, onchoose }: Props = $props();
+  let { id, groups, chosen, onchoose, size = "default" }: Props = $props();
 
   const label = $derived(groups.flatMap((group) => group.options).find((option) => option.key === chosen)?.label);
 </script>
@@ -38,7 +40,7 @@
   that option a second time.
 -->
 <Select.Root type="single" bind:value={() => chosen, onchoose}>
-  <Select.Trigger {id}>{label}</Select.Trigger>
+  <Select.Trigger {id} {size}>{label}</Select.Trigger>
   <Select.Content>
     <!--
       The options inside a Group, as every generated example has them: the
