@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The Bands dialog edits a draft of the Band list (ADR-0002 decision 84, rule
- * 6): the chart changes only on Apply, and Close and Escape discard the draft.
+ * 6): the chart changes only on Apply, at the footer's right with Reset bands
+ * at its left, and the corner's Close and Escape discard the draft.
  * An Edge typed out of order is refused when it is committed, its box showing
  * the Edge as it was and its cell saying why, with no toast.
  */
@@ -27,7 +28,7 @@ const edgeName = (band: number) => new RegExp(`^Upper edge.*, band ${band}$`);
 /** Band `band`'s upper-Edge box in the open dialog. */
 const edgeBox = (page: Page, band: number) => page.getByRole("dialog").getByRole("spinbutton", { name: edgeName(band) });
 
-/** The open dialog's footer, whose Close is the one with words; the corner's is an icon of the same name. */
+/** The open dialog's footer: Reset bands and Apply, no Close of its own. */
 const footer = (page: Page) => page.getByRole("dialog").locator('[data-slot="dialog-footer"]');
 
 /** Every path the chart's plot draws, in order: what moves when a band's Edge does. */
@@ -40,11 +41,27 @@ function toasts(page: Page) {
   return page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
 }
 
+test("the footer holds Reset bands at its left and Apply at its right, and no Close", async ({ page }) => {
+  await open(page);
+  await openBands(page);
+  await expect(footer(page).getByRole("button")).toHaveCount(2);
+  const reset = await footer(page).getByRole("button", { name: "Reset bands", exact: true }).boundingBox();
+  const apply = await footer(page).getByRole("button", { name: "Apply", exact: true }).boundingBox();
+  const bar = await footer(page).boundingBox();
+  if (!reset || !apply || !bar) {
+    throw new Error("the footer and its two buttons are on screen");
+  }
+
+  // Each stands at the footer's padding on its own side, the room between them empty.
+  expect(Math.abs(reset.x - bar.x - (bar.x + bar.width - apply.x - apply.width))).toBeLessThan(1);
+  expect(apply.x - (reset.x + reset.width)).toBeGreaterThan(bar.width / 2);
+});
+
 test("moving an Edge in the dialog leaves the chart as it was until Apply, and Close and Escape discard the move", async ({ page }) => {
   await open(page);
   const drawn = await plotPaths(page);
 
-  for (const discard of [() => footer(page).getByRole("button", { name: "Close", exact: true }).click(), () => page.keyboard.press("Escape")]) {
+  for (const discard of [() => page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click(), () => page.keyboard.press("Escape")]) {
     await openBands(page);
     await edgeBox(page, 4).fill("0.7");
     await edgeBox(page, 4).press("Enter");

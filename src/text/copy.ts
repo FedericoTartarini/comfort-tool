@@ -215,7 +215,6 @@ export const copy = {
   // The Bands panel on Explore (ADR-0002 decision 59), in a dialog the chart's heading row opens (decision 73, rule 8).
   bands: "Bands",
   bandsReset: "Reset bands",
-  bandsClose: "Close",
   bandsApply: "Apply",
   bandLabelColumn: "Label",
   bandColorColumn: "Colour",

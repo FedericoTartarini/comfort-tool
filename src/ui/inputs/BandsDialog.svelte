@@ -2,9 +2,10 @@
   The Bands dialog on Explore, opened by its button on the chart card's
   heading row (ADR-0002 decision 73, rule 8): each opening edits a fresh draft
   of the model's Band list in the Bands panel (decision 84, rule 6). Reset
-  bands resets the draft, Apply writes it through the chart settings and
-  closes, and Close and Escape drop it; the chart never reads it. A model with
-  no Band list has nothing to edit, and its button is disabled.
+  bands, at the footer's left, resets the draft; Apply, at its right, writes
+  it through the chart settings and closes; the corner's Close and Escape drop
+  it, so the footer has no Close of its own. The chart never reads the draft.
+  A model with no Band list has nothing to edit, and its button is disabled.
 -->
 <script lang="ts">
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -54,12 +55,7 @@
       {@const openDraft = draft}
       <BandsPanel {model} draft={openDraft} {unitSystem} />
       <Dialog.Footer>
-        <Button variant="outline" onclick={() => openDraft.reset()}>{copy.bandsReset}</Button>
-        <Dialog.Close>
-          {#snippet child({ props })}
-            <Button {...props} variant="outline">{copy.bandsClose}</Button>
-          {/snippet}
-        </Dialog.Close>
+        <Button variant="outline" class="footer-start" onclick={() => openDraft.reset()}>{copy.bandsReset}</Button>
         <Button onclick={apply}>{copy.bandsApply}</Button>
       </Dialog.Footer>
     {/if}

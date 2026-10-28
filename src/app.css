@@ -383,6 +383,13 @@
 	max-height: calc(100dvh - 2rem);
 	overflow-y: auto;
 }
+/* A footer control that stands apart from the dialog's answer, at the left: the Bands dialog's Reset bands, Apply at the
+   right (ADR-0002 decision 84, rule 6). Under the primitive's `sm` the footer is a column, and keeps it. */
+@media (min-width: 40rem) {
+	[data-slot="dialog-footer"] > .footer-start {
+		margin-inline-end: auto;
+	}
+}
 /* The Input calculators dialog (decision 75, rule 6 (b)): centred like every dialog and of one height, so switching a
    tab moves no control. The title and the tab list stand at the top; under them a tab's settings, the one region that
    scrolls (`.calculator-settings`); then the result dock and the footer, held at the bottom. Every tab is mounted, the
