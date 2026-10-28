@@ -88,6 +88,8 @@
 | `suppressWarnings` on the `io` inputs (2026-09-04): a parameter sweep calls a model tens of thousands of times and `cooling_effect` logs a line every time it cannot solve — 300 lines per 100×100 ASHRAE grid. `charts.psychrometricZone` already silences its own trace; any tool drawing a field needs the same, so the switch belongs to the library | — |
 | `Outcome.violations` (2026-09-07): the applicability rows a call broke, as the `ApplicabilityLimit` objects themselves, computed whatever `limit_inputs` says — any consumer that renders applicability needs the row and its `role`, not a sentence | What each `role` does on screen: an entered value blocks the call and turns red, a derived or output bound is reported beside the result |
 
+> **Noted 2026-10-29** ([ADR-0002](0002-library-interface-model-info.md) decision 86, as noted the same day; `.scratch/edition/` ticket 04): the table's standard membership, `model.standard`, is the model info's `standards`, every edition the function accepts with its default first (ADR-0002 decision 25), and a model's standard is the first, read by `standardOf` (`core/modelDeclaration.ts:434`). A standard's path segment is generated from the library's `Standard` key with its year, `ashrae-55-2023` (`core/standard.ts:24`), not keyed by a `reference.standards` object.
+
 **And the library follows pythermalcomfort** (2026-09-05). The test above decides *what* the library carries; this decides
 what it looks like once it is there. The fork adopts upstream's logic **and** its naming by default, and deviates only
 where TypeScript requires it, with the reason written at the site — a kwargs object where upstream has keyword
@@ -208,6 +210,8 @@ The same style as the library's `quantities`: `as const` object collections + de
 > **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decision 57's note of the same day; `.scratch/explore/` ticket 09): built as `eb9ecd4`. `isWorkspaceAvailable` above is `pagesOf(model)` (`core/page.ts:30`), the list of a model's pages, which nothing outside its test calls yet. "Each a page of the app with its own address" holds for Standard and Explore; Time-series has no route until its phase.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 63** (2026-10-06): no closed set gets an `xxxFromId()`. `workspaceFromId` below and its like are one private lookup by `id` in `core/shareLink.ts`, their only caller; the page is named by the path and is in no share link. The sketch is left as written.
+>
+> **Noted 2026-10-29** ([ADR-0002](0002-library-interface-model-info.md) decision 86, as noted the same day; `.scratch/edition/` ticket 04): in the sketch below, a model has the Standard page when its model info lists a standard (`pagesOf`, `core/page.ts:41`), not when `model.model.standard` exists; and `standardPath`'s hand-written segments, one per family, are `core/standard.ts`'s `standards`, one entry per edition the library's `Standard` names, its name and segment generated from the key with the year (`ISO 7730:2025`, `iso-7730-2025`). The sketch is left as written.
 
 
 ```ts
@@ -264,6 +268,8 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36 as revised 2026-10-12** (`e7e55cb`): `RegisteredModel.options` is gone, in the decision 36 marker above and in the rules below. An option is listed among `inputs`, the panel's list in panel order, as `{ option }` beside the `{ quantity, value }` elements, and read through `optionsOf(model)`, the quantities through `inputsOf(model)`; PMV (ASHRAE 55) lists its one option after `v`. `InputSlot.options` is unchanged.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 20** (2026-09-15): the rules paragraph's sentence making `presets` a declaration field no longer applies. Presets hang off the `Quantity`: `core/presets.ts` binds `met` and `clo` to the library's tables once, and `presetsFor(quantity)` answers for every model, so no declaration names a preset table.
+>
+> **Withdrawn in part 2026-10-29** ([ADR-0002](0002-library-interface-model-info.md) decision 86, as noted the same day; `.scratch/edition/` ticket 04): the first marker's "`standard` replaces `edition`" is withdrawn. The declaration writes no standard; a model's standard is the first its model info lists, `standardOf(model)` (`core/modelDeclaration.ts:434`), so a model stands only under its function's default edition. The rules paragraph's "whether the library's `model.standard` exists" reads: whether the model info lists a standard (`core/page.ts:41`).
 
 
 ```ts
@@ -326,7 +332,7 @@ Result table (`table`):
 >
 > **The dynamic chart is amended by [ADR-0002](0002-library-interface-model-info.md) decision 37** (2026-09-27): it is declared in one of two shapes, scanned (`axes`, `output`, `bands`) or polygons (`axes`, `zones`), rather than as a scan with an optional `zones` source. A polygons chart's axes are locked: never offered to the picker and never mapped to the entry mode, so an operative axis marks a slot in separate entry at the plain mean of `tdb` and `tr`.
 >
-> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as amended 2026-09-28** (Phase 4b ticket 12): "the plain mean of `tdb` and `tr`" in the marker above is retracted. Under separate entry the slot is marked at the library's operative temperature, `t_o(tdb, tr, v, model.standard)`, weighed by the model's own standard, through the same function the switch into operative entry converts with (decision 39), so the marker and the switch cannot differ.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as amended 2026-09-28** (Phase 4b ticket 12): "the plain mean of `tdb` and `tr`" in the marker above is retracted. Under separate entry the slot is marked at the library's operative temperature, `t_o(tdb, tr, v, model.standard)`, weighed by the model's own standard, through the same function the switch into operative entry converts with (decision 39), so the marker and the switch cannot differ. *Noted 2026-10-29 ([ADR-0002](0002-library-interface-model-info.md) decision 86, rule 3): `model.standard` is `standardOf(model)`, the first standard the model info lists (`core/slot.ts:243`).*
 >
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 19; `S102`): in the legend rules below, `Swatch` is a string union, `"fill" | "line" | "marker"` in `core/charts/chartSpec.ts`, not an object collection read as `Swatch.fill`. Its members double as CSS classes: `ChartLegend.svelte` writes an entry's swatch into the swatch element's `class` and styles each member by that name.
 >
@@ -414,9 +420,9 @@ Legend rules:
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): `InputSlot.options` below is `SvelteMap<OptionSpec, boolean>` (there is no `OptionValue`) and PMV (ASHRAE 55) is the first model to declare one; across a model switch it is a superset bag like `values`, seeded at the new model's defaults, and the dialog never lists an option.
 >
-> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 39** (2026-09-28): in the first rule below, separate → operative weighs by the model's own standard: `withTemperatureMode` converts with the library's `t_o(tdb, tr, v, model.standard)`, not `operative_tmp(tdb, tr, v)`, and a model that declares no standard passes none, so the library's default decides.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 39** (2026-09-28): in the first rule below, separate → operative weighs by the model's own standard: `withTemperatureMode` converts with the library's `t_o(tdb, tr, v, model.standard)`, not `operative_tmp(tdb, tr, v)`, and a model that declares no standard passes none, so the library's default decides. *Noted 2026-10-29 ([ADR-0002](0002-library-interface-model-info.md) decision 86, rule 3): `model.standard` is `standardOf(model)`, the first standard the model info lists, and a model that declares no standard is one whose info lists none (`core/slot.ts:243`).*
 >
-> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 6**: `Session.standard?: StandardRef` below is dropped. The session holds no standard of its own: a model's standard is its declaration's `standard`, read through `session.model`, so there is one copy.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 6**: `Session.standard?: StandardRef` below is dropped. The session holds no standard of its own: a model's standard is its declaration's `standard`, read through `session.model`, so there is one copy. *Corrected 2026-10-29 ([ADR-0002](0002-library-interface-model-info.md) decision 86, rule 3): a model's standard is the first its model info lists, `standardOf(model)`, not a declaration field; the one copy is the library's.*
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 47** (2026-09-28): the `InputSlot` sketched below declares `implements Slot`, the shape core reads, held in `core/slot.ts` with the reads of what the person entered and the changes a person makes to a slot. Its `humidity` is optional: absent until a declaration's default or the person writes it, so a slot opened on a model without humidity holds none. `values` and `options` are read-only outside the class: every write is a core function from a slot to a slot (entering a value, setting an option, changing either entry mode), which the class lands through `replaceWith`, so the humidity entry mode converts in core as the temperature one does. A slot starts as the empty slot put through the switch's seeding (`startingSlot(model)`), not at a humidity of its own.
 >
@@ -609,7 +615,9 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > `navigationStandards`, deleted in `25cd739`; `standardLinks` and `modelChoicesOn` read one grouping of the
 > registry by standard, `modelGroupsOf` (`1f139d1`), whose group type, `ModelGroup`, is declared in
 > `ui/inputs/ModelSelect.svelte`'s module script. `core/standard.ts` gains `isSameStandard` (`42e6d0b`), the one
-> reader of whether two editions are of one standard.
+> reader of whether two editions are of one standard. *Withdrawn in part 2026-10-29
+> ([ADR-0002](0002-library-interface-model-info.md) decision 86, rule 1; `873b175`): `isSameStandard` is deleted; a
+> standard is one edition, and `modelGroupsOf` compares two by identity.*
 >
 > **Noted 2026-10-16** ([ADR-0002](0002-library-interface-model-info.md) decisions 75 and 76, as noted the same day;
 > `.scratch/input-calculators/` ticket 06): the tree gains `core/calculators.ts`, the input calculators and the rule

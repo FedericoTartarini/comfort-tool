@@ -45,7 +45,7 @@ One published edition of a standard, as the library's `Standard` names it (`iso_
 _Avoid_: norm, edition, family, version (two years of one standard are two standards)
 
 **Declaration**:
-The one file in `src/models/` that binds a model: its info, standard, run call, defaults, axis ranges, table columns and charts.
+The one file in `src/models/` that binds a model: its info, run call, defaults, axis ranges, table columns and charts. Its standard is not declared but read from its info.
 _Avoid_: definition, config, registration (that is the one line in the registry)
 
 **Entry group**:

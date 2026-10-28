@@ -96,37 +96,37 @@ header and the footer bands full width above and below, neither resident. The si
 footer's text share one 12 px line; the sidebar's first group label's top meets the cards' top.
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ [CBE] │ CBE Thermal Comfort Tool                                     Documentation       │  brand band, 3.5rem
-├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ Standard   ┌─ Inputs ──────────── ◉ Compare┐ ┌─ Results ───────────────────────────────┐ │
-│ ▸ASHRAE 55 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Thermal sensation  PMV   PPD Compliance │ │
-│  ISO 7730  │ ───────────────────────────── │ │ (Neutral)        −0.24  6.15 %      Yes │ │
-│            │ Air temp (°C) [Temperature ▾] │ │ ASHRAE 55:2023                          │ │
-│ Tools      │ [25                      ↕]   │ └─────────────────────────────────────────┘ │
-│  Explore   │ 10 – 40 °C                    │ ┌─ Chart ────────────────── [Export image]┐ │
-│            │ Mean radiant temp (°C)        │ │ [Psychro|Dynamic] [X axis ▾] [Y axis ▾] │ │
-│ ────────── │ [25                      ↕]   │ │ ┌──────────────┐                        │ │
-│ Settings   │ 10 – 40 °C                    │ │ │   plot 4:3   │   ─ Relative humidity  │ │
-│ Units      │ Air speed (m/s) [Air speed ▾] │ │ │  ≤ 24rem tall│   ■ Comfort zone       │ │
-│ [SI|IP]    │ [0.1                     ↕]   │ │ │              │   ● Input              │ │
-│ Pressure   │ ≥ 0 m/s                       │ │ │              │                        │ │
-│ [101325]   │ ◉ Occupants have local contr… │ │ └──────────────┘                        │ │
-│ 30000 – …  │ Relative humidity (%) [… ▾]   │ └─────────────────────────────────────────┘ │
-│ ────────── │ [50                      ↕]   │                                             │
-│ [Share]    │ Metabolic rate (met)          │                                             │
-│ [Reset]    │ [1.1            ↕ Presets]    │                                             │
-│            │ 1 – 4 met                     │                                             │
-│            │ …                             │                                             │
-│            │ ┌───────────────────────────┐ │                                             │
-│            │ │Input calculators         ›│ │                                             │
-│            │ │Solar gain · Custom ensem… │ │                                             │
-│            │ └───────────────────────────┘ │                                             │
-│            └───────────────────────────────┘                                             │
-├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ CBE Thermal Comfort Tool 0.2.0 · jsthermalcomfort 1.4.0 · Licence · Code [CBE] [Berkeley]│  brand band
-│ Please cite us if you use this software: Tartarini, Schiavon, Cheung, Hoyt 2020 …        │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [CBE] │ CBE Thermal Comfort Tool                                     Documentation            │  brand band, 3.5rem
+├───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Standard        ┌─ Inputs ──────────── ◉ Compare┐ ┌─ Results ───────────────────────────────┐ │
+│ ▸ASHRAE 55:2023 │ Model [PMV / PPD (ASHRAE) ▾]  │ │ Thermal sensation  PMV   PPD Compliance │ │
+│  ISO 7730:2025  │ ───────────────────────────── │ │ (Neutral)        −0.24  6.15 %      Yes │ │
+│                 │ Air temp (°C) [Temperature ▾] │ └─────────────────────────────────────────┘ │
+│ Tools           │ [25                      ↕]   │ ┌─ Chart ────────────────── [Export image]┐ │
+│  Explore        │ 10 – 40 °C                    │ │ [Psychro|Dynamic] [X axis ▾] [Y axis ▾] │ │
+│                 │ Mean radiant temp (°C)        │ │ ┌──────────────┐                        │ │
+│ ─────────────── │ [25                      ↕]   │ │ │   plot 4:3   │   ─ Relative humidity  │ │
+│ Settings        │ 10 – 40 °C                    │ │ │  ≤ 24rem tall│   ■ Comfort zone       │ │
+│ Units           │ Air speed (m/s) [Air speed ▾] │ │ │              │   ● Input              │ │
+│ [SI|IP]         │ [0.1                     ↕]   │ │ │              │                        │ │
+│ Pressure        │ ≥ 0 m/s                       │ │ └──────────────┘                        │ │
+│ [101325]        │ ◉ Occupants have local contr… │ └─────────────────────────────────────────┘ │
+│ 30000 – …       │ Relative humidity (%) [… ▾]   │                                             │
+│ ─────────────── │ [50                      ↕]   │                                             │
+│ [Share]         │ Metabolic rate (met)          │                                             │
+│ [Reset]         │ [1.1            ↕ Presets]    │                                             │
+│                 │ 1 – 4 met                     │                                             │
+│                 │ …                             │                                             │
+│                 │ ┌───────────────────────────┐ │                                             │
+│                 │ │Input calculators         ›│ │                                             │
+│                 │ │Solar gain · Custom ensem… │ │                                             │
+│                 │ └───────────────────────────┘ │                                             │
+│                 └───────────────────────────────┘                                             │
+├───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ CBE Thermal Comfort Tool 0.2.0 · jsthermalcomfort 1.4.0 · Licence · Code [CBE] [Berkeley]     │  brand band
+│ Please cite us if you use this software: Tartarini, Schiavon, Cheung, Hoyt 2020 …             │
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Header.** A band of the brand: the white CBE mark, a link to the default model's address, followed as an in-app
@@ -136,11 +136,11 @@ Documentation. Below `md` the sidebar's trigger stands before the mark. Focus af
 link's yes lands on the `h1`.
 
 **Sidebar.** The `sidebar-16` block's menu on the ground, no icons, items `gap-1`. Groups: Standard, one item per
-standard; Tools, Explore (Time-series joins as one item when it exists, no placeholder); a separator; Settings, the
-unit system as a toggle-group, the atmospheric pressure's input with its bound text, a separator, Share and Reset,
-standing on the group labels' line, 20 px in, text against text; the pressure's box is the paper, since a box takes
-the other colour of the surface it stands on. The current address is drawn as current; a standard's link on another of
-its models too (decision 67, rule 2).
+standard, named with its year, "ASHRAE 55:2023" (decision 86); Tools, Explore (Time-series joins as one item when it
+exists, no placeholder); a separator; Settings, the unit system as a toggle-group, the atmospheric pressure's input
+with its bound text, a separator, Share and Reset, standing on the group labels' line, 20 px in, text against text;
+the pressure's box is the paper, since a box takes the other colour of the surface it stands on. The current address
+is drawn as current; a standard's link on another of its models too (decision 67, rule 2).
 
 **Inputs.** A card: Compare, a switch with its label, at the heading row's right end on Standard (decision 76); the
 model select, a rule, the quantity rows, and the Input calculators button. A row is a label with its unit, the entry
@@ -162,14 +162,14 @@ button.
 **Results.** A card: the Results heading, nothing at its right; the table (decision 70: headings wrap, numbers
 right-aligned, the region scrolls sideways with its clipped edge faded; the Input column first and sticky in both
 Compare states, unheaded while the slots are not named; the value columns share the width left equally, decision 85's
-2026-10-28 amendment); then the standard's caption. The columns are the model's `table`, its classified outputs first,
-each cell of theirs a Band badge: the generated Badge filled with the band's colour and edged in the border token as
-a fill swatch is, so Neutral's near white shows, lettered in ink or white by contrast, outlined for a band without a
-colour, its label as the library writes it, "Slightly Cool" (decision 85). Headings are the quantities' labels, "PMV",
-"PPD", "Compliance", so PMV's fit one line. A row whose run broke a limit carries the triangle-alert icon in `warning`,
-in its Input cell, before the slot's swatch where there is one. It is no control; its `title` holds "Calculated, but
-outside these limits:" over the limits in their bound sentences (decision 85, rule 5). A "—" a violation causes has no
-icon of its own.
+2026-10-28 amendment), ending at its last row, with no line under it naming the standard (decision 86, rule 4). The
+columns are the model's `table`, its classified outputs first, each cell of theirs a Band badge: the generated Badge
+filled with the band's colour and edged in the border token as a fill swatch is, so Neutral's near white shows, lettered
+in ink or white by contrast, outlined for a band without a colour, its label as the library writes it, "Slightly Cool"
+(decision 85). Headings are the quantities' labels, "PMV", "PPD", "Compliance", so PMV's fit one line. A row whose run
+broke a limit carries the triangle-alert icon in `warning`, in its Input cell, before the slot's swatch where there is
+one. It is no control; its `title` holds "Calculated, but outside these limits:" over the limits in their bound
+sentences (decision 85, rule 5). A "—" a violation causes has no icon of its own.
 
 **Chart.** A card: the heading row carries Chart, then at the right, on Explore, the Bands button, and Export image;
 under it a view row, on every chart, holds the chart type toggle-group, named "Chart type", then the axis selects where

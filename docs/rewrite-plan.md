@@ -447,6 +447,14 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > value columns move by 14 to 16 px when a violation appears, where the amendment says the table does not shift; and
 > whether the Results heading row's right side still reads as empty. **Next: the edition, shell and link themes and
 > I9.**
+>
+> **2026-10-29 — position, the edition done**: `.scratch/edition/` landed on `rewrite/v1`, tickets 01 to 04: the result
+> table's standard caption gone, an Image's Input summary keeping the edition (`04e063b`); a model's standard read from
+> its info's first, no declaration writing one and the PMV runs passing none (`0db1df3`); a standard one edition, named
+> and routed with its year, "ASHRAE 55:2023" and `/standard/ashrae-55-2023/…`, an old-form address opening the default
+> model (`873b175`). Decision 86 carries a close-out note; ADR-0001's `model.standard` sentences are marked; GLOSSARY.md
+> and `docs/design.md` follow the code. Review items O5, N5 and R5 are done, for the Linear reply. `npm test` passes at
+> 1184 tests and `npm run test:browser` at 125. **Next: the shell and link themes and I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1013,6 +1021,9 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    **Corrected 2026-09-28 (review after Phase 4b, `P023`)**: the reason for 2005 above no longer holds. The library's kernel
    now follows ISO 7730:2025 Annex D, and the library lists 2025 first, so the declaration pins `Standard.iso_7730_2025`
    (Proposal 27; ADR-0002 decision 6 as amended) and the result table captions 2025.
+   **Corrected 2026-10-29 (ADR-0002 decision 86; `.scratch/edition/`)**: no declaration pins an edition. A model's
+   standard is the first its info lists, ISO 7730:2025 for PMV (ISO 7730), `run` passes none, and the result table has
+   no caption: the year is in the standard's name and address.
 4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
    the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
    walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot
