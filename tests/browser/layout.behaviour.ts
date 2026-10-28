@@ -394,6 +394,21 @@ test("below 768 px, the sidebar is a sheet that its trigger in the header opens 
   await expect(trigger).toBeFocused();
 });
 
+test("at 375 × 800, the sheet shows the sheet primitive's Close, which closes it as Escape does", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto(PMV_ADDRESS);
+  const trigger = page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" });
+  const sheet = page.getByRole("dialog", { name: "Sidebar" });
+
+  await trigger.click();
+  const close = sheet.getByRole("button", { name: "Close" });
+  await expect(close).toBeVisible();
+
+  await close.click();
+  await expect(sheet).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
 test("at 1440 px, the sidebar's Standard items read ASHRAE 55 then ISO 7730, the registry's order", async ({ page }) => {
   await openStandard(page, 1440);
 

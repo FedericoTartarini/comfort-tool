@@ -3,8 +3,10 @@
   block's `app-sidebar.svelte` (`npx shadcn-svelte add sidebar-16`, CLI 1.6.0,
   Nova), changed for the tool. Kept: a `Sidebar.Root` of a `Sidebar.Content`
   of groups, and below `md` the primitive's offcanvas sheet (rule 10).
-  Changed: at every other width the root is `collapsible="none"`, chosen by
-  the primitive's own mobile check, a fixed column below the header rather
+  Changed: below `md` the sheet shows the sheet primitive's own Close, which
+  the sidebar primitive hides; at every other width the root is
+  `collapsible="none"`, chosen by the primitive's own mobile check, a fixed
+  column below the header rather
   than the block's offcanvas container pinned under a sticky one, as tall as
   the page beside it (`h-auto`, `self-stretch`), not shrunk by it,
   transparent on the ground, and inset `p-1`, so with a group's own `p-2` its
@@ -34,10 +36,13 @@
   const sidebar = Sidebar.useSidebar();
 </script>
 
-<!-- The sheet keeps the primitive's own ground and insets; the column's are the fixed sidebar's. -->
+<!--
+  The sheet keeps the primitive's own ground and insets; the column's are the fixed sidebar's. The sheet's Close is
+  shown: `[&>button]:inline-flex`, the button's own display, replaces the primitive's `[&>button]:hidden` in its merge.
+-->
 <Sidebar.Root
   collapsible={sidebar.isMobile ? "offcanvas" : "none"}
-  class={sidebar.isMobile ? undefined : "h-auto shrink-0 self-stretch bg-transparent p-1"}
+  class={sidebar.isMobile ? "[&>button]:inline-flex" : "h-auto shrink-0 self-stretch bg-transparent p-1"}
 >
   <Sidebar.Content>
     {@render navigation()}
