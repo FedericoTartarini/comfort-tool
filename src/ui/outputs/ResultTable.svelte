@@ -14,7 +14,7 @@
     model: RegisteredModel;
     /**
      * One row per compared slot, in slot order. While their badges carry names, the Input column names each row beside
-     * its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's limits icon or nothing.
+     * its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's limits icon alone, hidden where the row broke no limit.
      */
     rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
@@ -47,13 +47,17 @@
 <!-- A row whose run broke a limit carries an amber icon named by the limits it broke, in the bound sentence's words,
      one per line: a mouse reads them on hover, a screen reader as the image's name. It is no control (ADR-0002
      decision 85, rule 5); the toast and the Image's Input summary carry the words for a keyboard and a touch. A row
-     that broke none has none. -->
+     that broke none keeps it hidden, holding its room so no value column moves when it appears (decision 87,
+     rule 9). -->
 {#snippet limitsIcon(row: SlotOutputs)}
-  {#if row.violations.length > 0}
-    <span class="limits-icon" role="img" title={limitsBrokenLines(row.violations, unitSystem).join("\n")}>
-      <TriangleAlertIcon aria-hidden="true" />
-    </span>
-  {/if}
+  <span
+    class="limits-icon"
+    class:limits-icon-hidden={row.violations.length === 0}
+    role="img"
+    title={limitsBrokenLines(row.violations, unitSystem).join("\n")}
+  >
+    <TriangleAlertIcon aria-hidden="true" />
+  </span>
 {/snippet}
 
 <!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region

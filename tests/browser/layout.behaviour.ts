@@ -925,7 +925,8 @@ test.describe("the result table's columns", () => {
         expect(await linesOf(heading), (await heading.textContent()) ?? undefined).toBe(1);
       }
       const cells = card(page, "Results").getByRole("table").getByRole("row").nth(1).getByRole("cell");
-      await expect(cells.first().locator("*")).toHaveCount(0);
+      await expect(cells.first()).toHaveText("");
+      await expect(cells.first().getByRole("img")).toHaveCount(0);
       await expect(cells.nth(1).locator('[data-slot="badge"]')).toHaveText("Neutral");
       await expect(cells.nth(1).locator(".swatch")).toHaveCount(0);
 
@@ -976,9 +977,12 @@ test("at 1440 px, PMV (ASHRAE 55)'s Results card names no standard and ends at t
   }
 });
 
-/** A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no alert. */
+/**
+ * A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no
+ * alert. Every row keeps the icon's room, so no value column moves when it appears (decision 87, rule 9).
+ */
 test.describe("the result row's limits icon", () => {
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the limit leaves the Input cell empty and the column in place, on Standard and Explore", async ({ page }) => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the limit leaves no image in the Input cell, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const results = card(page, "Results");
@@ -993,7 +997,8 @@ test.describe("the result row's limits icon", () => {
       const gap = (await boxOf(table)).y - (await headingBottom());
       await expect(table.getByRole("cell", { name: "Yes", exact: true }), address).toHaveCount(1);
       await expect(inputHeading, address).toHaveCount(1);
-      await expect(inputCell.locator("*"), address).toHaveCount(0);
+      await expect(inputCell, address).toHaveText("");
+      await expect(inputCell.getByRole("img"), address).toHaveCount(0);
 
       const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
       await airSpeed.fill("0.9");
@@ -1024,9 +1029,42 @@ test.describe("the result row's limits icon", () => {
       await airSpeed.press("Enter");
       await expect(icon, address).toHaveCount(0);
       await expect(inputHeading, address).toHaveCount(1);
-      await expect(inputCell.locator("*"), address).toHaveCount(0);
+      await expect(inputCell, address).toHaveText("");
+      await expect(inputCell.getByRole("img"), address).toHaveCount(0);
     }
   });
+
+  // Explore compares slot 1 alone, so it has no Compare to turn on.
+  for (const [name, address, compares] of [
+    ["Standard", PMV_ADDRESS, ["off", "on"]],
+    ["Explore", EXPLORE_ADDRESS, ["off"]],
+  ] as const) {
+    test(`at 1440 px on ${name}, PMV (ASHRAE 55) at 0.9 m/s without local control and back moves no value column's left edge, Compare ${compares.join(" and ")}`, async ({ page }) => {
+      await openStandard(page, 1440, address);
+      const results = card(page, "Results");
+      const icon = results.getByRole("img", { name: "Calculated, but outside these limits:" });
+      const valueEdges = async () =>
+        Promise.all((await results.getByRole("columnheader").all()).slice(1).map(async (heading) => (await boxOf(heading)).x));
+      for (const compare of compares) {
+        if (compare === "on") {
+          await page.getByRole("switch", { name: "Compare", exact: true }).click();
+          await expect(results.getByRole("row", { name: /Input 2/ })).toBeVisible();
+        }
+        const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ }).first();
+        const edges = await valueEdges();
+
+        await airSpeed.fill("0.9");
+        await airSpeed.press("Enter");
+        await expect(icon, `Compare ${compare}`).toBeVisible();
+        expect(await valueEdges(), `Compare ${compare}, the icon shown`).toEqual(edges);
+
+        await airSpeed.fill("0.1");
+        await airSpeed.press("Enter");
+        await expect(icon, `Compare ${compare}`).toHaveCount(0);
+        expect(await valueEdges(), `Compare ${compare}, the icon gone`).toEqual(edges);
+      }
+    });
+  }
 
   test("at 1440 px under Compare, the slot at 0.9 m/s without local control has its icon before its swatch and its compliance dash, and slot 1 neither", async ({ page }) => {
     await openStandard(page, 1440);
@@ -1043,6 +1081,7 @@ test.describe("the result row's limits icon", () => {
     await expect(icon).toBeVisible();
     expect((await boxOf(icon)).x).toBeLessThan((await boxOf(second.locator(".swatch-marker"))).x);
     await expect(second.getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
+    // Slot 1's icon keeps its room but is no image to a screen reader (decision 87, rule 9).
     await expect(first.getByRole("img")).toHaveCount(0);
     await expect(first.getByRole("cell", { name: "Yes", exact: true })).toHaveCount(1);
   });
