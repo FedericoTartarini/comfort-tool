@@ -42,7 +42,7 @@ export function isSameStandard(a: Standard, b: Standard): boolean {
   return routeSegmentFor(a) === routeSegmentFor(b);
 }
 
-/** `standard` as the result table's caption and the Input summary write it: `ASHRAE 55:2023`. */
+/** `standard` as the Input summary writes it: `ASHRAE 55:2023`. */
 export function standardCaptionFor(standard: Standard): string {
   const { displayName, year } = entryFor(standard);
   return copy.standardCaption(displayName, year);

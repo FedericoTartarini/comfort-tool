@@ -919,6 +919,22 @@ test.describe("the result table's columns", () => {
   }
 });
 
+/** The Results card holds results only: no line under the table names the standard (ADR-0002 decision 86, rule 4). */
+test("at 1440 px, PMV (ASHRAE 55)'s Results card names no standard and ends at the table's last row, Compare off and on", async ({ page }) => {
+  await openStandard(page, 1440, PMV_ADDRESS);
+  const results = card(page, "Results");
+  for (const compare of ["off", "on"]) {
+    if (compare === "on") {
+      await page.getByRole("switch", { name: "Compare", exact: true }).click();
+      await expect(results.getByRole("row", { name: /Input 2/ })).toBeVisible();
+    }
+    await expect(results, `Compare ${compare}`).not.toContainText("ASHRAE 55");
+    const content = await boxOf(results.locator('[data-slot="card-content"]'));
+    const lastRow = await boxOf(results.getByRole("row").last());
+    expect(content.y + content.height - (lastRow.y + lastRow.height), `Compare ${compare}`).toBeLessThanOrEqual(1);
+  }
+});
+
 /** A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no alert. */
 test.describe("the result row's limits icon", () => {
   test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the limit leaves the Input cell empty and the column in place, on Standard and Explore", async ({ page }) => {

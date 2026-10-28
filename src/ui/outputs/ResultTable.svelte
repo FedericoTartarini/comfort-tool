@@ -4,11 +4,9 @@
   import { chartInk } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
-  import { standardCaptionFor } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
-  import Stack from "$lib/ui/layout/Stack.svelte";
   import { Badge } from "$lib/ui/primitives/badge";
   import * as Table from "$lib/ui/primitives/table";
 
@@ -27,7 +25,6 @@
   let { model, rows, unitSystem, labelledby }: Props = $props();
 
   const namesRows = $derived(rows.some((row) => row.badge.name !== undefined));
-  const standardCaption = $derived(model.standard ? standardCaptionFor(model.standard) : undefined);
 </script>
 
 <!-- A slot's swatch is its chart marker's. -->
@@ -59,50 +56,45 @@
   {/if}
 {/snippet}
 
-<Stack gap="2">
-  <!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region
-       is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div class="table-scroll" role="region" tabindex="0" aria-labelledby={labelledby}>
-    <Table.Root class="result-table" style="--value-columns: {model.table.length}">
-      <Table.Header>
+<!-- The table scrolls inside its region, not the page, by keyboard too (ADR-0002 decision 70): a scroll region
+     is focusable so the arrow keys reach the columns to the right, which Svelte's rule does not except. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="table-scroll" role="region" tabindex="0" aria-labelledby={labelledby}>
+  <Table.Root class="result-table" style="--value-columns: {model.table.length}">
+    <Table.Header>
+      <Table.Row>
+        <Table.Head>
+          <span class:input-heading-hidden={!namesRows}>{copy.inputColumn}</span>
+        </Table.Head>
+        {#each model.table as quantity (quantity)}
+          <Table.Head class="value">{quantity.label}</Table.Head>
+        {/each}
+      </Table.Row>
+    </Table.Header>
+    <Table.Body>
+      <!-- A row's limits icon stands first in its Input cell, before the swatch while the rows are named. -->
+      {#each rows as row (row)}
         <Table.Row>
-          <Table.Head>
-            <span class:input-heading-hidden={!namesRows}>{copy.inputColumn}</span>
-          </Table.Head>
+          <Table.Cell>
+            {#if namesRows}
+              <span class="swatch-label">
+                {@render limitsIcon(row)}
+                {@render slotSwatch(row)}
+                {row.badge.name}
+              </span>
+            {:else}
+              {@render limitsIcon(row)}
+            {/if}
+          </Table.Cell>
           {#each model.table as quantity (quantity)}
-            <Table.Head class="value">{quantity.label}</Table.Head>
+            <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
+            <Table.Cell class="value">
+              {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
+            </Table.Cell>
           {/each}
         </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        <!-- A row's limits icon stands first in its Input cell, before the swatch while the rows are named. -->
-        {#each rows as row (row)}
-          <Table.Row>
-            <Table.Cell>
-              {#if namesRows}
-                <span class="swatch-label">
-                  {@render limitsIcon(row)}
-                  {@render slotSwatch(row)}
-                  {row.badge.name}
-                </span>
-              {:else}
-                {@render limitsIcon(row)}
-              {/if}
-            </Table.Cell>
-            {#each model.table as quantity (quantity)}
-              <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
-              <Table.Cell class="value">
-                {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
-              </Table.Cell>
-            {/each}
-          </Table.Row>
-        {/each}
-      </Table.Body>
-    </Table.Root>
-  </div>
+      {/each}
+    </Table.Body>
+  </Table.Root>
+</div>
 
-  {#if standardCaption}
-    <span class="caption">{standardCaption}</span>
-  {/if}
-</Stack>
