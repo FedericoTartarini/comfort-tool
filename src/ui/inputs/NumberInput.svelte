@@ -50,6 +50,15 @@
 
   const text = $derived(formatNumber(unit.fromSi(value)));
 
+  /** The committed value's text as the box took the focus, while it has it. */
+  let textAtFocus = $state<string | undefined>();
+  /**
+   * The text the input is given: held while the box has the focus, so a
+   * commit on the pause leaves what is typed as it is, and `text` once it
+   * loses it.
+   */
+  const shown = $derived(textAtFocus ?? text);
+
   let box = $state<HTMLInputElement | null>(null);
 
   /** The draft's commit or mark waiting on the pause, while one does. */
@@ -86,11 +95,14 @@
 
   /**
    * The draft in `input` in SI, or `undefined` where there is nothing to
-   * commit: a text that is not yet a number, or the value already stored.
-   * While the user types "25." the parse is still 25, nothing is committed,
-   * and the displayed text is not rewritten under their cursor.
+   * commit: a text that is not yet a number, the committed value's own text,
+   * which stands for it and not for its rounding, or a text that parses to
+   * the value already stored, as "25." does over 25.
    */
   function draftOf(input: HTMLInputElement): number | undefined {
+    if (input.value === text) {
+      return undefined;
+    }
     const parsed = Number.parseFloat(input.value);
     const si = Number.isFinite(parsed) ? unit.toSi(parsed) : undefined;
     return si === value ? undefined : si;
@@ -187,7 +199,7 @@
 
   /**
    * The box's attributes, the same whether it stands alone or inside a group.
-   * The input binds its value, so a new object writes `text` over the draft:
+   * The input binds its value, so a new object writes `shown` over the draft:
    * what changes while a draft is typed, its marking, is kept out of it.
    */
   const boxAttributes = $derived({
@@ -196,12 +208,18 @@
     role: "spinbutton" as const,
     inputmode: allowsNegative ? undefined : ("decimal" as const),
     autocomplete: "off" as const,
-    value: text,
+    value: shown,
     "aria-label": ariaLabel,
     onbeforeinput: admit,
     oninput: judgeDraft,
     onkeydown: commitOrStepByKey,
-    onblur: (event: FocusEvent) => commitDraft(event.currentTarget as HTMLInputElement),
+    onfocus: () => {
+      textAtFocus = text;
+    },
+    onblur: (event: FocusEvent) => {
+      commitDraft(event.currentTarget as HTMLInputElement);
+      textAtFocus = undefined;
+    },
   });
 </script>
 

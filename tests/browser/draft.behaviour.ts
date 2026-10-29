@@ -107,6 +107,25 @@ test.describe("a legal draft", () => {
     await expect(box).toHaveValue("16");
   });
 
+  test("a commit on the pause leaves the box as typed: 0.0 over 0.1 still reads 0.0, and a 5 typed after it gives 0.05, not 5", async ({ page }) => {
+    await open(page);
+    const box = page.getByRole("spinbutton", { name: /^Air speed/ });
+    const table = resultTable(page);
+    const before = await textOf(table);
+
+    await box.selectText();
+    await box.pressSequentially("0.0");
+    await page.clock.runFor(COMMIT_PAUSE);
+    await changedFrom(table, before);
+    await expect(box).toHaveValue("0.0");
+
+    await box.press("5");
+    await page.clock.runFor(COMMIT_PAUSE);
+    await expect(box).toHaveValue("0.05");
+    await box.blur();
+    await expect(box).toHaveValue("0.05");
+  });
+
   test("Enter commits at once", async ({ page }) => {
     await open(page);
     const table = resultTable(page);

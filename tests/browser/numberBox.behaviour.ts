@@ -284,15 +284,15 @@ function toasts(page: Page) {
 
 const pressure = (page: Page) => page.getByRole("spinbutton", { name: /^Atmospheric pressure/ });
 
-/**
- * The pressure the page holds, in pascals: the `p_atm` of the text the tab
- * keeps, which is the link's. Read from the tab's storage, not by Share: a
- * click there takes the focus from the box, and leaving the box commits its
- * shown text.
- */
-async function heldPressure(page: Page): Promise<number> {
+/** The text the tab keeps, which is the link's, read as JSON: what the page holds, without a click on Share. */
+async function keptSession(page: Page): Promise<{ p_atm: number; slots: ({ values: Record<string, number> } | null)[] }> {
   const kept = await page.evaluate(() => sessionStorage.getItem("comfort-tool.session") ?? "");
-  return JSON.parse(inflateRawSync(Buffer.from(kept.slice("v1.".length), "base64url")).toString()).p_atm;
+  return JSON.parse(inflateRawSync(Buffer.from(kept.slice("v1.".length), "base64url")).toString());
+}
+
+/** The pressure the page holds, in pascals. */
+async function heldPressure(page: Page): Promise<number> {
+  return (await keptSession(page)).p_atm;
 }
 
 // In SI the pressure is shown in kPa and held in pascals (ADR-0002 decision 87, rule 6).
@@ -311,6 +311,20 @@ test.describe("the atmospheric pressure", () => {
 
     await commit(box, "101.325");
     await expect.poll(() => heldPressure(page)).toBe(101325);
+  });
+
+  test("a focus and a blur with nothing typed keep 101 325 Pa, not the 101 330 Pa the box shows", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const box = pressure(page);
+    await expect(box).toHaveValue("101.33");
+
+    await box.focus();
+    await box.blur();
+    // A later commit writes the kept text, so it holds whatever the blur committed.
+    await commit(dryBulb(page), "26");
+    await expect.poll(async () => (await keptSession(page)).slots[0]?.values.tdb).toBe(26);
+
+    expect(await heldPressure(page)).toBe(101325);
   });
 
   test("a pressure refused for a humidity ratio it would put out of range is written in kPa in the toast", async ({ page }) => {
