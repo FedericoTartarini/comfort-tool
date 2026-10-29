@@ -32,6 +32,7 @@ import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import {
   expectEverySlotInSessionEntryModes,
   heldSlot,
+  outOfRangeQuantitiesAt,
   sessionComparingThreeSlots,
   shapeOf,
   withBounds,
@@ -189,9 +190,9 @@ describe("the outputs of the compared slots", () => {
     heldSlot(session, 1).setEntered(q.tdb, 35);
     session.slots[0].setEntered(q.tdb, 24);
 
-    expect(outputs.slots[1].outOfRangeQuantities).toEqual([q.tdb]);
+    expect(outOfRangeQuantitiesAt(session, 1)).toEqual([q.tdb]);
     expect(outputs.slots[1].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 35]])));
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 24]])));
   });
 
@@ -223,7 +224,7 @@ describe("the outputs of the compared slots", () => {
 
     session.setModel(pmvPpdAshrae);
 
-    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], []]);
+    expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], []]);
     expect(outputs.slots[1].result).toEqual(outputs.slots[0].result);
   });
 });

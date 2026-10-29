@@ -47,7 +47,6 @@
   {#snippet sessionControls()}
     <SessionControls
       {session}
-      atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
       onreset={tab.reset}
       link={tab.link}
       oncopyrefused={() => raiseNotice("copyRefused")}

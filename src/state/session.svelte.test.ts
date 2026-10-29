@@ -25,7 +25,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
-import { resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { outOfRangeQuantitiesAt, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -161,14 +161,13 @@ describe("Session.setModel", () => {
 
   it("adjusts nothing: an out-of-range value stays as entered and is what the gate names", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
     // 35 °C is past ISO 7730's 30 °C, which both fixtures inherit.
     session.slots[0].setEntered(q.tdb, 35);
 
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.tdb)).toBe(35);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.tdb]);
   });
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
@@ -361,7 +360,7 @@ describe("InputSlot.setEntered", () => {
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(before);
   });
 });

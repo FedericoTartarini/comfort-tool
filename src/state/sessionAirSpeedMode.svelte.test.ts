@@ -21,7 +21,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, outOfRangeQuantitiesAt, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -139,7 +139,7 @@ describe("the session's air-speed entry mode", () => {
 
       expect(session.slots[0].values.get(q.v)).toBe(0);
       expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
-      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
       expect(outputs.slots[0].result).not.toBeNull();
     });
   });
@@ -182,7 +182,7 @@ describe("the session's air-speed entry mode", () => {
       expect(heldSlot(first, position).values.has(q.operative_tmp)).toBe(true);
       expect(heldSlot(first, position).values.has(q.vr)).toBe(true);
     });
-    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], []]);
+    expect(first.comparedPositions.map((position) => outOfRangeQuantitiesAt(first, position))).toEqual([[], [], []]);
     expect(outputs.chart).not.toBeNull();
   });
 
@@ -198,7 +198,7 @@ describe("the session's air-speed entry mode", () => {
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.vr, q.vr]]);
   });
 
@@ -210,7 +210,7 @@ describe("the session's air-speed entry mode", () => {
     // 0.8 m/s at 2 met is a relative air speed of 1.1 m/s, past the model's 1.
     session.slots[0].setEntered(q.v, 0.8);
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({ bounded: q.vr, bound });
 
@@ -218,7 +218,7 @@ describe("the session's air-speed entry mode", () => {
 
     expect(enteredBound(pmvPpdIso, q.vr, session.slots[0], session.atmosphericPressure)).toEqual(bound);
     expect(session.slots[0].values.get(q.vr)).toBe(bound?.max);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
   });
 });
@@ -294,7 +294,7 @@ describe("a model switch under relative air speed entry", () => {
 
     expect(session.airSpeedMode).toBe(airSpeedMode.corrected);
     expect(session.slots[0].values.get(q.vr)).toBe(1.5);
-    expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([q.vr]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.vr]);
   });
 
   it("switches without asking to a model whose relative-air-speed row the air speed breaks, and reports it on the air speed's row", () => {

@@ -9,6 +9,7 @@
  * Nothing flushes, for the reason `compute.svelte.test.ts` gives.
  */
 import { describe, expect, it } from "vitest";
+import { isAtmosphericPressureOutOfRange } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { optionsOf } from "$lib/core/modelDeclaration";
@@ -20,7 +21,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type ChartState } from "./session.svelte";
-import { editBands, expectEverySlotInSessionEntryModes, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { editBands, expectEverySlotInSessionEntryModes, heldSlot, outOfRangeQuantitiesAt, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
@@ -55,11 +56,9 @@ function stateOf(session: Session) {
 /** What the page shows of the outputs: each compared slot's result and rows, and the chart. */
 function shownOf(outputs: Outputs) {
   return {
-    atmosphericPressureOutOfRange: outputs.atmosphericPressureOutOfRange,
     slots: outputs.slots.map((slot) => ({
       position: slot.position,
       result: slot.result,
-      outOfRangeQuantities: slot.outOfRangeQuantities,
       violations: slot.violations,
     })),
     chart: outputs.chart,
@@ -134,12 +133,12 @@ describe("a session read out and built again", () => {
     const againOutputs = new Outputs(again);
 
     expect(shownOf(againOutputs)).toEqual(shownOf(outputs));
-    expect(againOutputs.atmosphericPressureOutOfRange).toBe(true);
+    expect(isAtmosphericPressureOutOfRange(again.atmosphericPressure)).toBe(true);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
     again.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
     expect(shownOf(againOutputs)).toEqual(shownOf(outputs));
-    expect(againOutputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], [q.operative_tmp]]);
+    expect(again.comparedPositions.map((position) => outOfRangeQuantitiesAt(again, position))).toEqual([[], [], [q.operative_tmp]]);
     expect(againOutputs.chart).not.toBeNull();
   });
 

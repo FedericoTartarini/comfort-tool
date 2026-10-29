@@ -62,7 +62,6 @@ import { palette } from "$lib/core/palette";
   {#snippet sessionControls()}
     <SessionControls
       {session}
-      atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange}
       onreset={tab.reset}
       link={tab.link}
       oncopyrefused={() => raiseNotice("copyRefused")}

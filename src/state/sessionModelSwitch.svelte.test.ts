@@ -21,7 +21,7 @@ import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { listedRowsOf, resultValueOf, shapeOf, withBounds } from "./sessionTestReaders";
+import { listedRowsOf, outOfRangeQuantitiesAt, resultValueOf, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -108,7 +108,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.slots[0].values.get(q.tr)).toBe(25);
     expect(session.slots[0].values.get(q.v)).toBe(0.2);
     expect(session.slots[0].humidity?.value).toBe(35);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
   });
 
@@ -131,16 +131,15 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(boxOf(q.tdb, session.slots[0].values.get(q.tdb))).toBe("68");
     expect(formatBound(rows[0].bound, q.tdb, unitSystem.ip)).toBe("50 – 68");
     expect(formatBound(rows[1].bound, q.hr, unitSystem.ip)).toBe(`0 – ${boxOf(q.hr, session.slots[0].humidity?.value)}`);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].violations).toEqual([]);
   });
 
   it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.humidityRatio);
     const entered = session.slots[0].humidity?.value;
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
 
     session.requestModel(drierThanTheSlot);
 
@@ -151,16 +150,15 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.acceptSwitch();
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(25, 40).hr });
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 
   it("checks the humidity entry at the temperature the switch would leave, and lists it when that rules it out", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.humidityRatio);
     // About 85 % at the slot's 25 °C, but above saturation at the 20 °C "Yes" moves tdb to.
     session.slots[0].setEntered(q.hr, 0.017);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
 
     session.requestModel(belowTheSlot);
 
@@ -173,7 +171,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     expect(session.slots[0].values.get(q.tdb)).toBe(20);
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(20, 100).hr });
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 
   it("leaves everything as it was on a decline", () => {
@@ -198,7 +196,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.requestModel(belowTheSlot);
 
     expect(outputs.slots[0].result).toBe(before);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 
   it("replaces a pending question with the next one asked", () => {
@@ -234,14 +232,13 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("never asks when the model is set: setting adjusts nothing and holds no question", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
 
     session.setModel(belowTheSlot);
 
     expect(session.model).toBe(belowTheSlot);
     expect(session.pendingSwitch).toBeNull();
     expect(session.slots[0].values.get(q.tdb)).toBe(25);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.tdb]);
   });
 
 });

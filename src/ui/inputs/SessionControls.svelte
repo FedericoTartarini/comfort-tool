@@ -15,8 +15,6 @@
   interface Props {
     /** Whose unit system and atmospheric pressure the controls show and change: the session's, on every page. */
     session: Session;
-    /** Whether the session's pressure is outside its bound. */
-    atmosphericPressureOutOfRange: boolean;
     /** Replace the tab's session with the defaults, once the person has said yes. */
     onreset: () => void;
     /** The share link to the page as it is now. */
@@ -25,7 +23,7 @@
     oncopyrefused: () => void;
   }
 
-  let { session, atmosphericPressureOutOfRange, onreset, link, oncopyrefused }: Props = $props();
+  let { session, onreset, link, oncopyrefused }: Props = $props();
 
   /** Whether Reset's question stands: the button's own, as nothing else reads it. */
   let askingReset = $state(false);
@@ -70,7 +68,6 @@
       {
         value: session.atmosphericPressure,
         bound: kindBounds[quantities.p_atm.kind],
-        outOfRange: atmosphericPressureOutOfRange,
         isLegal: (si) => session.judgeAtmosphericPressure(si).kind === "legal",
         oncommit: commitPressure,
       },

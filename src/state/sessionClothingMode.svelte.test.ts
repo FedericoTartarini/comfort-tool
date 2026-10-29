@@ -22,7 +22,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, outOfRangeQuantitiesAt, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -220,7 +220,7 @@ describe("the session's clothing entry mode", () => {
         session.slots[0].setEntered(quantity, value);
       }
 
-      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
       expect(enteredBound(model, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
       expect(outputs.slots[0].result).not.toBeNull();
       expect(outputs.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({ bounded: q.clo_dynamic, value: dynamic, bound });
@@ -229,7 +229,7 @@ describe("the session's clothing entry mode", () => {
 
       expect(enteredBound(model, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
       expect(session.slots[0].values.get(q.clo_dynamic)).toBe(bound?.max);
-      expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+      expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
       expect(outputs.slots[0].result).not.toBeNull();
     },
   );
@@ -242,7 +242,7 @@ describe("the session's clothing entry mode", () => {
     session.slots[0].setEntered(q.clo, 1.6);
 
     expect(clo_dynamic_ashrae(1.6, 2)).toBe(1.28);
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].result).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, 1.28)).slots[0].result);
     expect(outputs.slots[0].violations).toEqual([]);
@@ -347,7 +347,7 @@ describe("a model switch under dynamic clothing entry", () => {
 
     expect(session.clothingMode).toBe(clothingMode.corrected);
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(1.8);
-    expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([q.clo_dynamic]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.clo_dynamic]);
   });
 
   it("keeps a clothing insulation entry between the two PMV models, corrected by the new model's standard", () => {

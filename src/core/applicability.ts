@@ -410,11 +410,6 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
     : undefined;
 }
 
-/** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
-export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Quantity[] {
-  return outOfRangeRows(slot, model, atmosphericPressure).map((row) => row.quantity);
-}
-
 /**
  * The rows a completed run broke, as the library reports them on the result's
  * `warnings` (ADR-0002 decision 23) — the app finds no row of its own. Each

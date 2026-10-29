@@ -77,7 +77,6 @@ describe("Outputs", () => {
   it("derives a result and a chart from a valid session", () => {
     const outputs = new Outputs(new Session(pmvPpdIso));
 
-    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });

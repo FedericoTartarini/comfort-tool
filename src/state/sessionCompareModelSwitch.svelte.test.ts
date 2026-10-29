@@ -10,6 +10,7 @@
  * slot alone, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
+import { isAtmosphericPressureOutOfRange } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { inputsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
@@ -20,7 +21,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
-import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, outOfRangeQuantitiesAt, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -136,14 +137,13 @@ describe("Session.requestModel while Compare is on", () => {
 
   it("leaves no compared slot with an entry out of range after a yes", () => {
     const session = comparingSlotsEntered(entriesBreaking([0, 1, 2]));
-    const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.humidityRatio);
 
     session.requestModel(coolerAndTakesWork);
     session.acceptSwitch();
 
-    expect(outputs.atmosphericPressureOutOfRange).toBe(false);
-    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], []]);
+    expect(isAtmosphericPressureOutOfRange(session.atmosphericPressure)).toBe(false);
+    expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], [], []]);
   });
 
   it("leaves the model and every slot as they were on a no, entry modes included", () => {
@@ -225,7 +225,7 @@ describe("Session.requestModel while Compare is on", () => {
     session.requestModel(coolerAndTakesWork);
 
     outputs.slots.forEach((slot, index) => expect(slot.result).toBe(before[index]));
-    expect(outputs.slots.map((slot) => slot.outOfRangeQuantities)).toEqual([[], [], []]);
+    expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], [], []]);
   });
 });
 
@@ -233,7 +233,6 @@ describe("the model switch while Compare is on, by setting the model or there an
   it("lands the model set with every slot converted and seeded, asking nothing and adjusting nothing", () => {
     const entries = entriesBreaking([0, 1, 2]);
     const session = comparingSlotsEntered(entries);
-    const outputs = new Outputs(session);
     session.setTemperatureMode(temperatureMode.operative);
 
     session.setModel(coolerAndTakesWork);
@@ -246,7 +245,7 @@ describe("the model switch while Compare is on, by setting the model or there an
       alone.setModel(coolerAndTakesWork);
       expect(shapeOf(heldSlot(session, position))).toEqual(shapeOf(alone.slots[0]));
       expect(heldSlot(session, position).values.get(q.wme)).toBe(0.4);
-      expect(outputs.slots[position].outOfRangeQuantities.length).toBeGreaterThan(0);
+      expect(outOfRangeQuantitiesAt(session, position).length).toBeGreaterThan(0);
     });
   });
 
@@ -352,9 +351,9 @@ describe("the model switch with a slot held while Compare is off (ADR-0002 decis
 
     expect(session.model).toBe(pmvPpdIso);
     expect(heldSlot(session, 1).values.get(q.tdb)).toBe(row.bound.max);
-    expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     session.setCompare(true);
-    expect(new Outputs(session).slots[1].outOfRangeQuantities).toEqual([]);
+    expect(outOfRangeQuantitiesAt(session, 1)).toEqual([]);
   });
 
   it("leaves the model and every slot as they were on a no", () => {

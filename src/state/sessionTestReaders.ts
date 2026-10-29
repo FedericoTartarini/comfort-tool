@@ -51,6 +51,12 @@ export function outOfRangeRowsOf(session: Session): OutOfRangeRow[] {
   return session.slots.flatMap((slot) => (slot ? outOfRangeRows(slot, session.model, session.atmosphericPressure) : []));
 }
 
+/** The quantities out of range in the slot at `position`, as the gate reads them; none where the slot holds nothing. */
+export function outOfRangeQuantitiesAt(session: Session, position: SlotPosition): Quantity[] {
+  const slot = session.slots[position];
+  return slot ? outOfRangeRows(slot, session.model, session.atmosphericPressure).map((row) => row.quantity) : [];
+}
+
 /** A session on `model` with Compare on and all three slots enabled, each holding what slot 1 started with. */
 export function sessionComparingThreeSlots(model: RegisteredModel): Session {
   const session = new Session(model);

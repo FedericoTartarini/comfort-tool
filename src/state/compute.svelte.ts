@@ -1,4 +1,4 @@
-import { atmosphericPressureRow, outOfRangeQuantities, violationRows, type ViolationRow } from "$lib/core/applicability";
+import { violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
@@ -54,17 +54,9 @@ export class Outputs {
   /** One per slot of the session, by position, whether it is compared or not. */
   readonly #everySlot: readonly [SlotOutputs, SlotOutputs, SlotOutputs];
 
-  /**
-   * Whether the pressure is outside its kind's bound. Judged apart from the
-   * entered values: no slot holds the pressure (ADR-0002 decision 49).
-   */
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #atmosphericPressureOutOfRange = $derived.by(
-    () => atmosphericPressureRow(this.#session.atmosphericPressure) !== undefined,
-  );
-
   readonly #compared = $derived.by((): readonly SlotOutputs[] =>
     this.#session.comparedPositions.map((position) => this.#everySlot[position]),
   );
@@ -121,11 +113,6 @@ export class Outputs {
   /** What each compared slot shows, in slot order: slot 1 first, and alone while Compare is off. */
   get slots(): readonly SlotOutputs[] {
     return this.#compared;
-  }
-
-  /** Whether the session's atmospheric pressure is outside its bound. */
-  get atmosphericPressureOutOfRange(): boolean {
-    return this.#atmosphericPressureOutOfRange;
   }
 
   /** The chart of every compared slot, in the unit system and the chart settings the session holds. */
@@ -191,10 +178,6 @@ export class SlotOutputs {
   /** Named as the session says its slots are, so it follows Compare and the page. */
   readonly #badge = $derived.by((): SlotBadge => slotBadge(this.position, this.#session.slotsNamed));
 
-  readonly #outOfRangeQuantities = $derived.by(() =>
-    outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
-  );
-
   // No `$state.raw` guard is needed on what comes out: `$derived` leaves an
   // object as it is rather than wrapping it in a deep proxy, so the results,
   // the chart spec and the Quantity objects keep the identity the library and
@@ -239,11 +222,6 @@ export class SlotOutputs {
   /** The model's result on the slot as it is. */
   get result(): ModelResult {
     return this.#result;
-  }
-
-  /** Entered quantities currently outside the model's applicability limits. Never the pressure. */
-  get outOfRangeQuantities(): readonly Quantity[] {
-    return this.#outOfRangeQuantities;
   }
 
   /**

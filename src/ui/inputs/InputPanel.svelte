@@ -70,7 +70,6 @@
     return {
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
-      outOfRange: outputs.outOfRangeQuantities.includes(quantity),
       slotName,
       isLegal: (si) => entryWriter.judgeEntry(position, quantity, si).kind === "legal",
       oncommit: (si) => raiseVerdict(entryWriter.commitEntry(position, quantity, si), { quantity, slotName }, si, unitSystem),
