@@ -1,7 +1,6 @@
 import type { ClassifierBins } from "jsthermalcomfort";
 import {
   addEdge,
-  bandListOf,
   edgeNeighbours,
   isEdgeInOrder,
   moveEdge,
@@ -20,12 +19,15 @@ export interface EdgeRefusal extends EdgeNeighbours {
 /**
  * A copy of one model's Band list, which the Bands dialog edits (ADR-0002
  * decision 84, rule 6): the edits the chart settings' list takes, made by the
- * Band list module's operations on the copy, and Reset to the classifier's.
- * The chart never reads it; Apply writes it through the chart settings, and a
- * draft dropped unapplied changes nothing. Built by `ChartState.draftBands`.
+ * Band list module's operations on the copy, and Reset to the list the model
+ * starts on. The chart never reads it; Apply writes it through the chart
+ * settings, and a draft dropped unapplied changes nothing. Built by
+ * `ChartState.draftBands`.
  */
 export class BandListDraft {
-  /** The classifier the Band list began as, which Add and Reset read. */
+  /** The Band list the model starts on, which Reset returns to. */
+  readonly #starting: BandList;
+  /** The classifier the Band list began as, which Add reads. */
   readonly #classifier: ClassifierBins;
   readonly #write: (list: BandList) => void;
   // Replaced whole, never mutated, so `$state.raw`.
@@ -33,8 +35,9 @@ export class BandListDraft {
   /** Each Edge whose last move was refused, by band. */
   #refusals: ReadonlyMap<number, EdgeRefusal>;
 
-  /** A draft of `bands`, the list `classifier` began, which Apply hands to `write`. */
-  constructor(bands: BandList, classifier: ClassifierBins, write: (list: BandList) => void) {
+  /** A draft of `bands`, the list that began as `starting` from `classifier`, which Apply hands to `write`. */
+  constructor(bands: BandList, starting: BandList, classifier: ClassifierBins, write: (list: BandList) => void) {
+    this.#starting = starting;
     this.#classifier = classifier;
     this.#write = write;
     this.#bands = $state.raw(bands);
@@ -104,9 +107,9 @@ export class BandListDraft {
     this.#bands = setColor(this.#bands, index, color);
   }
 
-  /** The classifier's bands and colours again, in the draft alone until Apply. */
+  /** The list the model starts on again, in the draft alone until Apply. */
   reset(): void {
-    this.#reshape(bandListOf(this.#classifier));
+    this.#reshape(this.#starting);
   }
 
   /** The draft written as the chart's Band list. */

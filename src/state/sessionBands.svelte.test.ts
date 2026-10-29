@@ -146,7 +146,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
     expect(bandsDraftOf(session).bands).toEqual(setLabel(defaultList, 3, "Fine"));
   });
 
-  it("resets the draft alone to the classifier's on Reset, and Apply writes the reset", () => {
+  it("resets the draft alone to the list the model starts on, and Apply writes the reset", () => {
     const { session, outputs } = exploreSession();
     const edited = bandsDraftOf(session);
     edited.addBand(3);

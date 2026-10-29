@@ -164,8 +164,10 @@ export class ChartState {
   type: ChartType;
   /** The dynamic chart's picked axes, its declared ones to begin with; `null` for a model that declares no dynamic chart. */
   axes: ChartAxes | null;
-  /** The classifier the Band list began as, which a draft's Add and Reset read; none for a model that scans nothing. */
+  /** The classifier the Band list began as, which a draft's Add reads; none for a model that scans nothing. */
   readonly #classifier: ClassifierBins | null;
+  /** The Band list the model starts on, which a draft's Reset returns to; none for a model that scans nothing. */
+  readonly #startingBands: BandList | null;
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
 
@@ -174,6 +176,7 @@ export class ChartState {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan?.classifier ?? null;
+    this.#startingBands = startingChartSettings(model).bands;
     this.#bands = $state.raw(settings.bands);
   }
 
@@ -207,10 +210,10 @@ export class ChartState {
    * nothing.
    */
   draftBands(): BandListDraft | null {
-    if (!this.#bands || !this.#classifier) {
+    if (!this.#bands || !this.#classifier || !this.#startingBands) {
       return null;
     }
-    return new BandListDraft(this.#bands, this.#classifier, (list) => {
+    return new BandListDraft(this.#bands, this.#startingBands, this.#classifier, (list) => {
       this.#bands = list;
     });
   }
