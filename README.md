@@ -31,7 +31,7 @@ no backend runtime is required.
 
 Across Standard and Explore: up to three input slots with compare mode, SI/IP
 switching over canonical SI state, and shareable URL snapshots
-(`?share=v1.<Base64URL(JSON)>`).
+(`?share=v1.<Base64URL(deflate-raw(JSON))>`).
 
 ## v1 scope
 

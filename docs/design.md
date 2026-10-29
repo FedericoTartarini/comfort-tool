@@ -205,7 +205,7 @@ px under 600 px), over the header's right end while the page is at its top: at 1
 the right end of the Results card's heading row, a stack of three reaches the table's head, and a hovered stack the
 table's right side (decision 87, rule 11); the one radius, on the popover's ground with the border's
 edge, kept until its close button, "Close", closes it, Sonner showing three at once (decision 84, rule 7, and its notes
-of 2026-10-28). The notices: a link refused or filled, values cut by an arrival, a copy refused, an Image that failed,
+of 2026-10-28). The notices: a link refused (decision 88), values cut by an arrival, a copy refused, an Image that failed,
 a value refused with its reason, and a slot's run breaking a limit it did not break before. A typed value's cut and an
 input calculator's Apply raise none. Reset closes the toasts standing; a link's yes closes none.
 

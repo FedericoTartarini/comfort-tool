@@ -492,6 +492,17 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > seeding share (T4); T16 is not done. Decision 63 rules 1, 6 and 9 and decision 84 rule 4 are revised; ADR-0001
 > §4.8's `v1z.` is withdrawn; GLOSSARY.md's **Share link** follows rule 5. **Next: the user's `/to-spec` for the link,
 > then I9.**
+>
+> **2026-10-29 — position, the link done**: `.scratch/link/` landed on `rewrite/v1`, tickets 01 to 04: one walk from a
+> model's inputs to the quantities a slot holds them under, read by the codec and the seeding (`08b6a93`, T4); the text
+> deflated, the kept text with it (`fd078ae`); a text taken only where it reads back as written, a session's Band list
+> started in `startingChartSettings`, the filled notice gone (`e3c3585`, T1, B1, B19); a link past a bound refused, not
+> cut (`7ce0186`). Walked on the preview build at 1440 × 900: a three-slot Standard link is 457 characters with the
+> deployed origin and an Explore link with an edited Band list 584, each opening in a new tab as written, and the
+> Standard link cut by 12 characters refused with its one toast. Decision 88 carries a close-out note naming the commits
+> and where the code says more or other than the rules; ADR-0001's Links row, its decision-84 note and §4.8 are noted;
+> GLOSSARY.md's **Applicability** names the refused link. Review item O7 is done, for the Linear reply. `npx vitest run
+> src tests` passes at 1174 and `npm run test:browser` at 148. **Next: I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1412,7 +1423,12 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    Skipped: `migrate()` (v1 has no source to migrate from; write it in v2) and `v1z.` deflate + `fflate`
    (together with Time-series, see below).
    **Revised 2026-10-29** (ADR-0002 decision 88): every text is deflated by `fflate` now, the link and the kept text
-   alike, and `v1z.` is withdrawn.
+   alike, and `v1z.` is withdrawn. Built 2026-10-29 (`.scratch/link/` tickets 01 to 04: `08b6a93`, `fd078ae`,
+   `e3c3585`, `7ce0186`), with these sentences below withdrawn: "Where it can, what a text lacks starts at its default
+   and a key the app does not read is dropped, and a link read so opens with a notice that says so" (a text that does
+   not read back as written is refused), and the Done note's "a filled link's notice waits for the yes" (there is no
+   filled notice). A link holding a value past its bound is refused, not cut. A three-slot link is 457 characters and
+   an Explore link with an edited Band list 584, measured with the deployed origin.
    **Grilled 2026-10-06** (ADR-0002 decision 63; decisions 32, 49, 50, 57 and 59 carry notes of the same day;
    `CONTEXT.md` gains Share link). The item is three things on one format. The session is written out as one text,
    `v1.<Base64URL(JSON)>`, whose schema is decision 63's rule 1 and no longer ADR §4.8's example. The tab keeps the
@@ -1856,7 +1872,7 @@ Any transcribed applicability or classification number (they are read from `_INF
 outside `src/temporary-library/` (written to the library's conventions, ADR-0002 decision 24: the PMV zone solver and its
 root finders came from the fork, the solver with its tests, and Adaptive's band solver was written there, calling `adaptive_ashrae`),
 a `Measure` / `Outcome` / `io` layer over the model's own result object, a hand-written name or route segment per standard (generated from `Standard`'s key), `defineModel`,
-`InputCalculator`, `sequentialSimulation`, `evaluateMany`, `migrate()`, `fflate`; on the library side, `Unit` / `InputSpec` /
+`InputCalculator`, `sequentialSimulation`, `evaluateMany`, `migrate()`, `fflate` (withdrawn 2026-10-29 by ADR-0002 decision 88: the codec deflates by it, `fd078ae`); on the library side, `Unit` / `InputSpec` /
 `OptionSpec` / `ModelDefinition` / the `models` registry / a quantities table with labels (they belong to the app); on the app
 side, enum classes.
 
