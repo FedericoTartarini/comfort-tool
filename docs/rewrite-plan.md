@@ -480,6 +480,18 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > passes at 1184 tests and `npm run test:browser` at 149. Open for the user: a tab through a number box
 > commits its shown text (101 325 Pa becomes 101 330); the footer's text beside the marks at 510 to 640 px. **Next:
 > the link theme and I9.**
+>
+> **2026-10-29 — position, the link decided**: the link theme (review item O7, with open-points B1 and B19 and
+> tidy-later T1, T4 and T16) is grilled into ADR-0002 decision 88: the text, the link's and the kept one alike, is
+> `v1.` and the URL-safe Base64 of the JSON's raw DEFLATE, by `fflate`'s synchronous `deflateSync` and `inflateSync`,
+> the JSON unchanged and every member written (a three-slot link from 1180 characters to about 466, measured); `v1z.`
+> is withdrawn; a text is taken only where the session it reads, written out again, is the text's JSON, so nothing is
+> filled or dropped and the filled notice goes (decision 63's amendment of 2026-10-06 withdrawn; B1 and B19 become
+> refusals); a link holding a value past its bound is refused, not cut; the kept text stays the whole session in
+> `sessionStorage`; the Band list's default is written once (T1); one function holds the walk the codec and the
+> seeding share (T4); T16 is not done. Decision 63 rules 1, 6 and 9 and decision 84 rule 4 are revised; ADR-0001
+> §4.8's `v1z.` is withdrawn; GLOSSARY.md's **Share link** follows rule 5. **Next: the user's `/to-spec` for the link,
+> then I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1399,6 +1411,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    means 101 325 Pa; one whose pressure is out of range shows it as out of range and does not replace it.
    Skipped: `migrate()` (v1 has no source to migrate from; write it in v2) and `v1z.` deflate + `fflate`
    (together with Time-series, see below).
+   **Revised 2026-10-29** (ADR-0002 decision 88): every text is deflated by `fflate` now, the link and the kept text
+   alike, and `v1z.` is withdrawn.
    **Grilled 2026-10-06** (ADR-0002 decision 63; decisions 32, 49, 50, 57 and 59 carry notes of the same day;
    `CONTEXT.md` gains Share link). The item is three things on one format. The session is written out as one text,
    `v1.<Base64URL(JSON)>`, whose schema is decision 63's rule 1 and no longer ADR §4.8's example. The tab keeps the
@@ -1733,7 +1747,8 @@ revision removed the field they read. The four scripts pass at 959 tests and `np
 behind it, so the page is built on the design system.
 **Process**: the grilling decision 57 rule 6 asks for (the page, its own session, the PHS declaration, what the share
 link's text carries for it, and whether `v1z.` deflate is needed, measured first on a link that holds a time series);
-then the library; then spec and tickets.
+then the library; then spec and tickets. **Revised 2026-10-29** (ADR-0002 decision 88): every text is deflated
+already and `v1z.` is withdrawn, so the grilling decides only what the text carries for the page.
 
 1. Library side, first (decision 22): `phs` is 719 lines of JavaScript in the main repository (`src/models/phs.js`)
    with no `_INFO`; it is ported to TypeScript with `PHS_INFO` and what the grilling finds the page needs of it. With
@@ -1746,6 +1761,8 @@ then the library; then spec and tickets.
    not to work around.
 3. The share link: what a Time-series page is computed from (decision 63 rule 1 extended), and `v1z.` only if the
    measured link needs it (decision 63's note: `v1z.` waits for Time-series).
+   **Withdrawn 2026-10-29** (ADR-0002 decision 88): `v1z.` is gone; a Time-series text is `v1.`, deflated as
+   every text is.
 
 **Done criteria**
 - PHS enters as one declaration file + one registry line, judged by `git diff --stat`.
@@ -1800,6 +1817,7 @@ all — Export Link covers them.
 > **Scheduled 2026-10-07** as Phase 5d; the line below is rewritten without Time-series and PHS, and `v1z.` goes to
 > Phase 5d's grilling (it read "the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en, …) →
 > Time-series + PHS + `v1z.` compression → ES5 summary page …").
+> **Noted 2026-10-29** (ADR-0002 decision 88): `v1z.` is withdrawn; every text is deflated.
 
 **After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining models (heat_index / humidex / wind_chill / adaptive_en,
 each = library port + one declaration file + one registry line)

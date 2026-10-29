@@ -89,7 +89,7 @@ What makes three slots one table, shared by the Standard and Explore pages: the 
 _Avoid_: store, app state
 
 **Share link**:
-An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. Opening one is an arrival by address: a value outside its bound is cut to it, and one toast says values were cut. In a tab that already holds a session it asks once, before it replaces that session.
+An address that carries what one page shows to another tab or another person: its path names the page and the model, and its `share` parameter what that page is computed from, the model's inputs and settings, never a result. It opens exactly as it was written or not at all: a link that does not read back as written, or that holds a value outside its bound, is refused, nothing is opened from it, and one toast says so. In a tab that already holds a session it asks once, before it replaces that session.
 _Avoid_: export link, permalink, state URL
 
 **Atmospheric pressure**:
