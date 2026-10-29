@@ -163,13 +163,16 @@
     A band of the brand as the header is (decision 73, rule 5): decision 67
     rule 6's two lines at the left, its links in the band's white and
     underlined, as the CBE tools' footers draw them; the two marks at the
-    right, each a link to its institution; the two sides in the frame.
+    right, each a link to its institution; the two sides in the frame. The
+    text narrows first, from no width of its own; where its longest word and
+    the marks no longer fit side by side, the row wraps and the marks stand
+    under it (decision 87, rule 8).
   -->
   <footer
     class="bg-(--brand) text-(length:--font-size-caption) text-background [&_a]:text-background [&_a]:underline [&_a]:underline-offset-2 [&_a]:[--ring:var(--background)]"
   >
-    <div class="mx-auto flex max-inline-(--frame-width) items-center justify-between gap-(--space-page) p-(--space-page)">
-      <div>
+    <div class="mx-auto flex max-inline-(--frame-width) flex-wrap items-center justify-between gap-(--space-page) p-(--space-page)">
+      <div class="flex-1">
         <p>
           {copy.footerTool(copy.appTitle, __APP_VERSION__)}
           {@render separator()}

@@ -5,8 +5,10 @@
   `Sidebar.Menu` whose items are `Sidebar.MenuButton`s with a link for their
   child. Changed: the group has a label, which names it (`role="group"`), an
   `h2` inside it as a card title's is, in ink (decision 87, rule 5); no
-  icons, the item's name alone; an item carries `aria-current`, is drawn
-  active while it has one, and hands its click to the caller; the menu's
+  icons, the item's name alone; an in-app item carries `aria-current`, is
+  drawn active while it has one, and hands its click to the caller, while a
+  plain link, an external address, is neither and has no click of its own
+  (decision 87, rule 2); the menu's
   items are `gap-1` (Vega's and Maia's sidebar menu; Nova's is `gap-0`); the
   buttons are the default size, not `sm`.
 -->
@@ -19,11 +21,19 @@
     onclick: (event: MouseEvent) => void;
   }
 
-  /** A menu item: its name, its link, and whether it is current. */
-  export interface NavItem extends InAppLink {
+  /** A menu item that is an in-app link: its name, its link, and whether it is current. */
+  export interface InAppItem extends InAppLink {
     label: string;
     current: HTMLAnchorAttributes["aria-current"];
   }
+
+  /** A menu item that is a plain link, whose click the browser follows: its name and its address. */
+  export interface PlainItem {
+    label: string;
+    href: string;
+  }
+
+  export type NavItem = InAppItem | PlainItem;
 </script>
 
 <script lang="ts">
@@ -44,10 +54,11 @@
   <Sidebar.GroupContent>
     <Sidebar.Menu class="gap-1">
       {#each items as item (item.href)}
+        {@const inApp = "onclick" in item ? item : undefined}
         <Sidebar.MenuItem>
-          <Sidebar.MenuButton isActive={item.current !== undefined}>
+          <Sidebar.MenuButton isActive={inApp?.current !== undefined}>
             {#snippet child({ props })}
-              <a {...props} href={item.href} aria-current={item.current} onclick={item.onclick}>
+              <a {...props} href={item.href} aria-current={inApp?.current} onclick={inApp?.onclick}>
                 <span>{item.label}</span>
               </a>
             {/snippet}

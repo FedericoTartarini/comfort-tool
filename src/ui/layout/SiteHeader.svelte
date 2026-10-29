@@ -16,9 +16,11 @@
   that the page follows as an in-app switch (rule 5 as revised again
   2026-10-12), handed in as the navigation's items are; the separator stands
   after the mark, not the toggle, `h-6` in the band's white at 30 %; the
-  breadcrumb is the title, the `h1`; the search form goes, and Documentation,
-  the last item, stands at the row's end (decision 84, rule 7: every notice
-  is a toast, so the header holds none); the row stands in the page's frame,
+  breadcrumb is the title, the `h1`, which on a phone wraps to two lines; the
+  search form goes, and Documentation, the last item, stands at the row's end
+  (decision 84, rule 7: every notice is a toast, so the header holds none),
+  and below `md` leaves the header for the sheet's Tools group (decision 87,
+  rule 2); the row stands in the page's frame,
   `--frame-width`, which `PageFrame` sets beside the sidebar's width, the
   band's ground the window's width (rule 10 as revised again 2026-10-12).
   The band's own links and the toggle ring in the paper's white on focus,
@@ -69,7 +71,10 @@
       <img src={marks.cbe.src} alt={copy.cbeName} width={marks.cbe.width} height={marks.cbe.height} class="h-8 w-auto" />
     </a>
     <Separator orientation="vertical" class="bg-background/30 data-vertical:h-6 data-vertical:self-auto" />
-    <h1 class="shrink-0">{copy.appTitle}</h1>
-    <a href={copy.documentationAddress} class="ms-auto shrink-0 text-background [--ring:var(--background)]">{copy.documentation}</a>
+    <!-- The one item that shrinks, wrapping between words: two lines fit the band on a phone. -->
+    <h1>{copy.appTitle}</h1>
+    {#if !sidebar.isMobile}
+      <a href={copy.documentationAddress} class="ms-auto shrink-0 text-background [--ring:var(--background)]">{copy.documentation}</a>
+    {/if}
   </div>
 </header>

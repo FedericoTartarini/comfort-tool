@@ -506,6 +506,85 @@ test("at 375 × 800, the header's first control is the toggle, and the sheet sho
 });
 
 /**
+ * On a phone the header holds the toggle, the mark and the title, which may
+ * wrap to two lines inside the band, and Documentation is the sheet's last
+ * Tools item; the footer's marks wrap under its text. On a desktop
+ * Documentation ends the header and the footer is one row (decision 87,
+ * rules 2 and 8).
+ */
+test.describe("the header and the footer on a phone and on a desktop", () => {
+  /** The footer's text and its marks, the two items of its row. */
+  async function footerParts(page: Page) {
+    const footer = page.getByRole("contentinfo");
+    return {
+      text: await boxOf(footer.locator("p").first().locator("..")),
+      marks: await boxOf(footer.getByRole("link", { name: "Center for the Built Environment" }).locator("..")),
+    };
+  }
+
+  for (const width of [767, 375, 320]) {
+    test(`at ${width} px, the header's controls and the title end inside the window, the title on at most two lines in the band, and Documentation is the sheet's last Tools item`, async ({ page }) => {
+      await openStandard(page, width);
+      const banner = page.getByRole("banner");
+      const title = banner.getByRole("heading", { level: 1 });
+      const inWindow = await pageWidth(page);
+
+      await expect(banner.getByRole("link", { name: "Documentation" })).toHaveCount(0);
+      for (const item of [sidebarToggle(page), banner.getByRole("link", { name: "Center for the Built Environment" }), title]) {
+        const box = await boxOf(item);
+        expect(box.x + box.width).toBeLessThanOrEqual(inWindow);
+      }
+      const band = await boxOf(banner);
+      const titleBox = await boxOf(title);
+      const lineHeight = await title.evaluate((heading) => parseFloat(getComputedStyle(heading).lineHeight));
+      expect(titleBox.height).toBeLessThanOrEqual(2 * lineHeight);
+      expect(titleBox.y).toBeGreaterThanOrEqual(band.y);
+      expect(titleBox.y + titleBox.height).toBeLessThanOrEqual(band.y + band.height);
+
+      await sidebarToggle(page).click();
+      const tools = page.getByRole("dialog", { name: "Sidebar" }).getByRole("group", { name: "Tools" }).getByRole("link");
+      await expect(tools).toHaveText(["Explore", "Documentation"]);
+      await expect(tools.last()).toHaveAttribute("href", /\/docs\/user-guide\.md$/);
+      await expect(tools.last()).not.toHaveAttribute("aria-current");
+    });
+  }
+
+  for (const width of [767, 375]) {
+    test(`at ${width} px, the footer's marks end inside the window`, async ({ page }) => {
+      await openStandard(page, width);
+      const footer = page.getByRole("contentinfo");
+      const inWindow = await pageWidth(page);
+
+      for (const name of ["Center for the Built Environment", "University of California, Berkeley"]) {
+        const mark = await boxOf(footer.getByRole("link", { name }));
+        expect(mark.x + mark.width).toBeLessThanOrEqual(inWindow);
+      }
+    });
+  }
+
+  test("at 375 px, the footer's marks stand under its text", async ({ page }) => {
+    await openStandard(page, 375);
+    const { text, marks } = await footerParts(page);
+    expect(marks.y).toBeGreaterThanOrEqual(text.y + text.height);
+  });
+
+  for (const width of [768, 1440]) {
+    test(`at ${width} px, Documentation ends the header and is not in the sidebar, and the footer is one row`, async ({ page }) => {
+      await openStandard(page, width);
+      const banner = await boxOf(page.getByRole("banner"));
+      const documentation = await boxOf(page.getByRole("banner").getByRole("link", { name: "Documentation" }));
+
+      // The row's end, inside the gutter.
+      expect(documentation.x + documentation.width).toBe(banner.x + banner.width - 0.75 * 16);
+      await expect(page.getByRole("navigation").getByRole("link", { name: "Documentation" })).toHaveCount(0);
+      const { text, marks } = await footerParts(page);
+      expect(marks.x).toBeGreaterThanOrEqual(text.x + text.width);
+      expect(marks.y).toBeLessThan(text.y + text.height);
+    });
+  }
+});
+
+/**
  * The header's toggle collapses the sidebar on a desktop, and only it: one
  * state in the page frame, open at a load, kept by a page switch and by
  * Reset, in no cookie, no storage entry and no share link (ADR-0002 decision
