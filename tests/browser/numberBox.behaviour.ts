@@ -327,6 +327,17 @@ test.describe("the atmospheric pressure", () => {
     expect(await heldPressure(page)).toBe(101325);
   });
 
+  test("101.43 typed over the 101 425 Pa a step holds commits 101 430 Pa, though the box shows 101.43", async ({ page }) => {
+    await open(page, PMV_ADDRESS);
+    const box = pressure(page);
+    await stepButtons(box).up.click();
+    await expect.poll(() => heldPressure(page)).toBeCloseTo(101425, 6);
+
+    await commit(box, "101.43");
+
+    await expect.poll(() => heldPressure(page)).toBe(101430);
+  });
+
   test("a pressure refused for a humidity ratio it would put out of range is written in kPa in the toast", async ({ page }) => {
     await open(page, PMV_ADDRESS);
     await commit(dryBulb(page), "25");
@@ -338,5 +349,24 @@ test.describe("the atmospheric pressure", () => {
     await expect(toasts(page)).toHaveCount(1);
     await expect(toasts(page)).toContainText("Atmospheric pressure was not changed to 110 kPa");
     await expect(pressure(page)).toHaveValue("101.33");
+  });
+});
+
+test.describe("a value changed while the box has the focus", () => {
+  test("back from PMV (ASHRAE 55) to ISO 7730 cuts 35 °C to 30 °C, and the dry-bulb box, focused still, reads 30", async ({ page }) => {
+    await open(page, "/explore/pmv-ppd-iso");
+    await page.getByRole("button", { name: "Model", exact: true }).click();
+    await page.getByRole("option", { name: /^PMV \/ PPD \(ASHRAE 55/ }).click();
+    await expect(page).toHaveURL(/pmv-ppd-ashrae/);
+    const box = dryBulb(page);
+    await commit(box, "35");
+    await expect(box).toHaveValue("35");
+
+    await box.focus();
+    await page.goBack();
+
+    await expect(page).toHaveURL(/pmv-ppd-iso/);
+    await expect(box).toBeFocused();
+    await expect(box).toHaveValue("30");
   });
 });
