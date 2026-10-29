@@ -38,6 +38,8 @@ import {
 const q = quantities;
 /** A pressure inside the bound's 30 000 Pa and off the default. */
 const PRESSURE_IN_RANGE = 90000;
+/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
+const PRESSURE_OUT_OF_RANGE = 20000;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The text of a link copied from `session` on its page. */
@@ -198,18 +200,26 @@ describe("the first address's load with a link", () => {
     expect(waitingLink).toBeNull();
   });
 
-  it("with a value out of range and nothing kept is the link's session cut to its bounds, and the cut notice once", () => {
+  it("with a value out of range and nothing kept is refused, not cut (decision 88, rule 5): the address's model on its defaults, and the refusal's notice alone", () => {
     const sender = onExplore();
     // Past PMV (ASHRAE 55)'s 30 °C operative temperature, in slot 1, which Explore compares.
     heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
 
     const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
-    const expected = new Session(linkSessionOf(sender));
-    expect(expected.setAddress(addressOf(sender))).toBe(true);
-    expect(openedOn(session)).toEqual(openedOn(expected));
-    expect(heldSlot(session, 0).values.get(q.operative_tmp)).toBeLessThan(60);
-    expect(notices).toEqual(["valuesCut"]);
+    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(notices).toEqual(["linkRefused"]);
+    expect(waitingLink).toBeNull();
+  });
+
+  it("with the pressure out of range and nothing kept is refused the same way", () => {
+    const sender = onExplore();
+    sender.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+
+    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(notices).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
 
@@ -307,23 +317,23 @@ describe("the first address's load with a link", () => {
     expect(waitingLink).toBe(link);
   });
 
-  it("with a value out of range over a kept session is the kept session, the link waiting and no notice, as without one", () => {
+  it("with a value out of range over a kept session is refused with nothing asked: the kept session, and the refusal's notice alone", () => {
     const kept = editedSession();
     const sender = onExplore();
     heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
-    const link = linkTextOf(sender);
 
-    const { session, notices, waitingLink } = firstLoadAt(addressOf(kept), { link, kept: keptTextOf(kept) }, registeredModels);
+    const { session, notices, declineNotices, waitingLink } = firstLoadAt(addressOf(kept), { link: linkTextOf(sender), kept: keptTextOf(kept) }, registeredModels);
 
     expect(openedOn(session)).toEqual(openedOn(kept));
-    expect(notices).toEqual([]);
-    expect(waitingLink).toBe(link);
+    expect(notices).toEqual(["linkRefused"]);
+    expect(declineNotices).toEqual([]);
+    expect(waitingLink).toBeNull();
   });
 
-  it("whose text names one model at an address naming another is converted, seeded and cut for the address's model, nothing asked, and the cut notice", () => {
+  it("whose text names one model at an address naming another is converted and seeded for the address's model, nothing asked, and no notice", () => {
     const sender = sessionComparingThreeSlots(pmvPpdAshrae);
-    // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
-    heldSlot(sender, 1).setEntered(q.tdb, 35);
+    // Inside both PMV (ASHRAE 55)'s and PMV (ISO 7730)'s dry-bulb temperature bounds.
+    heldSlot(sender, 1).setEntered(q.tdb, 29);
     const text = linkTextOf(sender);
 
     const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
@@ -331,11 +341,21 @@ describe("the first address's load with a link", () => {
     // A link copied on the Standard page carries no Band list and opens on the classifier's, the sender's unedited one.
     expect(sender.chart.bands).toEqual(startingChartSettings(pmvPpdAshrae).bands);
     const expected = new Session({ ...linkSessionOf(sender), charts: new Map([[pmvPpdAshrae, sender.chart.toChartSettings()]]) });
-    expected.setAddress(standardAddress(pmvPpdIso));
+    expect(expected.setAddress(standardAddress(pmvPpdIso))).toBe(false);
     expect(openedOn(session)).toEqual(openedOn(expected));
     expect(session.model).toBe(pmvPpdIso);
     expect(session.pendingSwitch).toBeNull();
-    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(30);
-    expect(notices).toEqual(["valuesCut"]);
+    expect(notices).toEqual([]);
+  });
+
+  it("whose text names one model at an address naming another, where the switch would cut, is refused: the address's model on its defaults, and the refusal's notice alone", () => {
+    const sender = sessionComparingThreeSlots(pmvPpdAshrae);
+    // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
+    heldSlot(sender, 1).setEntered(q.tdb, 35);
+
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: linkTextOf(sender), kept: undefined }, registeredModels);
+
+    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+    expect(notices).toEqual(["linkRefused"]);
   });
 });

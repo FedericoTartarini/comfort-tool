@@ -160,19 +160,17 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual([]);
   });
 
-  it("with a value out of range asks as one without does, and answered yes opens it cut, with the cut notice once", () => {
+  it("with a value out of range is refused, not cut (decision 88, rule 5): nothing waits, the kept session, and the refusal's notice alone", () => {
+    const kept = keptSession();
     const sender = senderSession();
     // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
     heldSlot(sender, 0).setEntered(q.tdb, 45);
-    const { tab, raised } = tabOpenedThroughLink(keptSession(), addressOf(sender), toText(linkSessionOf(sender), registeredModels));
-    expect(tab.waitingLink).not.toBeNull();
-    expect(raised).toEqual([]);
+    const { tab, raised } = tabOpenedThroughLink(kept, addressOf(sender), toText(linkSessionOf(sender), registeredModels));
 
-    tab.acceptLink();
-
-    expect(heldSlot(openSessionOf(tab), 0).values.get(q.tdb)).toBe(40);
-    expect(raised).toEqual(["valuesCut"]);
+    kept.setAddress(addressOf(sender));
     expect(tab.waitingLink).toBeNull();
+    expect(openedOn(openSessionOf(tab))).toEqual(openedOn(kept));
+    expect(raised).toEqual(["linkRefused"]);
   });
 
   it("that lacks a value is refused (decision 88, rule 4): nothing waits, the kept session, and the notice", () => {
@@ -188,7 +186,7 @@ describe("a link reaching a tab that kept a session", () => {
 });
 
 describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)", () => {
-  it("through a link with a value out of range opens it cut, with the cut notice once", () => {
+  it("through a link with a value out of range refuses it: the address's model on its defaults, and the refusal's notice alone", () => {
     const sender = senderSession();
     // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
     heldSlot(sender, 0).setEntered(q.tdb, 45);
@@ -196,8 +194,8 @@ describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)",
 
     tab.arrive(addressOf(sender), toText(linkSessionOf(sender), registeredModels));
 
-    expect(heldSlot(openSessionOf(tab), 0).values.get(q.tdb)).toBe(40);
-    expect(raised).toEqual(["valuesCut"]);
+    expect(openedOn(openSessionOf(tab))).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(raised).toEqual(["linkRefused"]);
   });
 
   it("through a link with none raises nothing", () => {

@@ -6,8 +6,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * header's right end while the page is at its top, kept until its close
  * button closes it, and the header holds none (ADR-0002 decision 84, rule 7).
  * Each notice is raised
- * where the page raises it: a link at the first address, and a value it held
- * out of range, cut (rule 4, as noted 2026-10-28); Share's clipboard; the
+ * where the page raises it: a link at the first address, refused where it
+ * does not read back as written or holds a value out of range (decision 88,
+ * rules 4 and 5); Share's clipboard; the
  * Image's download. A notice raised again replaces its own toast, and
  * Reset takes the toasts standing with it.
  */
@@ -106,12 +107,12 @@ test("a refused share link raises a toast at the window's top right, over the he
   await expect(toast).toHaveCount(0);
 });
 
-test("a link with a value out of range opens with the value cut and one toast saying so, and no dialog", async ({ page }) => {
+test("a link with a value out of range opens nothing: the entry shows the model's default, one toast says the link could not be read, and no dialog", async ({ page }) => {
   await open(page, `${ISO_ADDRESS}?share=${OUT_OF_RANGE_LINK}`);
 
-  await expect(page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ })).toHaveValue("30");
+  await expect(page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ })).toHaveValue("25");
   await expect(toasts(page)).toHaveCount(1);
-  await expect(toasts(page)).toContainText("Some values were out of range and were cut to the nearest allowed value.");
+  await expect(toasts(page)).toContainText("The shared link could not be read, so nothing was opened from it.");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 

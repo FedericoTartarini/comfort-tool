@@ -34,20 +34,24 @@ export interface FirstLoad {
  * The session a document load opens at `address` (ADR-0002 decision 63, rule
  * 3), and what it raises:
  *
- * - a link and nothing kept: the link's session, and no notice but the cut's;
+ * - a link and nothing kept: the link's session, and no notice;
  * - a link over a kept session: the kept session, the link waiting, and
  *   nothing raised: a yes runs the load again, and a no raises the kept
  *   session's cut;
- * - a link refused, one that does not read back as written among them
- *   (decision 88, rule 4): the kept session, else the address's model on its
- *   defaults, the notice, and nothing asked;
+ * - a link refused: one that does not read back as written (decision 88,
+ *   rule 4), or one whose session the move to the address below would cut,
+ *   past its own model's bounds (rule 5) or past those of another model its
+ *   path was changed to, judged before anything is asked: the kept session,
+ *   else the address's model on its defaults, the notice, and nothing asked;
  * - no link: the kept session, else the defaults, and nothing raised, since
  *   the person typed no text; a kept text refused raises nothing.
  *
  * Whichever session opens is built under the model its text names and then
  * follows the address as at any arrival, converted and seeded and never asked
- * (rule 4, decision 32), and cut to its bounds; a cut is one more notice,
- * after a refused link's (decision 84, rule 4, as noted 2026-10-28).
+ * (rule 4, decision 32), and cut to its bounds. Only a kept session is ever
+ * cut, since a link that would be cut is refused instead; the cut is one more
+ * notice, after a refused link's (decision 84, rule 4, as revised by decision
+ * 88).
  *
  * Touches no browser: the texts are read by the caller and handed in, so this
  * is the whole decision and is tested without one.
@@ -57,15 +61,26 @@ export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly
   if (texts.link === undefined) {
     return loadAt(address, kept, []);
   }
-  const link = toDecodedSession(texts.link, models);
-  if (!link) {
+  const written = toDecodedSession(texts.link, models);
+  const linkSession = written && linkOpenedAt(address, written);
+  if (!linkSession) {
     return loadAt(address, kept, ["linkRefused"]);
   }
   if (kept) {
     const load = loadAt(address, kept, []);
     return { ...load, notices: [], waitingLink: texts.link, declineNotices: load.notices };
   }
-  return loadAt(address, link, []);
+  return { session: linkSession, notices: [], waitingLink: null, declineNotices: [] };
+}
+
+/**
+ * The session a link's `written` session opens at `address`, or `undefined`
+ * where the move there cuts a value or the pressure, which refuses the link
+ * (decision 88, rule 5): the cut is the arrival's own.
+ */
+function linkOpenedAt(address: Address, written: WrittenSession): Session | undefined {
+  const session = new Session(written);
+  return session.setAddress(address) ? undefined : session;
 }
 
 /**
