@@ -27,11 +27,12 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { dynamicChartOf, hasHumidityGroup, inputsOf, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { dynamicChartOf, hasHumidityGroup, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { page, paintsBandsOn, type Page } from "./page";
 import { quantities, type Quantity } from "./quantities";
 import {
   defaultEntryModes,
+  inputsUnderEntryModes,
   isHumidityQuantity,
   seedDeclaredDefaults,
   underEntryModes,
@@ -311,10 +312,11 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
 
 /**
  * The quantities a slot in `modes` holds `model`'s inputs under among its
- * values, each sought as a switch seeds it: humidity is held apart from them.
+ * values, by the walk a switch seeds by ({@link inputsUnderEntryModes}):
+ * humidity is held apart from them.
  */
 function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
-  return inputsOf(model).map(({ quantity }) => underEntryModes(quantity, modes)).filter((quantity) => !isHumidityQuantity(quantity));
+  return inputsUnderEntryModes(model, modes).map(({ held }) => held).filter((quantity) => !isHumidityQuantity(quantity));
 }
 
 /**

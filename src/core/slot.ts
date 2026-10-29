@@ -658,6 +658,18 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
 }
 
 /**
+ * Each quantity `model` declares, in declaration order, with the quantity a
+ * slot in `modes` holds it under ({@link underEntryModes}): both declared
+ * temperatures under the operative axis in operative entry, the air speed
+ * under the relative air speed, the clothing insulation under the dynamic
+ * one. `rh` is walked like any other; a slot keeps humidity apart from its
+ * values, so a reader of the values leaves it out.
+ */
+export function inputsUnderEntryModes(model: RegisteredModel, modes: ValueEntryModes): { input: DeclaredQuantity; held: Quantity }[] {
+  return inputsOf(model).map((input) => ({ input, held: underEntryModes(input.quantity, modes) }));
+}
+
+/**
  * Every input the new model declares that the slot has no value for starts at
  * the declaration's own default; what the slot already holds is kept, whatever
  * model put it there. An input of an entry group is sought under the slot's
@@ -678,12 +690,11 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
  */
 export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   const defaults = new Map<Quantity, number>();
-  for (const { quantity, value } of inputsOf(model)) {
-    const held = underEntryModes(quantity, slot);
+  for (const { input, held } of inputsUnderEntryModes(model, slot)) {
     // Two declared temperatures stand in one operative entry, so the first of
     // them — the entry mode's own axis — is the one whose default applies.
     if (!holdsEntry(slot, held) && !defaults.has(held)) {
-      defaults.set(held, value);
+      defaults.set(held, input.value);
     }
   }
   const options = new Map(slot.options);
