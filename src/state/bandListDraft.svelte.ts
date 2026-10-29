@@ -26,7 +26,7 @@ export interface EdgeRefusal extends EdgeNeighbours {
  */
 export class BandListDraft {
   /** The Band list the model starts on, which Reset returns to. */
-  readonly #starting: BandList;
+  readonly #startingBands: BandList;
   /** The classifier the Band list began as, which Add reads. */
   readonly #classifier: ClassifierBins;
   readonly #write: (list: BandList) => void;
@@ -35,9 +35,9 @@ export class BandListDraft {
   /** Each Edge whose last move was refused, by band. */
   #refusals: ReadonlyMap<number, EdgeRefusal>;
 
-  /** A draft of `bands`, the list that began as `starting` from `classifier`, which Apply hands to `write`. */
-  constructor(bands: BandList, starting: BandList, classifier: ClassifierBins, write: (list: BandList) => void) {
-    this.#starting = starting;
+  /** A draft of `bands`, the list that began as `startingBands` from `classifier`, which Apply hands to `write`. */
+  constructor(bands: BandList, startingBands: BandList, classifier: ClassifierBins, write: (list: BandList) => void) {
+    this.#startingBands = startingBands;
     this.#classifier = classifier;
     this.#write = write;
     this.#bands = $state.raw(bands);
@@ -109,7 +109,7 @@ export class BandListDraft {
 
   /** The list the model starts on again, in the draft alone until Apply. */
   reset(): void {
-    this.#reshape(this.#starting);
+    this.#reshape(this.#startingBands);
   }
 
   /** The draft written as the chart's Band list. */
