@@ -4,12 +4,12 @@ import type { Session } from "./session.svelte";
 
 /**
  * A notice the app gives, as a toast at the top right (ADR-0002 decision 84,
- * rule 7): a link that could not be read, a link that needed something filled
- * or dropped, a clipboard that refused the link (decision 63, rule 6); an
- * Image that could not be made (decision 64, rule 8); and an arrival that cut
- * values to their bounds (decision 84, rule 4, as noted 2026-10-28).
+ * rule 7): a link that could not be read as written (decision 88, rule 4), a
+ * clipboard that refused the link (decision 63, rule 6); an Image that could
+ * not be made (decision 64, rule 8); and an arrival that cut values to their
+ * bounds (decision 84, rule 4, as noted 2026-10-28).
  */
-export type Notice = "linkRefused" | "linkFilled" | "copyRefused" | "imageFailed" | "valuesCut";
+export type Notice = "linkRefused" | "copyRefused" | "imageFailed" | "valuesCut";
 
 /**
  * The app's one session and the outputs derived from it, created once above

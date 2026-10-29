@@ -12,7 +12,7 @@ import { outOfRangeRows, type Bound, type OutOfRangeRow } from "$lib/core/applic
 import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
 import type { Address } from "$lib/core/page";
-import type { Quantity } from "$lib/core/quantities";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { narrowedToPage, toText } from "$lib/core/shareLink";
 import { entryModesOf } from "$lib/core/slot";
 import type { WrittenSession } from "$lib/core/writtenSession";
@@ -129,4 +129,12 @@ export function keptTextOf(session: Session): string {
 /** The narrowed session a link copied from `session` on its page carries. */
 export function linkSessionOf(session: Session): WrittenSession {
   return narrowedToPage(session.toWrittenSession(), session.page);
+}
+
+/** The link from `session` with slot 1's metabolic rate taken out, as a cut or a hand edit would leave it. */
+export function lackingLinkTextOf(session: Session): string {
+  const written = linkSessionOf(session);
+  const [first, ...others] = written.slots;
+  const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== quantities.met)) };
+  return toText({ ...written, slots: [lacking, ...others] }, registeredModels);
 }

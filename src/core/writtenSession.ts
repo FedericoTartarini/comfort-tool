@@ -20,9 +20,8 @@ export interface ChartSettings {
   readonly axes: ChartAxes | null;
   /**
    * The model's Band list (ADR-0002 decision 59); `null` for a model that
-   * scans nothing, and for one whose list a share link copied on the Standard
-   * page does not carry (decision 63, rule 5), which a session then starts on
-   * its scan's classifier.
+   * scans nothing. A session narrowed for a share link on the Standard page
+   * (`narrowedToPage`) is the one exception, and it is only written out.
    */
   readonly bands: BandList | null;
 }

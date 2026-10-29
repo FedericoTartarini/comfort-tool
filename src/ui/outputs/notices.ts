@@ -9,7 +9,6 @@ import { copy } from "$lib/text/copy";
 
 const noticeText: Record<Notice, string> = {
   linkRefused: copy.linkRefusedNotice,
-  linkFilled: copy.linkFilledNotice,
   copyRefused: copy.copyRefusedNotice,
   imageFailed: copy.imageFailedNotice,
   valuesCut: copy.valuesCutNotice,

@@ -29,6 +29,7 @@ import {
   expectEverySlotInSessionEntryModes,
   heldSlot,
   keptTextOf,
+  lackingLinkTextOf,
   linkSessionOf,
   openedOn,
   sessionComparingThreeSlots,
@@ -132,7 +133,7 @@ describe("the first address's load", () => {
     }
   });
 
-  it("with a kept text that lacks a value and an option is that session with both at their defaults (rule 6 as amended)", () => {
+  it("with a kept text that lacks a value and an option is refused, as one that does not read back as written (decision 88, rule 4): the defaults, and nothing raised", () => {
     const kept = editedSession();
     const written = kept.toWrittenSession();
     const [first, ...others] = written.slots;
@@ -142,15 +143,11 @@ describe("the first address's load", () => {
       options: new Map([...first.options].filter(([option]) => option !== airSpeedControl)),
     };
     const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
-    expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
 
-    const { session } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: text }, registeredModels);
+    const { session, notices } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: text }, registeredModels);
 
-    // Slot 1's metabolic rate and option were never edited, so the session filled is the one kept.
-    const [starting] = startingSession(pmvPpdAshrae).slots;
-    expect(heldSlot(session, 0).values.get(q.met)).toBe(starting.values.get(q.met));
-    expect(heldSlot(session, 0).options.get(airSpeedControl)).toBe(starting.options.get(airSpeedControl));
-    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.standard, pendingSwitch: null });
+    expect(notices).toEqual([]);
   });
 
   it("with a kept text written under another model follows the address as the back button does: converted, seeded and cut, nothing asked, and the cut notice", () => {
@@ -234,33 +231,24 @@ describe("the first address's load with a link", () => {
     expect(notices).toEqual([]);
   });
 
-  it("that needed something filled and nothing kept is the link's session, filled, and the notice that says so", () => {
+  it("that lacks a value and nothing kept is refused (decision 88, rule 4): the address's model on its defaults, and the notice", () => {
     const sender = onExplore();
-    const written = linkSessionOf(sender);
-    const [first, ...others] = written.slots;
-    const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== q.met)) };
-    const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
-    expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
 
-    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(sender), { link: lackingLinkTextOf(sender), kept: undefined }, registeredModels);
 
-    const [starting] = startingSession(pmvPpdAshrae).slots;
-    expect(heldSlot(session, 0).values.get(q.met)).toBe(starting.values.get(q.met));
-    expect(notices).toEqual(["linkFilled"]);
+    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(notices).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
 
-  it("that needed something filled and holds a value out of range gives both notices, the filling's first", () => {
-    const sender = onExplore();
-    heldSlot(sender, 0).setEntered(q.operative_tmp, 60);
-    const written = linkSessionOf(sender);
-    const [first, ...others] = written.slots;
-    const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== q.met)) };
-    const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
+  it("that lacks a value over a kept session is refused with nothing asked: the kept session, and the notice", () => {
+    const kept = editedSession();
 
-    const { notices } = firstLoadAt(addressOf(sender), { link: text, kept: undefined }, registeredModels);
+    const { session, notices, waitingLink } = firstLoadAt(addressOf(kept), { link: lackingLinkTextOf(onExplore()), kept: keptTextOf(kept) }, registeredModels);
 
-    expect(notices).toEqual(["linkFilled", "valuesCut"]);
+    expect(openedOn(session)).toEqual(openedOn(kept));
+    expect(notices).toEqual(["linkRefused"]);
+    expect(waitingLink).toBeNull();
   });
 
   it("refused and nothing kept is the address's model on its defaults, and the notice", () => {
@@ -340,7 +328,9 @@ describe("the first address's load with a link", () => {
 
     const { session, notices } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
 
-    const expected = new Session(linkSessionOf(sender));
+    // A link copied on the Standard page carries no Band list and opens on the classifier's, the sender's unedited one.
+    expect(sender.chart.bands).toEqual(startingChartSettings(pmvPpdAshrae).bands);
+    const expected = new Session({ ...linkSessionOf(sender), charts: new Map([[pmvPpdAshrae, sender.chart.toChartSettings()]]) });
     expected.setAddress(standardAddress(pmvPpdIso));
     expect(openedOn(session)).toEqual(openedOn(expected));
     expect(session.model).toBe(pmvPpdIso);

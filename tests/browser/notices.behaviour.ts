@@ -31,8 +31,8 @@ function isoLinkWith(values: Record<string, number>): string {
   ).toString("base64url")}`;
 }
 
-/** PMV (ISO 7730) at its defaults, with slot 1's metabolic rate taken out: read, but not exactly. */
-const FILLED_LINK = isoLinkWith({ tdb: 25, tr: 25, v: 0.1, clo: 0.5, rh: 50 });
+/** PMV (ISO 7730) at its defaults, with slot 1's metabolic rate taken out: it does not read back as written. */
+const LACKING_LINK = isoLinkWith({ tdb: 25, tr: 25, v: 0.1, clo: 0.5, rh: 50 });
 
 /** PMV (ISO 7730) at its defaults, exactly. */
 const EXACT_LINK = isoLinkWith({ tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, rh: 50 });
@@ -106,12 +106,6 @@ test("a refused share link raises a toast at the window's top right, over the he
   await expect(toast).toHaveCount(0);
 });
 
-test("a link that needed something filled raises its toast", async ({ page }) => {
-  await open(page, `${ISO_ADDRESS}?share=${FILLED_LINK}`);
-
-  await expect(toasts(page)).toContainText("Some of this link could not be used as written; what it lacked starts at its defaults.");
-});
-
 test("a link with a value out of range opens with the value cut and one toast saying so, and no dialog", async ({ page }) => {
   await open(page, `${ISO_ADDRESS}?share=${OUT_OF_RANGE_LINK}`);
 
@@ -154,15 +148,14 @@ test("Reset, answered yes, closes every toast standing", async ({ page }) => {
   await expect(toasts(page)).toHaveCount(0);
 });
 
-test("a link's yes over a kept session raises the link's own toast", async ({ page }) => {
-  // The first visit leaves the tab a kept session, so the link asks.
+test("a link that does not read back as written, over a kept session, asks nothing and raises the one toast that it could not be read", async ({ page }) => {
+  // The first visit leaves the tab a kept session, which a link that can be read would ask to replace.
   await open(page, PMV_ADDRESS);
-  await open(page, `${ISO_ADDRESS}?share=${FILLED_LINK}`);
-
-  await page.getByRole("dialog").getByRole("button", { name: "Yes, open the link" }).click();
+  await open(page, `${ISO_ADDRESS}?share=${LACKING_LINK}`);
 
   await expect(toasts(page)).toHaveCount(1);
-  await expect(toasts(page)).toContainText("Some of this link could not be used as written; what it lacked starts at its defaults.");
+  await expect(toasts(page)).toContainText("The shared link could not be read, so nothing was opened from it.");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("an Image that could not be made raises its toast", async ({ page }) => {

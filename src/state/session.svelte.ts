@@ -1,6 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ClassifierBins } from "jsthermalcomfort";
-import { bandListOf, type BandList } from "$lib/core/bands";
+import type { BandList } from "$lib/core/bands";
 import { shownRow, type Calculator, type CalculatorResult } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
@@ -174,8 +174,7 @@ export class ChartState {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan?.classifier ?? null;
-    // No list written for a model that scans: a link copied on the Standard page (ADR-0002 decision 63, rule 5).
-    this.#bands = $state.raw(settings.bands ?? (this.#classifier && bandListOf(this.#classifier)));
+    this.#bands = $state.raw(settings.bands);
   }
 
   /** How it is set up, as plain chart settings. */

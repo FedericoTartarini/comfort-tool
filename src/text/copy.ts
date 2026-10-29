@@ -155,7 +155,6 @@ export const copy = {
   share: "Share",
   linkCopied: "Link copied",
   linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
-  linkFilledNotice: "Some of this link could not be used as written; what it lacked starts at its defaults.",
   copyRefusedNotice: "The link could not be copied.",
   // An arrival that cut values to their bounds (decision 84, rule 4, as noted 2026-10-28).
   valuesCutNotice: "Some values were out of range and were cut to the nearest allowed value.",

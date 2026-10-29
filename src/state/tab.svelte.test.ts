@@ -10,7 +10,7 @@ import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
-import { toDecodedSession, toText } from "$lib/core/shareLink";
+import { toText } from "$lib/core/shareLink";
 import { unitSystem } from "$lib/core/unitSystem";
 import { startingChartSettings, startingSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
@@ -20,7 +20,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { writeKeptText } from "./keptText";
 import type { Notice } from "./openSession";
 import type { Session } from "./session.svelte";
-import { addressOf, editBands, heldSlot, keptTextOf, linkSessionOf, openedOn, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessionTestReaders";
+import { addressOf, editBands, heldSlot, keptTextOf, lackingLinkTextOf, linkSessionOf, openedOn, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessionTestReaders";
 import { Tab } from "./tab.svelte";
 
 const q = quantities;
@@ -55,16 +55,6 @@ function senderSession(): Session {
   heldSlot(session, 0).setEntered(q.tdb, 31);
   editBands(session, (draft) => draft.setLabel(0, "Freezing"));
   return session;
-}
-
-/** The link from `session` with slot 1's metabolic rate taken out, as a hand edit would: read, but not exactly. */
-function filledLinkTextOf(session: Session): string {
-  const written = linkSessionOf(session);
-  const [first, ...others] = written.slots;
-  const lacking = { ...first, values: new Map([...first.values].filter(([quantity]) => quantity !== q.met)) };
-  const text = toText({ ...written, slots: [lacking, ...others] }, registeredModels);
-  expect(toDecodedSession(text, registeredModels)?.exact).toBe(false);
-  return text;
 }
 
 /** A tab, and the notices it raises, in order. */
@@ -185,31 +175,15 @@ describe("a link reaching a tab that kept a session", () => {
     expect(tab.waitingLink).toBeNull();
   });
 
-  it("that needed something filled: answered yes, the link's session filled and the notice that says so", () => {
-    const sender = senderSession();
-    const { tab, raised } = tabOpenedThroughLink(keptSession(), addressOf(sender), filledLinkTextOf(sender));
-    expect(raised).toEqual([]);
-
-    tab.acceptLink();
-
-    const [starting] = startingSession(pmvPpdAshrae).slots;
-    expect(heldSlot(openSessionOf(tab), 0).values.get(q.met)).toBe(starting.values.get(q.met));
-    expect(heldSlot(openSessionOf(tab), 0).values.get(q.tdb)).toBe(31);
-    expect(raised).toEqual(["linkFilled"]);
-    expect(tab.waitingLink).toBeNull();
-  });
-
-  it("that needed something filled: answered no, the kept session and no notice", () => {
+  it("that lacks a value is refused (decision 88, rule 4): nothing waits, the kept session, and the notice", () => {
     const kept = keptSession();
     const sender = senderSession();
-    const { tab, raised } = tabOpenedThroughLink(kept, addressOf(sender), filledLinkTextOf(sender));
-
-    tab.declineLink();
+    const { tab, raised } = tabOpenedThroughLink(kept, addressOf(sender), lackingLinkTextOf(sender));
 
     kept.setAddress(addressOf(sender));
-    expect(openedOn(openSessionOf(tab))).toEqual(openedOn(kept));
-    expect(raised).toEqual([]);
     expect(tab.waitingLink).toBeNull();
+    expect(openedOn(openSessionOf(tab))).toEqual(openedOn(kept));
+    expect(raised).toEqual(["linkRefused"]);
   });
 });
 
