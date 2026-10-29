@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer";
+import { deflateRawSync } from "node:zlib";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -15,9 +15,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
 const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
 
-/** PMV (ISO 7730) as Share writes it, slot 1 holding `values` alone. */
+/** PMV (ISO 7730) as Share writes it, slot 1 holding `values` alone, deflated by Node's own zlib. */
 function isoLinkWith(values: Record<string, number>): string {
-  return `v1.${Buffer.from(
+  return `v1.${deflateRawSync(
     JSON.stringify({
       model: "pmv_ppd_iso",
       unitSystem: "si",

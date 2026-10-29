@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { inflateRawSync } from "node:zlib";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -291,7 +292,7 @@ const pressure = (page: Page) => page.getByRole("spinbutton", { name: /^Atmosphe
  */
 async function heldPressure(page: Page): Promise<number> {
   const kept = await page.evaluate(() => sessionStorage.getItem("comfort-tool.session") ?? "");
-  return JSON.parse(Buffer.from(kept.slice("v1.".length), "base64url").toString()).p_atm;
+  return JSON.parse(inflateRawSync(Buffer.from(kept.slice("v1.".length), "base64url")).toString()).p_atm;
 }
 
 // In SI the pressure is shown in kPa and held in pascals (ADR-0002 decision 87, rule 6).

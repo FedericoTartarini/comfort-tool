@@ -5,8 +5,11 @@
  * one expected after it. No expected text is written out but the prefix, so
  * the encoding may change until the format is frozen (rule 9); a refused text
  * is a valid one changed in one place, read and written again through Node's
- * own URL-safe Base64, so its edits name rule 1's members.
+ * own raw DEFLATE and URL-safe Base64 (decision 88 rule 1), not the codec's
+ * `fflate`, so its edits name rule 1's members and the wire format is checked
+ * apart from the library that writes it.
  */
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -53,10 +56,7 @@ function inOtherEntryModes(slot: Slot, model: RegisteredModel): Slot {
   return withHumidityMode(corrected, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
 }
 
-/**
- * A Band list label outside Latin-1, whose bytes also put a `-` or `_` in the
- * session's text, which the classic-Base64 refusal test needs.
- */
+/** A Band list label outside Latin-1, so that the JSON's UTF-8 is more than one byte a character. */
 const FAR_LABEL = "很冷 ❄️";
 
 /**
@@ -142,16 +142,24 @@ describe("toText and toDecodedSession", () => {
       expect(text.slice(PREFIX.length)).toMatch(/^[A-Za-z0-9_-]+$/);
     }
   });
+
+  it("write rule 1's JSON, raw DEFLATE in URL-safe Base64, as Node's own zlib inflates it (decision 88 rule 1)", () => {
+    const session = editedSession();
+    const json = jsonOf(toText(session, registeredModels)) as { model: string; slots: { values: Record<string, number> }[] };
+    expect(Object.keys(json).sort()).toEqual(["charts", "compare", "enabled", "entryModes", "model", "p_atm", "slots", "unitSystem"]);
+    expect(json.model).toBe(pmvPpdAshrae.info.name);
+    expect(json.slots[0].values[q.met.key]).toBe(session.slots[0].values.get(q.met));
+  });
 });
 
-/** The JSON a text writes, read by Node's own URL-safe Base64 rather than the codec's. */
+/** The JSON a text writes, read by Node's own raw DEFLATE and URL-safe Base64 rather than the codec's. */
 function jsonOf(text: string): unknown {
-  return JSON.parse(Buffer.from(text.slice(PREFIX.length), "base64url").toString("utf8"));
+  return JSON.parse(inflateRawSync(Buffer.from(text.slice(PREFIX.length), "base64url")).toString("utf8"));
 }
 
-/** `json` written as a text by Node's own URL-safe Base64. */
+/** `json` written as a text by Node's own raw DEFLATE and URL-safe Base64. */
 function textOf(json: string): string {
-  return PREFIX + Buffer.from(json).toString("base64url");
+  return PREFIX + deflateRawSync(json).toString("base64url");
 }
 
 type Path = readonly (string | number)[];
@@ -178,7 +186,7 @@ describe("toDecodedSession", () => {
   /** PMV (ASHRAE 55)'s declared default of `quantity`. */
   const declared = (quantity: Quantity) => inputsOf(pmvPpdAshrae).find((input) => input.quantity === quantity)?.value;
 
-  it("reads a valid text through another Base64 encoder as it reads the codec's own", () => {
+  it("reads a valid text through another DEFLATE and Base64 encoder as it reads the codec's own", () => {
     expect(read(textOf(JSON.stringify(jsonOf(valid))))).toEqual({ session: editedSession(), exact: true });
   });
 
@@ -197,18 +205,27 @@ describe("toDecodedSession", () => {
     }
   });
 
-  it("refuses Base64 that does not parse, bytes that are not UTF-8, and JSON that does not parse", () => {
+  it("refuses Base64 that does not parse, bytes that do not inflate, inflated bytes that are not UTF-8, and JSON that does not parse", () => {
     expect(read(`${valid}*`)).toBeUndefined();
     expect(read(`${valid}=`)).toBeUndefined();
     // Classic Base64's characters and whitespace, which `atob` alone would take.
     expect(read(`${valid.slice(0, 10)} ${valid.slice(10)}`)).toBeUndefined();
+    // The deflated bytes, not the session, put a `-` or `_` in the text: the guard says if they stop doing so.
     const classic = valid.replace(/-/g, "+").replace(/_/g, "/");
     expect(classic).not.toBe(valid);
     expect(read(classic)).toBeUndefined();
     expect(read(`${PREFIX}A`)).toBeUndefined();
+    // A reserved block type, and a stream cut before its end.
     expect(read(`${PREFIX}${Buffer.from([0xff, 0xfe]).toString("base64url")}`)).toBeUndefined();
+    expect(read(`${PREFIX}${deflateRawSync(JSON.stringify(jsonOf(valid))).subarray(0, -4).toString("base64url")}`)).toBeUndefined();
+    // A stream that inflates to bytes that are not UTF-8.
+    expect(read(`${PREFIX}${deflateRawSync(Buffer.from([0xff, 0xfe])).toString("base64url")}`)).toBeUndefined();
     expect(read(textOf(JSON.stringify(jsonOf(valid)).slice(0, -1)))).toBeUndefined();
     expect(read(PREFIX)).toBeUndefined();
+  });
+
+  it("refuses a text in the former format, the URL-safe Base64 of the JSON not deflated (decision 88 rule 3)", () => {
+    expect(read(PREFIX + Buffer.from(JSON.stringify(jsonOf(valid))).toString("base64url"))).toBeUndefined();
   });
 
   it("refuses a member rule 1 requires, missing or mistyped", () => {

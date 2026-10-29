@@ -1,12 +1,24 @@
+import { deflateRawSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
 
 /**
  * A share link as Share writes it on the Standard page, to PMV (ISO 7730)
- * at its defaults. The notice's check reads nothing from the address, so
- * without `Proxy` or `toSorted` its text only has to look like one.
+ * at its defaults, deflated by Node's own zlib. The notice's check reads
+ * nothing from the address, so without `Proxy` or `toSorted` its text only
+ * has to look like one.
  */
-const SHARE_ADDRESS =
-  "/standard/iso-7730-2025/pmv-ppd-iso?share=v1.eyJtb2RlbCI6InBtdl9wcGRfaXNvIiwidW5pdFN5c3RlbSI6InNpIiwicF9hdG0iOjEwMTMyNSwiY29tcGFyZSI6ZmFsc2UsImVuYWJsZWQiOltmYWxzZSxmYWxzZV0sImVudHJ5TW9kZXMiOnsidGVtcGVyYXR1cmUiOiJzZXBhcmF0ZSIsImFpclNwZWVkIjoiYWlyLXNwZWVkIiwiY2xvdGhpbmciOiJjbG90aGluZy1pbnN1bGF0aW9uIiwiaHVtaWRpdHkiOiJyZWxhdGl2ZS1odW1pZGl0eSJ9LCJzbG90cyI6W3sidmFsdWVzIjp7InRkYiI6MjUsInRyIjoyNSwidiI6MC4xLCJtZXQiOjEuMSwiY2xvIjowLjUsInJoIjo1MH0sIm9wdGlvbnMiOnt9fSxudWxsLG51bGxdLCJjaGFydHMiOnsicG12X3BwZF9pc28iOnsidHlwZSI6InBzeWNocm9tZXRyaWMiLCJheGVzIjp7IngiOiJ0ZGIiLCJ5IjoidiJ9fX19";
+const SHARE_ADDRESS = `/standard/iso-7730-2025/pmv-ppd-iso?share=v1.${deflateRawSync(
+  JSON.stringify({
+    model: "pmv_ppd_iso",
+    unitSystem: "si",
+    p_atm: 101325,
+    compare: false,
+    enabled: [false, false],
+    entryModes: { temperature: "separate", airSpeed: "air-speed", clothing: "clothing-insulation", humidity: "relative-humidity" },
+    slots: [{ values: { tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, rh: 50 }, options: {} }, null, null],
+    charts: { pmv_ppd_iso: { type: "psychrometric", axes: { x: "tdb", y: "v" } } },
+  }),
+).toString("base64url")}`;
 
 /** What a person opens: the tool itself, or a share link to it. */
 const openings = [

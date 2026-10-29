@@ -1,8 +1,10 @@
 /**
- * The share link's codec (ADR-0002 decision 63, rules 1, 6, 9 and 10): a
- * written session as one text, `v1.` followed by the URL-safe Base64 of its
- * JSON in UTF-8, and a text as a written session again, or nothing. The JSON's
- * shape is rule 1's, example included.
+ * The share link's codec (ADR-0002 decision 63, rules 1, 6, 9 and 10, rule 1
+ * as revised by decision 88): a written session as one text, `v1.` followed
+ * by the URL-safe Base64, unpadded, of the raw DEFLATE of its JSON in UTF-8,
+ * and a text as a written session again, or nothing. The JSON's shape is
+ * decision 63 rule 1's, example included. `fflate` deflates and inflates,
+ * synchronously and at its default level, and is imported here alone.
  *
  * The one module where the session's strings are read and written: a model's
  * name, the unit system's, entry modes' and chart types' ids, quantity keys
@@ -23,6 +25,7 @@
  * (rule 5), written by the same encoder; the decoder does not know which it
  * reads.
  */
+import { deflateSync, inflateSync } from "fflate";
 import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
@@ -56,7 +59,7 @@ const entryModeFields = Object.keys(defaultEntryModes) as (keyof ValueEntryModes
 
 /** `session` written out as a text, its options grouped under the model in `models` that declares each. */
 export function toText(session: WrittenSession, models: readonly RegisteredModel[]): string {
-  return PREFIX + toBase64Url(JSON.stringify(sessionJson(session, models)));
+  return PREFIX + toBase64Url(deflateSync(new TextEncoder().encode(JSON.stringify(sessionJson(session, models)))));
 }
 
 /**
@@ -178,9 +181,9 @@ function chartJson({ type, axes, bands }: ChartSettings) {
   };
 }
 
-/** UTF-8, then Base64 by the classic functions, which every browser of the app's floor has, made URL-safe and unpadded. */
-function toBase64Url(text: string): string {
-  const binary = Array.from(new TextEncoder().encode(text), (byte) => String.fromCharCode(byte)).join("");
+/** Base64 by the classic functions, which every browser of the app's floor has, made URL-safe and unpadded. */
+function toBase64Url(bytes: Uint8Array): string {
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
@@ -200,7 +203,7 @@ function refuse(): never {
   throw new Refused();
 }
 
-/** The JSON value `text` writes, after its prefix and URL-safe Base64 of UTF-8. */
+/** The JSON value `text` writes, after its prefix and URL-safe Base64 of the raw DEFLATE of UTF-8. */
 function jsonOf(text: string): unknown {
   if (!text.startsWith(PREFIX)) {
     refuse();
@@ -211,10 +214,10 @@ function jsonOf(text: string): unknown {
   }
   try {
     const binary = atob(body.replace(/-/g, "+").replace(/_/g, "/"));
-    const json = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
-    return JSON.parse(json);
+    const bytes = inflateSync(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
-    // Base64 that does not parse, bytes that are not UTF-8 or JSON that does not parse.
+    // Base64 that does not parse, bytes that do not inflate, inflated bytes that are not UTF-8 or JSON that does not parse.
     return refuse();
   }
 }
