@@ -11,8 +11,8 @@
   collapsed it (decision 87, rule 1), as tall as
   the page beside it (`h-auto`, `self-stretch`), not shrunk by it,
   transparent on the ground, and inset `p-1`, so with a group's own `p-2` its
-  fills stand on the 12 px line the header's mark and the footer's text stand
-  on; no brand tile in a `Sidebar.Header` (the header
+  fills stand on the 12 px line the header's toggle and the footer's text stand
+  on (decision 87, rule 1); no brand tile in a `Sidebar.Header` (the header
   holds the mark), no user menu in a `Sidebar.Footer` (the page's footer
   holds the versions); the block's sample groups are the navigation the page
   hands in, then a `Sidebar.Separator`, inset as far as the rule inside

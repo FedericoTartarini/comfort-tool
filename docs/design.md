@@ -110,7 +110,7 @@ group label's top meets the cards' top.
 │  ISO 7730:2025  │ ───────────────────────────── │ │ (Neutral)        −0.24  6.15 %      Yes │ │
 │                 │ Air temp (°C) [Change ▾]      │ └─────────────────────────────────────────┘ │
 │ Tools           │ [25                      ↕]   │ ┌─ Chart ────────────────── [Export image]┐ │
-│  Explore        │ 10 – 40 °C                    │ │ [Psychrometric ▾] [X axis ▾] [Y axis ▾] │ │
+│  Explore        │ 10 – 40 °C                    │ │ [Psychrometric ▾]                       │ │
 │                 │ Mean radiant temp (°C)        │ │ ┌──────────────┐                        │ │
 │ ─────────────── │ [25                      ↕]   │ │ │   plot 4:3   │   ─ Relative humidity  │ │
 │ Settings        │ 10 – 40 °C                    │ │ │  ≤ 24rem tall│   ■ Comfort zone       │ │
@@ -214,37 +214,42 @@ line, the citation on the next, at the left; the white CBE and UC Berkeley marks
 cbe.berkeley.edu and berkeley.edu, wrapping under the text where the window is too narrow for both (decision 87, rule
 8). No date.
 
-**One screen.** At the values above and 1440 × 780, every model's result and chart cards are in view, and the input
-card is not on the two PMV pages: measured 2026-10-28, PMV (ASHRAE 55)'s input card ends at 856 px and PMV (ISO
-7730)'s at 817, Adaptive's at 543, while ISO PMV's chart card, the lowest, ends at 770 (it was ASHRAE PMV's input
-column at 767 before decision 84; the change is not bisected). A taller plot only lengthens the page, so the cap is
-the largest plot that keeps the chart cards in view at that floor.
+**One screen.** At the values above and 1440 × 780, every model's result and chart cards are in view, and the input card
+is not on the two PMV pages: measured 2026-10-29, PMV (ASHRAE 55)'s input card ends at 856 px and PMV (ISO 7730)'s at
+817, as on 2026-10-28, Adaptive's at 543, while Adaptive's chart card, the lowest, ends at 745. A taller plot only
+lengthens the page, so the cap is the largest plot that keeps the chart cards in view at that floor.
 
 ## Narrower windows
 
 The layout is intrinsic (Every Layout's Sidebar; MDN's "change the design at the point where the content starts to look
-bad"): the app writes no `@media` breakpoint of its own, and nothing reads the legend's content, so at one viewport no
-control moves anything. In the chart card the plot comes first, its `inline-size` its full width (four thirds of the
-cap) with `flex: none` and `max-inline-size: 100%`, so it shrinks only when the window is narrower than it; the legend
-is a column with `flex-basis: 10rem`, growing into a room of at most `18rem`, its entries wrapping; when the room is
-narrower than that basis the legend wraps under the plot. A desktop keeps two columns at every width (decision 87,
-rule 3): the input card at its `28.75rem` (decision 84, rule 12), and beside it the result and chart cards, one column of
-one width, `minmax(33.5rem, 1fr)`, `33.5rem` being the plot at its cap with the chart card's padding, so a desktop never
-shrinks the plot; a narrower window scrolls the page sideways, from about 1271 px of window with the sidebar and 1047
-px with it collapsed. The sidebar never collapses by itself on a desktop. Below `md`, at 767 px and narrower by the
-primitive's own check, which a desktop window that narrow or zoomed past it meets too (WCAG 2.2 SC 1.4.10's 320 CSS
-px), the page is a phone's: the sidebar is the primitive's `Sheet`, the one device breakpoint, the header's toggle
-opening it, with the Settings group and Documentation inside it, and the three cards stand in one column (decision 87,
-rule 2). Compare's three slot columns stay side by side at every width (decision 50). Wider than the content needs,
-the page stops growing: the sidebar and the main area are one frame, the sidebar's `14rem` and the main area's `76rem`, its width at 1440 px, centred in the
-window, so the chart card, the table's columns and the legend's room keep the 1440 px proportions on a wide monitor; the
-header's and footer's contents stand in the same frame, their bands' ground full width, as the deployed tool's are
-(decision 73, rule 10 as revised again 2026-10-12). Verified by a screenshot walk at 2560, 1920, 1440, 1366, 1280, 1024,
-768 and 767 px, and held by the layout's browser test (`tests/browser/layout.behaviour.ts`); decision 87 asks the
-walk again. Where the result and chart column is narrower than Dynamic's view row, about 551 px, windows of about 1271
-to 1310 px with the sidebar, the row wraps to two lines, so a chart type switch there moves the plot down one row
-(principle 5's named exception). A phone, 375 px, is one column, but the input card's `28.75rem` still overflows it;
-the phone is a later pass.
+bad"): the page's layout writes no `@media` breakpoint of its own, reading the sidebar primitive's mobile check alone
+(the stylesheet's one `@media` is the dialog footer's, at the primitive's `sm`), and nothing reads the legend's content,
+so at one viewport no control moves anything but principle 5's two named exceptions. In the chart card the plot comes
+first, its `inline-size` its full width (four thirds of the cap) with `flex: none` and `max-inline-size: 100%`, so it
+shrinks only when the window is narrower than it; the legend is a column with `flex-basis: 10rem`, growing into a room
+of at most `18rem`, its entries wrapping; when the room is narrower than that basis the legend wraps under the plot. A
+desktop keeps two columns at every width (decision 87, rule 3): the input card at its `28.75rem` (decision 84, rule 12),
+and beside it the result and chart cards, one column of one width, `minmax(33.5rem, 1fr)`, `33.5rem` being the plot at
+its cap with the chart card's padding, so a desktop never shrinks the plot; a narrower window scrolls the page sideways,
+below 1259 px of window with the sidebar and 1047 px with it collapsed (measured 2026-10-29). Where the column is too
+narrow for the legend's room, below 1431 px of window with the sidebar and 1219 collapsed, the legend stands under the
+plot. The sidebar never collapses by itself on a desktop. Below `md`, at 767 px and narrower by the primitive's own
+check, which a desktop window that narrow or zoomed past it meets too (WCAG 2.2 SC 1.4.10's 320 CSS px), the page is a
+phone's: the sidebar is the primitive's `Sheet`, the one device breakpoint, the header's toggle opening it, with the
+Settings group and Documentation inside it, and the three cards stand in one column (decision 87, rule 2). Compare's
+three slot columns stay side by side at every width (decision 50). Wider than the content needs, the page stops growing:
+the sidebar and the main area are one frame, the sidebar's `14rem` and the main area's `76rem`, its width at 1440 px,
+centred in the window, so the chart card, the table's columns and the legend's room keep the 1440 px proportions on a
+wide monitor; the header's and footer's contents stand in the same frame, their bands' ground full width, as the
+deployed tool's are (decision 73, rule 10 as revised again 2026-10-12). Verified by a screenshot walk at 2560, 1920,
+1440, 1366, 1280, 1024, 768, 767 and 375 px, the sidebar open and collapsed (`.scratch/shell-review/09-walk/`,
+2026-10-29), and held by the layout's browser test (`tests/browser/layout.behaviour.ts`). Dynamic's view row is 524.7 px
+on one line at the default axes, wider than the chart card's content at the column's `33.5rem` floor, so it wraps to two
+lines at every desktop window of 1271 px or narrower with the sidebar and 1059 px or narrower collapsed, and a chart
+type switch there moves the plot down one row, 40 px (principle 5's named exception). In about the same windows, at 1300
+px and narrower with the sidebar and at 1024 px collapsed (measured), PMV's "Thermal sensation" heading wraps to two
+lines and the Results card is 20 px taller. A phone, 375 px, is one column, but the input card's `28.75rem` still
+overflows it; the phone is a later pass.
 
 ## Self-check against the generic
 

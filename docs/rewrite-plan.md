@@ -466,6 +466,20 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > cell keeps the violation icon's room; the dialog and the toast take the one radius. Decisions 49, 67, 72, 73, 76, 84
 > and 85 are revised; `docs/design.md` follows; GLOSSARY.md is unchanged. **Next: the user's `/to-spec` for the shell,
 > then the link theme and I9.**
+>
+> **2026-10-29 — position, the shell done**: `.scratch/shell-review/` landed on `rewrite/v1`, tickets 01 to 08: the
+> pressure in kPa (`a98a8e0`); the entry group's button "Change", named "Change air speed" (`b2d1e99`); the value
+> columns held still by the Input cell's room (`bee6d5b`); the chart type a `ChoiceSelect` (`852c47d`); the sidebar's
+> groups `h2` headings and the dialog and toast at the one radius (`729ae37`); the toggle first in the header
+> (`cb3d551`); two columns on every desktop, scrolling sideways below 1259 px with the sidebar and 1047 collapsed, one
+> column under 768 px (`e0b3d01`); the header and footer on a phone (`ce0272e`). Decision 87 carries a close-out note:
+> Dynamic's view row is 524.7 px, wider than the chart card's 512 px of content at its floor, so it wraps, and a chart
+> type switch moves the plot, at every desktop window of 1271 px or narrower with the sidebar, not only in 1271 to
+> 1310 px; ADR-0001's three-column sentences are noted;
+> `docs/design.md` follows the code. Review items N1, N3, N4, N7 and I5 are done, for the Linear reply. `npm test`
+> passes at 1184 tests and `npm run test:browser` at 149. Open for the user: a tab through a number box
+> commits its shown text (101 325 Pa becomes 101 330); the footer's text beside the marks at 510 to 640 px. **Next:
+> the link theme and I9.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
