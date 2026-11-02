@@ -15,6 +15,10 @@ Frontend-only Svelte 5 SPA for thermal-comfort calculation, a rewrite of the CBE
 
 Local markdown under `.scratch/<feature>/` (never GitHub Issues or PRs). See `docs/agents/issue-tracker.md`.
 
+### Code review
+
+Spec sub-agents of `/code-review` also get `docs/agents/spec-review.md`.
+
 ### Triage labels
 
 Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.

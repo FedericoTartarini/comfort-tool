@@ -4,6 +4,8 @@ A front-end that declares thermal-comfort models, takes their inputs, and render
 
 ## Language
 
+_Avoid_ lists bind prose and copy, not identifiers.
+
 **Quantity**:
 A physical quantity a model or an input calculator takes or returns, defined once in the app's table with the library's key, a kind and a label. Referenced by object identity, never by its key string outside the library boundary.
 _Avoid_: variable, field, parameter
