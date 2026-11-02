@@ -27,34 +27,16 @@ import type {
 export const TRANSPARENT = "rgba(0, 0, 0, 0)";
 
 /**
- * The spec's traces drawn in their order, the first at the bottom. Plotly
- * draws a subplot's traces by type, in order only within one, so a trace
- * whose type it would draw under the one before opens the next `zorder`,
- * which it draws over every lower one.
+ * The spec's traces drawn in their order, the first at the bottom, except the
+ * hover grid: plotly.js 4.0.0 draws every heatmap under every scatter,
+ * whatever their order (its `traceLayerClasses`), and the grid is drawn
+ * fully transparent, so where it lies does not show. No trace gets a
+ * `zorder`: traces of different `zorder`s break the viewport after Reset
+ * axes and Pan from the modebar (plotly.js #7320, open on 4.2.0; USYD-145).
  */
 export function toPlotlyData(source: ChartSpec): PlotlyData[] {
-  let zorder = 0;
-  let layer = 0;
-  return source.traces.map((trace) => {
-    const next = plotlyLayerOf[trace.kind];
-    if (next < layer) {
-      zorder += 1;
-    }
-    layer = next;
-    return { ...dataOf(trace), zorder };
-  });
+  return source.traces.map(dataOf);
 }
-
-/**
- * Where Plotly draws each trace kind within one `zorder`: plotly.js 4.0.0
- * draws every heatmap under every scatter, whatever their order (its
- * `traceLayerClasses`).
- */
-const plotlyLayerOf = {
-  hoverGrid: 0,
-  path: 1,
-  point: 1,
-} satisfies Record<Trace["kind"], number>;
 
 function dataOf(trace: Trace): PlotlyData {
   switch (trace.kind) {
