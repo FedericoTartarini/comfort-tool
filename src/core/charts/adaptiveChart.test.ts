@@ -135,6 +135,10 @@ describe("a declared limits source", () => {
     expect(spec.layout.y.title).toContain(q.v.label);
   });
 
+  it("keeps its y axis on the plot's left (ADR-0002 decision 89, rule 7)", () => {
+    expect(adaptiveSpec(request).layout.y.side).not.toBe("right");
+  });
+
   it("stays on its declared axes under operative entry", () => {
     const spec = adaptiveSpec(chartRequestFor(model, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })));
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);

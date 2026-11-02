@@ -105,6 +105,10 @@ describe("dynamicSpec", () => {
     expect([y[0], last(y)]).toEqual(declaredRangeOf(q.v));
   });
 
+  it("keeps its y axis on the plot's left (ADR-0002 decision 89, rule 7)", () => {
+    expect(dynamicSpec(request, isoChart.axes).layout.y.side).not.toBe("right");
+  });
+
   it("puts a lower number at a cold still point than at a warm one", () => {
     // The scan's own number, signed.
     const values = scannedValuesOf(request, isoChart.axes);

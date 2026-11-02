@@ -330,6 +330,38 @@ for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
   });
 }
 
+/**
+ * Where the plot's y tick labels stand against its plot area, Plotly's drag
+ * surface: every one past the area's right edge, every one short of its left
+ * edge, or neither.
+ */
+async function yTicksSideOf(page: Page) {
+  const plot = page.locator(".chart-plot");
+  const area = await boxOf(plot.locator(".nsewdrag"));
+  const ticks = await plot.locator("g.ytick text").evaluateAll((texts) =>
+    texts.map((text) => {
+      const box = text.getBoundingClientRect();
+      return { left: box.left, right: box.right };
+    }),
+  );
+  expect(ticks.length).toBeGreaterThan(0);
+  if (ticks.every((tick) => tick.left >= area.x + area.width)) {
+    return "right";
+  }
+  return ticks.every((tick) => tick.right <= area.x) ? "left" : "neither";
+}
+
+// The psychrometric chart draws the humidity ratio on the right, the Dynamic chart its y axis on the left (ADR-0002
+// decision 89, rule 7), on both pages.
+for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+  test(`at 1440 px on ${address}, the psychrometric chart's humidity-ratio ticks stand right of the plot area and the Dynamic chart's y ticks left of it`, async ({ page }) => {
+    await openStandard(page, 1440, address);
+    expect(await yTicksSideOf(page)).toBe("right");
+    await chooseChartType(page, "Dynamic");
+    await expect.poll(() => yTicksSideOf(page)).toBe("left");
+  });
+}
+
 test("at 375 px, the plot fills the card at 4:3", async ({ page }) => {
   await openStandard(page, 375);
   const { plot, legend, content } = await chartAreaOf(page);

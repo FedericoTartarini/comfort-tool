@@ -8,6 +8,7 @@ import type { PlotlyAnnotation, PlotlyData, PlotlyLayout } from "plotly.js-carte
 import { chartInk } from "$lib/core/bandPalette";
 import type {
   Annotation,
+  AxisSide,
   AxisSpec,
   ChartSpec,
   HoverGridTrace,
@@ -15,6 +16,7 @@ import type {
   PathTrace,
   PointTrace,
   Trace,
+  YAxisSpec,
 } from "$lib/core/charts/chartSpec";
 
 /**
@@ -173,11 +175,40 @@ const READOUT_LABEL = {
   bordercolor: chartInk.readoutEdge,
 };
 
+/**
+ * The room beside a plot, in px: `axisRoom` for the y axis's ticks and title
+ * on its side, `halfTick` on the other for half of the x axis's end tick,
+ * which Plotly centres on the plot's edge.
+ */
+interface SideRoom {
+  readonly axisRoom: number;
+  readonly halfTick: number;
+}
+
+/** The page's room around the plot, in px: beside it, and above and under it. */
+const PAGE_MARGIN = { axisRoom: 64, halfTick: 16, top: 12, bottom: 48 };
+
+/** A plot's left and right margins, `room` laid out by the side `yAxis` stands on. */
+export function sideMarginsOf(yAxis: YAxisSpec, room: SideRoom) {
+  return sideOf(yAxis) === "right"
+    ? { l: room.halfTick, r: room.axisRoom }
+    : { l: room.axisRoom, r: room.halfTick };
+}
+
+/** The side a y axis stands on: the left unless its spec says otherwise. */
+function sideOf(axisSpec: YAxisSpec): AxisSide {
+  return axisSpec.side ?? "left";
+}
+
 export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
   return {
     autosize: true,
     uirevision: viewportRevision(source),
-    margin: { l: 64, r: 16, t: 12, b: 48 },
+    margin: {
+      ...sideMarginsOf(source.layout.y, PAGE_MARGIN),
+      t: PAGE_MARGIN.top,
+      b: PAGE_MARGIN.bottom,
+    },
     // ADR §4.4: the chart's one legend is rendered above it by ChartLegend (ADR-0002 decision 89, rule 3).
     showlegend: false,
     hovermode: "closest",
@@ -186,8 +217,13 @@ export function toPlotlyLayout(source: ChartSpec): PlotlyLayout {
     plot_bgcolor: chartInk.ground,
     paper_bgcolor: TRANSPARENT,
     xaxis: toPlotlyAxis(source.layout.x),
-    yaxis: toPlotlyAxis(source.layout.y),
+    yaxis: toPlotlyYAxis(source.layout.y),
   };
+}
+
+/** The y axis, on the side its spec names. */
+export function toPlotlyYAxis(axisSpec: YAxisSpec) {
+  return { ...toPlotlyAxis(axisSpec), side: sideOf(axisSpec) };
 }
 
 export function toPlotlyAxis(axisSpec: AxisSpec) {

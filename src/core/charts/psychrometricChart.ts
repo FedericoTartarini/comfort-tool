@@ -178,7 +178,8 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     traces,
     layout: {
       x: axisFor(axisQuantity, xUnit, xRange),
-      y: axisFor(q.hr, hrUnit, hrRange),
+      // On the right, as the deployed tool draws it (ADR-0002 decision 89, rule 7).
+      y: { ...axisFor(q.hr, hrUnit, hrRange), side: "right" },
     },
     legend,
     annotations,

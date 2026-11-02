@@ -153,18 +153,23 @@ function pmvAt(db: number, rh: number, tr: number): number {
   }).pmv;
 }
 
-/** The single-column Image's plot width, in px: the column less the figure's side margins. */
-const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 52 - 12;
+/**
+ * The single-column Image's plot width, in px: the column less the figure's
+ * side margins with the humidity ratio on the right, half of the first x tick
+ * on the left and the axis on the right.
+ */
+const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 12 - 52;
 
 /**
  * Plots the isoline labels must keep apart at, in px, with the lettering's
  * size: the page's plot at 1440 × 900, 693 × 384 with the sidebar open and
  * 905 × 384 with it collapsed (measured, `.scratch/frontend-review-round-2/`
- * ticket 05 Comments), less the figure's margins, its labels at 10 px
- * (`ui/charts/plotlyFigure.ts`), and the narrower of the Image's two, the
- * single column at 4:3, its labels at 8 pt (`ui/charts/plotlyImage.ts`).
+ * ticket 05 Comments), less the figure's margins with the humidity ratio on
+ * the right (ticket 06), its labels at 10 px (`ui/charts/plotlyFigure.ts`),
+ * and the narrower of the Image's two, the single column at 4:3, its labels
+ * at 8 pt (`ui/charts/plotlyImage.ts`).
  */
-const pageMargin = { l: 64, r: 16, t: 12, b: 48 };
+const pageMargin = { l: 16, r: 64, t: 12, b: 48 };
 const labelFrames = [
   {
     name: "the page's plot, the sidebar open",
@@ -264,6 +269,10 @@ describe("psychrometricSpec", () => {
       expect(line.pieces.every((piece) => piece.x.every((x, index) => vertices.has(`${x} ${piece.y[index]}`)))).toBe(true);
     });
     expect(lines.every((line) => line.color === chartInk.zoneLine(palette.slots[0]) && line.width === chartInk.zoneLineWidth)).toBe(true);
+  });
+
+  it("stands the humidity ratio on the plot's right (ADR-0002 decision 89, rule 7)", () => {
+    expect(spec.layout.y.side).toBe("right");
   });
 
   it("scans the drawn axes: the temperature axis and the humidity ratio, in display units", () => {
@@ -435,10 +444,12 @@ describe("psychrometricSpec", () => {
     expect(psychrometricSpec(request(temperatureMode.separate)).layout.y).toEqual({
       title: "Humidity ratio (g/kg)",
       range: [0, 30],
+      side: "right",
     });
     expect(psychrometricSpec(request(temperatureMode.separate, unitSystem.ip)).layout.y).toEqual({
       title: "Humidity ratio (lb/klb)",
       range: [0, 30],
+      side: "right",
     });
   });
 

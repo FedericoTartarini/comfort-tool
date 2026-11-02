@@ -9,9 +9,9 @@
  */
 import type { PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
 import { chartInk } from "$lib/core/bandPalette";
-import type { AxisSpec, LegendEntry } from "$lib/core/charts/chartSpec";
+import type { LegendEntry } from "$lib/core/charts/chartSpec";
 import { imageFormat, type ImageDescription, type ImageFormat } from "$lib/core/image";
-import { toPlotlyAnnotation, toPlotlyAxis, toPlotlyData } from "./plotlyFigure";
+import { sideMarginsOf, toPlotlyAnnotation, toPlotlyAxis, toPlotlyData, toPlotlyYAxis } from "./plotlyFigure";
 
 type Plotly = typeof import("plotly.js-cartesian-dist-min").default;
 
@@ -27,11 +27,14 @@ const LETTERING = { family: "Arial, Helvetica, sans-serif", size: 8 * PX_PER_PT 
 const TITLE_LETTERING = { ...LETTERING, size: 10 * PX_PER_PT };
 
 /**
- * Around the plot, in px: the y axis's widest ticks and its title on the left,
- * half of the x axis's last tick on the right, and from the plot's bottom edge
- * to the legend's top, the x axis's ticks and title.
+ * Around the plot, in px: the y axis's widest ticks and its title on its side,
+ * half of the x axis's end tick on the other, and from the plot's bottom edge
+ * to the legend's top, the x axis's ticks and title. On the right, the
+ * humidity ratio's title ends 24 px inside the file's edge, and the first x
+ * tick starts 6 px inside on the left (`.scratch/frontend-review-round-2/`
+ * ticket 06 Comments).
  */
-const MARGIN = { left: 52, right: 12, top: 8, legend: 40 };
+const MARGIN = { axisRoom: 52, halfTick: 12, top: 8, legend: 40 };
 /** The title's line, in px, between the top margin and the plot; none without a title. */
 const TITLE_BLOCK = 22;
 /** Plotly's line height over its lettering, and an annotation's padding inside its box, in px: its defaults. */
@@ -92,8 +95,9 @@ function figureOf(image: ImageDescription, legendHeight: number) {
   const summary = summaryAndFooter?.summary.flat() ?? [];
   const footer = summaryAndFooter?.footer ?? [];
   const width = image.size.widthMm * PX_PER_MM;
+  const sides = sideMarginsOf(chart.layout.y, MARGIN);
   const plotTop = MARGIN.top + (title === null ? 0 : TITLE_BLOCK);
-  const plotHeight = (width - MARGIN.left - MARGIN.right) * PLOT_ASPECT;
+  const plotHeight = (width - sides.l - sides.r) * PLOT_ASPECT;
   const plotBottom = plotTop + plotHeight;
   const legendTop = plotBottom + MARGIN.legend;
   const legendBottom = legendTop + legendHeight;
@@ -108,7 +112,7 @@ function figureOf(image: ImageDescription, legendHeight: number) {
   const layout = {
     width,
     height,
-    margin: { l: MARGIN.left, r: MARGIN.right, t: plotTop, b: height - plotTop - plotHeight, pad: 0, autoexpand: false },
+    margin: { ...sides, t: plotTop, b: height - plotTop - plotHeight, pad: 0, autoexpand: false },
     font: LETTERING,
     paper_bgcolor: PAPER,
     plot_bgcolor: chartInk.ground,
@@ -134,8 +138,8 @@ function figureOf(image: ImageDescription, legendHeight: number) {
         ? []
         : [textBlockOf(summary, summaryTop - plotBottom), textBlockOf(footer, footerTop - plotBottom)]),
     ],
-    xaxis: fileAxisOf(chart.layout.x),
-    yaxis: fileAxisOf(chart.layout.y),
+    xaxis: fileAxisOf(toPlotlyAxis(chart.layout.x)),
+    yaxis: fileAxisOf(toPlotlyYAxis(chart.layout.y)),
   } satisfies PlotlyLayout;
   return { data, layout };
 }
@@ -183,8 +187,7 @@ function textBlockOf(lines: readonly string[], below: number) {
  * The screen's axis, its title held inside the margin rather than pushing the
  * plot, and lettered as the rest: Plotly sets a title 1.2 times the figure's font.
  */
-function fileAxisOf(axisSpec: AxisSpec) {
-  const axis = toPlotlyAxis(axisSpec);
+function fileAxisOf<Axis extends ReturnType<typeof toPlotlyAxis>>(axis: Axis) {
   return {
     ...axis,
     automargin: false,

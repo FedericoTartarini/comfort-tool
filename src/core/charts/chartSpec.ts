@@ -37,6 +37,14 @@ export interface AxisSpec {
   readonly range: readonly [number, number];
 }
 
+/** Which side of the plot a y axis stands on. */
+export type AxisSide = "left" | "right";
+
+export interface YAxisSpec extends AxisSpec {
+  /** Left when absent (ADR-0002 decision 89, rule 7). */
+  readonly side?: AxisSide;
+}
+
 /**
  * One piece of a {@link PathTrace}: a polyline, or a closed ring whose last
  * vertex joins its first.
@@ -111,7 +119,7 @@ export interface ChartNote {
 
 export interface ChartSpec {
   readonly traces: readonly Trace[];
-  readonly layout: { readonly x: AxisSpec; readonly y: AxisSpec };
+  readonly layout: { readonly x: AxisSpec; readonly y: YAxisSpec };
   /** The chart's one legend (ADR §4.4). Plotly's own is switched off. */
   readonly legend: readonly LegendEntry[];
   readonly annotations: readonly Annotation[];
