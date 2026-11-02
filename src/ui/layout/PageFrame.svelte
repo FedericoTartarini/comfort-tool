@@ -54,7 +54,7 @@
     chartType: Snippet;
     /** The chart card's actions, at the right of its heading row (decision 73, rule 8 as revised 2026-10-12). */
     chartActions: Snippet;
-    /** The chart card's content: the view row where the chart has one, then the plot and the legend. */
+    /** The chart card's content: the view row where the chart has one, then the legend and the plot. */
     chart: Snippet;
   }
 

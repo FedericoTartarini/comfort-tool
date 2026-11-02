@@ -411,6 +411,8 @@ Legend rules:
 > **Noted 2026-10-07** ([ADR-0002](0002-library-interface-model-info.md) decision 64): the export layout of the third legend rule above is a figure built for the file from the page's `ChartSpec`, never the plot on screen. Its traces go through the adapter the screen's go through, without the hover grid, and its legend is Plotly's own, made from `ChartSpec.legend`; under it come the Input summary and the footer.
 >
 > **Noted 2026-10-07** (ADR-0002 decision 64, as noted the same day; `.scratch/image-export/` ticket 07): built as `6e4f350`, `3e1623e`, `e6cfb63`, `b2143f9` and `84d3ca3`. The conversion of a `ChartSpec` into Plotly is `ui/charts/plotlyFigure.ts`, which `PlotlyChart.svelte` and the image's `ui/charts/plotlyImage.ts` both call; the latter receives an `ImageDescription` (`core/image.ts`), which holds the `ChartSpec`, and, like the component, imports no model. Each legend entry is a trace that draws nothing and shows in Plotly's legend, and the title, when there is one, stands above the plot. "So that the screen and the export match" holds of the entries, their colours and their order; a fill's swatch is Plotly's thin bar in the file, where `ChartLegend` draws a square. §2's Charts row, "chart components receive only a 'chart spec'", holds of `PlotlyChart.svelte`; `plotlyImage.ts` receives an `ImageDescription` (`ui/charts/plotlyImage.ts:68`).
+>
+> **Noted 2026-11-02** ([ADR-0002](0002-library-interface-model-info.md) decision 89, rule 3, as noted the same day; `2fbab59`, `c6000c1`): "below the chart" in the first legend rule, "bottom legend" in the third and "below the chart" in acceptance criterion 7 no longer hold. The one legend stands above the plot: on the page `ChartLegend` is a row over it, as wide as it (`routes/StandardPage.svelte:163-165`, `app.css:187`), and in the Image Plotly's horizontal legend stands between the title and the plot (`ui/charts/plotlyImage.ts:130-141`), the Input summary and the footer under the x axis (`:148-150`). One legend per chart, made from `ChartSpec.legend`, and Plotly's own off on the page, still hold.
 
 ### 4.5 Session state
 
@@ -665,6 +667,15 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > provider sets `--result-column-min` beside `--frame-width`. `ui/layout/NavGroup.svelte`'s item is an in-app link or
 > a plain one (`ce0272e`). The chart type is the `ChoiceSelect` (`852c47d`), so the 2026-10-09 note's `toggle-group`
 > serves Units and the Export image dialog.
+>
+> **Noted 2026-11-02** ([ADR-0002](0002-library-interface-model-info.md) decision 89, as noted the same day;
+> `.scratch/frontend-review-round-2/` ticket 08): `ui/layout/` gains `ExternalLink.svelte`, the one link to another
+> site, which the header, the sheet's Documentation and the footer's five links render (`911a4dc`); `NavGroup.svelte`'s
+> plain item may say it leaves the app (`leavesApp`). `ui/inputs/` gains `ChartTypeSelect.svelte`, the chart type in the
+> chart card's heading row, and `ChartControls.svelte` holds the axis selects alone (`09f314f`). The 2026-10-29 note's
+> `--plot-width` is no longer read by `.chart-plot`, which takes the card's width at `aspect-ratio: 4 / 3` under
+> `max-block-size: var(--chart-cap)` (`2fbab59`); only `--result-column-min` reads it. The `app.css` line also has
+> `.opens-in-new-tab`, the words a screen reader alone hears.
 
 ```
 src/
@@ -776,7 +787,7 @@ Acceptance:
 4. Switching to a model with incompatible ranges shows a dialog carrying the fields §4.5 specifies — title "Boundary Range Warning", a table of Input / Current / Allowed range, and the two buttons; no dialog when nothing is out of range. (Reworded 2026-09-04: this used to say "matches the design mock-up", referring to a mock-up no phase ever produced. The mock-up is now a Phase 5c deliverable, and this criterion names the content instead, so it can be judged before the design exists.) **Noted 2026-10-08** (ADR-0002 decision 67, rule 9): the dialog's design is the Phase 5c spec's wireframe, one width of `40rem` for every dialog. **Noted 2026-10-09** (`.scratch/interface-design/` ticket 13): built as `8711739`; the switch dialog with the slot column is 640 px wide at 1440 px and its table does not scroll, and below 672 px a dialog keeps the primitive's 1rem margin each side.
 5. Opening a share link in an environment with `Proxy` disabled shows a static notice naming the required browser versions — never a blank page. (Downgraded 2026-09-04 from "the summary page lists all input values"; see §2.) **Widened 2026-10-07** (`.scratch/proxy-notice/` ticket 02, `c08739f`): the same holds where `Array.prototype.toSorted` is missing, and the notice names Chrome 111 / Firefox 115 / Safari 16.4. The reason: sv-router calls `Array.prototype.toSorted` on every route match, the first load included (Chrome 110 / Firefox 115 / Safari 16); Vite 8's default build target is Chrome 111 / Firefox 114 / Safari 16.4; and the build carries class fields and private methods (Firefox 90, Safari 15), so Chrome 87–109, Firefox 83–114 and Safari 14–15, which have `Proxy`, got a blank page.
 6. After switching SI → IP → SI, the stored values are unchanged; every displayed number has at most two decimals and no trailing zeros.
-7. The result table columns are determined entirely by the model's declared `table` (`table` is required, and UTCI declares it too); any chart has exactly one legend, below the chart, and Plotly's built-in legend never appears.
+7. The result table columns are determined entirely by the model's declared `table` (`table` is required, and UTCI declares it too); any chart has exactly one legend, below the chart, and Plotly's built-in legend never appears. **Noted 2026-11-02** (ADR-0002 decision 89, rule 3): the legend stands above the plot, see §4.4's note of that date; "never appears" holds of the page, as the Image's legend is Plotly's (§4.4's note of 2026-10-07).
 8. Lint passes: no utility classes out of bounds, no legacy syntax, no out-of-bounds imports in `core/`, no `enum`.
 9. Unit test coverage: `shareLink` encode/decode and migration, `toLibraryInputs` (5 humidity representations, operative mode), `numberFormat` and unit conversion, model-switch inheritance and clamping rules.
 10. **Code quality** (added 2026-09-04). Two passes over [docs/code-quality-checklist.md](../code-quality-checklist.md): a full
