@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { createRequire } from "module";
@@ -23,6 +24,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
+    // .scratch/ holds evidence scripts, not the suite; one runs alone with
+    // `npx vitest run --dir .scratch <path>`.
+    exclude: [...configDefaults.exclude, ".scratch/**"],
   },
   build: {
     // The tool's floor (ADR-0001 §2): Vite 8's default baseline with Firefox
