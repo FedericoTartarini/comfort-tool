@@ -149,9 +149,10 @@
           <Card.Root>
             <!--
               One row, not the primitive's grid (decision 89, rule 6): the heading, the chart type beside it, and the
-              actions pushed to the right end; where they do not fit, the row wraps.
+              actions pushed to the right end; where they do not fit, the row wraps. Its items the page's spacing apart,
+              as the view row's axis pickers are (decision 73, rule 2).
             -->
-            <Card.Header class="flex flex-wrap items-center gap-2">
+            <Card.Header class="flex flex-wrap items-center gap-(--space-page)">
               <Card.Title><h2>{copy.chart}</h2></Card.Title>
               {@render chartType()}
               <Card.Action class="ms-auto self-center">
