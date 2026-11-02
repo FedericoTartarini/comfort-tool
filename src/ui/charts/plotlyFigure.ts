@@ -24,7 +24,7 @@ import type {
  * colour of the chart, which the spec resolves, but how the adapter tells
  * Plotly to leave a surface unpainted.
  */
-const TRANSPARENT = "rgba(0, 0, 0, 0)";
+export const TRANSPARENT = "rgba(0, 0, 0, 0)";
 
 /**
  * The spec's traces drawn in their order, the first at the bottom. Plotly

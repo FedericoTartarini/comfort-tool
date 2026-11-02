@@ -13,7 +13,7 @@ import { bandListOf } from "$lib/core/bands";
 import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
-import { imageSize } from "$lib/core/image";
+import { imageSize, type ImageSize } from "$lib/core/image";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
@@ -154,11 +154,15 @@ function pmvAt(db: number, rh: number, tr: number): number {
 }
 
 /**
- * The single-column Image's plot width, in px: the column less the figure's
- * side margins with the humidity ratio on the right, half of the first x tick
- * on the left and the axis on the right.
+ * An Image's plot area at `size`, in px: the column less the figure's side
+ * margins with the humidity ratio on the right, half of the first x tick on
+ * the left and the axis on the right, and as tall as the size's ratio makes
+ * it, its labels at 8 pt (`ui/charts/plotlyImage.ts`).
  */
-const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 12 - 52;
+function imageFrameOf(name: string, size: ImageSize) {
+  const width = (size.widthMm * 96) / 25.4 - 12 - 52;
+  return { name, width, height: width / size.plotAspectRatio, lettering: (8 * 96) / 72 };
+}
 
 /**
  * Plots the isoline labels must keep apart at, in px, with the lettering's
@@ -166,8 +170,8 @@ const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 12 
  * 905 × 384 with it collapsed (measured, `.scratch/frontend-review-round-2/`
  * ticket 05 Comments), less the figure's margins with the humidity ratio on
  * the right (ticket 06), its labels at 10 px (`ui/charts/plotlyFigure.ts`),
- * and the narrower of the Image's two, the single column at 4:3, its labels
- * at 8 pt (`ui/charts/plotlyImage.ts`).
+ * and the Image's two, the single column at 4:3 and the double at 16:9
+ * (ticket 07).
  */
 const pageMargin = { l: 16, r: 64, t: 12, b: 48 };
 const labelFrames = [
@@ -183,8 +187,9 @@ const labelFrames = [
     height: 384 - pageMargin.t - pageMargin.b,
     lettering: 10,
   },
-  { name: "the single-column Image", width: singleColumnPlotWidth, height: singleColumnPlotWidth * 0.75, lettering: (8 * 96) / 72 },
-] as const;
+  imageFrameOf("the single-column Image", imageSize.singleColumn),
+  imageFrameOf("the double-column Image", imageSize.doubleColumn),
+];
 
 type LabelFrame = (typeof labelFrames)[number];
 

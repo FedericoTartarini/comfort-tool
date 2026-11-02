@@ -1,17 +1,19 @@
 /**
  * The chart adapter's Image (ADR-0002 decision 64, rules 1 and 5): one Plotly
  * figure built for the file from an {@link ImageDescription}, never the plot
- * on screen, and handed to the browser as a download. Its traces are the
- * screen's conversion's (`plotlyFigure.ts`), the hover grid left out and one
- * added per legend entry. Its numbers were measured on
- * plotly.js 4.0.0 (`.scratch/image-export/` ticket 01): an upgrade measures
- * them again.
+ * on screen, and handed to the browser as a download. It reads, from the top,
+ * the title, the legend, the chart, then the Input summary and the footer, its
+ * plot area at its size's ratio (decision 89, rules 3 and 5). Its traces are
+ * the screen's conversion's (`plotlyFigure.ts`), the hover grid left out and
+ * one added per legend entry. Its numbers were measured on plotly.js 4.0.0
+ * (`.scratch/image-export/` ticket 01, `.scratch/frontend-review-round-2/`
+ * tickets 06 and 07): an upgrade measures them again.
  */
 import type { PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
 import { chartInk } from "$lib/core/bandPalette";
 import type { LegendEntry } from "$lib/core/charts/chartSpec";
 import { imageFormat, type ImageDescription, type ImageFormat } from "$lib/core/image";
-import { sideMarginsOf, toPlotlyAnnotation, toPlotlyAxis, toPlotlyData, toPlotlyYAxis } from "./plotlyFigure";
+import { sideMarginsOf, toPlotlyAnnotation, TRANSPARENT, toPlotlyAxis, toPlotlyData, toPlotlyYAxis } from "./plotlyFigure";
 
 type Plotly = typeof import("plotly.js-cartesian-dist-min").default;
 
@@ -28,30 +30,35 @@ const TITLE_LETTERING = { ...LETTERING, size: 10 * PX_PER_PT };
 
 /**
  * Around the plot, in px: the y axis's widest ticks and its title on its side,
- * half of the x axis's end tick on the other, and from the plot's bottom edge
- * to the legend's top, the x axis's ticks and title. On the right, the
- * humidity ratio's title ends 24 px inside the file's edge, and the first x
- * tick starts 6 px inside on the left (`.scratch/frontend-review-round-2/`
- * ticket 06 Comments).
+ * half of the x axis's end tick on the other, the file's top over the title,
+ * and under the plot's bottom edge the x axis's ticks and title, which ends
+ * 29 px under it. On the right, the humidity ratio's title ends 24 px inside
+ * the file's edge, and the first x tick starts 6 px inside on the left
+ * (`.scratch/frontend-review-round-2/` tickets 06 and 07 Comments).
  */
-const MARGIN = { axisRoom: 52, halfTick: 12, top: 8, legend: 40 };
-/** The title's line, in px, between the top margin and the plot; none without a title. */
+const MARGIN = { axisRoom: 52, halfTick: 12, top: 8, xAxis: 30 };
+/** The title's line, in px, under the top margin; none without a title. */
 const TITLE_BLOCK = 22;
+/**
+ * Plotly's legend box pads its rows: its first row's text starts 8.7 px under
+ * its top, its last row's ends 8.2 px over its bottom. The box stands this
+ * many px up into the room above it, so its padding is the top margin, or the
+ * gap under the title, and the plot stands at its bottom.
+ */
+const LEGEND_RISE = 8;
 /** Plotly's line height over its lettering, and an annotation's padding inside its box, in px: its defaults. */
 const PLOTLY_LINE_SPACING = 1.3;
 const PLOTLY_ANNOTATION_PADDING = 1;
 /** From the axis line to its title, in px, so the title stays inside {@link MARGIN}. */
 const AXIS_TITLE_STANDOFF = 4;
-/** Under what the file ends with, the legend or the footer, to its bottom edge, in px. */
+/** Under what the file ends with, the x axis or the footer, to its bottom edge, in px. */
 const BOTTOM_GAP = 6;
-/** From the legend's bottom to the summary's top, in px. */
+/** From the x axis's room to the summary's top, in px. */
 const SUMMARY_GAP = 6;
 /** From the summary's bottom to the footer's top, in px. */
 const FOOTER_GAP = 6;
 /** One line of text at {@link LETTERING}, in px: n lines take a little less than n of them. */
 const LINE_HEIGHT = LETTERING.size * PLOTLY_LINE_SPACING;
-/** The plot area's height over its width. */
-const PLOT_ASPECT = 3 / 4;
 /**
  * Higher than any legend, in px. Plotly's default is half the figure's
  * height, past which the legend scrolls and the file loses entries.
@@ -65,8 +72,8 @@ const PAPER = "#ffffff";
 /**
  * Download `image` as `format`, named `fileName`. Plotly lays the legend out
  * by its labels, which nothing knows the width of before drawing, so the
- * figure is drawn once out of sight, its legend's height read, and the file's
- * height set from it. Rejects if the image could not be made.
+ * figure is drawn once out of sight, its legend's height read, and the plot's
+ * top and the file's height set from it. Rejects if the image could not be made.
  */
 export async function downloadImage(image: ImageDescription, format: ImageFormat, fileName: string): Promise<void> {
   const { default: plotly } = await import("plotly.js-cartesian-dist-min");
@@ -86,8 +93,9 @@ export async function downloadImage(image: ImageDescription, format: ImageFormat
 
 /**
  * The figure of `image`, its legend `legendHeight` px high: the title, if
- * any, then the plot at its declared ranges, the legend under it, the Input
- * summary and the footer, if any, under that, the file as tall as they need.
+ * any, then the legend, the plot at its declared ranges and its size's ratio
+ * under it, the Input summary and the footer, if any, under the x axis, the
+ * file as tall as they need.
  */
 function figureOf(image: ImageDescription, legendHeight: number) {
   const { chart, title, summaryAndFooter } = image;
@@ -96,15 +104,16 @@ function figureOf(image: ImageDescription, legendHeight: number) {
   const footer = summaryAndFooter?.footer ?? [];
   const width = image.size.widthMm * PX_PER_MM;
   const sides = sideMarginsOf(chart.layout.y, MARGIN);
-  const plotTop = MARGIN.top + (title === null ? 0 : TITLE_BLOCK);
-  const plotHeight = (width - sides.l - sides.r) * PLOT_ASPECT;
+  const titleBottom = MARGIN.top + (title === null ? 0 : TITLE_BLOCK);
+  const legendTop = titleBottom - LEGEND_RISE;
+  const plotTop = legendHeight === 0 ? titleBottom : legendTop + legendHeight;
+  const plotHeight = (width - sides.l - sides.r) / image.size.plotAspectRatio;
   const plotBottom = plotTop + plotHeight;
-  const legendTop = plotBottom + MARGIN.legend;
-  const legendBottom = legendTop + legendHeight;
-  const summaryTop = legendBottom + SUMMARY_GAP;
+  const xAxisBottom = plotBottom + MARGIN.xAxis;
+  const summaryTop = xAxisBottom + SUMMARY_GAP;
   const footerTop = summaryTop + summary.length * LINE_HEIGHT + FOOTER_GAP;
   const footerBottom = footerTop + footer.length * LINE_HEIGHT;
-  const height = (summaryAndFooter === null ? legendBottom : footerBottom) + BOTTOM_GAP;
+  const height = (summaryAndFooter === null ? xAxisBottom : footerBottom) + BOTTOM_GAP;
   // The hover grid is left out: nobody points at a file, and an SVG would
   // carry it as a bitmap.
   const drawn = toPlotlyData({ ...chart, traces: chart.traces.filter((trace) => trace.kind !== "hoverGrid") });
@@ -127,13 +136,15 @@ function figureOf(image: ImageDescription, legendHeight: number) {
       y: 1 - legendTop / height,
       yanchor: "top",
       maxheight: LEGEND_MAX_HEIGHT,
+      // Plotly fills the box with the paper's colour, over the plot's top edge, where the box stands.
+      bgcolor: TRANSPARENT,
     },
     annotations: [
       ...chart.annotations.map((entry) => {
         const annotation = toPlotlyAnnotation(entry);
         return { ...annotation, font: { ...annotation.font, size: LETTERING.size } };
       }),
-      ...(title === null ? [] : [titleAnnotationOf(title)]),
+      ...(title === null ? [] : [titleAnnotationOf(title, plotTop - titleBottom)]),
       ...(summaryAndFooter === null
         ? []
         : [textBlockOf(summary, summaryTop - plotBottom), textBlockOf(footer, footerTop - plotBottom)]),
@@ -144,8 +155,11 @@ function figureOf(image: ImageDescription, legendHeight: number) {
   return { data, layout };
 }
 
-/** The title, on the plot's left edge, its box's top at the top margin. */
-function titleAnnotationOf(title: string) {
+/**
+ * The title, on the plot's left edge, its box's top at the top margin: its
+ * line ends `above` px over the plot's top edge.
+ */
+function titleAnnotationOf(title: string, above: number) {
   return {
     text: title,
     xref: "paper",
@@ -154,7 +168,7 @@ function titleAnnotationOf(title: string) {
     y: 1,
     xanchor: "left",
     yanchor: "bottom",
-    yshift: TITLE_BLOCK - TITLE_LETTERING.size * PLOTLY_LINE_SPACING - PLOTLY_ANNOTATION_PADDING,
+    yshift: above + TITLE_BLOCK - TITLE_LETTERING.size * PLOTLY_LINE_SPACING - PLOTLY_ANNOTATION_PADDING,
     showarrow: false,
     align: "left",
     font: TITLE_LETTERING,

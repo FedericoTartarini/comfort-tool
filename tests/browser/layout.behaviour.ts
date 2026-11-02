@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 /**
  * The page answers the window (ADR-0002 decision 73, rule 10): at one width,
@@ -389,6 +390,137 @@ test("at 1440 px with three compared slots, the legend wraps above the plot and 
     expect(box.x + box.width).toBeLessThanOrEqual(area.legend.x + area.legend.width + 0.5);
   }
 });
+
+/** A box in an Image's SVG, in its px from the file's top left. */
+interface FileBox {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+/** Where an Image's parts land, read off its SVG drawn in a page of its own. */
+interface ImageParts {
+  height: number;
+  /** Plotly's plot area: its axes' clip, in whole px. */
+  plotArea: FileBox;
+  /** Plotly's legend box, padded around its rows. */
+  legend: FileBox;
+  /** What the legend draws: its labels and swatches. */
+  legendInk: FileBox;
+  yTicks: FileBox[];
+  /** From the top tick label to the x axis's title, the plot area with its axes. */
+  chart: FileBox;
+  /** Every annotation drawn outside the plot area: the title, the Input summary and the footer, top to bottom. */
+  textBlocks: FileBox[];
+}
+
+/**
+ * Downloads the chart shown as an SVG Image through Export image's dialog at
+ * `size`, with its default title and the Input summary and footer, or with
+ * neither, and reads its parts.
+ */
+async function downloadedImageOf(page: Page, size: string, titleSummaryAndFooter: boolean): Promise<ImageParts> {
+  await page.getByRole("button", { name: "Export image" }).click();
+  const dialog = page.getByRole("dialog");
+  if (!titleSummaryAndFooter) {
+    await dialog.getByRole("textbox", { name: "Title", exact: true }).fill("");
+  }
+  await dialog.getByRole("radio", { name: size, exact: true }).click();
+  await dialog.getByRole("radio", { name: "SVG", exact: true }).click();
+  await dialog.getByRole("checkbox").setChecked(titleSummaryAndFooter);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dialog.getByRole("button", { name: "Download", exact: true }).click(),
+  ]);
+  const svg = readFileSync((await download.path())!, "utf8");
+  const view = await page.context().newPage();
+  try {
+    await view.setContent(`<body style="margin: 0">${svg}</body>`);
+    return await view.evaluate(() => {
+      const boxOf = (element: Element): FileBox => {
+        const { top, bottom, left, right } = element.getBoundingClientRect();
+        return { top, bottom, left, right };
+      };
+      const boxesOf = (selector: string) => [...document.querySelectorAll(selector)].map(boxOf);
+      const extentOf = (boxes: FileBox[]) => ({
+        top: Math.min(...boxes.map((box) => box.top)),
+        bottom: Math.max(...boxes.map((box) => box.bottom)),
+        left: Math.min(...boxes.map((box) => box.left)),
+        right: Math.max(...boxes.map((box) => box.right)),
+      });
+      const clip = document.querySelector('clipPath.axesclip[id$="xy"] rect')!;
+      const [x, y, width, height] = ["x", "y", "width", "height"].map((name) => Number(clip.getAttribute(name)));
+      const plotArea = { top: y, bottom: y + height, left: x, right: x + width };
+      const yTicks = boxesOf("g.ytick text");
+      const xTitle = boxOf(document.querySelector(".g-xtitle text")!);
+      const chartTop = Math.min(plotArea.top, ...yTicks.map((tick) => tick.top));
+      const textBlocks = boxesOf(".annotation-text")
+        .filter((box) => box.bottom <= plotArea.top || box.top >= plotArea.bottom)
+        .sort((a, b) => a.top - b.top);
+      return {
+        height: Number(document.querySelector("svg")!.getAttribute("height")),
+        plotArea,
+        legend: boxOf(document.querySelector("g.legend rect.bg")!),
+        legendInk: extentOf(boxesOf("g.legend .legendtext, g.legend .legendsymbols")),
+        yTicks,
+        chart: { ...plotArea, top: chartTop, bottom: xTitle.bottom },
+        textBlocks,
+      };
+    });
+  } finally {
+    await view.close();
+  }
+}
+
+/** The most room, in px, an Image leaves over its first part and under its last: its margin, no empty band. */
+const IMAGE_EDGE_ROOM = 10;
+
+/** True where `upper` ends at or above `lower`'s top. */
+function isAbove(upper: FileBox, lower: FileBox) {
+  return upper.bottom <= lower.top;
+}
+
+// An Image reads, from the top, the title, the legend, the chart, then the Input summary and the footer, its plot area
+// 4:3 in a single column and 16:9 in a double one, the humidity ratio on the right (ADR-0002 decision 89, rules 3, 5
+// and 7).
+for (const [size, ratio] of [["Single column", 4 / 3], ["Double column", 16 / 9]] as const) {
+  test(`Export image's SVG at ${size}, with no title, summary or footer, is its legend over its plot area at its ratio, the humidity-ratio ticks right of it, with no empty band`, async ({ page }) => {
+    await openStandard(page, 1440);
+    const image = await downloadedImageOf(page, size, false);
+    const { plotArea } = image;
+    const width = plotArea.right - plotArea.left;
+    const height = plotArea.bottom - plotArea.top;
+    expect(Math.abs(height - width / ratio)).toBeLessThanOrEqual(1);
+    expect(isAbove(image.legend, plotArea)).toBe(true);
+    expect(image.textBlocks).toHaveLength(0);
+    expect(image.legendInk.top).toBeLessThanOrEqual(IMAGE_EDGE_ROOM);
+    expect(image.height - image.chart.bottom).toBeLessThanOrEqual(IMAGE_EDGE_ROOM);
+    expect(image.yTicks.length).toBeGreaterThan(0);
+    for (const tick of image.yTicks) {
+      expect(tick.left).toBeGreaterThanOrEqual(plotArea.right);
+    }
+  });
+
+  test(`Export image's SVG at ${size} with three compared slots and the Input summary stands its parts one under another, none overlapping`, async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    await page.getByRole("button", { name: "Input 3", exact: true }).click();
+    await expect(page.getByRole("row", { name: /^Input 3/ })).toBeVisible();
+    const image = await downloadedImageOf(page, size, true);
+
+    // The title, then the summary and the footer.
+    expect(image.textBlocks).toHaveLength(3);
+    const [title, summary, footer] = image.textBlocks;
+    const parts = [title, image.legendInk, image.chart, summary, footer];
+    for (const [upper, lower] of parts.slice(1).map((lower, index) => [parts[index], lower])) {
+      expect(isAbove(upper, lower), JSON.stringify({ upper, lower })).toBe(true);
+    }
+    expect(title.top).toBeLessThanOrEqual(IMAGE_EDGE_ROOM);
+    expect(footer.bottom).toBeLessThanOrEqual(image.height);
+    expect(image.height - footer.bottom).toBeLessThanOrEqual(IMAGE_EDGE_ROOM);
+  });
+}
 
 /**
  * A phone, a window under 768 px, stands the input, result and chart cards

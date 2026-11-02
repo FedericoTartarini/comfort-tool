@@ -6,18 +6,22 @@ import type { RegisteredModel } from "./modelDeclaration";
 
 /**
  * The printed sizes of an Image (ADR-0002 decision 64, rule 5): Elsevier's
- * column widths. A size differs from the other by its width alone. A closed
- * set in the same shape as `core/page.ts`'s, with no `id`: a size is in no
- * link, so nothing ever spells one.
+ * column widths, each with its plot area's ratio (decision 89, rule 5), a
+ * choice, not a norm's: 4:3 in a single column, about 55 mm tall, and 16:9 in
+ * a double one, about 97 mm. A closed set in the same shape as
+ * `core/page.ts`'s, with no `id`: a size is in no link, so nothing ever
+ * spells one.
  */
 export interface ImageSize {
   readonly title: string;
   readonly widthMm: number;
+  /** The plot area's width over its height. */
+  readonly plotAspectRatio: number;
 }
 
 export const imageSize = {
-  singleColumn: { title: "Single column", widthMm: 90 },
-  doubleColumn: { title: "Double column", widthMm: 190 },
+  singleColumn: { title: "Single column", widthMm: 90, plotAspectRatio: 4 / 3 },
+  doubleColumn: { title: "Double column", widthMm: 190, plotAspectRatio: 16 / 9 },
 } as const satisfies Record<string, ImageSize>;
 
 /** The file formats of an Image (decision 64, rule 5), with no `id`, as {@link ImageSize} has none. */
@@ -41,7 +45,7 @@ export interface ImageDescription {
   readonly chart: ChartSpec;
   /** Above the plot, or `null` for no title line at all. */
   readonly title: string | null;
-  /** Under the legend, both or neither: `null` where the person left them out (decision 64, rule 2). */
+  /** Under the chart, both or neither: `null` where the person left them out (decision 64, rule 2). */
   readonly summaryAndFooter: ImageSummaryAndFooter | null;
   readonly size: ImageSize;
 }
