@@ -250,6 +250,11 @@
 	.result-table .input-heading-hidden {
 		@apply sr-only;
 	}
+	/* The words that end a link to another site, a screen reader's alone (decision 89, rule 2), hidden as the Input
+	   heading's word is. */
+	.opens-in-new-tab {
+		@apply sr-only;
+	}
 	/* An input calculator's settings in its tab, the one region of the dialog that scrolls (decision 75, rule 6 (b)),
 	   padded so focus rings are not clipped. */
 	.calculator-settings {

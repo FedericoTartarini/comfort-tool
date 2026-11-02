@@ -24,6 +24,11 @@ const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 /** PMV (ISO 7730) on Explore, which draws the same result table as Standard. */
 const ISO_EXPLORE_ADDRESS = "/explore/pmv-ppd-iso";
 
+/** The words that end a link to another site, a screen reader's alone (ADR-0002 decision 89, rule 2). */
+const NEW_TAB = "(opens in a new tab)";
+/** Documentation's whole accessible name, in the header and in the sheet. */
+const DOCUMENTATION = `Documentation ${NEW_TAB}`;
+
 /** A box as the test compares it: where it starts and how wide it is, its height being its content's. */
 interface Box {
   x: number;
@@ -409,7 +414,7 @@ async function frame(page: Page) {
     inside: {
       width: frameEnd - frameStart,
       markFromStart: await fromStart(banner.getByRole("link", { name: "Center for the Built Environment" })),
-      documentationToEnd: await toEnd(banner.getByRole("link", { name: "Documentation" })),
+      documentationToEnd: await toEnd(banner.getByRole("link", { name: DOCUMENTATION, exact: true })),
       footerTextFromStart: await fromStart(footer.locator("p").first()),
       footerMarksToEnd: await toEnd(footer.getByRole("link", { name: "University of California, Berkeley" })),
     },
@@ -529,7 +534,7 @@ test.describe("the header and the footer on a phone and on a desktop", () => {
       const title = banner.getByRole("heading", { level: 1 });
       const inWindow = await pageWidth(page);
 
-      await expect(banner.getByRole("link", { name: "Documentation" })).toHaveCount(0);
+      await expect(banner.getByRole("link", { name: DOCUMENTATION, exact: true })).toHaveCount(0);
       for (const item of [sidebarToggle(page), banner.getByRole("link", { name: "Center for the Built Environment" }), title]) {
         const box = await boxOf(item);
         expect(box.x + box.width).toBeLessThanOrEqual(inWindow);
@@ -543,7 +548,7 @@ test.describe("the header and the footer on a phone and on a desktop", () => {
 
       await sidebarToggle(page).click();
       const tools = page.getByRole("dialog", { name: "Sidebar" }).getByRole("group", { name: "Tools" }).getByRole("link");
-      await expect(tools).toHaveText(["Explore", "Documentation"]);
+      await expect(tools).toHaveText(["Explore", DOCUMENTATION]);
       await expect(tools.last()).toHaveAttribute("href", /\/docs\/user-guide\.md$/);
       await expect(tools.last()).not.toHaveAttribute("aria-current");
     });
@@ -572,16 +577,115 @@ test.describe("the header and the footer on a phone and on a desktop", () => {
     test(`at ${width} px, Documentation ends the header and is not in the sidebar, and the footer is one row`, async ({ page }) => {
       await openStandard(page, width);
       const banner = await boxOf(page.getByRole("banner"));
-      const documentation = await boxOf(page.getByRole("banner").getByRole("link", { name: "Documentation" }));
+      const documentation = await boxOf(page.getByRole("banner").getByRole("link", { name: DOCUMENTATION, exact: true }));
 
       // The row's end, inside the gutter.
       expect(documentation.x + documentation.width).toBe(banner.x + banner.width - 0.75 * 16);
-      await expect(page.getByRole("navigation").getByRole("link", { name: "Documentation" })).toHaveCount(0);
+      await expect(page.getByRole("navigation").getByRole("link", { name: DOCUMENTATION, exact: true })).toHaveCount(0);
       const { text, marks } = await footerParts(page);
       expect(marks.x).toBeGreaterThanOrEqual(text.x + text.width);
       expect(marks.y).toBeLessThan(text.y + text.height);
     });
   }
+});
+
+/**
+ * A link to another site opens a new tab, and its name ends in words that
+ * say so to a screen reader and take no room on the page; the app's own
+ * links and the model select stay in the tab (ADR-0002 decision 89, rules 1
+ * and 2). Each link is found by its whole name, which is the name check.
+ */
+test.describe("links to other sites", () => {
+  /** The user guide's address while the rewrite is on its branch (the rewrite plan's Phase 6 item 6 moves it). */
+  const USER_GUIDE = "https://github.com/FedericoTartarini/comfort-tool/blob/rewrite/v1/docs/user-guide.md";
+
+  /** Where the link's visible content, its text or its image without the words, starts and ends. */
+  function visibleEdges(link: Locator) {
+    return link.evaluate((anchor, words) => {
+      const boxes: DOMRect[] = [];
+      const walker = document.createTreeWalker(anchor, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        if (node instanceof HTMLImageElement) {
+          boxes.push(node.getBoundingClientRect());
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent ?? "";
+          const shown = text.trim();
+          if (shown !== "" && shown !== words) {
+            const range = document.createRange();
+            range.setStart(node, text.indexOf(shown));
+            range.setEnd(node, text.indexOf(shown) + shown.length);
+            boxes.push(range.getBoundingClientRect());
+          }
+        }
+      }
+      return { start: Math.min(...boxes.map((box) => box.left)), end: Math.max(...boxes.map((box) => box.right)) };
+    }, NEW_TAB);
+  }
+
+  /** Opens a new tab, its words in a box of a pixel. */
+  async function expectNewTab(link: Locator) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    const words = await boxOf(link.getByText(NEW_TAB, { exact: true }));
+    expect(words.width).toBeLessThanOrEqual(1);
+    expect(words.height).toBeLessThanOrEqual(1);
+  }
+
+  /** A link whose box hugs its content, as the header's and the footer's do, is as wide as before: no space underlined after it. */
+  async function expectNoRoomTaken(link: Locator) {
+    const box = await boxOf(link);
+    const content = await visibleEdges(link);
+    expect(Math.abs(box.x - content.start)).toBeLessThan(0.5);
+    expect(Math.abs(box.x + box.width - content.end)).toBeLessThan(0.5);
+  }
+
+  test("at 1440 px, Documentation in the header and the footer's five links open a new tab and say so", async ({ page }) => {
+    await openStandard(page, 1440);
+    const documentation = page.getByRole("banner").getByRole("link", { name: DOCUMENTATION, exact: true });
+    await expect(documentation).toHaveAttribute("href", USER_GUIDE);
+    await expectNewTab(documentation);
+    await expectNoRoomTaken(documentation);
+
+    const footer = page.getByRole("contentinfo");
+    const names = ["Licence", "Code", "https://doi.org/10.1016/j.softx.2020.100563", "Center for the Built Environment", "University of California, Berkeley"];
+    for (const name of names) {
+      const link = footer.getByRole("link", { name: `${name} ${NEW_TAB}`, exact: true });
+      await expectNewTab(link);
+      await expectNoRoomTaken(link);
+    }
+  });
+
+  test("at 375 px, Documentation in the sheet opens a new tab and says so, and the sheet's page links do not", async ({ page }) => {
+    await openStandard(page, 375);
+    await sidebarToggle(page).click();
+    const sheet = page.getByRole("dialog", { name: "Sidebar" });
+    const documentation = sheet.getByRole("link", { name: DOCUMENTATION, exact: true });
+
+    await expect(documentation).toHaveAttribute("href", USER_GUIDE);
+    await expectNewTab(documentation);
+    const pageLinks = sheet.getByRole("navigation").getByRole("link").filter({ hasNot: page.getByText(NEW_TAB, { exact: true }) });
+    await expect(pageLinks).not.toHaveCount(0);
+    for (const link of await pageLinks.all()) {
+      await expect(link).not.toHaveAttribute("target");
+    }
+  });
+
+  test("at 1440 px, the model select and the sidebar's page links open in the same tab", async ({ page, context }) => {
+    await openStandard(page, 1440, ISO_EXPLORE_ADDRESS);
+    const navigation = page.getByRole("navigation");
+
+    await page.getByRole("button", { name: "Model", exact: true }).click();
+    await page.getByRole("option", { name: /^PMV \/ PPD \(ASHRAE 55/ }).click();
+    await expect(page).toHaveURL((url) => url.pathname === EXPLORE_ADDRESS);
+    await navigation.getByRole("link", { name: "ISO 7730:2025", exact: true }).click();
+    await expect(page).toHaveURL((url) => url.pathname === ISO_ADDRESS);
+    await navigation.getByRole("link", { name: "Explore", exact: true }).click();
+    await expect(page).toHaveURL((url) => url.pathname === ISO_EXPLORE_ADDRESS);
+
+    expect(context.pages()).toEqual([page]);
+    for (const link of await navigation.getByRole("link").all()) {
+      await expect(link).not.toHaveAttribute("target");
+    }
+  });
 });
 
 /**

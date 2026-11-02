@@ -20,7 +20,8 @@
   search form goes, and Documentation, the last item, stands at the row's end
   (decision 84, rule 7: every notice is a toast, so the header holds none),
   and below `md` leaves the header for the sheet's Tools group (decision 87,
-  rule 2); the row stands in the page's frame,
+  rule 2), a link to another site that opens a new tab (decision 89, rule
+  2); the row stands in the page's frame,
   `--frame-width`, which `PageFrame` sets beside the sidebar's width, the
   band's ground the window's width (rule 10 as revised again 2026-10-12).
   The band's own links and the toggle ring in the paper's white on focus,
@@ -32,6 +33,7 @@
   import { Button } from "$lib/ui/primitives/button";
   import { Separator } from "$lib/ui/primitives/separator";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
+  import ExternalLink from "./ExternalLink.svelte";
   import { marks } from "./marks";
   import type { InAppLink } from "./NavGroup.svelte";
 
@@ -74,7 +76,9 @@
     <!-- The one item that shrinks, wrapping between words: two lines fit the band on a phone. -->
     <h1>{copy.appTitle}</h1>
     {#if !sidebar.isMobile}
-      <a href={copy.documentationAddress} class="ms-auto shrink-0 text-background [--ring:var(--background)]">{copy.documentation}</a>
+      <ExternalLink href={copy.documentationAddress} class="ms-auto shrink-0 text-background [--ring:var(--background)]">
+        {copy.documentation}
+      </ExternalLink>
     {/if}
   </div>
 </header>

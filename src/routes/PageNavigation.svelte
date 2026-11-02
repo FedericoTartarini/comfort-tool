@@ -5,9 +5,10 @@
   that standard's first registered model (decision 74); under Tools the
   Explore item, keeping the current model, and, while the sidebar is the sheet,
   Documentation, which the header holds at a desktop, a plain link (decision
-  87, rule 2). A standard's item is drawn current on any of its models, the
-  Explore item on Explore; `aria-current` says `page` only on the item whose
-  address is the session's (decision 67, rule 2).
+  87, rule 2) that leaves the app in a new tab (decision 89, rule 2). A
+  standard's item is drawn current on any of its models, the Explore item on
+  Explore; `aria-current` says `page` only on the item whose address is the
+  session's (decision 67, rule 2).
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
@@ -36,7 +37,7 @@
   const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.name)));
   const toolItems: NavItem[] = $derived([
     itemTo({ page: page.explore, model: session.model }, page.explore.title),
-    ...(sidebar.isMobile ? [{ label: copy.documentation, href: copy.documentationAddress }] : []),
+    ...(sidebar.isMobile ? [{ label: copy.documentation, href: copy.documentationAddress, leavesApp: true }] : []),
   ]);
 </script>
 

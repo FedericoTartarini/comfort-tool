@@ -8,7 +8,8 @@
   icons, the item's name alone; an in-app item carries `aria-current`, is
   drawn active while it has one, and hands its click to the caller, while a
   plain link, an external address, is neither and has no click of its own
-  (decision 87, rule 2); the menu's
+  (decision 87, rule 2), and one that leaves the app opens a new tab and says
+  so (decision 89, rule 2); the menu's
   items are `gap-1` (Vega's and Maia's sidebar menu; Nova's is `gap-0`); the
   buttons are the default size, not `sm`.
 -->
@@ -27,10 +28,11 @@
     current: HTMLAnchorAttributes["aria-current"];
   }
 
-  /** A menu item that is a plain link, whose click the browser follows: its name and its address. */
+  /** A menu item that is a plain link, whose click the browser follows: its name, its address, and whether it leaves the app. */
   export interface PlainItem {
     label: string;
     href: string;
+    leavesApp?: boolean;
   }
 
   export type NavItem = InAppItem | PlainItem;
@@ -38,6 +40,7 @@
 
 <script lang="ts">
   import * as Sidebar from "$lib/ui/primitives/sidebar";
+  import ExternalLink from "./ExternalLink.svelte";
 
   interface Props {
     label: string;
@@ -55,12 +58,17 @@
     <Sidebar.Menu class="gap-1">
       {#each items as item (item.href)}
         {@const inApp = "onclick" in item ? item : undefined}
+        {@const leavesApp = "leavesApp" in item && item.leavesApp}
         <Sidebar.MenuItem>
           <Sidebar.MenuButton isActive={inApp?.current !== undefined}>
             {#snippet child({ props })}
-              <a {...props} href={item.href} aria-current={inApp?.current} onclick={inApp?.onclick}>
-                <span>{item.label}</span>
-              </a>
+              {#if leavesApp}
+                <ExternalLink {...props} href={item.href}><span>{item.label}</span></ExternalLink>
+              {:else}
+                <a {...props} href={item.href} aria-current={inApp?.current} onclick={inApp?.onclick}>
+                  <span>{item.label}</span>
+                </a>
+              {/if}
             {/snippet}
           </Sidebar.MenuButton>
         </Sidebar.MenuItem>
