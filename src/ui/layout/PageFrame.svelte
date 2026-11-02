@@ -50,13 +50,16 @@
     inputsActions?: Snippet;
     /** The Results card's content, given the heading's id, which names the result table's scroll region. */
     results: Snippet<[headingId: string]>;
+    /** The chart card's chart type, after its title in the heading row (decision 89, rule 6). */
+    chartType: Snippet;
     /** The chart card's actions, at the right of its heading row (decision 73, rule 8 as revised 2026-10-12). */
     chartActions: Snippet;
-    /** The chart card's content: the view row, then the plot and the legend. */
+    /** The chart card's content: the view row where the chart has one, then the plot and the legend. */
     chart: Snippet;
   }
 
-  let { mark, navigation, sessionControls, inputs, inputsActions, results, chartActions, chart }: Props = $props();
+  let { mark, navigation, sessionControls, inputs, inputsActions, results, chartType, chartActions, chart }: Props =
+    $props();
 
   const id = $props.id();
 
@@ -144,10 +147,14 @@
             </Card.Content>
           </Card.Root>
           <Card.Root>
-            <!-- One row: the heading, and the actions on the title's line rather than the primitive's two rows. -->
-            <Card.Header class="items-center">
+            <!--
+              One row, not the primitive's grid (decision 89, rule 6): the heading, the chart type beside it, and the
+              actions pushed to the right end; where they do not fit, the row wraps.
+            -->
+            <Card.Header class="flex flex-wrap items-center gap-2">
               <Card.Title><h2>{copy.chart}</h2></Card.Title>
-              <Card.Action class="row-span-1 self-center">
+              {@render chartType()}
+              <Card.Action class="ms-auto self-center">
                 {@render chartActions()}
               </Card.Action>
             </Card.Header>

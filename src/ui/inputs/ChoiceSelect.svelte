@@ -23,7 +23,7 @@
     /** The chosen option's key. */
     chosen: string;
     onchoose: (key: string) => void;
-    /** The trigger's size: the small one in a row of small controls, such as the chart card's view row. */
+    /** The trigger's size: the small one in a row of small controls, such as the chart card's heading row. */
     size?: "sm" | "default";
   }
 

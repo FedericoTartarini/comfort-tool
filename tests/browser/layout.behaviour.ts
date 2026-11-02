@@ -2,7 +2,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * The page answers the window (ADR-0002 decision 73, rule 10): at one width,
- * a click moves no region and not the plot; the legend stands beside the plot
+ * a click moves no region, and the plot only down or back by a row that comes
+ * or goes; the legend stands beside the plot
  * while the room there holds its basis; a desktop keeps two columns and
  * scrolls sideways where they do not fit, and a phone, the sidebar
  * primitive's check, stands the cards in one column (decision 87, rules 2 and
@@ -51,6 +52,15 @@ function card(page: Page, heading: string) {
   return page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: heading, exact: true }) });
 }
 
+/** Where an element's content starts and ends across: its box less its padding on each side. */
+function contentEdgesOf(locator: Locator) {
+  return locator.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return { left: box.left + parseFloat(style.paddingLeft), right: box.right - parseFloat(style.paddingRight) };
+  });
+}
+
 async function boxOf(locator: Locator) {
   const box = await locator.boundingBox();
   if (box === null) {
@@ -81,7 +91,8 @@ async function boxes(page: Page): Promise<Boxes> {
  * footer's apart from its height on the page, which follows the content's;
  * the plot's start and size. Compare may move the plot down, by the Results
  * card's new rows (the user's call, `.scratch/shell/issues/09-…md`
- * Comments), so its check leaves the plot's `y` out.
+ * Comments), and a chart with axes by its view row (decision 89, rule 6), so
+ * their checks leave the plot's `y` out.
  */
 function inPlace({ header, sidebar, inputs, results, footer, plot }: Boxes, plotMayDrop = false) {
   return {
@@ -168,7 +179,7 @@ function scrollsSideways(page: Page) {
 }
 
 for (const width of [1440, LEGEND_BESIDE_FROM]) {
-  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare moves the plot down, and the legend stays beside it`, async ({ page }) => {
+  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare and Dynamic's view row move the plot down, and the legend stays beside it`, async ({ page }) => {
     await openStandard(page, width);
     expect(await isResultBesideInputs(page)).toBe(true);
     const expectInPlace = await holdBoxes(page);
@@ -217,10 +228,12 @@ for (const width of [1440, LEGEND_BESIDE_FROM]) {
       await expect(toast).toHaveCount(0);
     });
 
+    const psychrometricPlot = (await boxes(page)).plot;
     await expectInPlace(async () => {
       await chooseChartType(page, "Dynamic");
       await expect(page.getByLabel("X axis")).toBeVisible();
-    });
+    }, true);
+    expect((await boxes(page)).plot.y).toBeGreaterThan(psychrometricPlot.y);
     await expectInPlace(async () => {
       await chooseChartType(page, "Psychrometric");
       await expect(page.getByLabel("X axis")).toHaveCount(0);
@@ -958,11 +971,7 @@ test.describe("controls by their question", () => {
       // The label after its switch, at the row's end, the title at its start.
       expect(switchBox.x).toBeGreaterThan(title.x + title.width);
       expect(labelBox.x).toBeGreaterThan(switchBox.x);
-      const contentEnd = await header.evaluate((element) => {
-        const { right } = element.getBoundingClientRect();
-        return right - parseFloat(getComputedStyle(element).paddingRight);
-      });
-      expect(labelBox.x + labelBox.width).toBeCloseTo(contentEnd, 0);
+      expect(labelBox.x + labelBox.width).toBeCloseTo((await contentEdgesOf(header)).right, 0);
       places.push({ switchBox, labelBox });
 
       for (const row of await page.locator('[data-slot="card-header"]').all()) {
@@ -1015,32 +1024,83 @@ test.describe("controls by their question", () => {
     }
   });
 
-  test("at 1440 px, the chart type is a select named Chart type, first in the view row and as tall as the axis selects, that draws the type it chooses, on Standard and Explore; the Model select keeps its own height", async ({ page }) => {
-    for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+  test("at 1440 px, the chart card's heading row reads Chart, the select named Chart type, then Bands on Explore and Export image at its right end; the psychrometric chart has no view row, Dynamic's axis selects stand under the heading row, and Tab follows that order, on Standard and Explore; the Model select keeps its own height", async ({ page }) => {
+    for (const [address, actions] of [
+      [PMV_ADDRESS, ["Export image"]],
+      [EXPLORE_ADDRESS, ["Bands", "Export image"]],
+    ] as const) {
       await openStandard(page, 1440, address);
       const chart = card(page, "Chart");
-      const chartType = chart.getByRole("button", { name: "Chart type", exact: true });
+      const header = chart.locator('[data-slot="card-header"]');
+      const chartType = header.getByRole("button", { name: "Chart type", exact: true });
       await expect(chartType).toHaveText("Psychrometric");
+      const headerBox = await boxOf(header);
+      const row = [
+        await boxOf(header.getByRole("heading", { name: "Chart", exact: true })),
+        await boxOf(chartType),
+        ...(await Promise.all(actions.map((name) => boxOf(header.getByRole("button", { name, exact: true }))))),
+      ];
+
+      // One line, left to right, each control after the last; the last at the row's content end.
+      for (const [index, box] of row.entries()) {
+        expect(box.y + box.height / 2).toBeCloseTo(headerBox.y + headerBox.height / 2, 0);
+        if (index > 0) expect(box.x).toBeGreaterThan(row[index - 1].x + row[index - 1].width);
+      }
+      const last = row[row.length - 1];
+      expect(last.x + last.width).toBeCloseTo((await contentEdgesOf(header)).right, 0);
+      expect((await boxOf(card(page, "Inputs").getByRole("button", { name: "Model", exact: true }))).height).toBeGreaterThan(row[1].height);
+
+      // The psychrometric chart has no view row: the chart's area is the card's content's first line.
       await expect(chart.getByLabel("X axis")).toHaveCount(0);
+      const content = chart.locator('[data-slot="card-content"]');
+      expect((await boxOf(chart.locator(".chart-area"))).y).toBeCloseTo((await boxOf(content)).y, 0);
 
       await chooseChartType(page, "Dynamic");
       await expect(chartType).toHaveText("Dynamic");
-      const typeBox = await boxOf(chartType);
       const xAxis = await boxOf(chart.getByLabel("X axis"));
       const yAxis = await boxOf(chart.getByLabel("Y axis"));
-      // First in the row, at the card's leading edge where the plot starts; one height with the axis selects.
-      expect(typeBox.x).toBeCloseTo((await boxOf(page.locator(".chart-plot"))).x, 0);
-      expect(typeBox.x + typeBox.width).toBeLessThan(xAxis.x);
-      expect(typeBox.y).toBe(xAxis.y);
-      expect(typeBox.height).toBe(xAxis.height);
-      expect(typeBox.height).toBe(yAxis.height);
-      expect((await boxOf(card(page, "Inputs").getByRole("button", { name: "Model", exact: true }))).height).toBeGreaterThan(typeBox.height);
+      const plot = await boxOf(chart.locator(".chart-plot"));
+      for (const axis of [xAxis, yAxis]) {
+        expect(axis.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+        expect(axis.y + axis.height).toBeLessThanOrEqual(plot.y);
+      }
+      expect(xAxis.x + xAxis.width).toBeLessThan(yAxis.x);
+
+      // Tab: the chart type, the actions, then the axis selects.
+      await chartType.focus();
+      for (const name of actions) {
+        await page.keyboard.press("Tab");
+        await expect(header.getByRole("button", { name, exact: true })).toBeFocused();
+      }
+      for (const label of ["X axis", "Y axis"]) {
+        await page.keyboard.press("Tab");
+        await expect(chart.getByLabel(label)).toBeFocused();
+      }
 
       await chooseChartType(page, "Psychrometric");
       await expect(chartType).toHaveText("Psychrometric");
       await expect(chart.getByLabel("X axis")).toHaveCount(0);
     }
   });
+
+  // 768 px is the narrowest desktop (decision 87, rule 2), where the chart card is at its least width, the result
+  // column's 33.5rem; at 375 px Explore's heading row no longer fits one line.
+  for (const width of [768, 375]) {
+    test(`at ${width} px, every control of the chart card's heading row lies inside the card's content, wrapping where it must, on Standard and Explore`, async ({ page }) => {
+      for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+        await openStandard(page, width, address);
+        const header = card(page, "Chart").locator('[data-slot="card-header"]');
+        const { left, right } = await contentEdgesOf(header);
+        const controls = [header.getByRole("heading"), ...(await header.getByRole("button").all())];
+        expect(controls.length).toBe(address === EXPLORE_ADDRESS ? 4 : 3);
+        for (const control of controls) {
+          const box = await boxOf(control);
+          expect(box.x).toBeGreaterThanOrEqual(left);
+          expect(box.x + box.width).toBeLessThanOrEqual(right);
+        }
+      }
+    });
+  }
 
   test("at 1440 px, Heat Index on Explore, with one chart type, shows a chart type select of that one option", async ({ page }) => {
     await openStandard(page, 1440, "/explore/heat-index-rothfusz");
