@@ -7,7 +7,7 @@
     // plotly 4 shows the Chart Studio upload button by default (ADR §2.1).
     showSendToCloud: false,
     // `toImage` goes too: Plotly's own PNG would come out without the legend,
-    // which is markup of its own beside the plot. Export image draws a figure of its own,
+    // which is markup of its own above the plot. Export image draws a figure of its own,
     // legend included (`plotlyImage.ts`).
     modeBarButtonsToRemove: [
       "toImage",

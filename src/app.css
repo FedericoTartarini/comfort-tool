@@ -19,8 +19,8 @@
 	--space-field: 0.25rem;
 	--header-height: 3.5rem;
 
-	/* The type sizes (decision 73, rule 2), and the plot's height cap, which its 4:3 shape, the exported image's
-	   plot area, is derived from (rule 8), with the width that shape gives it at the cap. */
+	/* The type sizes (decision 73, rule 2); the plot's height cap (decision 89, rule 4), and the width 4:3 gives it
+	   at the cap, the narrowest a desktop draws the plot at (decision 87, rule 3). */
 	--font-size-title: 1.125rem;
 	--font-size-heading: 0.875rem;
 	--font-size-body: 0.875rem;
@@ -160,38 +160,34 @@
 		gap: 0.4em;
 	}
 
-	/* The chart card's plot and its legend (decision 73, rules 8 and 10). Every Layout's Sidebar: a row that wraps,
-	   the plot first at its full width, the legend in the room left beside it, or under it where that room is narrower
-	   than the legend's basis. The plot's width is its own, so a longer legend never moves it. */
+	/* The chart card's legend and its plot (decision 89, rules 3 and 4): a column, the legend first, then the plot,
+	   each the card's content width. */
 	.chart-area {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
+		flex-direction: column;
 		gap: var(--space-page);
 	}
 	/* The chart type select's label, a screen reader's alone: the card's heading says Chart (decision 87, rule 4). */
 	.chart-type-label {
 		@apply sr-only;
 	}
-	/* The node Plotly draws the chart on: the exported image's 4:3 plot area, the cap tall, on the card's leading
-	   edge; it shrinks at 4:3 only where its column is narrower than it. */
+	/* The node Plotly draws the chart on (decision 89, rule 4): the card's content width, `min(width × 3/4, cap)`
+	   tall, so wider than 4:3 on a desktop and at 4:3 where the column is narrower than `--plot-width`. The ratio
+	   gives the height and the cap clamps it; no least height, so the plot Plotly has drawn cannot hold the node
+	   taller than the ratio gives when the column narrows. */
 	.chart-plot {
 		flex: none;
-		inline-size: var(--plot-width);
-		max-inline-size: 100%;
+		inline-size: 100%;
 		aspect-ratio: 4 / 3;
+		max-block-size: var(--chart-cap);
+		min-block-size: 0;
 	}
-	/* The chart's one legend, a column beside the plot: `10rem` by preference, growing into a room of at most `18rem`,
-	   that room centred in what is left, and the entries as one column centred in it, each wrapping to lines rather
-	   than widening it. */
+	/* The chart's one legend, a row above the plot (decision 89, rule 3): its entries from the plot's left edge,
+	   wrapping onto further lines within the plot's width. */
 	.chart-legend {
-		flex: 1 1 10rem;
-		max-inline-size: 18rem;
-		margin-inline: auto;
-		display: grid;
-		grid-template-columns: fit-content(100%);
-		justify-content: center;
-		gap: 0.25rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem var(--space-page);
 		font-size: var(--font-size-caption);
 		color: var(--muted-foreground);
 	}

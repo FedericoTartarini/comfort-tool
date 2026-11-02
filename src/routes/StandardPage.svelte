@@ -161,8 +161,8 @@ import { palette } from "$lib/core/palette";
       <ChartControls chart={session.chart} drawnAxes={outputs.drawnAxes} />
       {#if outputs.chart}
         <div class="chart-area">
-          <PlotlyChart spec={outputs.chart} />
           <ChartLegend entries={outputs.chart.legend} />
+          <PlotlyChart spec={outputs.chart} />
         </div>
         <!-- Under the plot, a caption per slot whose Comfort zones are all empty, its swatch while the slots are named
              (ADR-0002 decision 83, rule 1); the axes, the marker, the hover and the legend stay as they are. -->

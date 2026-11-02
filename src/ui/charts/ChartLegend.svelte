@@ -9,8 +9,8 @@
 </script>
 
 <!-- ADR §4.4: the whole chart has exactly one legend and it is always here,
-     beside the plot, or under it where the room beside it is too narrow
-     (ADR-0002 decision 73, rules 8 and 10). Plotly's own is off. -->
+     a row above the plot that wraps (ADR-0002 decision 89, rule 3). Plotly's
+     own is off. -->
 <ul class="chart-legend">
   <!-- Keyed by the entry, not its label: an edited Band list may hold two bands of one label, or two unlabelled. -->
   {#each entries as entry (entry)}

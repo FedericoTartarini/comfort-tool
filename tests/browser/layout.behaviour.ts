@@ -3,8 +3,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 /**
  * The page answers the window (ADR-0002 decision 73, rule 10): at one width,
  * a click moves no region, and the plot only down or back by a row that comes
- * or goes; the legend stands beside the plot
- * while the room there holds its basis; a desktop keeps two columns and
+ * or goes; the legend stands above the plot, which fills the chart card
+ * (decision 89, rules 3 and 4); a desktop keeps two columns and
  * scrolls sideways where they do not fit, and a phone, the sidebar
  * primitive's check, stands the cards in one column (decision 87, rules 2 and
  * 3); the sidebar is the
@@ -105,9 +105,9 @@ function inPlace({ header, sidebar, inputs, results, footer, plot }: Boxes, plot
   };
 }
 
-/** Whether the legend is a column to the plot's right, at the plot's height. */
-function isLegendBesidePlot({ plot, legend }: Boxes) {
-  return legend.x >= plot.x + plot.width && legend.y < plot.y + plot.height && legend.y + legend.height > plot.y;
+/** Whether the legend is a row above the plot, from the plot's left edge and no wider than it (decision 89, rule 3). */
+function isLegendAbovePlot({ plot, legend }: Pick<Boxes, "plot" | "legend">) {
+  return legend.y + legend.height <= plot.y && Math.abs(legend.x - plot.x) < 0.5 && legend.width <= plot.width;
 }
 
 /** The page's width: the root's box, the window less the scrollbar's gutter. */
@@ -132,18 +132,18 @@ async function chooseChartType(page: Page, name: string) {
 }
 
 /**
- * Records the boxes as they are, with the legend beside the plot; the check
+ * Records the boxes as they are, with the legend above the plot; the check
  * it returns runs a click, which waits for its own effect, and expects the
  * page to settle with every held box where it was and the legend still
- * beside the plot.
+ * above the plot.
  */
 async function holdBoxes(page: Page) {
   const before = await boxes(page);
-  expect(isLegendBesidePlot(before)).toBe(true);
+  expect(isLegendAbovePlot(before)).toBe(true);
   return async (click: () => Promise<void>, plotMayDrop = false) => {
     await click();
     await expect.poll(async () => inPlace(await boxes(page), plotMayDrop)).toEqual(inPlace(before, plotMayDrop));
-    expect(isLegendBesidePlot(await boxes(page))).toBe(true);
+    expect(isLegendAbovePlot(await boxes(page))).toBe(true);
   };
 }
 
@@ -152,12 +152,6 @@ async function holdBoxes(page: Page) {
  * Playwright's Chromium: the page is the window less it.
  */
 const SCROLLBAR_GUTTER = 15;
-/**
- * The narrowest window with the legend beside the plot: the main area's
- * `74.5rem`, the input card, the plot and the legend's basis with their gaps
- * and the cards' padding; the `14rem` sidebar; and the gutter.
- */
-const LEGEND_BESIDE_FROM = (74.5 + 14) * 16 + SCROLLBAR_GUTTER;
 
 /** Whether the result and chart cards stand to the input card's right, their tops level, not under it. */
 async function isResultBesideInputs(page: Page) {
@@ -178,8 +172,10 @@ function scrollsSideways(page: Page) {
   });
 }
 
-for (const width of [1440, LEGEND_BESIDE_FROM]) {
-  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare and Dynamic's view row move the plot down, and the legend stays beside it`, async ({ page }) => {
+// 1440 px, and 1280 px, the narrowest desktop width here that does not scroll sideways (a click's scroll into view
+// would move every box), the plot there 533 px wide, just wider than the cap's 4:3.
+for (const width of [1440, 1280]) {
+  test(`at ${width} px, on PMV in two columns, no click moves a region, only Compare and Dynamic's view row move the plot down, and the legend stays above it`, async ({ page }) => {
     await openStandard(page, width);
     expect(await isResultBesideInputs(page)).toBe(true);
     const expectInPlace = await holdBoxes(page);
@@ -269,15 +265,13 @@ for (const width of [1440, LEGEND_BESIDE_FROM]) {
 /**
  * A desktop keeps two columns at every width (decision 87, rule 3): on a
  * laptop with the sidebar open the result and chart cards stand beside the
- * input card, the legend under the plot where the room beside it is too
- * narrow, and Compare moves neither card sideways.
+ * input card, and Compare moves neither card sideways.
  */
 for (const width of [1366, 1280]) {
   test(`at ${width} px, the result card is beside the input card, nothing scrolls sideways, and Compare off and on move neither card sideways`, async ({ page }) => {
     await openStandard(page, width);
     expect(await isResultBesideInputs(page)).toBe(true);
     expect(await scrollsSideways(page)).toBe(false);
-    expect(isLegendBesidePlot(await boxes(page))).toBe(false);
     const horizontalBoxes = async () => {
       const { inputs, results } = await boxes(page);
       return { inputs: { x: inputs.x, width: inputs.width }, results: { x: results.x, width: results.width } };
@@ -302,8 +296,66 @@ test("at 1024 px, the page scrolls sideways and the result and chart column is 3
 
   const { results, plot } = await boxes(page);
   expect(results.width).toBe(33.5 * 16);
-  // The plot at its cap, `24rem` tall, at 4:3.
+  // The column at its least, so the plot is at 4:3 and the cap, `24rem`, tall.
   expect({ width: plot.width, height: plot.height }).toEqual({ width: 32 * 16, height: 24 * 16 });
+});
+
+/** The chart card's plot and legend boxes, and where its content starts and ends across. */
+async function chartAreaOf(page: Page) {
+  const chart = card(page, "Chart");
+  return {
+    plot: await boxOf(chart.locator(".chart-plot")),
+    legend: await boxOf(chart.locator(".chart-legend")),
+    content: await contentEdgesOf(chart.locator('[data-slot="card-content"]')),
+  };
+}
+
+// The legend is a row above the plot, and the plot fills the chart card's content width at a height of
+// `min(width × 3/4, 24rem)` (ADR-0002 decision 89, rules 3 and 4), on both pages.
+for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
+  test(`at 1440 × 900 on ${address}, the legend stands above a plot that fills the card, 384 px tall, with the sidebar open and collapsed`, async ({ page }) => {
+    await openStandard(page, 1440, address);
+    const open = await chartAreaOf(page);
+    expect(isLegendAbovePlot(open)).toBe(true);
+    expect(open.plot.x).toBeCloseTo(open.content.left, 0);
+    expect(open.plot.x + open.plot.width).toBeCloseTo(open.content.right, 0);
+    expect(open.plot.height).toBe(24 * 16);
+
+    await sidebarToggle(page).click();
+    await expect.poll(async () => (await chartAreaOf(page)).plot.width).toBeGreaterThan(open.plot.width);
+    const collapsed = await chartAreaOf(page);
+    expect(isLegendAbovePlot(collapsed)).toBe(true);
+    expect(collapsed.plot.x + collapsed.plot.width).toBeCloseTo(collapsed.content.right, 0);
+    expect(collapsed.plot.height).toBe(24 * 16);
+  });
+}
+
+test("at 375 px, the plot fills the card at 4:3", async ({ page }) => {
+  await openStandard(page, 375);
+  const { plot, legend, content } = await chartAreaOf(page);
+  expect(isLegendAbovePlot({ plot, legend })).toBe(true);
+  expect(plot.x + plot.width).toBeCloseTo(content.right, 0);
+  expect(plot.height).toBeCloseTo((plot.width * 3) / 4, 0);
+});
+
+test("at 1440 px with three compared slots, the legend wraps above the plot and every entry is in view", async ({ page }) => {
+  await openStandard(page, 1440);
+  const oneLine = (await chartAreaOf(page)).legend.height;
+  await page.getByRole("switch", { name: "Compare", exact: true }).click();
+  await page.getByRole("button", { name: "Input 3", exact: true }).click();
+  await expect(page.getByRole("row", { name: /^Input 3/ })).toBeVisible();
+
+  const area = await chartAreaOf(page);
+  expect(isLegendAbovePlot(area)).toBe(true);
+  expect(area.legend.height).toBeGreaterThan(oneLine);
+  const entries = card(page, "Chart").locator(".chart-legend li");
+  expect(await entries.count()).toBeGreaterThan(3);
+  for (const entry of await entries.all()) {
+    await expect(entry).toBeInViewport();
+    const box = await boxOf(entry);
+    expect(box.x).toBeGreaterThanOrEqual(area.legend.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(area.legend.x + area.legend.width + 0.5);
+  }
 });
 
 /**
@@ -352,18 +404,6 @@ test.describe("the input card's width", () => {
     } finally {
       await browser.close();
     }
-  });
-
-  test("just narrower than the legend's room beside the plot, the legend goes under it, the result card stays beside the input card, and the input card is as wide and where it was", async ({ page }) => {
-    await openStandard(page, LEGEND_BESIDE_FROM);
-    const above = await boxOf(card(page, "Inputs"));
-
-    await openStandard(page, LEGEND_BESIDE_FROM - 1);
-    const inputs = await boxOf(card(page, "Inputs"));
-
-    expect(isLegendBesidePlot(await boxes(page))).toBe(false);
-    expect(await isResultBesideInputs(page)).toBe(true);
-    expect({ x: inputs.x, width: inputs.width }).toEqual({ x: above.x, width: above.width });
   });
 
   test("with Compare on and three slots, every Presets reads Presets and no four-character value beside it is cut off", async ({ page }) => {
@@ -435,7 +475,7 @@ async function frame(page: Page) {
 }
 
 for (const width of [1920, 2560]) {
-  test(`at ${width} px, the sidebar, the main grid and the bands' contents are the 1440 px page's frame centred in the page, the legend beside the plot`, async ({ page }) => {
+  test(`at ${width} px, the sidebar, the main grid and the bands' contents are the 1440 px page's frame centred in the page, the legend above the plot`, async ({ page }) => {
     await openStandard(page, 1440 + SCROLLBAR_GUTTER);
     const at1440 = await frame(page);
 
@@ -444,7 +484,7 @@ for (const width of [1920, 2560]) {
 
     expect(inside).toEqual(at1440.inside);
     expect(margins.start).toBe(margins.end);
-    expect(isLegendBesidePlot(await boxes(page))).toBe(true);
+    expect(isLegendAbovePlot(await boxes(page))).toBe(true);
   });
 }
 

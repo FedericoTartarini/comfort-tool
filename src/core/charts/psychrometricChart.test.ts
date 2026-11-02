@@ -158,13 +158,26 @@ const singleColumnPlotWidth = (imageSize.singleColumn.widthMm * 96) / 25.4 - 52 
 
 /**
  * Plots the isoline labels must keep apart at, in px, with the lettering's
- * size: the page's plot, the chart at its cap of 512 × 384 less the adapter's
- * margins, its labels at 10 px (`ui/charts/plotlyFigure.ts`), and the
- * narrower of the Image's two, the single column at 4:3, its labels at 8 pt
- * (`ui/charts/plotlyImage.ts`).
+ * size: the page's plot at 1440 × 900, 693 × 384 with the sidebar open and
+ * 905 × 384 with it collapsed (measured, `.scratch/frontend-review-round-2/`
+ * ticket 05 Comments), less the figure's margins, its labels at 10 px
+ * (`ui/charts/plotlyFigure.ts`), and the narrower of the Image's two, the
+ * single column at 4:3, its labels at 8 pt (`ui/charts/plotlyImage.ts`).
  */
+const pageMargin = { l: 64, r: 16, t: 12, b: 48 };
 const labelFrames = [
-  { name: "the page's plot", width: 512 - 64 - 16, height: 384 - 12 - 48, lettering: 10 },
+  {
+    name: "the page's plot, the sidebar open",
+    width: 693 - pageMargin.l - pageMargin.r,
+    height: 384 - pageMargin.t - pageMargin.b,
+    lettering: 10,
+  },
+  {
+    name: "the page's plot, the sidebar collapsed",
+    width: 905 - pageMargin.l - pageMargin.r,
+    height: 384 - pageMargin.t - pageMargin.b,
+    lettering: 10,
+  },
   { name: "the single-column Image", width: singleColumnPlotWidth, height: singleColumnPlotWidth * 0.75, lettering: (8 * 96) / 72 },
 ] as const;
 
