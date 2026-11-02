@@ -193,6 +193,25 @@ describe("the psychrometric chart given a Band list", () => {
     expect(trace).toMatchObject({ fill: chartInk.ground, color: chartInk.ground, hover: "off" });
     expect(trace.label).toBeUndefined();
     expect(spec.legend.map((entry) => entry.color)).not.toContain(chartInk.ground);
+    // Along the saturation line from the lowest temperature to the right edge,
+    // every point on it: at 30 °C saturated air holds less than the top's 30 g/kg.
+    const along = cover.x.length - 2;
+    expect(cover.x[0]).toBe(xMin);
+    expect(cover.x[along - 1]).toBe(xMax);
+    for (let index = 0; index < along; index += 1) {
+      expect(cover.y[index]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(cover.x[index], 100, p).hr), 10);
+    }
+    expect(cover.y[along - 1]).toBeLessThan(top);
+    // Then the top-right corner, then the top-left one.
+    expect([cover.x[along], cover.y[along]]).toEqual([xMax, top]);
+    expect([cover.x[along + 1], cover.y[along + 1]]).toEqual([xMin, top]);
+  });
+
+  it("stops the cover's saturation line where it leaves the top of the drawn range, as on PMV (ASHRAE 55)'s 10 to 40 °C", () => {
+    const ashrae = bandedSpec(bandListOf(pmvPpdAshrae.scan.classifier), startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
+    const cover = onlyPieceOf(coverOf(ashrae));
+    const [xMin, xMax] = ashrae.layout.x.range;
+    const top = ashrae.layout.y.range[1];
     // Along the saturation line from the lowest temperature, every point on it.
     const along = cover.x.length - 2;
     expect(cover.x[0]).toBe(xMin);
@@ -276,11 +295,11 @@ describe("the psychrometric chart given a Band list", () => {
         expect(hoverText[yIndex][xIndex].slice(3)).toEqual(typeof band === "string" ? [band] : []);
       }),
     );
-    // Cell (row 10, column 30) at PMV (ISO 7730)'s defaults: 25 °C, 6 g/kg, about 30 %.
+    // Cell (row 10, column 30) at PMV (ISO 7730)'s defaults: 22 °C, 6 g/kg, about 37 %, tr 25 °C.
     expect(hoverText[10][30]).toEqual([
-      "Dry-bulb air temperature: 25 °C",
+      "Dry-bulb air temperature: 22 °C",
       "Humidity ratio: 6 g/kg",
-      "PMV: -0.56",
+      "PMV: -1.08",
       "Slightly Cool",
     ]);
   });

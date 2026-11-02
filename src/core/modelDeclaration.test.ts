@@ -380,6 +380,18 @@ describe("axisRanges", () => {
     expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(adaptiveAshrae)).not.toThrow();
   });
 
+  it("end PMV (ISO 7730)'s dry-bulb and operative temperatures at its 30 °C entry bound, its mean radiant temperature at 40 °C", () => {
+    expect(axisRangeFor(pmvPpdIso, q.tdb)).toEqual({ min: 10, max: 30 });
+    expect(axisRangeFor(pmvPpdIso, q.operative_tmp)).toEqual({ min: 10, max: 30 });
+    expect(axisRangeFor(pmvPpdIso, q.tr)).toEqual({ min: 10, max: 40 });
+  });
+
+  it("leave PMV (ASHRAE 55)'s temperatures at 10 to 40 °C", () => {
+    for (const quantity of [q.tdb, q.operative_tmp, q.tr]) {
+      expect(axisRangeFor(pmvPpdAshrae, quantity), quantity.label).toEqual({ min: 10, max: 40 });
+    }
+  });
+
   it("draw PMV (ISO 7730)'s relative air speed as far as its air speed", () => {
     expect(axisRangeFor(pmvPpdIso, q.vr)).toEqual(axisRangeFor(pmvPpdIso, q.v));
   });

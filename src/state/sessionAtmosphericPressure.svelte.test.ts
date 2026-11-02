@@ -57,9 +57,10 @@ function humidityRatioSession(pressure: number): { session: Session; outputs: Ou
   return { session, outputs: new Outputs(session) };
 }
 
-/** The PMV of a session on PMV (ISO 7730) whose relative humidity is entered as `rh`. */
-function pmvAtRelativeHumidity(rh: number) {
+/** The PMV of a session on PMV (ISO 7730) whose relative humidity is entered as `rh` and dry-bulb temperature as `tdb`. */
+function pmvAtRelativeHumidity(rh: number, tdb = TDB) {
   const session = new Session(pmvPpdIso);
+  session.slots[0].setEntered(q.tdb, tdb);
   session.slots[0].setEntered(q.rh, rh);
   return resultValueOf(new Outputs(session).slots[0].result, q.pmv);
 }
@@ -329,19 +330,20 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
 
     expect(zones).toHaveLength(4);
     expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
-    // Column 30 is the slot's own 25 °C; a grid point's number is the slot's at
-    // the relative humidity its humidity ratio has at that pressure, and a zone
-    // holds it where its magnitude is within the zone's limit.
-    expect(grid.x[30]).toBeCloseTo(TDB, 9);
+    // Column 40 is 26 °C; a grid point's number is the slot's at that dry-bulb
+    // temperature and the relative humidity its humidity ratio has at that
+    // pressure, and a zone holds it where its magnitude is within the zone's limit.
+    const [column, tdb] = [40, 26];
+    expect(grid.x[column]).toBeCloseTo(tdb, 9);
     const limits = [...pmvPpdIso.scan.comfortZones].map((zone) => zone.limit).sort((a, b) => b - a);
     zones.forEach((zone, position) => {
       const region = insideAtSamples(zone, grid.x, grid.y);
       for (const yIndex of [0, 10, 20]) {
-        const rh = hr_to_rh(hrUnit.toSi(grid.y[yIndex]), TDB, LOWER_PRESSURE);
-        expect(region[yIndex][30]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh))) < limits[position]);
+        const rh = hr_to_rh(hrUnit.toSi(grid.y[yIndex]), tdb, LOWER_PRESSURE);
+        expect(region[yIndex][column]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh, tdb))) < limits[position]);
       }
     });
-    expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][30])).toBe(true);
+    expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][column])).toBe(true);
   });
 
   it("ends the humidity-ratio axis at the declared upper end times the default pressure over the pressure", () => {

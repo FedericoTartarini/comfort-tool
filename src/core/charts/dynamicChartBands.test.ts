@@ -177,8 +177,8 @@ describe("the scanned dynamic chart given a Band list", () => {
         expect(bandRead(hoverText[yIndex][xIndex])).toBe(typeof band === "string" ? band : "");
       }),
     );
-    // Cell (row 4, column 32) at PMV (ISO 7730)'s defaults: PMV -0.1459….
-    expect(hoverText[4][32]).toEqual([
+    // Cell (row 4, column 40) at PMV (ISO 7730)'s defaults: PMV -0.1459….
+    expect(hoverText[4][40]).toEqual([
       "Dry-bulb air temperature: 26 °C",
       "Air speed: 0.08 m/s",
       "PMV: -0.15",
@@ -193,8 +193,8 @@ describe("the scanned dynamic chart given a Band list", () => {
     expect(strokesOf(drawn)).toEqual(edgeLinesOf(edited));
     expectEdgesCrossed(drawn, edited, values);
     // -0.15 is below the moved Edge now, so in "Slightly Cool".
-    expect(bandRead(hoverGridOf(drawn).hoverText[4][32])).toBe("Slightly Cool");
-    expect(bandRead(hoverGridOf(bandedSpec(setLabel(isoBands, 3, "Comfortable"))).hoverText[4][32])).toBe("Comfortable");
+    expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Slightly Cool");
+    expect(bandRead(hoverGridOf(bandedSpec(setLabel(isoBands, 3, "Comfortable"))).hoverText[4][40])).toBe("Comfortable");
   });
 
   it("paints a band without a colour nowhere, the fills below it stopping at its lower Edge, strokes its Edge, and still names it", () => {
@@ -211,7 +211,7 @@ describe("the scanned dynamic chart given a Band list", () => {
     expect(strokesOf(drawn)).toEqual(edgeLinesOf(hidden));
     expectEdgesCrossed(drawn, hidden, values);
     expect(drawn.legend.map((entry) => entry.label)).not.toContain("Neutral");
-    expect(bandRead(hoverGridOf(drawn).hoverText[4][32])).toBe("Neutral");
+    expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Neutral");
   });
 
   it("names a coloured band with an empty label as unlabelled in its legend entry and on hover, a labelled one unchanged", () => {
@@ -219,7 +219,7 @@ describe("the scanned dynamic chart given a Band list", () => {
     expect(drawn.legend.slice(0, isoBands.labels.length).map((entry) => entry.label)).toEqual(
       isoBands.labels.map((label, index) => (index === 3 ? "Unlabelled band" : label)),
     );
-    expect(bandRead(hoverGridOf(drawn).hoverText[4][32])).toBe("Unlabelled band");
+    expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Unlabelled band");
     expect(bandRead(hoverGridOf(drawn).hoverText[4][0])).toBe(bandRead(hoverGridOf(spec).hoverText[4][0]));
   });
 
@@ -365,6 +365,6 @@ describe("a Band list over several slots", () => {
     const two = dynamicSpec({ ...chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), warm]), bands: isoBands }, isoChart.axes);
     expect(fillsOf(two).map((fill) => fill.pieces)).toEqual(fillsOf(one).map((fill) => fill.pieces));
     expect(linesOf(two).map((line) => line.pieces)).toEqual(linesOf(one).map((line) => line.pieces));
-    expect(hoverGridOf(two).hoverText[4][32]).toHaveLength(6);
+    expect(hoverGridOf(two).hoverText[4][40]).toHaveLength(6);
   });
 });

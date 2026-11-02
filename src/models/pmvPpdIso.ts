@@ -46,14 +46,13 @@ export const pmvPpdIso = {
   // the model is given inside its rows (`v` by `vr`'s bound; the clothing
   // insulation, and the dynamic one with it, past the 3.13 clo given as the
   // model's 2 at 4 met where `vr` is 1 m/s).
-  // `tdb` and `operative_tmp` end at 35 °C, one short of the deployed EN
-  // page's 36, where the single-column Image's 80 % and 90 % labels would
-  // overlap. The Comfort zones end at ISO 7730's 30 °C and 2 700 Pa inside
-  // the plot.
+  // `tdb` and `operative_tmp` end at 30 °C, the model's entry bound, so every
+  // temperature the plot draws can be entered, no longer at 35 °C, one short
+  // of the deployed EN page's 36 (ADR-0002 decision 89).
   axisRanges: [
-    { quantity: q.tdb, min: 10, max: 35 },
+    { quantity: q.tdb, min: 10, max: 30 },
     { quantity: q.tr, min: 10, max: 40 },
-    { quantity: q.operative_tmp, min: 10, max: 35 },
+    { quantity: q.operative_tmp, min: 10, max: 30 },
     { quantity: q.hr, min: 0, max: 0.03 },
     { quantity: q.v, min: 0, max: 1 },
     { quantity: q.vr, min: 0, max: 1 },

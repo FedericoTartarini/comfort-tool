@@ -40,6 +40,16 @@ const airSpeedAxes = { x: q.tdb, y: q.v };
 /** One bisection step, as a fraction of a cell: the last half the scan's bisection keeps (ADR-0002 decision 78). */
 const BISECTION_STEP = 2 ** -BISECTIONS;
 
+/**
+ * PMV (ISO 7730) with its dry-bulb axis drawn on to 35 °C. The model draws it
+ * only to its 30 °C bound (ADR-0002 decision 89), where a zone meets the
+ * plot's edge; drawn past it, the bound cuts the zones inside the plot.
+ */
+const isoDrawnPastItsBound: RegisteredModel = {
+  ...pmvPpdIso,
+  axisRanges: pmvPpdIso.axisRanges.map((range) => (range.quantity === q.tdb ? { ...range, max: 35 } : range)),
+};
+
 /** PMV (ASHRAE 55)'s starting slot with `entered` over it, local control of the air speed as `control` says. */
 function ashraeSlot(control: boolean, entered: Parameters<typeof enteredSlotFor>[1] = {}): Slot {
   return withOption(enteredSlotFor(pmvPpdAshrae, entered), airSpeedControl, control);
@@ -271,8 +281,8 @@ function psychrometricCells(model: RegisteredModel, slot: Slot, spec: ChartSpec)
 describe("PMV (ISO 7730)'s psychrometric zones", () => {
   it("leave out the grid points above 30 °C and above 2 700 Pa of vapour pressure, and keep every other point they had", () => {
     const slot = startingSlot(pmvPpdIso);
-    const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, slot));
-    const cells = psychrometricCells(pmvPpdIso, slot, spec);
+    const spec = psychrometricSpec(chartRequestFor(isoDrawnPastItsBound, slot));
+    const cells = psychrometricCells(isoDrawnPastItsBound, slot, spec);
     const fills = zoneFillsOf(spec);
     expect(fills.length).toBeGreaterThan(1);
     fills.forEach((fill, position) => {
@@ -405,12 +415,12 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
     })(),
     (() => {
       const slot = startingSlot(pmvPpdIso);
-      const request = chartRequestFor(pmvPpdIso, slot);
+      const request = chartRequestFor(isoDrawnPastItsBound, slot);
       return {
-        name: "PMV (ISO 7730)'s psychrometric chart",
-        model: pmvPpdIso,
+        name: "PMV (ISO 7730)'s psychrometric chart drawn past its 30 °C bound",
+        model: isoDrawnPastItsBound,
         slot,
-        frame: psychrometricScanFrameFor(pmvPpdIso, request.entryModes, P),
+        frame: psychrometricScanFrameFor(isoDrawnPastItsBound, request.entryModes, P),
         spec: psychrometricSpec(request),
         limitBound: 0.005,
       };

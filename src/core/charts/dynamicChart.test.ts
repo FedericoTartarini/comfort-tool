@@ -209,6 +209,16 @@ describe("the scanned dynamic chart of one slot", () => {
     expect(ipMax).toBeCloseTo(122, 2);
   });
 
+  it("ends PMV (ISO 7730)'s temperature axis at its 30 °C entry bound, in either entry mode", () => {
+    const operative = chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }));
+    for (const drawn of [request, operative]) {
+      expect(dynamicSpec(drawn, isoChart.axes).layout.x.range).toEqual([10, 30]);
+    }
+    const [ipMin, ipMax] = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, isoChart.axes).layout.x.range;
+    expect(ipMin).toBeCloseTo(50, 2);
+    expect(ipMax).toBeCloseTo(86, 2);
+  });
+
   it.each([1, 3])("draws the fills, the outlines, the hover grid, then the markers, of %i slot(s)", (count) => {
     const drawn = dynamicSpec(chartRequestForSlots(pmvPpdIso, Array.from({ length: count }, () => slot)), isoChart.axes);
     const markers = drawn.traces.filter((trace) => trace.kind === "point");
@@ -379,12 +389,12 @@ describe("axes across a clothing entry mode switch", () => {
 describe("the scanned chart's hover readout", () => {
   const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
-  // Cell (row 4, column 32) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
+  // Cell (row 4, column 40) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 26 °C, v 0.08 m/s, where the model gives a PMV of -0.1459… on the
   // clothing ISO 7730's rule gives it (0.4238 clo for the 0.5 clo entered).
   it("reads both axis values and the output, each number at two decimals at most", () => {
     const grid = hoverGridOf(dynamicSpec(pmvRequest, isoChart.axes));
-    expect(grid.hoverText[4][32]).toEqual([
+    expect(grid.hoverText[4][40]).toEqual([
       "Dry-bulb air temperature: 26 °C",
       "Air speed: 0.08 m/s",
       "PMV: -0.15",
@@ -393,7 +403,7 @@ describe("the scanned chart's hover readout", () => {
 
   it("reads the axis values in the displayed unit", () => {
     const grid = hoverGridOf(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, isoChart.axes));
-    expect(grid.hoverText[4][32]).toEqual([
+    expect(grid.hoverText[4][40]).toEqual([
       "Dry-bulb air temperature: 78.8 °F",
       "Air speed: 15.75 fpm",
       "PMV: -0.15",
