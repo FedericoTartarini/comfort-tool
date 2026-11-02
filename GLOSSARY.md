@@ -86,6 +86,10 @@ _Avoid_: scenario, case, column, inputs (those are what a model takes)
 Showing up to three slots side by side on the Standard page, each with its own result, its own comfort zones and its own marker. It is on or off. Slot 1 is always compared; slots 2 and 3 are each enabled by the person, and are compared while Compare is on and they are enabled. No slot is a reference for the others.
 _Avoid_: baseline, active slot, scenario
 
+**Slot offset**:
+How far slot 2 or slot 3 starts from slot 1's values when it is first enabled: a demonstration value per quantity, declared by the model file, so that the compared slots' comfort zones do not start on top of each other. A model that declares none starts the slot as a copy of slot 1.
+_Avoid_: delta, variation, default (that is the model's starting value)
+
 **Session**:
 What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot. A session lasts as long as its tab, where the browser allows storage: it survives a reload and an address typed into the tab, and is replaced only on the person's yes, by a share link opened in the tab or by Reset, which returns it to what a new tab at the same address would show.
 _Avoid_: store, app state

@@ -1814,7 +1814,8 @@ already and `v1z.` is withdrawn, so the grilling decides only what the text carr
    **Order (2026-10-07)**: the fixture needs a deployed build's text and the merge is item 6, so a preview is deployed
    before the freeze; the exact order is this phase's to settle.
 6. Merge back into `main`, remove the `git worktree`, and move the version check to `main` (Version bump and deploy,
-   "At the formal release").
+   "At the formal release"). Point the Documentation link back at `blob/main/docs/user-guide.md` (`text/copy.ts`;
+   added 2026-11-02, ADR-0002 decision 89 rule 1).
 7. Visual close-out (added 2026-10-07), before item 6: every page and dialog built after Phase 5c (the calculators,
    Time-series) is read against Phase 5c's Done criteria. Not a second design: the criteria are the stop.
 
