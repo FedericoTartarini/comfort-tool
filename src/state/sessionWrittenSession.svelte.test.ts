@@ -21,7 +21,16 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type ChartState } from "./session.svelte";
-import { editBands, expectEverySlotInSessionEntryModes, heldSlot, outOfRangeQuantitiesAt, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import {
+  differenceFromSlot1,
+  editBands,
+  expectEverySlotInSessionEntryModes,
+  heldSlot,
+  outOfRangeQuantitiesAt,
+  sessionComparingThreeSlots,
+  shapeOf,
+  shownDifferences,
+} from "./sessionTestReaders";
 
 const q = quantities;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
@@ -161,7 +170,7 @@ describe("a session read out and built again", () => {
     expect(shapeOf(heldSlot(again, 2))).toEqual(shapeOf(heldSlot(session, 2)));
   });
 
-  it("brings a slot never enabled back holding nothing, so that enabling it copies slot 1", () => {
+  it("brings a slot never enabled back holding nothing, so that enabling it starts it from slot 1 by its Slot offsets", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
     session.slots[0].setEntered(q.tdb, 24);
@@ -171,10 +180,10 @@ describe("a session read out and built again", () => {
     expect(again.slots[2]).toBeNull();
     expect(again.isSlotEnabled(2)).toBe(false);
     again.setSlotEnabled(2, true);
-    expect(shapeOf(heldSlot(again, 2))).toEqual(shapeOf(again.slots[0]));
+    expect(differenceFromSlot1(again, 2)).toEqual(shownDifferences([q.tdb, -2], [q.tr, -2], [q.met, 0.2], [q.clo, 0.1]));
   });
 
-  it("with Compare never switched on enables slot 2 at the first switch-on, as a session on the defaults does", () => {
+  it("with Compare never switched on enables slot 2 at the first switch-on, started from slot 1 by its Slot offsets, as a session on the defaults does", () => {
     const session = new Session(pmvPpdIso);
     session.slots[0].setEntered(q.tdb, 24);
 
@@ -182,7 +191,7 @@ describe("a session read out and built again", () => {
     again.setCompare(true);
 
     expect(again.isSlotEnabled(1)).toBe(true);
-    expect(shapeOf(heldSlot(again, 1))).toEqual(shapeOf(again.slots[0]));
+    expect(differenceFromSlot1(again, 1)).toEqual(shownDifferences([q.met, 0.1]));
   });
 });
 

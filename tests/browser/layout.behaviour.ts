@@ -1308,45 +1308,56 @@ test.describe("the header's mark", () => {
   });
 });
 
+/** A filled path's points, as Plotly was handed them: rings separated by `null`. */
+interface FillPoints {
+  x: (number | null)[];
+  y: (number | null)[];
+}
+
+/**
+ * Every Comfort zone fill the chart draws, read off its own traces as Plotly was handed them: each named filled
+ * scatter (`ui/charts/plotlyFigure.ts`). The cover above saturation is unnamed, so it is not among them.
+ */
+function zoneFills(page: Page): Promise<FillPoints[]> {
+  return page.locator(".chart-plot.js-plotly-plot").evaluate((node) => {
+    interface PathData extends FillPoints {
+      type: string;
+      fill?: string;
+      name?: string;
+    }
+    const traces = (node as unknown as { data: PathData[] }).data;
+    return traces.filter((trace) => trace.type === "scatter" && trace.fill === "toself" && trace.name).map(({ x, y }) => ({ x, y }));
+  });
+}
+
 /**
  * A Comfort zone is what the standard accepts (ADR-0002 decision 77, rule 1): on PMV (ASHRAE 55)'s air-speed chart,
  * switching local control of the air speed off caps the zone where the library's air-speed rule breaks, and switching
- * it on lifts the cap. The zone is read off the chart's own traces, as Plotly was handed them.
+ * it on lifts the cap.
  */
 test.describe("the air-speed chart's Comfort zone", () => {
   const OPTION = "Occupants have local control of the air speed";
 
   /**
-   * The area the drawn zone fills, in the axes' units: each named filled scatter's rings, separated by `null`
-   * (`ui/charts/plotlyFigure.ts`), by the shoelace formula, a hole wound opposite counting against its outer ring. The
-   * cover above saturation is unnamed, and this chart draws none.
+   * The area the drawn zone fills, in the axes' units: each fill's rings by the shoelace formula, a hole wound
+   * opposite counting against its outer ring.
    */
-  function zoneArea(page: Page): Promise<number> {
-    return page.locator(".chart-plot.js-plotly-plot").evaluate((node) => {
-      interface PathData {
-        type: string;
-        fill?: string;
-        name?: string;
-        x: (number | null)[];
-        y: (number | null)[];
-      }
-      const fills = (node as unknown as { data: PathData[] }).data.filter((trace) => trace.type === "scatter" && trace.fill === "toself" && trace.name);
-      let area = 0;
-      for (const { x, y } of fills) {
-        let start = 0;
-        for (let end = 0; end <= x.length; end += 1) {
-          if (end < x.length && x[end] !== null) {
-            continue;
-          }
-          for (let index = start; index < end; index += 1) {
-            const next = index + 1 < end ? index + 1 : start;
-            area += (Number(x[index]) * Number(y[next]) - Number(x[next]) * Number(y[index])) / 2;
-          }
-          start = end + 1;
+  async function zoneArea(page: Page): Promise<number> {
+    let area = 0;
+    for (const { x, y } of await zoneFills(page)) {
+      let start = 0;
+      for (let end = 0; end <= x.length; end += 1) {
+        if (end < x.length && x[end] !== null) {
+          continue;
         }
+        for (let index = start; index < end; index += 1) {
+          const next = index + 1 < end ? index + 1 : start;
+          area += (Number(x[index]) * Number(y[next]) - Number(x[next]) * Number(y[index])) / 2;
+        }
+        start = end + 1;
       }
-      return area;
-    });
+    }
+    return area;
   }
 
   test("at PMV (ASHRAE 55)'s defaults, follows local control of the air speed off, on and off again", async ({ page }) => {
@@ -1363,6 +1374,43 @@ test.describe("the air-speed chart's Comfort zone", () => {
 
     await option.click();
     await expect.poll(() => zoneArea(page)).toBe(capped);
+  });
+});
+
+/**
+ * A slot first enabled starts from slot 1's values moved by the Slot offsets its model declares, so its Comfort zone
+ * does not lie on slot 1's, and a value an offset carries past its bound is cut to it with no toast (ADR-0002
+ * decision 89, rule 8).
+ */
+test.describe("compared slots that start apart", () => {
+  const metabolicRate = (page: Page, slot: string) => page.getByRole("spinbutton", { name: new RegExp(`^Metabolic rate.*, ${slot}$`) });
+  const toasts = (page: Page) => page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
+
+  test("at 1440 px on PMV (ASHRAE 55), turning Compare on shows Input 2's metabolic rate 0.1 above Input 1's, and two Comfort zones that are not the same", async ({ page }) => {
+    await openStandard(page, 1440);
+    await expect.poll(() => zoneFills(page)).toHaveLength(1);
+
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+
+    await expect(metabolicRate(page, "Input 1")).toHaveValue("1.1");
+    await expect(metabolicRate(page, "Input 2")).toHaveValue("1.2");
+    await expect.poll(() => zoneFills(page)).toHaveLength(2);
+    const [first, second] = await zoneFills(page);
+    expect(second).not.toEqual(first);
+  });
+
+  test("at 1440 px on PMV (ASHRAE 55), Input 3 enabled with Input 1's metabolic rate at its upper end holds that end, and no toast appears", async ({ page }) => {
+    await openStandard(page, 1440);
+    await page.getByRole("switch", { name: "Compare", exact: true }).click();
+    await metabolicRate(page, "Input 1").fill("4");
+    await metabolicRate(page, "Input 1").press("Enter");
+    await expect(metabolicRate(page, "Input 1")).toHaveValue("4");
+    await expect(toasts(page)).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Input 3", exact: true }).click();
+
+    await expect(metabolicRate(page, "Input 3")).toHaveValue("4");
+    await expect(toasts(page)).toHaveCount(0);
   });
 });
 

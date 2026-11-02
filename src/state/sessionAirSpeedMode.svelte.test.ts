@@ -21,7 +21,16 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, outOfRangeQuantitiesAt, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import {
+  differenceFromSlot1,
+  heldSlot,
+  listedRowsOf,
+  outOfRangeQuantitiesAt,
+  resultValueOf,
+  sessionComparingThreeSlots,
+  shapeOf,
+  shownDifferences,
+} from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -167,8 +176,8 @@ describe("the session's air-speed entry mode", () => {
     session.setSlotEnabled(2, true);
 
     expect(heldSlot(session, 1).values.get(q.vr)).toBe(v_relative(0.1, 2));
-    expect(shapeOf(heldSlot(session, 2))).toEqual(shapeOf(session.slots[0]));
     expect(heldSlot(session, 2).airSpeed.mode).toBe(airSpeedMode.corrected);
+    expect(differenceFromSlot1(session, 2)).toEqual(shownDifferences([q.tdb, -2], [q.tr, -2], [q.met, 0.2], [q.clo, 0.1]));
   });
 
   it("converts into operative entry under relative air speed entry, in either order of the two changes", () => {

@@ -1,7 +1,8 @@
 /**
  * How the session tests read a session's state: a slot as plain data, a slot
  * the session is known to hold, a value the result table would show, what
- * a pending switch lists, and every entry out of range; the session comparing all three slots and the
+ * a pending switch lists, and every entry out of range; how far a slot stands
+ * from slot 1, and a model declaring no Slot offsets; the session comparing all three slots and the
  * bounded model they start from; a Band list edited as the Bands dialog edits it; the check of the invariant the session's
  * entry modes rest on; and what a page would open on, the address a session
  * is on, and the texts a tab keeps and a link carries of it. Shared by the
@@ -57,7 +58,39 @@ export function outOfRangeQuantitiesAt(session: Session, position: SlotPosition)
   return slot ? outOfRangeRows(slot, session.model, session.atmosphericPressure).map((row) => row.quantity) : [];
 }
 
-/** A session on `model` with Compare on and all three slots enabled, each holding what slot 1 started with. */
+/**
+ * How far the slot at `position` stands from slot 1: each value it holds that
+ * slot 1 holds another of, as its difference from slot 1's. Asserts first
+ * that the two slots hold the same quantities, the same humidity, entry modes
+ * and options, so a difference is a value's alone.
+ */
+export function differenceFromSlot1(session: Session, position: SlotPosition): Map<Quantity, number> {
+  const first = shapeOf(session.slots[0]);
+  const slot = shapeOf(heldSlot(session, position));
+  expect({ ...slot, values: [...slot.values.keys()] }).toEqual({ ...first, values: [...first.values.keys()] });
+  return new Map(
+    [...slot.values].flatMap(([quantity, value]): [Quantity, number][] => {
+      const difference = value - (first.values.get(quantity) ?? Number.NaN);
+      return difference === 0 ? [] : [[quantity, difference]];
+    }),
+  );
+}
+
+/** `differences`, each matched at the two decimals a row shows, as {@link differenceFromSlot1} is compared against. */
+export function shownDifferences(...differences: readonly [Quantity, number][]): Map<Quantity, unknown> {
+  return new Map(differences.map(([quantity, difference]) => [quantity, expect.closeTo(difference, 2)]));
+}
+
+/**
+ * `model` declaring no Slot offsets, so a slot first enabled holds what slot
+ * 1 holds: for a test whose slots need only start alike, and whose subject is
+ * not how a slot starts. Not registered, so no link names it.
+ */
+export function withoutSlotOffsets(model: RegisteredModel): RegisteredModel {
+  return { ...model, slotOffsets: undefined };
+}
+
+/** A session on `model` with Compare on and all three slots enabled, each started from slot 1 by its Slot offsets. */
 export function sessionComparingThreeSlots(model: RegisteredModel): Session {
   const session = new Session(model);
   session.setCompare(true);

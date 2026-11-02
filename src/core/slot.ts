@@ -1,8 +1,9 @@
 /**
  * What a slot holds; the entry groups held among its values and the rules
  * over them; the functions that read what the person entered, enter values,
- * set an option, convert an entry mode, seed a model's defaults and build the
- * slot a model starts on; and the get-or-throws they read through.
+ * add Slot offsets, set an option, convert an entry mode, seed a model's
+ * defaults and build the slot a model starts on; and the get-or-throws they
+ * read through.
  * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
@@ -34,6 +35,7 @@ import {
   type DeclaredQuantity,
   type OptionSpec,
   type RegisteredModel,
+  type SlotOffset,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
@@ -512,6 +514,24 @@ export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, n
     }
   }
   return changedSlot(slot, { values, humidity });
+}
+
+/**
+ * The same slot with each of `offsets` added to the value of its quantity,
+ * where the slot holds that quantity among its values, and the rest skipped:
+ * a slot in operative entry holds no dry-bulb temperature to move (ADR-0002
+ * decision 89, rule 8). Nothing is cut here; the session cuts the slot it
+ * lands. Humidity is held apart from the values, so no offset reaches it.
+ */
+export function withSlotOffsets(slot: Slot, offsets: readonly SlotOffset[]): Slot {
+  const values = new Map(slot.values);
+  for (const { quantity, amount } of offsets) {
+    const value = values.get(quantity);
+    if (value !== undefined) {
+      values.set(quantity, value + amount);
+    }
+  }
+  return changedSlot(slot, { values });
 }
 
 /** The same slot with `option` set to `value`: how the person ticks an option. */

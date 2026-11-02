@@ -25,6 +25,7 @@ import {
   withEnteredValues,
   withHumidityMode,
   withOption,
+  withSlotOffsets,
   withTemperatureMode,
   type Slot,
   type ValueEntryModes,
@@ -370,12 +371,16 @@ export class Session {
 
   /**
    * Enable or disable the slot at `position`. A slot enabled for the first
-   * time takes a copy of what slot 1 holds now, entry modes and options
-   * included; a slot enabled again holds what it held.
+   * time takes what slot 1 holds now, entry modes and options included, with
+   * the Slot offsets the model declares for it added, and is cut to its
+   * bounds as an arrival is (ADR-0002 decision 89, rule 8). It raises no
+   * notice for the cut, as an entry cut raises none. A slot enabled again
+   * holds what it held.
    */
   setSlotEnabled(position: OptionalSlotPosition, enabled: boolean): void {
     if (enabled && this.#slots[position] === null) {
       const copy = new InputSlot(this.#slots[0]);
+      this.#replaceCut(copy, withSlotOffsets(copy, this.model.slotOffsets?.[position - 1] ?? []));
       const [first, second, third] = this.#slots;
       this.#slots = position === 1 ? [first, copy, third] : [first, second, copy];
     }
@@ -394,7 +399,8 @@ export class Session {
    * (`WrittenSession`); the session changes a mode in every held slot at once
    * ({@link setTemperatureMode}, {@link setAirSpeedMode},
    * {@link setClothingMode}, {@link setHumidityMode}); a slot first
-   * enabled copies slot 1 ({@link setSlotEnabled}); a switch puts every held
+   * enabled takes slot 1's entry modes ({@link setSlotEnabled}), its Slot
+   * offsets moving values alone; a switch puts every held
    * slot through one rehearsal, which reads the slot's modes, the model and
    * the model left ({@link #rehearse}); and the input panel enters a value
    * only in a row of the modes the slot is in, where
@@ -671,7 +677,8 @@ export class Session {
    * its bound at the session's model and pressure, read at the entries as
    * cut (ADR-0002 decision 84, rules 4 and 5), and answer whether it cut
    * anything. An arrival lands so, and an entry-mode switch, as a conversion
-   * can carry an entry past a bound the mode it left did not hold it to.
+   * can carry an entry past a bound the mode it left did not hold it to, and
+   * a slot first enabled, as a Slot offset can.
    */
   #replaceCut(slot: InputSlot, held: Slot): boolean {
     const rows = settledOutOfRangeRows(held, this.model, this.atmosphericPressure);

@@ -86,6 +86,15 @@ export interface AxisRange extends Range {
   readonly quantity: Quantity;
 }
 
+/**
+ * One Slot offset (GLOSSARY.md): `amount`, in the quantity's SI unit, the unit
+ * a slot holds, added to `quantity` where the slot holds it among its values.
+ */
+export interface SlotOffset {
+  readonly quantity: Quantity;
+  readonly amount: number;
+}
+
 /** The two quantities a chart is drawn on, one per axis. */
 export interface ChartAxes {
   readonly x: Quantity;
@@ -293,6 +302,14 @@ interface CommonDeclaration {
    * two ranges for one quantity.
    */
   readonly axisRanges: readonly AxisRange[];
+  /**
+   * The Slot offsets (GLOSSARY.md) of slot 2, then of slot 3: how far each
+   * starts from slot 1's values when it is first enabled, so the compared
+   * slots' Comfort zones do not start on top of each other (ADR-0002 decision
+   * 89, rule 8). Demonstration values, as the axis ranges are. A model that
+   * declares none starts the slot as a copy of slot 1.
+   */
+  readonly slotOffsets?: readonly [readonly SlotOffset[], readonly SlotOffset[]];
   /**
    * Result table columns, in order. Required (ADR §4.3). A classified output
    * is a column, and the classified outputs come first, in the model info's
