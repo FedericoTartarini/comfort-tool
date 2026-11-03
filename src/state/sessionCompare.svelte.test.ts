@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { chartInk } from "$lib/core/bandPalette";
+import { customEnsemble, shownRow } from "$lib/core/calculators";
 import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
 import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
@@ -261,6 +262,21 @@ describe("the Slot offsets of a slot first enabled", () => {
 
       expect(session.model).toBe(other);
       expect(session.slots.map((slot) => (slot ? [...slot.values] : null))).toEqual(before);
+    });
+
+    // An entry-mode switch converts each slot as a session holding it alone
+    // does ("the session's entry modes", below), so it moves nothing either.
+    it(`add nothing at a change of unit system or an Apply, which writes its own row alone, on ${model.info.label}`, () => {
+      const session = sessionComparingThreeSlots(model);
+      const before = session.slots.map((slot) => (slot ? shapeOf(slot) : null));
+      const result = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
+      const row = shownRow(heldSlot(session, 1), customEnsemble, result, model, session.atmosphericPressure);
+
+      session.unitSystem = unitSystem.ip;
+      session.applyCalculator(1, customEnsemble, result);
+
+      const applied = new Map(before[1]!.values).set(row.quantity, row.after);
+      expect(session.slots.map((slot) => (slot ? shapeOf(slot) : null))).toEqual([before[0], { ...before[1], values: applied }, before[2]]);
     });
   }
 });
