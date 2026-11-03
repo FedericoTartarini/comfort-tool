@@ -23,6 +23,7 @@ import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
 import {
   differenceFromSlot1,
+  enterSlot1ValuesInOthers,
   heldSlot,
   listedRowsOf,
   outOfRangeQuantitiesAt,
@@ -169,6 +170,7 @@ describe("the session's air-speed entry mode", () => {
   it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
+    enterSlot1ValuesInOthers(session);
     heldSlot(session, 1).setEntered(q.met, 2);
     session.setSlotEnabled(1, false);
 
@@ -177,7 +179,9 @@ describe("the session's air-speed entry mode", () => {
 
     expect(heldSlot(session, 1).values.get(q.vr)).toBe(v_relative(0.1, 2));
     expect(heldSlot(session, 2).airSpeed.mode).toBe(airSpeedMode.corrected);
-    expect(differenceFromSlot1(session, 2)).toEqual(shownDifferences([q.tdb, -2], [q.tr, -2], [q.met, 0.2], [q.clo, 0.1]));
+    expect(differenceFromSlot1(session, 2)).toEqual(
+      shownDifferences([q.tdb, 2], [q.tr, 3], [q.vr, 0.1], [q.met, 0.32], [q.clo, 0.4]),
+    );
   });
 
   it("converts into operative entry under relative air speed entry, in either order of the two changes", () => {

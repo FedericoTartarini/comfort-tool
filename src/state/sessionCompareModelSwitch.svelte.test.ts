@@ -66,7 +66,7 @@ function entriesBreaking(breaking: readonly SlotPosition[]): ReadonlyMap<Quantit
 /**
  * A session on PMV (ISO 7730) comparing three slots, each entered with the
  * values slot 1 starts on, and then with its own entries: alike but for
- * those, whatever Slot offsets the slots started from.
+ * those, whatever Slot offset each slot started from.
  */
 function comparingSlotsEntered(entries: readonly ReadonlyMap<Quantity, number>[]): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
@@ -207,7 +207,9 @@ describe("Session.requestModel while Compare is on", () => {
     expect(shapeOf(heldSlot(session, 2))).toEqual(shapeOf(alone.slots[0]));
   });
 
-  it("leaves a slot never enabled holding nothing, which starts from slot 1 by the new model's Slot offsets when first enabled", () => {
+  // The fixture draws PMV (ISO 7730)'s axes, bounds the dry bulb at 20 °C and
+  // gives the external work no axis range.
+  it("leaves a slot never enabled holding nothing, which starts from slot 1 moved by the new model's axis ranges and cut to its bounds when first enabled", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
 
@@ -216,7 +218,7 @@ describe("Session.requestModel while Compare is on", () => {
 
     expect(session.slots[2]).toBeNull();
     session.setSlotEnabled(2, true);
-    expect(differenceFromSlot1(session, 2)).toEqual(shownDifferences([q.tdb, -2], [q.tr, -2], [q.met, 0.2], [q.clo, 0.1]));
+    expect(differenceFromSlot1(session, 2)).toEqual(shownDifferences([q.tr, 3], [q.v, 0.1], [q.met, 0.32], [q.clo, 0.4]));
   });
 
   it("holds a question about a slot that is not compared when it alone breaks the model, and changes nothing", () => {

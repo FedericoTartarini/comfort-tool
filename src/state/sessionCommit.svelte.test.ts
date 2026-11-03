@@ -14,7 +14,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { enterSlot1ValuesInOthers, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -32,9 +32,9 @@ function dewPointSession(): Session {
   return session;
 }
 
-/** A session on PMV (ASHRAE 55) comparing three slots, the second's humidity entered as {@link NEAR_SATURATION}. */
+/** A session on PMV (ASHRAE 55) comparing three alike slots, the second's humidity entered as {@link NEAR_SATURATION}. */
 function nearSaturationInSecondSlot(): Session {
-  const session = sessionComparingThreeSlots(pmvPpdAshrae);
+  const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(pmvPpdAshrae));
   session.setHumidityMode(humidityMode.humidityRatio);
   session.commitEntry(1, q.hr, NEAR_SATURATION);
   return session;
@@ -81,12 +81,13 @@ describe("a slot's entry, committed", () => {
 
   it("is written to its own slot alone", () => {
     const session = sessionComparingThreeSlots(pmvPpdAshrae);
+    const second = heldSlot(session, 1).values.get(q.tdb);
 
     session.commitEntry(2, q.tdb, 45);
 
     expect(heldSlot(session, 2).values.get(q.tdb)).toBe(40);
     expect(session.slots[0].values.get(q.tdb)).toBe(25);
-    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(25);
+    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(second);
   });
 });
 

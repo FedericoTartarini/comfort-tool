@@ -3,8 +3,8 @@
  * unique across the registry; the standard that model info lists first, for
  * every registered model; the table columns it lists;
  * the charts it offers; the input calculators its rows offer; the axis
- * range a chart reads off it; and the quantities its Slot offsets name. What
- * its `run` does is the sibling `modelDeclarationRun.test.ts`'s.
+ * range a chart reads off it. What its `run` does is the sibling
+ * `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
 import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
@@ -34,7 +34,7 @@ import {
   type ZoneLimits,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { defaultEntryModes, dynamicClothingOf, isHumidityQuantity, startingSlot, valueEntryGroups } from "./slot";
+import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
 
 const q = quantities;
 
@@ -394,53 +394,6 @@ describe("axisRanges", () => {
 
   it("draw PMV (ISO 7730)'s relative air speed as far as its air speed", () => {
     expect(axisRangeFor(pmvPpdIso, q.vr)).toEqual(axisRangeFor(pmvPpdIso, q.v));
-  });
-});
-
-/**
- * Every quantity `model` takes among a slot's values in one of its entry
- * modes: its declared quantities but the humidity, which a slot holds apart
- * from its values, and every mode's quantities of each entry group it has.
- */
-function quantitiesHeldInAnEntryMode(model: RegisteredModel): Quantity[] {
-  return [
-    ...inputsOf(model)
-      .map((input) => input.quantity)
-      .filter((quantity) => !isHumidityQuantity(quantity)),
-    ...valueEntryGroups.filter((group) => group.appliesTo(model)).flatMap((group) => group.modes.flatMap((mode) => mode.panel)),
-  ];
-}
-
-/**
- * Every Slot offset `model` declares names a quantity it takes among a slot's
- * values in one of its entry modes: an offset on any other quantity would be
- * skipped at every first enabling, a typo passing silently (ADR-0002 decision
- * 89, rule 8).
- */
-function expectEverySlotOffsetOnAHeldQuantity(model: RegisteredModel): void {
-  const held = quantitiesHeldInAnEntryMode(model);
-  for (const { quantity } of model.slotOffsets?.flat() ?? []) {
-    expect(held, `${model.info.label}: ${quantity.key}`).toContain(quantity);
-  }
-}
-
-describe("slotOffsets", () => {
-  it("name a quantity the model takes among a slot's values in one of its entry modes, for every registered model", () => {
-    for (const model of registeredModels) {
-      expectEverySlotOffsetOnAHeldQuantity(model);
-    }
-  });
-
-  it.each([
-    { name: "the external work, which PMV (ISO 7730) does not take", quantity: q.wme },
-    { name: "the relative humidity, which a slot holds apart from its values", quantity: q.rh },
-  ])("that name $name fail the check", ({ quantity }) => {
-    const offsetOnAnother: RegisteredModel = {
-      ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, label: "Fixture with an offset on a quantity it does not hold" },
-      slotOffsets: [[{ quantity, amount: 1 }], []],
-    };
-    expect(() => expectEverySlotOffsetOnAHeldQuantity(offsetOnAnother)).toThrow(offsetOnAnother.info.label);
   });
 });
 

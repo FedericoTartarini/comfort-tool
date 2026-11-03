@@ -25,7 +25,7 @@ import {
   withEnteredValues,
   withHumidityMode,
   withOption,
-  withSlotOffsets,
+  withSlotOffset,
   withTemperatureMode,
   type Slot,
   type ValueEntryModes,
@@ -371,16 +371,16 @@ export class Session {
 
   /**
    * Enable or disable the slot at `position`. A slot enabled for the first
-   * time takes what slot 1 holds now, entry modes and options included, with
-   * the Slot offsets the model declares for it added, and is cut to its
-   * bounds as an arrival is (ADR-0002 decision 89, rule 8). It raises no
-   * notice for the cut, as an entry cut raises none. A slot enabled again
-   * holds what it held.
+   * time takes what slot 1 holds now, entry modes and options included, each
+   * value moved by its Slot offset, one share of its axis range per position
+   * past slot 1, and is cut to its bounds as an arrival is (ADR-0002 decision
+   * 89's revision of rule 8). It raises no notice for the cut, as an entry
+   * cut raises none. A slot enabled again holds what it held.
    */
   setSlotEnabled(position: OptionalSlotPosition, enabled: boolean): void {
     if (enabled && this.#slots[position] === null) {
       const copy = new InputSlot(this.#slots[0]);
-      this.#replaceCut(copy, withSlotOffsets(copy, this.model.slotOffsets?.[position - 1] ?? []));
+      this.#replaceCut(copy, withSlotOffset(copy, this.model, position));
       const [first, second, third] = this.#slots;
       this.#slots = position === 1 ? [first, copy, third] : [first, second, copy];
     }
@@ -400,7 +400,7 @@ export class Session {
    * ({@link setTemperatureMode}, {@link setAirSpeedMode},
    * {@link setClothingMode}, {@link setHumidityMode}); a slot first
    * enabled takes slot 1's entry modes ({@link setSlotEnabled}), its Slot
-   * offsets moving values alone; a switch puts every held
+   * offset moving values alone; a switch puts every held
    * slot through one rehearsal, which reads the slot's modes, the model and
    * the model left ({@link #rehearse}); and the input panel enters a value
    * only in a row of the modes the slot is in, where
@@ -453,7 +453,7 @@ export class Session {
    * compared or not, is converted by `withTemperatureMode` at its own values,
    * weighed by the session's model, and cut to its bounds
    * ({@link #replaceCut}). A slot never enabled holds nothing and takes the mode
-   * when it copies slot 1.
+   * from slot 1 when it is first enabled.
    */
   setTemperatureMode(mode: TemperatureMode): void {
     for (const slot of this.#heldSlots()) {

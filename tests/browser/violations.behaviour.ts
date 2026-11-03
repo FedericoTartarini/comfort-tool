@@ -20,6 +20,8 @@ const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 const PAST_NO_CONTROL = "0.9";
 const FURTHER_PAST_NO_CONTROL = "1";
 const NO_CONTROL_LIMIT = "Relative air speed must be ≤ 0.64 m/s";
+/** The same limit at Input 2's 26.5 °C, the defaults' 25 °C moved by its Slot offset, which the air speed also breaks. */
+const NO_CONTROL_LIMIT_AT_INPUT_2 = "Relative air speed must be ≤ 0.8 m/s";
 const LIMITS_HEADING = "Calculated, but outside these limits:";
 
 async function open(page: Page, address: string) {
@@ -52,14 +54,15 @@ async function commit(box: Locator, text: string) {
 const limitsIcons = (scope: Locator) => scope.getByRole("img", { name: LIMITS_HEADING });
 
 /**
- * Expects `row` to carry one icon, first in its first cell, named by the heading and the no-control limit on the
- * line under it; to hold no control and no caption beside the limit; and the icon, clicked, to open nothing.
+ * Expects `row` to carry one icon, first in its first cell, named by the heading and `limit`, the no-control limit by
+ * default, on the line under it; to hold no control and no caption beside the limit; and the icon, clicked, to open
+ * nothing.
  */
-async function expectIconOf(page: Page, row: Locator) {
+async function expectIconOf(page: Page, row: Locator, limit = NO_CONTROL_LIMIT) {
   const icon = limitsIcons(row);
   await expect(icon).toHaveCount(1);
-  await expect(icon).toHaveAccessibleName(`${LIMITS_HEADING} ${NO_CONTROL_LIMIT}`);
-  await expect(icon).toHaveAttribute("title", `${LIMITS_HEADING}\n${NO_CONTROL_LIMIT}`);
+  await expect(icon).toHaveAccessibleName(`${LIMITS_HEADING} ${limit}`);
+  await expect(icon).toHaveAttribute("title", `${LIMITS_HEADING}\n${limit}`);
   // Nothing the cell shows, text or a swatch, stands before the icon.
   const before = await row.getByRole("cell").first().evaluate((cell) => {
     const range = document.createRange();
@@ -110,8 +113,8 @@ test("under Compare, only the slot whose run breaks a limit carries the icon, it
   const second = card.getByRole("row", { name: /Input 2/ });
   await expect(limitsIcons(card)).toHaveCount(1);
   await expect(toasts(page)).toHaveCount(1);
-  await expect(toasts(page)).toContainText(`Input 2: Calculated, but outside a limit. ${NO_CONTROL_LIMIT}.`);
-  await expectIconOf(page, second);
+  await expect(toasts(page)).toContainText(`Input 2: Calculated, but outside a limit. ${NO_CONTROL_LIMIT_AT_INPUT_2}.`);
+  await expectIconOf(page, second, NO_CONTROL_LIMIT_AT_INPUT_2);
 
   await toasts(page).getByRole("button", { name: "Close" }).click();
   await expect(toasts(page)).toHaveCount(0);

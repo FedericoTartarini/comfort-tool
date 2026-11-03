@@ -1642,25 +1642,45 @@ test.describe("the air-speed chart's Comfort zone", () => {
 });
 
 /**
- * A slot first enabled starts from slot 1's values moved by the Slot offsets its model declares, so its Comfort zone
- * does not lie on slot 1's, and a value an offset carries past its bound is cut to it with no toast (ADR-0002
- * decision 89, rule 8).
+ * Every slot marker the chart draws, in drawing order, read off its own traces as Plotly was handed them: each
+ * markers-only scatter (`ui/charts/plotlyFigure.ts`).
+ */
+function markerPoints(page: Page): Promise<{ x: number; y: number }[]> {
+  return page.locator(".chart-plot.js-plotly-plot").evaluate((node) => {
+    interface PointData {
+      type: string;
+      mode?: string;
+      x: number[];
+      y: number[];
+    }
+    const traces = (node as unknown as { data: PointData[] }).data;
+    return traces.filter((trace) => trace.type === "scatter" && trace.mode === "markers").map(({ x, y }) => ({ x: x[0], y: y[0] }));
+  });
+}
+
+/**
+ * A slot first enabled starts from slot 1's values, each moved up by a share of its axis range, so its marker and its
+ * Comfort zone do not lie on slot 1's, and a value the move carries past its bound is cut to it with no toast
+ * (GLOSSARY.md, **Slot offset**; ADR-0002 decision 89's revision of rule 8).
  */
 test.describe("compared slots that start apart", () => {
   const metabolicRate = (page: Page, slot: string) => page.getByRole("spinbutton", { name: new RegExp(`^Metabolic rate.*, ${slot}$`) });
   const toasts = (page: Page) => page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
 
-  test("at 1440 px on PMV (ASHRAE 55), turning Compare on shows Input 2's metabolic rate 0.1 above Input 1's, and two Comfort zones that are not the same", async ({ page }) => {
+  test("at 1440 px on PMV (ASHRAE 55), turning Compare on shows Input 2's metabolic rate as 1.25, two Comfort zones that are not the same, and two markers at different places on the psychrometric chart", async ({ page }) => {
     await openStandard(page, 1440);
     await expect.poll(() => zoneFills(page)).toHaveLength(1);
 
     await page.getByRole("switch", { name: "Compare", exact: true }).click();
 
     await expect(metabolicRate(page, "Input 1")).toHaveValue("1.1");
-    await expect(metabolicRate(page, "Input 2")).toHaveValue("1.2");
+    await expect(metabolicRate(page, "Input 2")).toHaveValue("1.25");
     await expect.poll(() => zoneFills(page)).toHaveLength(2);
     const [first, second] = await zoneFills(page);
     expect(second).not.toEqual(first);
+    await expect.poll(() => markerPoints(page)).toHaveLength(2);
+    const [firstMarker, secondMarker] = await markerPoints(page);
+    expect(secondMarker).not.toEqual(firstMarker);
   });
 
   test("at 1440 px on PMV (ASHRAE 55), Input 3 enabled with Input 1's metabolic rate at its upper end holds that end, and no toast appears", async ({ page }) => {

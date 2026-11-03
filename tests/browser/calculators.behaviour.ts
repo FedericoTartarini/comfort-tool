@@ -633,13 +633,14 @@ test.describe("Apply to, under Compare", () => {
   test("one Apply writes every checked slot and closes, the unchecked slot unchanged", async ({ page }) => {
     await open(page);
     await compareThreeSlots(page);
+    const second = await mrtOf(page, "Input 2").inputValue();
     const dialog = await openDialog(page, SOLAR);
     await dialog.getByRole("tabpanel").getByRole("checkbox", { name: "Input 3" }).click();
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(dialog).toHaveCount(0);
     // 25 °C raised is past ASHRAE 55's 40 °C, so each checked slot takes the bound's end.
     await expect(mrtOf(page, "Input 1")).toHaveValue("40");
-    await expect(mrtOf(page, "Input 2")).toHaveValue("25");
+    await expect(mrtOf(page, "Input 2")).toHaveValue(second);
     await expect(mrtOf(page, "Input 3")).toHaveValue("40");
   });
 

@@ -2,7 +2,7 @@
  * How the session tests read a session's state: a slot as plain data, a slot
  * the session is known to hold, a value the result table would show, what
  * a pending switch lists, and every entry out of range; how far a slot stands
- * from slot 1, and a model declaring no Slot offsets; the session comparing all three slots and the
+ * from slot 1, and how far a slot first enabled is moved from it; the session comparing all three slots and the
  * bounded model they start from; a Band list edited as the Bands dialog edits it; the check of the invariant the session's
  * entry modes rest on; and what a page would open on, the address a session
  * is on, and the texts a tab keeps and a link carries of it. Shared by the
@@ -18,9 +18,13 @@ import { narrowedToPage, toText } from "$lib/core/shareLink";
 import { entryModesOf } from "$lib/core/slot";
 import type { WrittenSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { BandListDraft } from "./bandListDraft.svelte";
 import { Session, type InputSlot, type SlotPosition } from "./session.svelte";
+
+const q = quantities;
 
 /** Everything a slot holds, as plain data a comparison can be made against. */
 export function shapeOf(slot: InputSlot) {
@@ -82,15 +86,51 @@ export function shownDifferences(...differences: readonly [Quantity, number][]):
 }
 
 /**
- * `model` declaring no Slot offsets, so a slot first enabled holds what slot
- * 1 holds: for a test whose slots need only start alike, and whose subject is
- * not how a slot starts. Not registered, so no link names it.
+ * One share of each value a slot holds at `model`'s defaults, in the separate,
+ * air speed and clothing insulation entry modes: one twentieth of the
+ * quantity's axis range, written by hand from each model file's axis ranges
+ * and, where it declares none, its library applicability bound. Slot 2 first
+ * enabled is moved by one share, slot 3 by two (GLOSSARY.md, **Slot offset**).
  */
-export function withoutSlotOffsets(model: RegisteredModel): RegisteredModel {
-  return { ...model, slotOffsets: undefined };
+const oneShareAtDefaults = new Map<RegisteredModel, readonly [Quantity, number][]>([
+  [pmvPpdAshrae, [[q.tdb, 1.5], [q.tr, 1.5], [q.v, 0.1], [q.met, 0.15], [q.clo, 0.11]]],
+  [pmvPpdIso, [[q.tdb, 1], [q.tr, 1.5], [q.v, 0.05], [q.met, 0.16], [q.clo, 0.2]]],
+  [adaptiveAshrae, [[q.tdb, 1.5], [q.tr, 1.5], [q.t_running_mean, 1.175], [q.v, 0.1]]],
+]);
+
+/**
+ * How far a slot first enabled with `shares` shares stands from slot 1 at
+ * `model`'s defaults, as {@link differenceFromSlot1} is compared against;
+ * `except` names the quantities the move leaves where slot 1 has them, as a
+ * cut to a bound does.
+ */
+export function sharesAtDefaults(model: RegisteredModel, shares: number, except: readonly Quantity[] = []): Map<Quantity, unknown> {
+  const oneShare = oneShareAtDefaults.get(model);
+  if (!oneShare) {
+    throw new Error(`no share is written for ${model.info.label}`);
+  }
+  return shownDifferences(
+    ...oneShare.flatMap(([quantity, share]): [Quantity, number][] => (except.includes(quantity) ? [] : [[quantity, share * shares]])),
+  );
 }
 
-/** A session on `model` with Compare on and all three slots enabled, each started from slot 1 by its Slot offsets. */
+/**
+ * Slot 1's values entered in every other slot `session` holds, as the input
+ * panel enters a value, so slots a Slot offset moved apart hold alike again:
+ * for a test whose slots need only start alike, and whose subject is not how
+ * a slot starts. Returns `session`.
+ */
+export function enterSlot1ValuesInOthers(session: Session): Session {
+  const [first, ...others] = session.slots;
+  for (const slot of others) {
+    for (const [quantity, value] of first.values) {
+      slot?.setEntered(quantity, value);
+    }
+  }
+  return session;
+}
+
+/** A session on `model` with Compare on and all three slots enabled, each started from slot 1 moved by its Slot offset. */
 export function sessionComparingThreeSlots(model: RegisteredModel): Session {
   const session = new Session(model);
   session.setCompare(true);

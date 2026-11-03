@@ -82,21 +82,6 @@ export const pmvPpdAshrae = {
     { quantity: q.clo, min: 0, max: 2.2 },
     { quantity: q.clo_dynamic, min: 0, max: 2.2 },
   ],
-  // Slot offsets: the deployed tool's steps for its inputs 2 and 3 on its
-  // Compare page, added to what slot 1 holds (ADR-0002 decision 89, rule 8).
-  // Each temperature and clothing entry mode's quantity is named, so the step
-  // applies in whichever mode the session is in.
-  slotOffsets: [
-    [{ quantity: q.met, amount: 0.1 }],
-    [
-      { quantity: q.tdb, amount: -2 },
-      { quantity: q.tr, amount: -2 },
-      { quantity: q.operative_tmp, amount: -2 },
-      { quantity: q.met, amount: 0.2 },
-      { quantity: q.clo, amount: 0.1 },
-      { quantity: q.clo_dynamic, amount: 0.1 },
-    ],
-  ],
   // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
   table: [q.tsv, q.pmv, q.ppd, q.compliance],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the

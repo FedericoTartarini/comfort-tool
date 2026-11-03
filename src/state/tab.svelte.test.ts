@@ -14,6 +14,7 @@ import { toText } from "$lib/core/shareLink";
 import { unitSystem } from "$lib/core/unitSystem";
 import { startingChartSettings, startingSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -31,7 +32,7 @@ import {
   openedOn,
   outOfRangeRowsOf,
   sessionComparingThreeSlots,
-  shownDifferences,
+  sharesAtDefaults,
 } from "./sessionTestReaders";
 import { Tab } from "./tab.svelte";
 
@@ -272,8 +273,8 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
     }
   });
 
-  it.each([pmvPpdAshrae, pmvPpdIso])(
-    "on $info.label, returns slots 2 and 3 to never enabled, so the next switch-on of Compare starts slot 2 from slot 1 by its Slot offsets again",
+  it.each([pmvPpdAshrae, pmvPpdIso, adaptiveAshrae])(
+    "on $info.label, returns slots 2 and 3 to never enabled, so the next switch-on of Compare moves slot 2 from slot 1 by its Slot offset again",
     (model) => {
       writeKeptText(keptTextOf(keptSession()));
       const { tab } = recordingTab();
@@ -283,13 +284,13 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
       const session = openSessionOf(tab);
       session.setCompare(true);
 
-      expect(differenceFromSlot1(session, 1)).toEqual(shownDifferences([q.met, 0.1]));
+      expect(differenceFromSlot1(session, 1)).toEqual(sharesAtDefaults(model, 1));
     },
   );
 });
 
 describe("a share link with three compared slots, at a tab with nothing kept", () => {
-  it.each([pmvPpdAshrae, pmvPpdIso])("on $info.label, opens each slot as the sender had it, with no Slot offset added", (model) => {
+  it.each([pmvPpdAshrae, pmvPpdIso])("on $info.label, opens each slot as the sender had it, moved by no Slot offset", (model) => {
     const sender = sessionComparingThreeSlots(model);
     heldSlot(sender, 2).setEntered(q.tdb, 21);
     const { tab } = recordingTab();

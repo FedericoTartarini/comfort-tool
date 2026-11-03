@@ -24,13 +24,13 @@ import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
 import {
   differenceFromSlot1,
+  enterSlot1ValuesInOthers,
   heldSlot,
   listedRowsOf,
   outOfRangeQuantitiesAt,
   sessionComparingThreeSlots,
   shapeOf,
   shownDifferences,
-  withoutSlotOffsets,
 } from "./sessionTestReaders";
 
 const q = quantities;
@@ -53,7 +53,7 @@ const corrections = [
 ] as const;
 
 function threeDifferentSlots(model: RegisteredModel): Session {
-  const session = sessionComparingThreeSlots(withoutSlotOffsets(model));
+  const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(model));
   slotPositions.forEach((position) => {
     const { clo, v, met } = entriesOfSlot[position];
     heldSlot(session, position).setEntered(q.clo, clo);
@@ -200,9 +200,10 @@ describe("the session's clothing entry mode", () => {
     });
   });
 
-  it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode, its dynamic clothing 0.1 clo higher", () => {
+  it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode, its dynamic clothing moved by its Slot offset", () => {
     const session = new Session(pmvPpdAshrae);
     session.setCompare(true);
+    enterSlot1ValuesInOthers(session);
     heldSlot(session, 1).setEntered(q.met, 2);
     session.setSlotEnabled(1, false);
 
@@ -211,7 +212,9 @@ describe("the session's clothing entry mode", () => {
 
     expect(heldSlot(session, 1).values.get(q.clo_dynamic)).toBe(clo_dynamic_ashrae(0.5, 2));
     expect(heldSlot(session, 2).clothing.mode).toBe(clothingMode.corrected);
-    expect(differenceFromSlot1(session, 2)).toEqual(shownDifferences([q.tdb, -2], [q.tr, -2], [q.met, 0.2], [q.clo_dynamic, 0.1]));
+    expect(differenceFromSlot1(session, 2)).toEqual(
+      shownDifferences([q.tdb, 3], [q.tr, 3], [q.v, 0.2], [q.met, 0.3], [q.clo_dynamic, 0.22]),
+    );
   });
 
   it.each([
