@@ -79,7 +79,7 @@ The text in a number box from the first keystroke until it is committed: after a
 _Avoid_: pending value, uncommitted input
 
 **Slot**:
-One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
+One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds, moved by its Slot offset. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Compare**:
@@ -87,7 +87,7 @@ Showing up to three slots side by side on the Standard page, each with its own r
 _Avoid_: baseline, active slot, scenario
 
 **Slot offset**:
-How far slot 2 or slot 3 starts from slot 1's values when it is first enabled: a demonstration value per quantity, declared by the model file, so that the compared slots' comfort zones do not start on top of each other. A model that declares none starts the slot as a copy of slot 1.
+How far slot 2 or slot 3 starts from slot 1's values when it is first enabled: each value moved by a share of its quantity's axis range, one share for slot 2 and two for slot 3, by one rule for every model, so that the compared slots' markers do not start on top of each other. The humidity and the options start as slot 1's.
 _Avoid_: delta, variation, default (that is the model's starting value)
 
 **Session**:

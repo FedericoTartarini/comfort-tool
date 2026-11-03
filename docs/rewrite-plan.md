@@ -516,6 +516,10 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > cuts a humidity entered as dew point, wet bulb or humidity ratio (story 47); the dry-bulb axis moving 48 px left on
 > the page (story 37); Input 1's and Input 2's markers on one point. **Next: USYD-145 by `/diagnosing-bugs`; the rest of
 > round 2 waits on the library's `feat/v2-all-models`.**
+>
+> **2026-11-03 — position, the Slot-offsets theme grilled**: decision 89 rule 8 revised (a Slot offset the app's one
+> rule; no model declares any), GLOSSARY's **Slot offset** and **Slot** with it; round 2's three open points answered.
+> **Next: the user's `/to-spec` and `/to-tickets` for it, then code review and the 0.4.0 deploy.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
