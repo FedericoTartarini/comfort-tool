@@ -520,6 +520,15 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > **2026-11-03 — position, the Slot-offsets theme grilled**: decision 89 rule 8 revised (a Slot offset the app's one
 > rule; no model declares any), GLOSSARY's **Slot offset** and **Slot** with it; round 2's three open points answered.
 > **Next: the user's `/to-spec` and `/to-tickets` for it, then code review and the 0.4.0 deploy.**
+>
+> **2026-11-03 — position, the Slot-offsets theme done**: `.scratch/slot-offsets/` landed on `rewrite/v1`: a slot first
+> enabled takes slot 1's values each moved up by a twentieth of its axis range, two for slot 3, on every model, and no
+> model declares offsets (`6a60d03`); a registry-wide test keeps the three markers apart on every chart, in each entry
+> mode of each group in turn (`128fcc5`). Decision 89's revision of rule 8 carries a close-out note naming the commits;
+> its humidity cut near saturation is withdrawn, since the move only widens a humidity entry's bound. GLOSSARY.md's
+> **Slot offset** and **Slot** hold. `npm test` passes at 1249 tests and `npm run test:browser` at 174. Open for the
+> user: the registry test's distance norm (Euclidean, not per-axis). **Next: `/code-review` since `562d63e`, then the
+> 0.4.0 deploy.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
