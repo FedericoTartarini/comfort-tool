@@ -91,3 +91,18 @@ for (const address of ADDRESSES) {
     await expect(page.locator(".chart-plot .hoverlayer .hovertext").first()).toBeVisible();
   });
 }
+
+// Plotly saves the ranges Reset axes returns to only when it draws on an empty
+// node, and the chart keeps one node while its axes change.
+test("Reset axes after a chart type change returns to the new chart's ranges", async ({ page }) => {
+  await open(page, ADDRESSES[0]);
+  const first = await rangesOf(page);
+  await page.getByRole("button", { name: "Chart type", exact: true }).click();
+  await page.getByRole("option", { name: "Dynamic", exact: true }).click();
+  await expect.poll(async () => await rangesOf(page)).not.toEqual(first);
+  const drawn = await rangesOf(page);
+  await clickModebar(page, "Reset axes");
+  // A right Reset leaves the ranges where they are, so there is no change to poll for; the wait lets its redraw land.
+  await page.waitForTimeout(300);
+  expect(await rangesOf(page)).toEqual(drawn);
+});
