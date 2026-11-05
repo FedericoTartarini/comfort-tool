@@ -79,7 +79,7 @@ export const adaptiveAshrae = {
       type: chartType.adaptive,
       axes: { x: q.t_running_mean, y: q.operative_tmp },
       limits: ({ values, xRange }) => {
-        const zone = adaptive_ashrae_zone({ v: values.v, t_running_mean_range: [xRange.min, xRange.max] });
+        const zone = adaptive_ashrae_zone(values.v, xRange.min, xRange.max);
         return [
           toZoneLimits(zone.acceptability_80, q.acceptability_80.label),
           toZoneLimits(zone.acceptability_90, q.acceptability_90.label),

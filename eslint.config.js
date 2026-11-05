@@ -347,10 +347,14 @@ export default [
     // After the test block on purpose: the fence holds for the directory's
     // tests too, since they move upstream with it. The model-function rule
     // does not: this is library code, and calls a model as the library's own
-    // functions do (ADR-0002 decision 24).
+    // functions do (ADR-0002 decision 24). Nor do the app's syntax rules: the
+    // library names a constant in snake_case and writes its own keys, which
+    // the fence keeps it from reading off core/quantities.ts (decision 90
+    // rule 12).
     files: ["src/temporary-library/**/*.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [temporaryLibraryBoundary] }],
+      "no-restricted-syntax": "off",
     },
   },
 ];

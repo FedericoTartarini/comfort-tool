@@ -233,7 +233,7 @@ function adaptiveAt(airSpeed: number): Slot {
 /** The temporary library's two bands for Adaptive's chart at `airSpeed`, over the drawn running means, 80 % first. */
 function libraryBandsAt(airSpeed: number) {
   const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
-  const zone = adaptive_ashrae_zone({ v: airSpeed, t_running_mean_range: [min, max] });
+  const zone = adaptive_ashrae_zone(airSpeed, min, max);
   return [zone.acceptability_80, zone.acceptability_90];
 }
 

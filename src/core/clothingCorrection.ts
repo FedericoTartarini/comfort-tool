@@ -7,9 +7,11 @@
  * clothing insulation as entered. A standard's row lands here ahead of its
  * first model, as a quantity lands in `core/quantities.ts`.
  *
- * The one reader of the library's two clothing corrections.
+ * The one reader of the library's two clothing corrections, and of the
+ * temporary library's inverse of each.
  */
 import { clo_dynamic_ashrae, clo_dynamic_iso_vr, Standard } from "jsthermalcomfort";
+import { clo_dynamic_ashrae_inverse, clo_dynamic_iso_vr_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
 
 /**
  * What a correction may read beside the clothing insulation, of the slot's
@@ -21,11 +23,19 @@ export interface ClothingCorrectionInputs {
   readonly vr: number;
 }
 
-/** The dynamic clothing insulation for the clothing insulation `clo`, by one standard's rule. */
-export type ClothingCorrection = (clo: number, resolved: ClothingCorrectionInputs) => number;
+/** One standard's rule and its inverse. */
+export interface ClothingCorrection {
+  /** The dynamic clothing insulation for the clothing insulation `clo`. */
+  readonly correct: (clo: number, resolved: ClothingCorrectionInputs) => number;
+  /** The clothing insulation {@link ClothingCorrection.correct} turns into `clo_dynamic`. */
+  readonly invert: (clo_dynamic: number, resolved: ClothingCorrectionInputs) => number;
+}
 
 /** ASHRAE 55's: `clo × (0.6 + 0.4 / met)` above 1.2 met, `clo` itself at or below it. */
-const ashrae55: ClothingCorrection = (clo, { met }) => clo_dynamic_ashrae(clo, met);
+const ashrae55: ClothingCorrection = {
+  correct: (clo, { met }) => clo_dynamic_ashrae(clo, met),
+  invert: (clo_dynamic, { met }) => clo_dynamic_ashrae_inverse(clo_dynamic, met),
+};
 
 /**
  * ISO 7730 Annex C's, by ISO 9920, at the library's default air-layer
@@ -34,7 +44,10 @@ const ashrae55: ClothingCorrection = (clo, { met }) => clo_dynamic_ashrae(clo, m
  * v)` is this function at `v_relative(v, met)`, and passing it a relative air
  * speed would add the activity's share twice.
  */
-const iso7730: ClothingCorrection = (clo, { met, vr }) => clo_dynamic_iso_vr(clo, met, vr);
+const iso7730: ClothingCorrection = {
+  correct: (clo, { met, vr }) => clo_dynamic_iso_vr(clo, met, vr),
+  invert: (clo_dynamic, { met, vr }) => clo_dynamic_iso_vr_inverse(clo_dynamic, met, vr),
+};
 
 const clothingCorrections: ReadonlyMap<Standard, ClothingCorrection> = new Map([
   [Standard.ashrae_55_2023, ashrae55],

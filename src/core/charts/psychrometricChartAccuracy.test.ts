@@ -26,7 +26,7 @@ import { unitSystem } from "$lib/core/unitSystem";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import record from "$lib/temporary-library/chart-online.json" with { type: "json" };
+import record from "./chart-online.json" with { type: "json" };
 import type { PathPiece } from "./chartSpec";
 import { zoneFillsOf } from "./chartTestPaths";
 import { chartRequestFor } from "./chartTestRequests";

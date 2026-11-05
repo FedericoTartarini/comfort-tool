@@ -9,8 +9,8 @@
  * and this module on neither.
  */
 import { t_o, v_relative } from "jsthermalcomfort";
-import { clo_dynamic_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
 import { v_relative_inverse } from "$lib/temporary-library/v_relative_inverse";
+import type { ClothingCorrectionInputs } from "./clothingCorrection";
 import {
   airSpeedMode,
   clothingMode,
@@ -273,32 +273,25 @@ export function relativeAirSpeedOf(slot: Slot): number {
  * the value the switch into dynamic clothing entry stores
  * ({@link withClothingMode}), so the person sees the number the model was
  * getting. The one place the app corrects a clothing insulation, by the one
- * rule {@link withClothingMode} and {@link clothingGiving} invert
- * ({@link clothingCorrectionAt}).
+ * rule {@link withClothingMode} and {@link clothingGiving} invert, at
+ * {@link correctionInputsOf}.
  */
 export function dynamicClothingOf(slot: Slot, model: RegisteredModel): number {
   if (slot.clothing.mode === clothingMode.corrected) {
     return requireValue(slot.values, q.clo_dynamic);
   }
   const clothing = requireValue(slot.values, q.clo);
-  return clothingCorrectionAt(slot, model)?.(clothing) ?? clothing;
+  return clothingCorrectionOf(model)?.correct(clothing, correctionInputsOf(slot)) ?? clothing;
 }
 
 /**
- * The clothing correction of `model`'s standard at the slot's own metabolic
- * rate and relative air speed ({@link relativeAirSpeedOf}), a function of the
- * clothing insulation alone: what {@link dynamicClothingOf} corrects by and
- * {@link withClothingMode} and {@link clothingGiving} invert.
- * `undefined` for a model without the
- * clothing entry group.
+ * The slot's own metabolic rate and relative air speed
+ * ({@link relativeAirSpeedOf}), as a clothing correction reads them: where
+ * {@link dynamicClothingOf} corrects and {@link clothingGiving} inverts.
  */
-function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number) => number) | undefined {
-  const correct = clothingCorrectionOf(model);
-  if (!correct) {
-    return undefined;
-  }
+function correctionInputsOf(slot: Slot): ClothingCorrectionInputs {
   // Getters: a rule reads only what it takes, so ASHRAE 55's asks for no air speed.
-  const resolved = {
+  return {
     get met() {
       return requireValue(slot.values, q.met);
     },
@@ -306,7 +299,6 @@ function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number
       return relativeAirSpeedOf(slot);
     },
   };
-  return (clo) => correct(clo, resolved);
 }
 
 /**
@@ -316,19 +308,18 @@ function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number
  * given exactly `vr`.
  */
 function airSpeedGiving(vr: number, slot: Slot): number {
-  return v_relative_inverse({ vr, met: requireValue(slot.values, q.met) });
+  return v_relative_inverse(vr, requireValue(slot.values, q.met));
 }
 
 /**
  * The clothing insulation `model`'s rule corrects to `dynamic` at the slot's
- * own values ({@link clothingCorrectionAt}), by the temporary library's
- * `clo_dynamic_inverse`, what the switch back to clothing insulation entry
+ * own values ({@link correctionInputsOf}), by the rule's inverse in the
+ * temporary library, what the switch back to clothing insulation entry
  * stores ({@link withClothingMode}). The number itself for a model without a
  * rule.
  */
 function clothingGiving(dynamic: number, slot: Slot, model: RegisteredModel): number {
-  const correction = clothingCorrectionAt(slot, model);
-  return correction ? clo_dynamic_inverse({ clo_dynamic: dynamic, correction }) : dynamic;
+  return clothingCorrectionOf(model)?.invert(dynamic, correctionInputsOf(slot)) ?? dynamic;
 }
 
 /**
@@ -618,14 +609,15 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
  * corrected stores {@link dynamicClothingOf}'s answer, the dynamic clothing
  * insulation `model` was given at the slot's own values, by its standard's
  * rule; corrected → uncorrected stores the clothing insulation that rule
- * corrects to the entry, by the temporary library's `clo_dynamic_inverse`,
- * which searches the rule itself: ISO 7730's has no closed inverse, and the
+ * corrects to the entry, by the rule's inverse in the temporary library
+ * (`clo_dynamic_ashrae_inverse`, `clo_dynamic_iso_vr_inverse`), which searches
+ * the rule itself: ISO 7730's has no closed inverse, and the
  * app writes neither standard's formula (ADR-0002 decision 54 as revised a
  * third time). So `model` is given the same dynamic clothing insulation
  * before and after, as {@link withAirSpeedMode} leaves the relative air
  * speed: exactly for a clothing insulation a person entered, and within the
  * rule's rounding for a dynamic one typed in that no such entry gives (under
- * ASHRAE 55 the inverse moves it by up to 0.001; see `clo_dynamic_inverse`).
+ * ASHRAE 55 the inverse moves it by up to 0.001; see `clo_dynamic_ashrae_inverse`).
  * `model` is the model the slot is on: the rule inverted is the one that
  * corrected the entry, and for a model without the group nothing did, so the
  * number is kept. The two representations never coexist.

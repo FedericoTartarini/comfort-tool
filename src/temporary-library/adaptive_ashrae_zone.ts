@@ -1,18 +1,11 @@
-/**
- * The 80 % and 90 % acceptability bands of ASHRAE 55's adaptive model as
- * polygons: the region of running mean × operative temperature where
- * `adaptive_ashrae` answers `acceptability_80` or `acceptability_90` true.
- *
- * Every number is read off `adaptive_ashrae` and `ADAPTIVE_ASHRAE_INFO` but
- * one: {@link COOLING_EFFECT_ONSET}, the 25 °C at and above which the model
- * applies the cooling effect, which it applies but does not return.
- *
- * Leaves the app when jsthermalcomfort publishes adaptive band geometry
- * (ADR-0002 decision 24).
- */
-import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, type AdaptiveAshraeResult } from "jsthermalcomfort";
+// The 80 % and 90 % acceptability bands of ASHRAE 55's adaptive model as
+// polygons: the region of running mean × operative temperature where
+// `adaptive_ashrae` answers `acceptability_80` or `acceptability_90` true.
+// Every number is read off `adaptive_ashrae` and `ADAPTIVE_ASHRAE_INFO` but
+// one, the 25 °C at and above which the model applies the cooling effect.
+import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae } from "jsthermalcomfort";
 
-/** A point on the adaptive chart, in SI units. */
+/** A point of running mean × operative temperature, in SI units. */
 export interface AdaptivePoint {
   /** Prevailing mean (running mean) outdoor temperature, [°C]. */
   readonly t_running_mean: number;
@@ -20,7 +13,7 @@ export interface AdaptivePoint {
   readonly operative_tmp: number;
 }
 
-/** One acceptability band of the adaptive chart. */
+/** One acceptability band. */
 export interface AdaptiveAshraeBand {
   /**
    * The upper limit, from the lowest running mean to the highest: along the
@@ -44,21 +37,19 @@ export interface AdaptiveAshraeZone {
   readonly acceptability_90: AdaptiveAshraeBand;
 }
 
-/** Parameters of {@link adaptive_ashrae_zone}, documented on the function. */
-export interface AdaptiveAshraeZoneParams {
-  readonly v: number;
-  readonly t_running_mean_range: readonly [number, number];
-}
+/** The four limits of `adaptive_ashrae` the bands follow. */
+type LimitKey = "tmp_cmf_80_low" | "tmp_cmf_80_up" | "tmp_cmf_90_low" | "tmp_cmf_90_up";
 
-/** Reads the limit a side of the band follows off a result. */
-type LimitOf = (limits: AdaptiveAshraeResult) => number;
+/** The model the bands are drawn off: `adaptive_ashrae`, as far as the bands read it. */
+type AdaptiveModel = (inputs: Parameters<typeof adaptive_ashrae>[0]) => Readonly<Record<LimitKey, number | null>>;
 
 /**
  * The operative temperature, [°C], at and above which `adaptive_ashrae` widens
- * the upper limits by the cooling effect of elevated air speed: ASHRAE 55's,
- * and the one number here that the model does not return.
+ * the upper limits by the cooling effect of elevated air speed: the library
+ * holds it unexported, in `src/_internal/adaptive_cooling_effect.ts:13` at
+ * `88015e5`.
  */
-const COOLING_EFFECT_ONSET = 25;
+const cooling_effect_onset = 25;
 
 /**
  * Draws the 80 % and 90 % acceptability bands of the ASHRAE 55 adaptive model
@@ -69,12 +60,14 @@ const COOLING_EFFECT_ONSET = 25;
  * permitted to increase the upper acceptability temperature limits … by the
  * corresponding Δt0 in Table 5.4.2.4." The condition is on the operative
  * temperature, not on the limit. `adaptive_ashrae` reads it so, as
- * pythermalcomfort does, from 25 °C itself (`to >= 25`). So at an operative temperature below 25 °C a
- * band's upper limit is its base line, and at 25 °C or more it is the shifted
- * line, the base line plus the cooling effect. Where the base line lies below
- * 25 °C and the shifted line above it, the band holds two runs of operative
- * temperature: up to the base line, and from 25 °C up to the shifted line. The
- * run between the base line and 25 °C is left out.
+ * pythermalcomfort does, from 25 °C itself (`to >= 25.0`,
+ * `pythermalcomfort/_internal/adaptive_cooling_effect.py:35` at 4.8.0). So at
+ * an operative temperature below 25 °C a band's upper limit is its base line,
+ * and at 25 °C or more it is the shifted line, the base line plus the cooling
+ * effect. Where the base line lies below 25 °C and the shifted line above it,
+ * the band holds two runs of operative temperature: up to the base line, and
+ * from 25 °C up to the shifted line. The run between the base line and 25 °C
+ * is left out.
  *
  * Each band is traced as one simple polygon:
  * - its upper limit runs along the base line to where it reaches 25 °C;
@@ -92,29 +85,33 @@ const COOLING_EFFECT_ONSET = 25;
  * the given air speed at 25 °C for the shifted lines. Where a line reaches
  * 25 °C is interpolated along it, the lines being straight.
  *
- * Output is SI and ungarnished: no unit conversion, no styling. The running
- * mean is clipped to the model's applicability, 10–33.5 °C, whatever range is
- * asked for.
+ * Output is SI: no unit conversion. The running mean is clipped to the
+ * model's applicability, 10–33.5 °C, whatever range is asked for. The zone,
+ * its bands, their limits and their points are frozen.
  *
- * @public
- *
- * @param {Object} params - the bands' parameters, snake_case as the library's models name theirs.
- * @param {number} params.v - Air speed [m/s]. Below 0.6 m/s there is no cooling effect
- * @param {[number, number]} params.t_running_mean_range - The running means to draw, [°C], lowest first
+ * @param v - air speed, [m/s]. Below 0.6 m/s there is no cooling effect
+ * @param t_running_mean_min - the lowest running mean to draw, [°C]
+ * @param t_running_mean_max - the highest running mean to draw, [°C]
  * @returns the two bands under the names of the `adaptive_ashrae` outputs they
- *   are the regions of, see {@link AdaptiveAshraeZone}
- * @throws {RangeError} where a band's shifted line reaches 25 °C by the end of
- *   the range and its base line does not pass it: the strip there touches the
- *   rest of the band nowhere, or at one point, and one polygon cannot hold both
+ * are the regions of
+ * @throws `TypeError` for an argument that is not a number; `adaptive_ashrae`'s
+ * own error for a NaN `v` or running mean; `RangeError` where a band's shifted
+ * line reaches 25 °C by `t_running_mean_max` and its base line does not pass
+ * it, since the strip there touches the rest of the band nowhere, or at one
+ * point, and one polygon cannot hold both; `Error` for a limit the model gives
+ * no value for.
  *
  * @example
- * const zone = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [10, 33.5] });
- * zone.acceptability_90.upper_limit;
- * // [{ t_running_mean: 10, operative_tmp: 23.4 }, { t_running_mean: 15.16, operative_tmp: 25 },
+ * ```ts
+ * import { adaptive_ashrae_zone } from "jsthermalcomfort";
+ * const zone = adaptive_ashrae_zone(0.6, 10, 33.5);
+ * console.log(zone.acceptability_90.upper_limit);
+ * // to two decimals: [{ t_running_mean: 10, operative_tmp: 23.4 }, { t_running_mean: 15.16, operative_tmp: 25 },
  * //  { t_running_mean: 11.29, operative_tmp: 25 }, { t_running_mean: 33.5, operative_tmp: 31.89 }]
+ * ```
  */
-export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): AdaptiveAshraeZone {
-  return _adaptive_ashrae_zone(params, adaptive_ashrae);
+export function adaptive_ashrae_zone(v: number, t_running_mean_min: number, t_running_mean_max: number): AdaptiveAshraeZone {
+  return _adaptive_ashrae_zone(v, t_running_mean_min, t_running_mean_max, adaptive_ashrae);
 }
 
 /**
@@ -122,25 +119,39 @@ export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): Adaptive
  * library's `adaptive_ashrae`, so a test can show the geometry follows
  * whatever the model returns.
  *
- * @param {Object} params - the bands' parameters, as {@link adaptive_ashrae_zone} takes them
- * @param {typeof adaptive_ashrae} model - The model to evaluate; the public function passes `adaptive_ashrae`
- * @returns the two bands, see {@link AdaptiveAshraeZone}
+ * @param v - air speed, [m/s]
+ * @param t_running_mean_min - the lowest running mean to draw, [°C]
+ * @param t_running_mean_max - the highest running mean to draw, [°C]
+ * @param model - the model to evaluate; {@link adaptive_ashrae_zone} passes `adaptive_ashrae`
+ * @returns the two bands, as {@link adaptive_ashrae_zone} returns them
+ * @throws as {@link adaptive_ashrae_zone} throws.
  */
-export function _adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams, model: typeof adaptive_ashrae): AdaptiveAshraeZone {
-  const { v, t_running_mean_range } = params;
+export function _adaptive_ashrae_zone(
+  v: number,
+  t_running_mean_min: number,
+  t_running_mean_max: number,
+  model: AdaptiveModel,
+): AdaptiveAshraeZone {
+  for (const [key, value] of Object.entries({ v, t_running_mean_min, t_running_mean_max })) {
+    if (typeof (value as unknown) !== "number") throw new TypeError(`${key} must be a number.`);
+  }
   // An input with no bound would clip nothing; `ADAPTIVE_ASHRAE_INFO` bounds this one.
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
-  const start = Math.max(t_running_mean_range[0], bound?.min ?? -Infinity);
-  const end = Math.min(t_running_mean_range[1], bound?.max ?? Infinity);
+  const start = Math.max(t_running_mean_min, bound?.min ?? -Infinity);
+  const end = Math.min(t_running_mean_max, bound?.max ?? Infinity);
   if (start >= end) {
-    const nothing: AdaptiveAshraeBand = { upper_limit: [], lower_limit: [], polygon: [] };
-    return { acceptability_80: nothing, acceptability_90: nothing };
+    const nothing: AdaptiveAshraeBand = Object.freeze({
+      upper_limit: Object.freeze([]),
+      lower_limit: Object.freeze([]),
+      polygon: Object.freeze([]),
+    });
+    return Object.freeze({ acceptability_80: nothing, acceptability_90: nothing });
   }
 
   // `tdb = tr` makes the operative temperature that value whatever the air
   // speed's weighting of the two.
-  const readLimits = (t_running_mean: number, air_speed: number, operative_tmp: number): AdaptiveAshraeResult =>
-    model({
+  const readLimits = (t_running_mean: number, air_speed: number, operative_tmp: number): Readonly<Record<LimitKey, number>> => {
+    const limits = model({
       tdb: operative_tmp,
       tr: operative_tmp,
       t_running_mean,
@@ -148,49 +159,68 @@ export function _adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams, model: t
       limit_inputs: false,
       round_output: false,
     });
+    const limitOf = (key: LimitKey): number => {
+      const value = limits[key];
+      if (value === null) {
+        throw new Error(`${key} of adaptive_ashrae is null at a running mean of ${t_running_mean} °C and ${air_speed} m/s.`);
+      }
+      return value;
+    };
+    return {
+      tmp_cmf_80_low: limitOf("tmp_cmf_80_low"),
+      tmp_cmf_80_up: limitOf("tmp_cmf_80_up"),
+      tmp_cmf_90_low: limitOf("tmp_cmf_90_low"),
+      tmp_cmf_90_up: limitOf("tmp_cmf_90_up"),
+    };
+  };
   // Still air, so no cooling effect whatever the operative temperature.
-  const stillStart = readLimits(start, 0, COOLING_EFFECT_ONSET);
-  const stillEnd = readLimits(end, 0, COOLING_EFFECT_ONSET);
+  const still_start = readLimits(start, 0, cooling_effect_onset);
+  const still_end = readLimits(end, 0, cooling_effect_onset);
   // The entered air speed at the onset, where any cooling effect applies.
-  const movingStart = readLimits(start, v, COOLING_EFFECT_ONSET);
-  const movingEnd = readLimits(end, v, COOLING_EFFECT_ONSET);
-  const point = (t_running_mean: number, operative_tmp: number): AdaptivePoint => ({ t_running_mean, operative_tmp });
+  const moving_start = readLimits(start, v, cooling_effect_onset);
+  const moving_end = readLimits(end, v, cooling_effect_onset);
+  const point = (t_running_mean: number, operative_tmp: number): AdaptivePoint => Object.freeze({ t_running_mean, operative_tmp });
   // Where a straight line from `from` at the start to `to` at the end reaches the onset.
-  const onsetAlong = (from: number, to: number): number => start + ((COOLING_EFFECT_ONSET - from) * (end - start)) / (to - from);
+  const onsetAlong = (from: number, to: number): number => start + ((cooling_effect_onset - from) * (end - start)) / (to - from);
 
-  const traceUpperLimit = (percent: number, upperOf: LimitOf): [AdaptivePoint, ...AdaptivePoint[]] => {
-    const [baseStart, baseEnd] = [upperOf(stillStart), upperOf(stillEnd)];
-    const [shiftedStart, shiftedEnd] = [upperOf(movingStart), upperOf(movingEnd)];
-    const base: [AdaptivePoint, AdaptivePoint] = [point(start, baseStart), point(end, baseEnd)];
-    const shifted: [AdaptivePoint, AdaptivePoint] = [point(start, shiftedStart), point(end, shiftedEnd)];
+  const traceUpperLimit = (percent: number, upper: LimitKey): [AdaptivePoint, ...AdaptivePoint[]] => {
+    const [base_start, base_end] = [still_start[upper], still_end[upper]];
+    const [shifted_start, shifted_end] = [moving_start[upper], moving_end[upper]];
+    const base: [AdaptivePoint, AdaptivePoint] = [point(start, base_start), point(end, base_end)];
+    const shifted: [AdaptivePoint, AdaptivePoint] = [point(start, shifted_start), point(end, shifted_end)];
     // The library applies no cooling effect below 0.6 m/s.
-    if (shiftedStart === baseStart && shiftedEnd === baseEnd) return base;
+    if (shifted_start === base_start && shifted_end === base_end) return base;
     // Every limit at the onset or above: shifted end to end.
-    if (baseStart >= COOLING_EFFECT_ONSET) return shifted;
+    if (base_start >= cooling_effect_onset) return shifted;
     // The shifted line never reaches the onset, so there is no strip.
-    if (shiftedEnd < COOLING_EFFECT_ONSET) return base;
-    if (baseEnd <= COOLING_EFFECT_ONSET) {
+    if (shifted_end < cooling_effect_onset) return base;
+    if (base_end <= cooling_effect_onset) {
       throw new RangeError(
-        `The ${percent} % band over running means ${start}–${end} °C at ${v} m/s: its shifted upper limit reaches ` +
-          `${COOLING_EFFECT_ONSET} °C and the base one does not, so the strip above it touches no other part of the band`,
+        `t_running_mean_max ${t_running_mean_max} °C ends the ${percent} % band at ${v} m/s where its shifted upper ` +
+          `limit reaches ${cooling_effect_onset} °C and the base one does not, so the strip above it touches no other ` +
+          `part of the band.`,
       );
     }
-    const baseOnset = point(onsetAlong(baseStart, baseEnd), COOLING_EFFECT_ONSET);
-    const alongOnset =
-      shiftedStart > COOLING_EFFECT_ONSET
-        ? [point(start, COOLING_EFFECT_ONSET), shifted[0]]
-        : [point(onsetAlong(shiftedStart, shiftedEnd), COOLING_EFFECT_ONSET)];
-    return [base[0], baseOnset, ...alongOnset, shifted[1]];
+    const base_onset = point(onsetAlong(base_start, base_end), cooling_effect_onset);
+    const along_onset =
+      shifted_start > cooling_effect_onset
+        ? [point(start, cooling_effect_onset), shifted[0]]
+        : [point(onsetAlong(shifted_start, shifted_end), cooling_effect_onset)];
+    return [base[0], base_onset, ...along_onset, shifted[1]];
   };
 
-  const traceBand = (percent: number, upperOf: LimitOf, lowerOf: LimitOf): AdaptiveAshraeBand => {
-    const upper = traceUpperLimit(percent, upperOf);
-    const lower = [point(start, lowerOf(stillStart)), point(end, lowerOf(stillEnd))];
-    return { upper_limit: upper, lower_limit: lower, polygon: [...upper, ...[...lower].reverse(), upper[0]] };
+  const traceBand = (percent: number, upper: LimitKey, lower: LimitKey): AdaptiveAshraeBand => {
+    const upper_limit = traceUpperLimit(percent, upper);
+    const lower_limit = [point(start, still_start[lower]), point(end, still_end[lower])];
+    return Object.freeze({
+      upper_limit: Object.freeze(upper_limit),
+      lower_limit: Object.freeze(lower_limit),
+      polygon: Object.freeze([...upper_limit, ...[...lower_limit].reverse(), upper_limit[0]]),
+    });
   };
 
-  return {
-    acceptability_80: traceBand(80, (limits) => limits.tmp_cmf_80_up, (limits) => limits.tmp_cmf_80_low),
-    acceptability_90: traceBand(90, (limits) => limits.tmp_cmf_90_up, (limits) => limits.tmp_cmf_90_low),
-  };
+  return Object.freeze({
+    acceptability_80: traceBand(80, "tmp_cmf_80_up", "tmp_cmf_80_low"),
+    acceptability_90: traceBand(90, "tmp_cmf_90_up", "tmp_cmf_90_low"),
+  });
 }
