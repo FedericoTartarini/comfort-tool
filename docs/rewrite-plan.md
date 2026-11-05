@@ -547,8 +547,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > the library (`867ff33`). For the person, the calculator tabs read "Clothing prediction" and "Solar gain on people",
 > and a dew point or wet bulb is the library's unrounded value. Decision 90 carries a close-out note; ADR-0001's two
 > notes naming `t_o` are noted; GLOSSARY's **Temporary library** and **Band** hold. `npm test` passes at 1280 tests and
-> `npm run test:browser` at 176. Open for the user: `resultValue`'s remaining cast (spec story 32), the lint rule's gap
-> on the package's subpaths, `PET_STEADY_INFO`'s `p_atm` in hPa. Open points B32–B37 and D19–D21 stand. **Next: the
+> `npm run test:browser` at 176. Open for the user: `resultValue`'s remaining cast (spec story 32). Open points B32–B38 and D19–D22
+> stand, D22 (the lint rule's gap on the package's subpaths) left for the Vite+ migration. **Next: the
 > naming grilling (`.scratch/naming/notes.md`).**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".

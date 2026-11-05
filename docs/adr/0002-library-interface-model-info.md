@@ -5032,12 +5032,13 @@ notes under decisions 51 and 53:
     (`eslint.config.js:19-21`, `:31-35`) but not from `"jsthermalcomfort/models"`, which ticket 04's probe in `core/`
     passed. So the Context's "Root-only imports; there is no `exports` map", decision 12's "Root-only imports make the
     subpath rule meaningless", the code-quality checklist's `libraryModelImports` row (noted there) and
-    `.claude/rules/architecture.md`'s "The package has no subpaths" no longer hold; open for the user. (3) Rule 7's
-    first clause, "The app hands the library no non-finite number", says more than the code: the facts above name the
-    masked scan cell and two crashing paths, open points B32 (a 0 % relative humidity switched to dew-point entry stores
-    NaN) and B33 (PMV (ISO 7730) passes `pmv_ppd_iso` a NaN `clo_dynamic` above about 105 m/s), which the spec leaves
-    open; the second clause holds, no `catch` in `src/` standing around a library call (`git grep catch -- src` outside
-    the tests finds `core/shareLink.ts:132`, `:228`, `state/keptText.ts:16`, `:25`, `:34`,
+    `.claude/rules/architecture.md`'s "The package has no subpaths" (corrected there) no longer hold; the user decided
+    on 2026-11-05 to close the gap in the Vite+ migration's lint config, not now (open point D22). (3) Rule 7's first
+    clause, "The app hands the library no non-finite number", says more than the code: the facts above name the masked
+    scan cell and two crashing paths, open points B32 (a 0 % relative humidity switched to dew-point entry stores NaN)
+    and B33 (PMV (ISO 7730) passes `pmv_ppd_iso` a NaN `clo_dynamic` above about 105 m/s), which the spec leaves open;
+    the second clause holds, no `catch` in `src/` standing around a library call (`git grep catch -- src` outside the
+    tests finds `core/shareLink.ts:132`, `:228`, `state/keptText.ts:16`, `:25`, `:34`,
     `ui/inputs/CopyLinkButton.svelte:32` and `ui/inputs/ExportImageDialog.svelte:80`, each around a browser or decoding
     call). (4) The facts' "five bin constants" are gone, but v2 still exports ISO 7730's category bins per edition as
     `PMV_CATEGORY_BINS_ISO_7730`, whose `"7730-2025"` entry is `PMV_PPD_ISO_INFO.outputs.category.classifier` by
@@ -5053,9 +5054,9 @@ notes under decisions 51 and 53:
     bulb reads exactly 100 % and is accepted, where the old library read 100.95 % and refused it, and the wet-bulb box's
     upper end at 25 °C reads 25.05 °C, above the dry bulb, the library's value. No other assertion failed on a value.
     (8) Not in the rules: `PET_STEADY_INFO` names `p_atm` in hPa, the other five infos in Pa; no registered model reads
-    it. The shorter calculator names put the entry on one line, so `layout.behaviour.ts`'s input card width test moved
-    to 1600 × 960 to keep its scroll premise (ticket 05's Comments). Decision 24's revision of this date holds: the
-    library runs vitest at `88015e5` (its `package.json:36`, `:77`), and `_adaptive_ashrae_zone`
+    it (open point B38). The shorter calculator names put the entry on one line, so `layout.behaviour.ts`'s input card
+    width test moved to 1600 × 960 to keep its scroll premise (ticket 05's Comments). Decision 24's revision of this
+    date holds: the library runs vitest at `88015e5` (its `package.json:36`, `:77`), and `_adaptive_ashrae_zone`
     (`temporary-library/adaptive_ashrae_zone.ts:130`) is the 2026-09-28 amendment's internal taking the model. Decision
     75's revision holds, its rule 1 (above) and its close-out note of 2026-10-16 keeping the old names as history; the
     identifiers `clothingFromOutdoorTemperature` and `solarGainOnOccupants` (`core/calculators.ts:185`, `:208`) keep
