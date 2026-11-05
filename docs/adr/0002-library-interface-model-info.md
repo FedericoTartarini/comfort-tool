@@ -4954,12 +4954,14 @@ notes under decisions 51 and 53:
     code; revises decisions 24 and 75 and notes decision 77. Naming across the app was opened in the same session and moved to its own
     grilling (`.scratch/naming/notes.md`); nothing here renames an app concept. Facts, measured on a copy of the app
     with the library at `88015e5`. `npm run check` reports 68 errors in 29 files, and `vite.config.js:16` stops the
-    test run at load, since the package's new `exports` map does not export `./package.json`. `core/standard.ts:16`
-    throws at load on `en_16798_1_2019`, a key its `<body>_<number>_<year>` pattern does not read. Seven runtime names
-    the app imports are gone, `t_o`, five bin constants and the compliance interval, and two types,
-    `ApplicabilityWarning` and `VariableInfo`; `psy_ta_rh` returns `dew_point_tmp` and `wet_bulb_tmp` in place of `t_dp`
-    and `t_wb` (`../jsthermalcomfort/src/psychrometrics/psy_ta_rh.ts:7-14`), the app's own quantity keys;
-    `pmv_ppd_ashrae` takes no `suppress_warnings`, since the library prints nothing and returns the cooling effect's
+    test run at load, since the package's new `exports` map does not export `./package.json`. `core/standard.ts:21`
+    (reached from `:29`) throws at load on `en_16798_1_2019`, a key its `<body>_<number>_<year>` pattern does not read.
+    Seven runtime names the app imports are gone, `t_o`, five bin constants and the compliance interval, and four
+    types, `ApplicabilityWarning`, `VariableInfo`, `SolarGainParams` and `AdaptiveAshraeResult`; `psy_ta_rh` returns
+    `dew_point_tmp` and `wet_bulb_tmp` in place of `t_dp` and `t_wb`
+    (`../jsthermalcomfort/src/psychrometrics/psy_ta_rh.ts:7-14`), the app's own quantity keys, no longer rounded to
+    0.1 as the old ones were (13.85 °C, not 13.8 °C, at 25 °C and 50 %); `pmv_ppd_ashrae` throws a `TypeError` on
+    `suppress_warnings`, a key it no longer takes, since the library prints nothing and returns the cooling effect's
     failure as a `notice` row (`src/models/cooling_effect.ts:231-238`), which none of 2816 grid points raised. npm
     12.2.1 under the repository's `allow-git=root` refuses the lock move with `EALLOWGIT` and takes it with
     `--allow-git=all`, after which `npm ci` passes under `root`; with `allowScripts` keyed to the commit, to the name
@@ -4987,9 +4989,10 @@ notes under decisions 51 and 53:
     (11) The quantity named by UTCI's derived check is keyed `"tr - tdb"`, the library's key; a quantity the library
     checks under two keys and units (`pa`, `"pa (kPa)"`) is left to UTCI's own grilling. (12) The temporary library
     follows the library's conventions for a helper (`../jsthermalcomfort/docs/adr/0022-input-rules.md`): positional
-    scalar arguments, a `TypeError` on a wrong type, NaN passed through, a returned object frozen, TSDoc with no type
-    annotations, no reference to the app; `clo_dynamic_inverse` becomes `clo_dynamic_ashrae_inverse` and
-    `clo_dynamic_iso_vr_inverse`, each taking its forward function's arguments after the first; the
+    scalar arguments, a `TypeError` on a wrong type, NaN passed through by a member that calls no model (the zone,
+    which calls `adaptive_ashrae`, lets it throw), a returned object frozen, TSDoc with no type annotations, no
+    reference to the app; `clo_dynamic_inverse` becomes `clo_dynamic_ashrae_inverse` and `clo_dynamic_iso_vr_inverse`,
+    each taking its forward function's quantity arguments after the first; the
     80-column format, the case of a function name, a register row, the tests' location and the two constants the
     library holds unexported wait for the move. `chart-online.json` moves beside its one reader in `core/charts/`.
     (13) Adaptive's bands stay the set `adaptive_ashrae` accepts (decision 77 rule 3), though pythermalcomfort 4.8.0's
