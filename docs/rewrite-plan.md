@@ -529,6 +529,15 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > **Slot offset** and **Slot** hold. `npm test` passes at 1249 tests and `npm run test:browser` at 174. Open for the
 > user: the registry test's distance norm (Euclidean, not per-axis). **Next: `/code-review` since `562d63e`, then the
 > 0.4.0 deploy.**
+>
+> **2026-11-05 — position, the move onto jsthermalcomfort `v2-typescript` grilled**: ADR-0002 decision 90 (the lock on
+> `#v2-typescript` at `88015e5`, moved by `npm update jsthermalcomfort --allow-git=all`; the classifiers, the compliance
+> interval, the standards, the postures and the calculators' names read off the library; `operative_tmp` for `t_o`; the
+> temporary library written as the library's helpers; Adaptive's bands kept on the model against upstream's
+> `AdaptivePlot`), with decisions 24 and 75 revised and 77 noted; GLOSSARY's **Temporary library** and **Band**
+> corrected; `AGENTS.md` names the lock command. Open points B32–B37 (crashes that predate the move) and D19–D21. Naming
+> across the app was opened in the same session and moved to its own grilling (`.scratch/naming/notes.md`). New models
+> are not in this step. **Next: the user's `/to-spec` and `/to-tickets` for decision 90, then the naming grilling.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 

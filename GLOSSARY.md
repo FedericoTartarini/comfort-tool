@@ -108,7 +108,7 @@ _Avoid_: compliance zone, comfort region, neutral band, polygon (that is its ren
 
 **Band**:
 One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library Classifier's; on the Explore page the user may edit them. A band may have no colour, and is then filled nowhere but still names what falls in it; its upper Edge is drawn either way.
-_Avoid_: category (the library's word for the label a value falls in), class, level, threshold, unclassified (a band without a colour is uncoloured)
+_Avoid_: category (ISO 7730's Category is an output of its own; the library calls what a value falls in its label), class, level, threshold, unclassified (a band without a colour is uncoloured)
 
 **Band list**:
 The Bands of one model as the Explore page paints them: a copy of the model's Classifier with a colour per band, contiguous Edges, the Classifier's own inclusivity, no gaps. One per model, for both of its charts; it starts as the Classifier's and may be edited, moved, added to and reset, each change taking effect when it is applied. The result table never reads it.
@@ -155,5 +155,5 @@ The settings that apply to every slot and every page: the unit system, the atmos
 _Avoid_: global settings, toolbar, header controls
 
 **Temporary library**:
-A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. Adaptive's zone geometry and the inverses of the two activity corrections live there.
+A library-shaped calculation the app carries because jsthermalcomfort does not have it: pure SI in, SI or geometry out, written to the library's conventions for a helper, depending on the library alone. Adaptive's zone geometry and the inverses of the two activity corrections live there. pythermalcomfort has neither inverse; it draws Adaptive's bands only in a matplotlib plot, which leaves out points its own model accepts and which the library does not port.
 _Avoid_: stand-in, shim, polyfill, helper
