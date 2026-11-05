@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { CLO_INDIVIDUAL_GARMENT_GROUPS, clo_dynamic_ashrae, clo_individual_garments, clo_tout, operative_tmp, solar_gain } from "jsthermalcomfort";
+import { CLO_INDIVIDUAL_GARMENT_GROUPS, CLO_TOUT_INFO, clo_dynamic_ashrae, clo_individual_garments, clo_tout, operative_tmp, solar_gain, SOLAR_GAIN_INFO } from "jsthermalcomfort";
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
@@ -16,9 +16,9 @@ const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
 const ADAPTIVE_ADDRESS = "/standard/ashrae-55-2023/adaptive-ashrae";
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
-const SOLAR = "Solar gain on people";
+const SOLAR = SOLAR_GAIN_INFO.label;
 const ENSEMBLE = "Custom ensemble";
-const CLOTHING = "Clothing prediction";
+const CLOTHING = CLO_TOUT_INFO.label;
 const ALL_NAMES = `${SOLAR} · ${ENSEMBLE} · ${CLOTHING}`;
 const OUTDOOR_TEMPERATURE = /^Outdoor air temperature at 6 a\.m\./;
 const DASH = "—";
