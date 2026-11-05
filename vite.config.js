@@ -2,18 +2,19 @@ import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
-import { createRequire } from "module";
+import { readFileSync } from "fs";
 import path from "path";
 
-const require = createRequire(import.meta.url);
+/** The version in the package file at `file`, read by its path, so a package's `exports` map has no say. */
+const versionAt = (file) => JSON.parse(readFileSync(new URL(file, import.meta.url), "utf8")).version;
 
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   // The versions an Image's footer names (ADR-0002 decision 64, rule 4), read
   // from the two package files when the app is built or tested.
   define: {
-    __APP_VERSION__: JSON.stringify(require("./package.json").version),
-    __LIBRARY_VERSION__: JSON.stringify(require("jsthermalcomfort/package.json").version),
+    __APP_VERSION__: JSON.stringify(versionAt("./package.json")),
+    __LIBRARY_VERSION__: JSON.stringify(versionAt("./node_modules/jsthermalcomfort/package.json")),
   },
   resolve: {
     conditions: ["browser"],

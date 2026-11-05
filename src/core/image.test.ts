@@ -1,4 +1,5 @@
-import libraryPackage from "jsthermalcomfort/package.json";
+// By file path, as vite.config.js reads it: the library's `exports` map need not list its package file.
+import libraryPackage from "../../node_modules/jsthermalcomfort/package.json";
 import { describe, expect, it } from "vitest";
 import appPackage from "../../package.json";
 import { registeredModels } from "$lib/models";

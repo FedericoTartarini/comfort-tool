@@ -13,15 +13,21 @@ export interface StandardEntry {
   readonly routeSegment: string;
 }
 
-const STANDARD_KEY = /^([a-z]+)_(\d+)_(\d{4})$/;
+const STANDARD_KEY = /^([a-z]+)_(\d+)(?:_(\d+))?_(\d{4})$/;
 
-function parseStandardKey(key: string): Omit<StandardEntry, "id"> {
+/**
+ * Reads a `Standard` key as body, number, an optional part, and year; a part
+ * joins the number with a hyphen: `en_16798_1_2019` → "EN 16798-1:2019",
+ * `en-16798-1-2019`. Throws, naming the key, for any other shape.
+ */
+export function parseStandardKey(key: string): Omit<StandardEntry, "id"> {
   const match = STANDARD_KEY.exec(key);
   if (!match) {
-    throw new Error(`Cannot parse standard key "${key}" as "<body>_<number>_<year>"`);
+    throw new Error(`Cannot parse standard key "${key}" as "<body>_<number>[_<part>]_<year>"`);
   }
-  const [, body, number, year] = match;
-  return { name: copy.standardName(`${body.toUpperCase()} ${number}`, year), routeSegment: `${body}-${number}-${year}` };
+  const [, body, number, part, year] = match;
+  const fullNumber = part === undefined ? number : `${number}-${part}`;
+  return { name: copy.standardName(`${body.toUpperCase()} ${fullNumber}`, year), routeSegment: `${body}-${fullNumber}-${year}` };
 }
 
 /** Every standard the library names, in `Standard`'s own key order. */
