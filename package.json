@@ -50,11 +50,8 @@
   },
   "dependencies": {
     "fflate": "0.8.3",
-    "jsthermalcomfort": "github:FedericoTartarini/jsthermalcomfort#feat/v2-typescript-setup",
+    "jsthermalcomfort": "github:FedericoTartarini/jsthermalcomfort#v2-typescript",
     "plotly.js-cartesian-dist-min": "4.0.0",
     "sv-router": "^0.18.0"
-  },
-  "allowScripts": {
-    "github:FedericoTartarini/jsthermalcomfort#7e104f56a709f660e107ca6a05e1e82bdb603e3e": true
   }
 }

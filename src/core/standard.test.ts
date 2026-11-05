@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Standard } from "jsthermalcomfort";
-import { parseStandardKey, standardEntryFor, standards } from "./standard";
+import { isAshraeStandard, parseStandardKey, standardEntryFor, standards } from "./standard";
 
 describe("standards", () => {
   it("derives a name and a route segment, each with the year, from each Standard key", () => {
@@ -10,6 +10,10 @@ describe("standards", () => {
     expect(standards).toContainEqual({ id: Standard.iso_9920_2007, name: "ISO 9920:2007", routeSegment: "iso-9920-2007" });
     expect(standards).toContainEqual({ id: Standard.iso_7933_2004, name: "ISO 7933:2004", routeSegment: "iso-7933-2004" });
     expect(standards).toContainEqual({ id: Standard.iso_7933_2023, name: "ISO 7933:2023", routeSegment: "iso-7933-2023" });
+    expect(standards).toContainEqual({ id: Standard.iso_7243_2017, name: "ISO 7243:2017", routeSegment: "iso-7243-2017" });
+    expect(standards).toContainEqual({ id: Standard.iso_11079_2007, name: "ISO 11079:2007", routeSegment: "iso-11079-2007" });
+    expect(standards).toContainEqual({ id: Standard.en_16798_1_2019, name: "EN 16798-1:2019", routeSegment: "en-16798-1-2019" });
+    expect(standards).toHaveLength(Object.keys(Standard).length);
   });
 
   it("names every Standard key with its year, in its name and in its route segment", () => {
@@ -28,6 +32,15 @@ describe("standards", () => {
 
   it("preserves Standard's own key order", () => {
     expect(standards.map((entry) => entry.id)).toEqual(Object.values(Standard));
+  });
+});
+
+describe("isAshraeStandard", () => {
+  it("answers yes for the standard whose key body is ashrae, and no for every other", () => {
+    for (const [key, standard] of Object.entries(Standard)) {
+      expect(isAshraeStandard(standard), key).toBe(key.startsWith("ashrae_"));
+    }
+    expect(isAshraeStandard(Standard.ashrae_55_2023)).toBe(true);
   });
 });
 

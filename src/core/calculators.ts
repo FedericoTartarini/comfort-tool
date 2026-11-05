@@ -16,9 +16,9 @@ import {
   CLO_TOUT_INFO,
   solar_gain,
   SOLAR_GAIN_INFO,
-  type ApplicabilityWarning,
   type ModelInfo,
-  type SolarGainParams,
+  type ModelWarning,
+  type SolarGainInputs,
 } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { entryVerdict, type Bound } from "./applicability";
@@ -45,12 +45,12 @@ export const meeting = {
  */
 export interface CalculatorResult {
   readonly outputs: ReadonlyMap<Quantity, number>;
-  readonly warnings: readonly ApplicabilityWarning[];
+  readonly warnings: readonly ModelWarning[];
 }
 
 /** A posture `solar_gain` takes, the library's value under the standard's word. */
 export interface PostureOption {
-  readonly value: NonNullable<SolarGainParams["posture"]>;
+  readonly value: NonNullable<SolarGainInputs["posture"]>;
   readonly label: string;
 }
 
@@ -86,7 +86,8 @@ export interface FormCalculator extends CommonCalculator {
   readonly postures?: readonly [PostureOption, ...PostureOption[]];
   /** The outputs its result holds, in the order its dialog shows them, which it shows without a result too. */
   readonly outputs: readonly [Quantity, ...Quantity[]];
-  readonly compute: (inputs: CalculatorInputs) => CalculatorResult;
+  /** Its result, or `null` where the library gives no value for an output, which the dialog then shows as it shows no result. */
+  readonly compute: (inputs: CalculatorInputs) => CalculatorResult | null;
   readonly groups?: never;
   readonly garments?: never;
 }
@@ -209,7 +210,7 @@ export const solarGainOnOccupants: FormCalculator = {
   ],
   outputs: [q.erf, q.delta_mrt],
   compute: ({ values, posture }) => {
-    const result = solar_gain({
+    const { erf, delta_mrt, warnings } = solar_gain({
       sol_altitude: requireValue(values, q.sol_altitude),
       sharp: requireValue(values, q.sharp),
       sol_radiation_dir: requireValue(values, q.sol_radiation_dir),
@@ -220,12 +221,16 @@ export const solarGainOnOccupants: FormCalculator = {
       posture,
       round_output: false,
     });
+    // `null` for an altitude or a SHARP the library clips, both past the dialog's bounds.
+    if (erf === null || delta_mrt === null) {
+      return null;
+    }
     return {
       outputs: new Map<Quantity, number>([
-        [q.erf, result.erf],
-        [q.delta_mrt, result.delta_mrt],
+        [q.erf, erf],
+        [q.delta_mrt, delta_mrt],
       ]),
-      warnings: result.warnings,
+      warnings,
     };
   },
 };

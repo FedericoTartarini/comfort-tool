@@ -5,10 +5,9 @@ import {
   clo_individual_garments,
   clo_tout,
   CLO_TOUT_INFO,
+  operative_tmp,
   solar_gain,
   SOLAR_GAIN_INFO,
-  Standard,
-  t_o,
 } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -27,7 +26,9 @@ import {
   wearGarment,
   withCalculatorResult,
   type Calculator,
+  type CalculatorInputs,
   type CalculatorResult,
+  type FormCalculator,
 } from "./calculators";
 import { enteredSlotFor, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { clothingMode, humidityMode, temperatureMode } from "./entryModes";
@@ -94,7 +95,7 @@ describe("clothingFromOutdoorTemperature", () => {
 
   it("is the library's clo_tout in SI, below, between and above the formula's flat ends", () => {
     for (const tout of [-10, 20, 30]) {
-      const result = clothingFromOutdoorTemperature.compute({ values: new Map([[q.tout, tout]]) });
+      const result = resultFor(clothingFromOutdoorTemperature, { values: new Map([[q.tout, tout]]) });
       expect([...result.outputs.keys()]).toEqual(clothingFromOutdoorTemperature.outputs);
       expect(outputOf(clothingFromOutdoorTemperature, result), `${tout} °C`).toBe(clo_tout({ tout }).clo_tout);
       expect(result.warnings).toEqual([]);
@@ -134,9 +135,9 @@ describe("solarGainOnOccupants", () => {
 
   const defaults = startingInputs(solarGainOnOccupants);
   /** The library's `solar_gain` at the dialog's starting values, as the app calls it. */
-  const libraryAt = (posture: "sitting" | "standing") =>
+  const libraryAt = (posture: "sitting" | "standing", sol_altitude = 45) =>
     solar_gain({
-      sol_altitude: 45,
+      sol_altitude,
       sharp: 0,
       sol_radiation_dir: 900,
       sol_transmittance: 0.8,
@@ -148,24 +149,30 @@ describe("solarGainOnOccupants", () => {
     });
 
   it("is the library's solar_gain unrounded at the defaults, its warnings carried", () => {
-    const result = solarGainOnOccupants.compute(defaults);
+    const result = resultFor(solarGainOnOccupants, defaults);
     const library = libraryAt("sitting");
-    expect(result.outputs).toEqual(new Map<Quantity, number>([[q.erf, library.erf], [q.delta_mrt, library.delta_mrt]]));
+    expect(result.outputs).toEqual(new Map<Quantity, number | null>([[q.erf, library.erf], [q.delta_mrt, library.delta_mrt]]));
     expect([...result.outputs.keys()]).toEqual(solarGainOnOccupants.outputs);
     expect(outputOf(solarGainOnOccupants, result)).toBe(library.delta_mrt);
     expect(result.warnings).toEqual(library.warnings);
   });
 
   it("is the library's solar_gain at Standing", () => {
-    const result = solarGainOnOccupants.compute({ ...defaults, posture: "standing" });
+    const result = resultFor(solarGainOnOccupants, { ...defaults, posture: "standing" });
     expect(outputOf(solarGainOnOccupants, result)).toBe(libraryAt("standing").delta_mrt);
     expect(outputOf(solarGainOnOccupants, result)).not.toBe(libraryAt("sitting").delta_mrt);
   });
 
   it("carries the library's warnings row for an input out of its range", () => {
     const values = new Map(defaults.values).set(q.sol_radiation_dir, 1200);
-    const [warning] = solarGainOnOccupants.compute({ ...defaults, values }).warnings;
+    const [warning] = resultFor(solarGainOnOccupants, { ...defaults, values }).warnings;
     expect(warning).toMatchObject({ value: 1200, bound: SOLAR_GAIN_INFO.inputs.sol_radiation_dir.applicability });
+  });
+
+  it("has no result where the library gives no value, at a solar altitude past its bound", () => {
+    const values = new Map(defaults.values).set(q.sol_altitude, 95);
+    expect(libraryAt("sitting", 95).delta_mrt).toBeNull();
+    expect(solarGainOnOccupants.compute({ ...defaults, values })).toBeNull();
   });
 });
 
@@ -220,7 +227,7 @@ describe("outOfRangeCalculatorInputs", () => {
       for (const end of [bound.min, bound.max]) {
         const inputs = withValue(quantity, end!);
         expect(outOfRangeCalculatorInputs(solarGainOnOccupants, inputs), `${quantity.key} ${end}`).toEqual([]);
-        expect(solarGainOnOccupants.compute(inputs).warnings, `${quantity.key} ${end}`).toEqual([]);
+        expect(resultFor(solarGainOnOccupants, inputs).warnings, `${quantity.key} ${end}`).toEqual([]);
       }
     }
   });
@@ -230,6 +237,15 @@ describe("outOfRangeCalculatorInputs", () => {
     expect(outOfRangeCalculatorInputs(clothingFromOutdoorTemperature, inputs)).toEqual([]);
   });
 });
+
+/** `calculator`'s result for `inputs`; fails the test where it has none. */
+function resultFor(calculator: FormCalculator, inputs: CalculatorInputs): CalculatorResult {
+  const result = calculator.compute(inputs);
+  if (result === null) {
+    throw new Error(`${calculator.label} gives no result`);
+  }
+  return result;
+}
 
 /** A result whose output is `value`, as a calculator's compute gives it. */
 const resultOf = (output: Quantity, value: number): CalculatorResult => ({ outputs: new Map([[output, value]]), warnings: [] });
@@ -287,7 +303,7 @@ describe("withCalculatorResult", () => {
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
     const entered = operative.values.get(q.operative_tmp)!;
     const written = withCalculatorResult(operative, solarGainOnOccupants, increase, pmvPpdAshrae);
-    expect(written.values.get(q.operative_tmp)).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, Standard.ashrae_55_2023), 2);
+    expect(written.values.get(q.operative_tmp)).toBeCloseTo(operative_tmp(entered, entered + 4.2, 0.3, "ashrae"), 2);
     expect(written.values.has(q.tdb)).toBe(false);
     expect(written.values.has(q.tr)).toBe(false);
     expect(written.temperature.mode).toBe(temperatureMode.operative);
@@ -349,7 +365,7 @@ describe("shownRow", () => {
     const row = shownRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae, P);
     expect(row.quantity).toBe(q.operative_tmp);
     expect(row.before).toBe(entered);
-    expect(row.after).toBeCloseTo(t_o(entered, entered + 4.2, 0.3, Standard.ashrae_55_2023), 2);
+    expect(row.after).toBeCloseTo(operative_tmp(entered, entered + 4.2, 0.3, "ashrae"), 2);
   });
 
   it("is what the next Apply starts from once written: a second raise from the raised value", () => {

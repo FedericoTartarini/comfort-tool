@@ -118,9 +118,9 @@ const pastTheRow: readonly PastTheRow[] = [
 
 /** The row of `model`'s info that bounds what the model is given for an entered `entered`, and that quantity. */
 function rowOf(model: RegisteredModel, entered: Quantity) {
-  return entered === q.v
-    ? { bounded: q.vr, bound: model.info.inputs.vr?.applicability }
-    : { bounded: q.clo_dynamic, bound: model.info.inputs.clo?.applicability };
+  const [bounded, taken] = entered === q.v ? [q.vr, q.vr] : [q.clo_dynamic, q.clo];
+  const field = model.info.inputs[taken.key];
+  return { bounded, bound: field?.kind === "numeric" ? field.applicability : undefined };
 }
 
 describe("an air speed or a clothing insulation, committed", () => {

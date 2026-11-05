@@ -17,16 +17,16 @@ import { unitSystem } from "./unitSystem";
 /**
  * Quantities no `_INFO` key names. An entry mode or a derivation names the
  * temperature and humidity representations the app converts to the library's
- * own inputs before calling it (ADR-0002 decisions 2 and 15); `p_atm` is the
- * session's atmospheric pressure, named by the library's functions that take
- * it and by no model info (ADR-0002 decision 49); `clo_dynamic` is the
+ * own inputs before calling it (ADR-0002 decisions 2 and 15); `clo_dynamic` is the
  * clothing insulation entered already corrected, where a model info names
  * `clo` alone (ADR-0002 decision 54).
  */
-const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp", "p_atm", "clo_dynamic"]);
+const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp", "clo_dynamic"]);
 
+/** The keys `info` names a quantity by: its numeric inputs, its outputs and its derived checks. */
 function variableKeys(info: ModelInfo): string[] {
-  return [...Object.keys(info.inputs), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
+  const numericInputs = Object.entries(info.inputs).filter(([, field]) => field.kind === "numeric");
+  return [...numericInputs.map(([key]) => key), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
 }
 
 /**
@@ -80,10 +80,10 @@ describe("quantities table drift", () => {
     expect(quantities.utci.kind).toBe("temperature");
   });
 
-  it("tr_minus_tdb is named by UTCI_INFO's derived rows, a temperature difference", () => {
-    expect(Object.keys(UTCI_INFO.derived ?? {})).toContain("tr_minus_tdb");
-    expect(quantities.tr_minus_tdb.key).toBe("tr_minus_tdb");
-    expect(quantities.tr_minus_tdb.kind).toBe("temperatureDifference");
+  it("\"tr - tdb\" is named by UTCI_INFO's derived rows, a temperature difference", () => {
+    expect(Object.keys(UTCI_INFO.derived)).toContain("tr - tdb");
+    expect(quantities["tr - tdb"].key).toBe("tr - tdb");
+    expect(quantities["tr - tdb"].kind).toBe("temperatureDifference");
   });
 
   it("Adaptive's eight keys are named by ADAPTIVE_ASHRAE_INFO", () => {

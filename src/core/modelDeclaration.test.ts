@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { Standard } from "jsthermalcomfort";
+import type { Bound } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -320,8 +321,8 @@ describe("axisRangeFor", () => {
     const declared = heatIndexRothfusz.axisRanges.find((range) => range.quantity === q.tdb);
     if (!declared) throw new Error("Heat Index declares a tdb range");
     // A declared range equal to the applicability bound could not tell the two sources apart.
-    const bound = heatIndexRothfusz.info.inputs.tdb?.applicability;
-    expect([declared.min, declared.max]).not.toEqual([bound?.min, bound?.max]);
+    const bound: Bound = heatIndexRothfusz.info.inputs.tdb.applicability;
+    expect([declared.min, declared.max]).not.toEqual([bound.min, bound.max]);
     expect(axisRangeFor(heatIndexRothfusz, q.tdb)).toEqual({ min: declared.min, max: declared.max });
   });
 

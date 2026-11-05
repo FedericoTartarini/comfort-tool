@@ -3,7 +3,7 @@ import { clo_dynamic_ashrae, clo_dynamic_iso, v_relative } from "jsthermalcomfor
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredSlotFor } from "./declarationTestSlots";
-import { humidityMode, type HumidityMode } from "./entryModes";
+import { humidityMode } from "./entryModes";
 import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -84,28 +84,13 @@ describe("resolveQuantities", () => {
     expect(resolved.has(q.operative_tmp)).toBe(false);
   });
 
-  // ADR §7's acceptance item 9 asks for all five representations.
-  //
-  // The library's `psy_ta_rh` returns `t_dp` and `t_wb` rounded to 0.1 °C, so
-  // entering the dew point it reports and converting back lands 0.055 %rh away
-  // (wet bulb 0.012), while the other three round-trip exactly. The tolerance
-  // is that rounding, measured, not slack for the inverses: the dew point
-  // holds to the whole percent, the wet bulb to one decimal.
-  const roundTripDigits = new Map<HumidityMode, number>([
-    [humidityMode.rh, 9],
-    [humidityMode.humidityRatio, 9],
-    [humidityMode.vapourPressure, 9],
-    [humidityMode.wetBulb, 1],
-    [humidityMode.dewPoint, 0],
-  ]);
-
+  // ADR §7's acceptance item 9 asks for all five representations. The
+  // library's `psy_ta_rh` rounds none of them, so each round-trips exactly.
   it("derives rh from every humidity representation, at the slot's dry-bulb temperature", () => {
-    // A mode without a tolerance is a mode this test does not round-trip.
-    expect(new Set(roundTripDigits.keys())).toEqual(new Set(Object.values(humidityMode)));
-    for (const [mode, digits] of roundTripDigits) {
+    for (const mode of Object.values(humidityMode)) {
       const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb, DEFAULT_ATMOSPHERIC_PRESSURE) } };
       const resolved = resolveQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
-      expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, digits);
+      expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, 9);
       // Only the library's own rh reaches the call; the entered representation does not.
       expect(resolved.has(mode.quantity), mode.id).toBe(mode.quantity === q.rh);
     }

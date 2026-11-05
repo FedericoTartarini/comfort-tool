@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PMV_COMPLIANCE_INTERVAL_ASHRAE, PMV_PPD_ISO_INFO } from "jsthermalcomfort";
+import { PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { categoryZones, intervalZone } from "./comfortZones";
 import { classifierOf } from "./modelDeclaration";
@@ -35,16 +35,15 @@ describe("categoryZones", () => {
 
 describe("intervalZone", () => {
   it("names one zone at a symmetric interval's upper end", () => {
-    expect(intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)).toEqual({
+    expect(intervalZone(copy.comfortZone, PMV_PPD_ASHRAE_INFO.outputs.compliance.interval)).toEqual({
       label: copy.comfortZone,
-      limit: PMV_COMPLIANCE_INTERVAL_ASHRAE.max,
-      // pythermalcomfort's compliance is strict at both ends.
+      limit: PMV_PPD_ASHRAE_INFO.outputs.compliance.interval.max,
+      // The library's interval excludes both ends.
       inclusive: false,
     });
   });
 
   it("refuses an interval that is not symmetric about zero", () => {
     expect(() => intervalZone(copy.comfortZone, { min: -0.5, max: 0.7 })).toThrow("symmetric");
-    expect(() => intervalZone(copy.comfortZone, { max: 0.5 })).toThrow("symmetric");
   });
 });

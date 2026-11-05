@@ -1,4 +1,5 @@
 import { Standard } from "jsthermalcomfort";
+import type { StandardId } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 
 /**
@@ -7,7 +8,7 @@ import { copy } from "$lib/text/copy";
  * `iso_7730_2005` → "ISO 7730:2005", `iso-7730-2005`.
  */
 export interface StandardEntry {
-  readonly id: Standard;
+  readonly id: StandardId;
   /** As the sidebar, the Explore select's group heading and the Input summary write it. */
   readonly name: string;
   readonly routeSegment: string;
@@ -36,7 +37,12 @@ export const standards: readonly StandardEntry[] = (Object.keys(Standard) as (ke
   return { id: Standard[key], ...parsed };
 });
 
-export function standardEntryFor(standard: Standard): StandardEntry {
+/** Whether `standard`'s key reads with the body `ashrae`, as `ashrae_55_2023` does. */
+export function isAshraeStandard(standard: StandardId): boolean {
+  return (Object.keys(Standard) as (keyof typeof Standard)[]).some((key) => Standard[key] === standard && STANDARD_KEY.exec(key)?.[1] === "ashrae");
+}
+
+export function standardEntryFor(standard: StandardId): StandardEntry {
   const row = standards.find((entry) => entry.id === standard);
   if (!row) {
     throw new Error(`No entry declared for standard "${standard}"`);

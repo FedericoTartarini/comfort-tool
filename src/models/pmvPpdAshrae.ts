@@ -1,4 +1,4 @@
-import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_ashrae, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
+import { pmv_ppd_ashrae, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
@@ -31,8 +31,8 @@ export const pmvPpdAshrae = {
   // since the app gates entered values itself and reads the rows the run
   // breaks off `warnings`, the air-speed rule's among them; `round_output:
   // false`, since the charts trace the zone on a scan of this `pmv` and
-  // the display rounds; `suppress_warnings: true`, since the cooling effect logs
-  // each time it assumes 0 and a chart scan calls it per cell. No `units`: the
+  // the display rounds. No `suppress_warnings`: the library takes no such key,
+  // and puts what it would log on `warnings` as a notice row. No `units`: the
   // library's default is SI, and so is the boundary (ADR-0002 decision 1). No
   // `standard`: the library's default edition, the one its info lists first
   // (decision 86, rule 3).
@@ -47,7 +47,6 @@ export const pmvPpdAshrae = {
       wme: 0,
       limit_inputs: false,
       round_output: false,
-      suppress_warnings: true,
       airspeed_control: options(airSpeedControl),
     }),
   inputs: [
@@ -88,7 +87,7 @@ export const pmvPpdAshrae = {
   scan: {
     output: q.pmv,
     bands: q.tsv,
-    comfortZones: [intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)],
+    comfortZones: [intervalZone(copy.comfortZone, PMV_PPD_ASHRAE_INFO.outputs.compliance.interval)],
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;

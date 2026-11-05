@@ -4,6 +4,7 @@
 // Every number is read off `adaptive_ashrae` and `ADAPTIVE_ASHRAE_INFO` but
 // one, the 25 °C at and above which the model applies the cooling effect.
 import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae } from "jsthermalcomfort";
+import type { AdaptiveASHRAE, ASHRAEInputs } from "jsthermalcomfort";
 
 /** A point of running mean × operative temperature, in SI units. */
 export interface AdaptivePoint {
@@ -41,7 +42,7 @@ export interface AdaptiveAshraeZone {
 type LimitKey = "tmp_cmf_80_low" | "tmp_cmf_80_up" | "tmp_cmf_90_low" | "tmp_cmf_90_up";
 
 /** The model the bands are drawn off: `adaptive_ashrae`, as far as the bands read it. */
-type AdaptiveModel = (inputs: Parameters<typeof adaptive_ashrae>[0]) => Readonly<Record<LimitKey, number | null>>;
+type AdaptiveModel = (inputs: ASHRAEInputs) => Pick<AdaptiveASHRAE, LimitKey>;
 
 /**
  * The operative temperature, [°C], at and above which `adaptive_ashrae` widens
@@ -135,10 +136,9 @@ export function _adaptive_ashrae_zone(
   for (const [key, value] of Object.entries({ v, t_running_mean_min, t_running_mean_max })) {
     if (typeof (value as unknown) !== "number") throw new TypeError(`${key} must be a number.`);
   }
-  // An input with no bound would clip nothing; `ADAPTIVE_ASHRAE_INFO` bounds this one.
-  const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
-  const start = Math.max(t_running_mean_min, bound?.min ?? -Infinity);
-  const end = Math.min(t_running_mean_max, bound?.max ?? Infinity);
+  const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean.applicability;
+  const start = Math.max(t_running_mean_min, bound.min);
+  const end = Math.min(t_running_mean_max, bound.max);
   if (start >= end) {
     const nothing: AdaptiveAshraeBand = Object.freeze({
       upper_limit: Object.freeze([]),

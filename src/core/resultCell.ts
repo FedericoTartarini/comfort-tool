@@ -29,7 +29,8 @@ export type ResultCell =
  * own classifier in the model info and filled from its palette (ADR-0002
  * decision 85, rules 2 and 3); a boolean as "Yes" or "No", the same in both
  * unit systems; a finite number in its display unit; a dash for anything else,
- * a NaN or a category its classifier does not name among them. `violations`
+ * a `null`, the library's no value, a NaN or a category its classifier does
+ * not name among them. `violations`
  * are the rows the result shows broken: while there is one, a boolean reads
  * the dash too, as pythermalcomfort's NaN under its own gate (ADR-0002
  * decision 77, rule 2), which the row's limits icon explains (decision 85,
@@ -45,7 +46,7 @@ export function formatResultCell(
   const value = result ? resultValue(result, quantity) : undefined;
   const classifier = model.info.outputs[quantity.key]?.classifier;
   if (classifier) {
-    // `labels` holds strings; a NaN or a boolean is no label, and so the dash.
+    // `labels` holds strings; a `null`, a NaN or a boolean is no label, and so the dash.
     if (typeof value !== "string" || !classifier.labels.includes(value)) {
       return textCell(copy.notAvailable);
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clo_dynamic_ashrae, clo_dynamic_iso, clo_dynamic_iso_vr, hr_to_rh, psy_ta_rh, Standard, t_o, v_relative } from "jsthermalcomfort";
+import { clo_dynamic_ashrae, clo_dynamic_iso, clo_dynamic_iso_vr, hr_to_rh, psy_ta_rh, operative_tmp, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -53,20 +53,20 @@ describe("operativeTemperatureOf", () => {
   // 0.7 at this speed, ISO 7726 by √(10v), and neither is the plain mean 26.
   const room = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, v: 0.6 });
 
-  it("is the library's t_o by the model's own standard under separate entry", () => {
+  it("is the library's operative_tmp by the method of the model's own standard under separate entry", () => {
     expect(operativeTemperatureOf(room, adaptiveAshrae)).toBeCloseTo(25.2);
     expect(operativeTemperatureOf(room, pmvPpdIso)).toBeCloseTo(25.16, 2);
   });
 
-  it("passes no standard for a model that has none, and the library's default decides", () => {
-    expect(operativeTemperatureOf(room, withoutStandard)).toBe(t_o(24, 28, 0.6));
+  it("weighs by the ISO method, the library's default, for a model that has no standard", () => {
+    expect(operativeTemperatureOf(room, withoutStandard)).toBe(operative_tmp(24, 28, 0.6));
   });
 
   it("weighs by the entered relative air speed under relative air speed entry, the one air speed the slot holds", () => {
     const entered = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, vr: 0.6 });
     expect(operativeTemperatureOf(entered, pmvPpdIso)).toBe(operativeTemperatureOf(room, pmvPpdIso));
     const operative = withTemperatureMode(entered, temperatureMode.operative, pmvPpdIso);
-    expect(operative.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6, Standard.iso_7730_2025));
+    expect(operative.values.get(q.operative_tmp)).toBe(operative_tmp(24, 28, 0.6, "ISO"));
     expect(operative.values.get(q.vr)).toBe(0.6);
   });
 
@@ -380,9 +380,9 @@ describe("withTemperatureMode", () => {
     expect(withTemperatureMode(room, temperatureMode.operative, pmvPpdIso).values.get(q.operative_tmp)).toBeCloseTo(25.16, 2);
   });
 
-  it("passes no standard for a model that has none, and the library's default decides", () => {
+  it("weighs by the ISO method, the library's default, for a model that has no standard", () => {
     const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard);
-    expect(converted.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6));
+    expect(converted.values.get(q.operative_tmp)).toBe(operative_tmp(24, 28, 0.6));
   });
 
   it("sets both temperatures to the operative entry going back", () => {

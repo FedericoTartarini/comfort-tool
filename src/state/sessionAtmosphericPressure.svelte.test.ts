@@ -11,6 +11,7 @@
  * `hr_to_rh(hr, tdb, p_atm)`, which no pressure moves.
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
+import type { InputsInfo } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { isAtmosphericPressureOutOfRange } from "$lib/core/applicability";
 import type { ChartSpec, PathPiece, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
@@ -39,12 +40,17 @@ const HUMIDITY_RATIO = 0.01;
 
 /** PMV (ISO 7730) with one applicability row replaced, so a switch to it has a question to ask. */
 function withBound(key: string, bound: { min?: number; max?: number }): RegisteredModel {
+  const inputs: InputsInfo = pmvPpdIso.info.inputs;
+  const field = inputs[key];
+  if (field?.kind !== "numeric") {
+    throw new Error(`${pmvPpdIso.info.label} has no numeric input ${key}`);
+  }
   return {
     ...pmvPpdIso,
     info: {
       ...pmvPpdIso.info,
       name: `fixture_bound_${key}`,
-      inputs: { ...pmvPpdIso.info.inputs, [key]: { ...pmvPpdIso.info.inputs[key], applicability: bound } },
+      inputs: { ...inputs, [key]: { ...field, applicability: bound } },
     },
   };
 }

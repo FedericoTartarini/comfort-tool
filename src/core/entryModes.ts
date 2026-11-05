@@ -121,20 +121,20 @@ export const humidityMode = {
     bounded: "both",
     readsPressure: false,
     toRelativeHumidity: (dewPoint, tdb, atmosphericPressure) => rh_from_dew_point(dewPoint, tdb),
-    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_dp,
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).dew_point_tmp,
   },
   wetBulb: {
     id: "wet-bulb",
     quantity: quantities.wet_bulb_tmp,
     // `rh_from_wet_bulb` clamps to 0 – 100, so a wet bulb above the one of
     // 100 % would run at 100 %: the entry is held to that upper end (ADR-0002
-    // decision 84 rule 11). `t_wb` at 0 % is approximate (1.9 °C at 10 °C,
+    // decision 84 rule 11). `wet_bulb_tmp` at 0 % is approximate (1.9 °C at 10 °C,
     // which reads back as 16 %), so a lower end would stop valid entries
     // (`.scratch/open-points.md` B28).
     bounded: "upper",
     readsPressure: false,
     toRelativeHumidity: (wetBulb, tdb, atmosphericPressure) => rh_from_wet_bulb(wetBulb, tdb),
-    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_wb,
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).wet_bulb_tmp,
   },
   vapourPressure: {
     id: "vapour-pressure",

@@ -1,4 +1,5 @@
 import { psy_ta_rh } from "jsthermalcomfort";
+import type { ModelWarning } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -19,7 +20,7 @@ import {
 } from "./applicability";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
-import { optionsOf, type RegisteredModel, type Values } from "./modelDeclaration";
+import { optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { formatNumber, isShownBeyond } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
@@ -35,6 +36,11 @@ const LOWER_PRESSURE = 80000;
 /** The sentence for a bound on the relative air speed, built from its label and display unit. */
 function vrWarning(bound: string, system: UnitSystem): string {
   return copy.applicabilityWarning(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
+}
+
+/** A `range` row of a result's `warnings`; its unit is the library's and is not read here. */
+function rangeRow(key: string, role: "input" | "derived" | "output", value: number, bound: Bound): ModelWarning {
+  return { kind: "range", key, role, value, unit: null, bound };
 }
 
 /** The quantities {@link outOfRangeRows} names in `slot` under `model` at `atmosphericPressure`. */
@@ -107,7 +113,7 @@ describe("enteredBound / outOfRangeRows", () => {
   it("passes a value within half a shown step of its bound on either side, and stops one shown outside it", () => {
     const model = {
       ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, met: { unit: "met", applicability: { min: 0, max: 1.875 } } } },
+      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, met: { kind: "numeric", unit: "met", applicability: { min: 0, max: 1.875 } } as const } },
     };
     const rowsAt = (met: number) => outOfRangeRows(enteredSlotFor(model, { met }), model, DEFAULT_ATMOSPHERIC_PRESSURE);
     for (const met of [1.8749, 1.875, 1.8751, 1.88, -0.004]) {
@@ -145,7 +151,7 @@ describe("enteredBound / outOfRangeRows", () => {
   it("handles a min-only bound without a max (e.g. Heat Index's tdb)", () => {
     const minOnly = {
       ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, tdb: { unit: "°C", applicability: { min: 15 } } } },
+      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, tdb: { kind: "numeric", unit: "°C", applicability: { min: 15 } } as const } },
     };
     expect(enteredBound(minOnly, q.tdb, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ min: 15 });
     expect(quantitiesOutOfRange(enteredSlotFor(pmvPpdIso, { tdb: 10 }), minOnly, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.tdb]);
@@ -178,9 +184,9 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   });
 
   it("gates a dew point at the air temperature, above the library's saturation dew point, and drops the end 0 % has no dew point for", () => {
-    // At 25 °C the library reads a 25 °C dew point as 100.95 %.
-    const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.dewPoint, 25);
-    expect(enteredBound(pmvPpdIso, q.dew_point_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ max: psy_ta_rh(25, 100).t_dp });
+    // At 25 °C the library's saturation dew point is 25 °C, and it reads a 25.01 °C dew point as 100.06 %.
+    const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.dewPoint, 25.01);
+    expect(enteredBound(pmvPpdIso, q.dew_point_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ max: psy_ta_rh(25, 100).dew_point_tmp });
     expect(quantitiesOutOfRange(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.dew_point_tmp]);
   });
 
@@ -221,7 +227,7 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
 
   it("leaves a wet-bulb entry's lower end open, as the library's wet bulb of 0 % is approximate", () => {
     // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the range (open-points B28).
-    expect(psy_ta_rh(10, 0).t_wb).toBeGreaterThan(1.5);
+    expect(psy_ta_rh(10, 0).wet_bulb_tmp).toBeGreaterThan(1.5);
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 10, tr: 10 }), humidityMode.wetBulb, 1.5);
     expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)?.min).toBeUndefined();
     expect(quantitiesOutOfRange(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
@@ -230,7 +236,7 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   it("narrows the bound to a model's own relative-humidity row", () => {
     const bounded = {
       ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, rh: { unit: "%", applicability: { min: 30, max: 120 } } } },
+      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, rh: { kind: "numeric", unit: "%", applicability: { min: 30, max: 120 } } as const } },
     };
     expect(enteredBound(bounded, q.rh, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ min: 30, max: 100 });
     expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 20), bounded, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
@@ -370,15 +376,15 @@ describe("violationRows", () => {
     // PMV (ASHRAE 55) with the air-speed control off, at an operative temperature ≤ 23 °C:
     // the no-control rows, and above 2 m/s the fixed 0–2 m/s row too.
     const noControl = (value: number) => [
-      { key: "vr", role: "input", value, bound: { max: 0.8 } },
-      { key: "vr", role: "input", value, bound: { max: 0.2 } },
+      rangeRow("vr", "input", value, { max: 0.8 }),
+      rangeRow("vr", "input", value, { max: 0.2 }),
     ];
     const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) }, defaultEntryModes);
     expect(below).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 0.9, bound: { max: 0.2 } }]);
     expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
     expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("≤ 39.37", unitSystem.ip)]);
 
-    const fixed = { key: "vr", role: "input", value: 2.5, bound: { min: 0, max: 2 } };
+    const fixed = rangeRow("vr", "input", 2.5, { min: 0, max: 2 });
     const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] }, defaultEntryModes);
     expect(above).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
     expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("0 – 0.2", unitSystem.si)]);
@@ -413,7 +419,7 @@ describe("violationRows", () => {
 
   // The library's `clo` of a model with the clothing entry group is the dynamic clothing insulation it is given.
   it("reports a clothing row on the clothing entered, in either clothing mode, bounding the dynamic clothing insulation", () => {
-    const warnings = [{ key: "clo", role: "input", value: 2.5, bound: { max: 2 } }];
+    const warnings = [rangeRow("clo", "input", 2.5, { max: 2 })];
     const rowOf = (modes: Parameters<typeof violationRows>[2]) =>
       violationRows(pmvPpdIso, { warnings }, modes).map(({ quantity, bounded }) => [quantity, bounded]);
     expect(rowOf(defaultEntryModes)).toEqual([[q.clo, q.clo_dynamic]]);
@@ -433,7 +439,7 @@ describe("violationRows", () => {
   });
 
   it("reports the row in the entry modes it is asked in, whatever mode the run was entered in", () => {
-    const warnings = [{ key: "vr", role: "input", value: 0.9, bound: { max: 0.2 } }];
+    const warnings = [rangeRow("vr", "input", 0.9, { max: 0.2 })];
     const rowOf = (modes: Parameters<typeof violationRows>[2]) => violationRows(pmvPpdIso, { warnings }, modes)[0].quantity;
     expect(rowOf(defaultEntryModes)).toBe(q.v);
     expect(rowOf(entryModesWithAirSpeed(airSpeedMode.corrected))).toBe(q.vr);
@@ -442,10 +448,10 @@ describe("violationRows", () => {
   it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {
     const result = {
       warnings: [
-        { key: "vr", role: "input", value: 0.5, bound: { max: 0.2 } },
-        { key: "clo", role: "input", value: 2.5, bound: { max: 2 } },
-        { key: "pmv", role: "input", value: 3, bound: { max: 2 } },
-        { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
+        rangeRow("vr", "input", 0.5, { max: 0.2 }),
+        rangeRow("clo", "input", 2.5, { max: 2 }),
+        rangeRow("pmv", "input", 3, { max: 2 }),
+        rangeRow("pmv", "output", 3, { min: -2, max: 2 }),
       ],
     };
     expect(violationRows(pmvPpdIso, result, defaultEntryModes).map(({ quantity, role }) => [quantity, role])).toEqual([
@@ -458,39 +464,34 @@ describe("violationRows", () => {
 
   // The library judges its bounds exactly; the app judges at the precision a row shows (ADR-0002 decision 56).
   it("names only a value shown outside its bound, and drops a warning a hair over", () => {
-    const warningsAt = (value: number) => ({ warnings: [{ key: "clo", role: "input", value, bound: { min: 0, max: 2 } }] });
+    const warningsAt = (value: number) => ({ warnings: [rangeRow("clo", "input", value, { min: 0, max: 2 })] });
     expect(violationRows(pmvPpdIso, warningsAt(2.0000000004), defaultEntryModes)).toEqual([]);
     expect(violationRows(pmvPpdIso, warningsAt(2.004), defaultEntryModes)).toEqual([]);
     expect(violationRows(pmvPpdIso, warningsAt(2.006), defaultEntryModes).map((row) => row.quantity)).toEqual([q.clo]);
     // A derived row is judged in its SI display unit: 2700.4 Pa reads 2.7 kPa, 2706 Pa reads 2.71 kPa.
-    const derivedAt = (value: number) => ({ warnings: [{ key: "pa", role: "derived", value, bound: { max: 2700 } }] });
+    const derivedAt = (value: number) => ({ warnings: [rangeRow("pa", "derived", value, { max: 2700 })] });
     expect(violationRows(pmvPpdIso, derivedAt(2700.4), defaultEntryModes)).toEqual([]);
     expect(violationRows(pmvPpdIso, derivedAt(2706), defaultEntryModes).map((row) => row.quantity)).toEqual([q.pa]);
   });
 
   it("merges only the bounds a value is shown outside of", () => {
     const warnings = [
-      { key: "vr", role: "input", value: 0.803, bound: { min: 0, max: 0.8 } },
-      { key: "vr", role: "input", value: 0.803, bound: { max: 0.2 } },
+      rangeRow("vr", "input", 0.803, { min: 0, max: 0.8 }),
+      rangeRow("vr", "input", 0.803, { max: 0.2 }),
     ];
     expect(violationRows(pmvPpdIso, { warnings }, defaultEntryModes).map((row) => row.bound)).toEqual([{ max: 0.2 }]);
   });
 
   it("drops a key the quantity table lacks", () => {
-    const result = { warnings: [{ key: "not_a_quantity", role: "input", value: 1, bound: { max: 0.8 } }] };
+    const result = { warnings: [rangeRow("not_a_quantity", "input", 1, { max: 0.8 })] };
     expect(violationRows(pmvPpdIso, result, defaultEntryModes)).toEqual([]);
   });
 
-  it("throws naming the model for a result that carries no warnings, since every v1 model returns them", () => {
-    const stripped = {
-      ...pmvPpdIso,
-      run: (values: Values) => {
-        const { warnings: _, ...rest } = pmvPpdIso.run(values);
-        return rest;
-      },
-    } satisfies RegisteredModel;
-    const result = runOn(startingSlot(pmvPpdIso), stripped, DEFAULT_ATMOSPHERIC_PRESSURE);
-    expect(() => violationRows(stripped, result, defaultEntryModes)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
+  it("reads no notice row as a Violation, only the range rows beside it", () => {
+    const notice: ModelWarning = { kind: "notice", message: "Cooling effect could not be calculated. Returning 0." };
+    expect(violationRows(pmvPpdAshrae, { warnings: [notice] }, defaultEntryModes)).toEqual([]);
+    const rows = violationRows(pmvPpdAshrae, { warnings: [notice, rangeRow("clo", "input", 2.5, { max: 2 }), notice] }, defaultEntryModes);
+    expect(rows.map(({ quantity, value }) => [quantity, value])).toEqual([[q.clo, 2.5]]);
   });
 });
 
@@ -569,10 +570,10 @@ describe("formatBound, across the registry", () => {
         }
       }
     }
-    for (const [key, variable] of Object.entries(model.info.inputs)) {
+    for (const [key, field] of Object.entries(model.info.inputs)) {
       const quantity = quantityFor(key);
-      if (quantity && variable.applicability) {
-        bounds.push([quantity, variable.applicability]);
+      if (quantity && field.kind === "numeric" && field.applicability) {
+        bounds.push([quantity, field.applicability]);
       }
     }
     return bounds;

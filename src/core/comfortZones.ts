@@ -1,4 +1,4 @@
-import type { Bound, ClassifierBins } from "jsthermalcomfort";
+import type { ClassifierBins, Interval } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { ComfortZone } from "./modelDeclaration";
 
@@ -30,13 +30,13 @@ export function categoryZones(bins: ClassifierBins | undefined): readonly [Comfo
 
 /**
  * The one Comfort zone of a standard with a single interval, at its upper
- * end, strict at both ends as pythermalcomfort computes `compliance`. The
+ * end, strict at both ends as the library's `Interval` excludes them. The
  * chart draws |PMV| against one limit, so an interval not symmetric about
  * zero would be drawn as one it is not.
  */
-export function intervalZone(label: string, bound: Bound): ComfortZone {
-  if (bound.min === undefined || bound.max === undefined || bound.min !== -bound.max) {
+export function intervalZone(label: string, interval: Interval): ComfortZone {
+  if (interval.min !== -interval.max) {
     throw new Error(`${label}: the interval is not symmetric about zero, so it is not an |PMV| limit`);
   }
-  return { label, limit: bound.max, inclusive: false };
+  return { label, limit: interval.max, inclusive: false };
 }

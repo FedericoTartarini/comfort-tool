@@ -1,4 +1,5 @@
 import { Standard } from "jsthermalcomfort";
+import type { StandardId } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
@@ -202,7 +203,7 @@ describe("standardLinks", () => {
 
 describe("modelChoicesOn", () => {
   /** Each group as its standard's identifier, or `undefined` for the standard-less group, and its models. */
-  function byStandard(groups: readonly ModelGroup[]): [Standard | undefined, readonly RegisteredModel[]][] {
+  function byStandard(groups: readonly ModelGroup[]): [StandardId | undefined, readonly RegisteredModel[]][] {
     return groups.map(({ standard, models }) => [standard?.id, models]);
   }
 

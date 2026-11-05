@@ -11,6 +11,7 @@
  * temporary library's inverse of each.
  */
 import { clo_dynamic_ashrae, clo_dynamic_iso_vr, Standard } from "jsthermalcomfort";
+import type { StandardId } from "jsthermalcomfort";
 import { clo_dynamic_ashrae_inverse, clo_dynamic_iso_vr_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
 
 /**
@@ -49,7 +50,7 @@ const iso7730: ClothingCorrection = {
   invert: (clo_dynamic, { met, vr }) => clo_dynamic_iso_vr_inverse(clo_dynamic, met, vr),
 };
 
-const clothingCorrections: ReadonlyMap<Standard, ClothingCorrection> = new Map([
+const clothingCorrections: ReadonlyMap<StandardId, ClothingCorrection> = new Map([
   [Standard.ashrae_55_2023, ashrae55],
   // Both editions give the same equations in their Annex C.
   [Standard.iso_7730_2005, iso7730],
@@ -57,6 +58,6 @@ const clothingCorrections: ReadonlyMap<Standard, ClothingCorrection> = new Map([
 ]);
 
 /** The clothing correction of `standard`, or `undefined` for one that has none, and for no standard. */
-export function clothingCorrectionFor(standard: Standard | undefined): ClothingCorrection | undefined {
+export function clothingCorrectionFor(standard: StandardId | undefined): ClothingCorrection | undefined {
   return standard === undefined ? undefined : clothingCorrections.get(standard);
 }

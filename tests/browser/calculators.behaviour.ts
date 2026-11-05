@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { CLO_INDIVIDUAL_GARMENT_GROUPS, clo_dynamic_ashrae, clo_individual_garments, clo_tout, solar_gain, Standard, t_o } from "jsthermalcomfort";
+import { CLO_INDIVIDUAL_GARMENT_GROUPS, clo_dynamic_ashrae, clo_individual_garments, clo_tout, operative_tmp, solar_gain } from "jsthermalcomfort";
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
@@ -71,9 +71,9 @@ function predicted(tout: number) {
   return formatNumber(clo_tout({ tout }).clo_tout);
 }
 
-/** The library's increase at the dialog's defaults but `sharp`, unrounded as the app asks it. */
-function increaseAt(sharp: number) {
-  return solar_gain({
+/** The library's increase at the dialog's defaults but `sharp`, unrounded as the app asks it; fails the test where it gives none. */
+function increaseAt(sharp: number): number {
+  const { delta_mrt } = solar_gain({
     sol_altitude: 45,
     sharp,
     sol_radiation_dir: 900,
@@ -83,7 +83,11 @@ function increaseAt(sharp: number) {
     asw: 0.7,
     posture: "sitting",
     round_output: false,
-  }).delta_mrt;
+  });
+  if (delta_mrt === null) {
+    throw new Error(`solar_gain gives no increase at a SHARP of ${sharp}`);
+  }
+  return delta_mrt;
 }
 
 test.describe("the entry", () => {
@@ -587,7 +591,7 @@ test.describe("the dock's row under the entry modes", () => {
     await page.getByRole("menuitemradio", { name: /^Operative temperature/ }).click();
 
     const dialog = await openDialog(page, SOLAR);
-    const folded = formatNumber(t_o(25, 25 + increaseAt(0), 0.1, Standard.ashrae_55_2023));
+    const folded = formatNumber(operative_tmp(25, 25 + increaseAt(0), 0.1, "ashrae"));
     await expect(dockLine(dialog, "Operative temperature (°C)")).toHaveText(`25 → ${folded}`);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("spinbutton", { name: /^Operative temperature/ })).toHaveValue(folded);

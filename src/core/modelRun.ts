@@ -1,4 +1,4 @@
-import type { ApplicabilityWarning } from "jsthermalcomfort";
+import type { ModelWarning } from "jsthermalcomfort";
 import { optionsReader, toLibraryInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
@@ -15,30 +15,25 @@ export function runOn(slot: Slot, model: RegisteredModel, atmosphericPressure: n
 
 /**
  * The mirror read: a quantity's value off the model's own result object, by
- * key. `undefined` for a key the result does not carry. One of the two casts
- * onto `ModelResult`'s deliberately unindexed `object`
- * (`core/modelDeclaration.ts`); {@link resultWarnings} is the other.
+ * key. `undefined` for a key the result does not carry, `null` for an output
+ * the library returns as no value. The one cast onto `ModelResult`, which
+ * types `warnings` alone (`core/modelDeclaration.ts`).
  */
-export function resultValue(result: ModelResult, quantity: Quantity): number | string | boolean | undefined {
-  return (result as Record<string, number | string | boolean>)[quantity.key];
+export function resultValue(result: ModelResult, quantity: Quantity): number | string | boolean | null | undefined {
+  return (result as unknown as Readonly<Record<string, number | string | boolean | null>>)[quantity.key];
 }
 
-/** {@link resultValue} as a number: `NaN` when the result carries no number for `quantity`. */
+/** {@link resultValue} as a number: `NaN` when the result carries no number for `quantity`, `null` included. */
 export function resultNumber(result: ModelResult, quantity: Quantity): number {
   const value = resultValue(result, quantity);
   return typeof value === "number" ? value : Number.NaN;
 }
 
 /**
- * The applicability rows the library says the call broke, off the result's
- * `warnings` (ADR-0002 decision 23). Every v1 model returns them, so a result
- * without them is a declaration bug, and it throws naming the model rather
- * than reading as a run that broke nothing.
+ * The applicability rows the library says the call broke: the `range` rows of
+ * the result's `warnings` (ADR-0002 decision 23). A `notice` row is no bound,
+ * and is not read.
  */
-export function resultWarnings(model: RegisteredModel, result: ModelResult): readonly ApplicabilityWarning[] {
-  const warnings = (result as { warnings?: readonly ApplicabilityWarning[] }).warnings;
-  if (!warnings) {
-    throw new Error(`${model.info.label} returned no applicability rows`);
-  }
-  return warnings;
+export function resultWarnings(result: ModelResult): readonly Extract<ModelWarning, { kind: "range" }>[] {
+  return result.warnings.filter((warning) => warning.kind === "range");
 }

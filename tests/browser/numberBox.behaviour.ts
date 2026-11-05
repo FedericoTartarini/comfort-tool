@@ -247,12 +247,12 @@ test.describe("the line under the box", () => {
     await open(page, PMV_ADDRESS);
     await enterHumidityAs(page, /^Wet-bulb temperature/);
     const box = page.getByRole("spinbutton", { name: /^Wet-bulb temperature/ });
-    // `psy_ta_rh(t, 100).t_wb` is 25 at 25 °C and 9.9 at 10 °C. The wet bulb is lowered first: a dry bulb under it is refused.
+    // `psy_ta_rh(t, 100).wet_bulb_tmp` is 25.05 at 25 °C and 9.94 at 10 °C. The wet bulb is lowered first: a dry bulb under it is refused.
     await commit(dryBulb(page), "25");
-    await expect(captionOf(box)).toHaveText("≤ 25 °C");
+    await expect(captionOf(box)).toHaveText("≤ 25.05 °C");
     await commit(box, "5");
     await commit(dryBulb(page), "10");
-    await expect(captionOf(box)).toHaveText("≤ 9.9 °C");
+    await expect(captionOf(box)).toHaveText("≤ 9.94 °C");
   });
 });
 

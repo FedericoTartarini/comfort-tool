@@ -3,7 +3,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { violationRows, type ViolationRow } from "./applicability";
 import { palette } from "./palette";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { formatResultCell, type ResultCell } from "./resultCell";
@@ -15,6 +15,9 @@ const q = quantities;
 const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
   runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+
+/** A result holding `outputs` and no `warnings` rows. */
+const resultOf = (outputs: Readonly<Record<string, number | string | boolean | null>>): ModelResult => ({ ...outputs, warnings: [] });
 
 /** A cell of text. */
 const text = (shown: string): ResultCell => ({ kind: "text", text: shown });
@@ -31,7 +34,7 @@ const brokenAirSpeed: readonly ViolationRow[] = [{ quantity: q.v, bounded: q.vr,
 
 describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {
-    const result = { acceptability_80: true, compliance: false };
+    const result = resultOf({ acceptability_80: true, compliance: false });
     for (const system of [unitSystem.si, unitSystem.ip]) {
       expect(formatResultCell(pmvPpdAshrae, result, q.acceptability_80, system, noViolations)).toEqual(text("Yes"));
       expect(formatResultCell(pmvPpdAshrae, result, q.compliance, system, noViolations)).toEqual(text("No"));
@@ -45,7 +48,7 @@ describe("formatResultCell", () => {
   });
 
   it("shows every boolean result as a dash beside a violation row, whatever its value", () => {
-    const result = { acceptability_80: true, compliance: false };
+    const result = resultOf({ acceptability_80: true, compliance: false });
     for (const system of [unitSystem.si, unitSystem.ip]) {
       expect(formatResultCell(pmvPpdAshrae, result, q.acceptability_80, system, brokenAirSpeed)).toEqual(text("—"));
       expect(formatResultCell(pmvPpdAshrae, result, q.compliance, system, brokenAirSpeed)).toEqual(text("—"));
@@ -53,7 +56,7 @@ describe("formatResultCell", () => {
   });
 
   it("formats a number the same beside a violation row as without one", () => {
-    const result = { tmp_cmf: 24.567, pmv: 0.5 };
+    const result = resultOf({ tmp_cmf: 24.567, pmv: 0.5 });
     expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, brokenAirSpeed)).toEqual(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, noViolations));
     expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, brokenAirSpeed)).toEqual(text("0.5"));
   });
@@ -76,19 +79,26 @@ describe("formatResultCell", () => {
   });
 
   it("formats a number in the display unit", () => {
-    const result = { tmp_cmf: 24.567, pmv: 0.5 };
+    const result = resultOf({ tmp_cmf: 24.567, pmv: 0.5 });
     expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.si, noViolations)).toEqual(text("24.57 °C"));
     expect(formatResultCell(pmvPpdAshrae, result, q.tmp_cmf, unitSystem.ip, noViolations)).toEqual(text("76.22 °F"));
     expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, noViolations)).toEqual(text("0.5"));
   });
 
   it("shows a dash for a non-finite number, a missing key and no result, beside a violation row too", () => {
-    const result = { pmv: Number.NaN };
+    const result = resultOf({ pmv: Number.NaN });
     for (const violations of [noViolations, brokenAirSpeed]) {
       expect(formatResultCell(pmvPpdAshrae, result, q.pmv, unitSystem.si, violations)).toEqual(text("—"));
       expect(formatResultCell(pmvPpdAshrae, result, q.ppd, unitSystem.si, violations)).toEqual(text("—"));
       expect(formatResultCell(pmvPpdAshrae, null, q.pmv, unitSystem.si, violations)).toEqual(text("—"));
       expect(formatResultCell(pmvPpdAshrae, null, q.compliance, unitSystem.si, violations)).toEqual(text("—"));
+    }
+  });
+
+  it("shows a dash for an output the library returns as no value, a number, a yes or no and a category alike", () => {
+    const result = resultOf({ pmv: null, compliance: null, tsv: null });
+    for (const quantity of [q.pmv, q.compliance, q.tsv]) {
+      expect(formatResultCell(pmvPpdAshrae, result, quantity, unitSystem.si, noViolations), quantity.key).toEqual(text("—"));
     }
   });
 
@@ -116,7 +126,7 @@ describe("formatResultCell", () => {
   });
 
   it("shows a dash for a NaN, a category its classifier does not name, and no result", () => {
-    const result = { pmv: 12, tsv: Number.NaN, category: "VI" };
+    const result = resultOf({ pmv: 12, tsv: Number.NaN, category: "VI" });
     expect(formatResultCell(pmvPpdIso, result, q.tsv, unitSystem.si, noViolations)).toEqual(text("—"));
     expect(formatResultCell(pmvPpdIso, result, q.category, unitSystem.si, noViolations)).toEqual(text("—"));
     expect(formatResultCell(pmvPpdIso, null, q.tsv, unitSystem.si, noViolations)).toEqual(text("—"));
@@ -124,7 +134,7 @@ describe("formatResultCell", () => {
   });
 
   it("keeps a Band badge beside a violation row, where a yes or no reads the dash", () => {
-    const result = { tsv: "Neutral", compliance: true };
+    const result = resultOf({ tsv: "Neutral", compliance: true });
     expect(formatResultCell(pmvPpdAshrae, result, q.tsv, unitSystem.si, brokenAirSpeed)).toEqual(formatResultCell(pmvPpdAshrae, result, q.tsv, unitSystem.si, noViolations));
     expect(formatResultCell(pmvPpdAshrae, result, q.tsv, unitSystem.si, brokenAirSpeed)).toMatchObject({ kind: "band", label: "Neutral" });
     expect(formatResultCell(pmvPpdAshrae, result, q.compliance, unitSystem.si, brokenAirSpeed)).toEqual(text("—"));

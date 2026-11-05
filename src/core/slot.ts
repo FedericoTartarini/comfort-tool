@@ -8,7 +8,7 @@
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
-import { t_o, v_relative } from "jsthermalcomfort";
+import { operative_tmp, v_relative } from "jsthermalcomfort";
 import { v_relative_inverse } from "$lib/temporary-library/v_relative_inverse";
 import type { ClothingCorrectionInputs } from "./clothingCorrection";
 import {
@@ -38,6 +38,7 @@ import {
   type RegisteredModel,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
+import { isAshraeStandard } from "./standard";
 
 /**
  * The slice of an input slot that core reads. A plain interface, so core/
@@ -221,8 +222,9 @@ export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): num
 
 /**
  * The slot's operative temperature: the entry itself under operative entry,
- * else the library's `t_o(tdb, tr, v, standardOf(model))`, weighed by the
- * model's own standard, or by the library's default for a model that has none.
+ * else the library's `operative_tmp(tdb, tr, v, method)`, by its ASHRAE
+ * method for a model of an ASHRAE standard and by its ISO method, the
+ * library's default, for any other model or one with no standard.
  * The air speed it weighs by is the slot's air-speed entry: the relative air
  * speed under relative air speed entry, the one air speed the slot then holds,
  * as the library's own ASHRAE 55 check weighs by the `vr` it is given.
@@ -230,7 +232,7 @@ export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): num
  * marks a slot in separate entry (ADR-0002 decisions 37 and 62), and the
  * value the switch into operative entry stores ({@link withTemperatureMode},
  * decision 39), so the click does not move the marker. The one place the app
- * calls `t_o`.
+ * calls `operative_tmp`.
  *
  * Off the deployed chart's marker, the plain mean `(tdb + tr) / 2`, whenever
  * `tdb ≠ tr`, except under ASHRAE 55 below 0.2 m/s and under ISO 7726 at
@@ -240,11 +242,10 @@ export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): numb
   if (slot.temperature.mode === temperatureMode.operative) {
     return requireValue(slot.values, q.operative_tmp);
   }
-  // `t_o` names fewer standards than a model may have (not ISO 7933), and
-  // throws on one it does not; the cast leaves that call to the library.
-  const standard = standardOf(model) as Parameters<typeof t_o>[3];
+  const standard = standardOf(model);
+  const method = standard !== undefined && isAshraeStandard(standard) ? "ashrae" : "ISO";
   const airSpeed = requireValue(slot.values, slot.airSpeed.mode.axis);
-  return t_o(requireValue(slot.values, q.tdb), requireValue(slot.values, q.tr), airSpeed, standard);
+  return operative_tmp(requireValue(slot.values, q.tdb), requireValue(slot.values, q.tr), airSpeed, method);
 }
 
 /**
@@ -544,8 +545,8 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
 
 /**
  * The same slot with its temperatures re-expressed under `mode`. Separate →
- * operative stores {@link operativeTemperatureOf}'s answer, the library's `t_o`
- * by the model's own standard as pythermalcomfort's models weigh it (ADR-0002
+ * operative stores {@link operativeTemperatureOf}'s answer, the library's
+ * `operative_tmp` by the model's own standard's method (ADR-0002
  * decision 39), so the slot lands where the chart marked it; operative →
  * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, and a removal
  * from the bag: the two representations never coexist. The

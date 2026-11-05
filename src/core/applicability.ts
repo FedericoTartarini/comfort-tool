@@ -12,7 +12,7 @@
  * sentence is assembled here from the bounded quantity's label, the bound and
  * the display unit, in the copy dictionary's words.
  */
-import type { Bound, VariableInfo } from "jsthermalcomfort";
+import type { Bound, InputsInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { CalculatorInputs, FormCalculator } from "./calculators";
 import { temperatureMode, type HumidityMode } from "./entryModes";
@@ -56,14 +56,18 @@ export interface ViolationRow extends OutOfRangeRow {
   readonly role: "input" | "derived" | "output";
 }
 
-/** The applicability bound of `table`'s row for `quantity`, reconciled by key through `quantityFor` (ADR-0002 decision 2). */
-function boundFor(table: Readonly<Record<string, VariableInfo>> | undefined, quantity: Quantity): Bound | undefined {
-  if (!table) {
+/**
+ * The applicability bound of the numeric input of `inputs` for `quantity`,
+ * reconciled by key through `quantityFor` (ADR-0002 decision 2). A switch, a
+ * choice or an instance carries no bound.
+ */
+function boundFor(inputs: InputsInfo | undefined, quantity: Quantity): Bound | undefined {
+  if (!inputs) {
     return undefined;
   }
-  for (const [key, variable] of Object.entries(table)) {
-    if (quantityFor(key) === quantity) {
-      return variable.applicability;
+  for (const [key, field] of Object.entries(inputs)) {
+    if (field.kind === "numeric" && quantityFor(key) === quantity) {
+      return field.applicability;
     }
   }
   return undefined;
@@ -431,7 +435,7 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
  */
 export function violationRows(model: RegisteredModel, result: ModelResult, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
-  for (const { key, role, value, bound } of resultWarnings(model, result)) {
+  for (const { key, role, value, bound } of resultWarnings(result)) {
     const keyed = quantityFor(key);
     if (!keyed) {
       continue;

@@ -108,7 +108,7 @@ function runAt(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity
 
 /** Whether the run on `slot` with `entered` over it breaks a bound: its `warnings` has a row. */
 function isOutsideApplicability(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity, number>): boolean {
-  return resultWarnings(model, runAt(model, slot, entered)).length > 0;
+  return resultWarnings(runAt(model, slot, entered)).length > 0;
 }
 
 /** The limit of the zone drawn `position`-th among one slot's zones, largest first, as the chart draws them. */
@@ -467,11 +467,11 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
           const pointAt = (offset: number): [number, number] => (onColumn ? [vertexX, vertexY + offset] : [vertexX + offset, vertexY]);
           const [inside, outside] = isInsideFill(fill, ...pointAt(-step)) ? [pointAt(-step), pointAt(step)] : [pointAt(step), pointAt(-step)];
           expect(isInsideFill(fill, ...inside), label).toBe(true);
-          expect(resultWarnings(model, runAtPoint(...inside)), label).toEqual([]);
+          expect(resultWarnings(runAtPoint(...inside)), label).toEqual([]);
           if (Math.abs(Math.abs(resultNumber(runAtPoint(vertexX, vertexY), q.pmv)) - limit) <= limitBound) {
             return; // On the limit.
           }
-          expect(resultWarnings(model, runAtPoint(...outside)).length, label).toBeGreaterThan(0);
+          expect(resultWarnings(runAtPoint(...outside)).length, label).toBeGreaterThan(0);
           onBounds += 1;
         });
       }

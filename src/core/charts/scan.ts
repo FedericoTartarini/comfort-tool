@@ -122,7 +122,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
       [y.quantity, point.y],
     ]));
     const result = runOn(cell, model, atmosphericPressure);
-    return { value: resultNumber(result, output), withinBounds: resultWarnings(model, result).length === 0 };
+    return { value: resultNumber(result, output), withinBounds: resultWarnings(result).length === 0 };
   };
   const grid = { x: samples(x.range, GRID), y: samples(y.range, GRID) };
   const readings = grid.y.map((yValue) => grid.x.map((xValue) => run({ x: xValue, y: yValue })));

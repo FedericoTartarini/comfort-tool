@@ -71,7 +71,7 @@ export interface Quantity {
   /**
    * The name this quantity has in a model's `ModelInfo`, e.g. `"tdb"`, or,
    * for one no model info names, in the library's functions that take it,
-   * e.g. `"p_atm"`.
+   * e.g. `"hr"`, `hr_to_rh`'s.
    */
   readonly key: string;
   readonly kind: QuantityKind;
@@ -93,8 +93,9 @@ export const quantities = {
   // entered vapour pressure is `rh / 100 × p_sat(tdb)`, the same quantity as
   // the derived one (ADR-0002 decision 16).
   pa: { key: "pa", kind: "pressure", label: "Water vapour partial pressure" },
-  // The session's pressure, not a slot's: no entry mode names it, and no
-  // model info (ADR-0002 decision 49).
+  // The session's pressure, not a slot's: no entry mode names it (ADR-0002
+  // decision 49). Six of the library's model infos name it, none a registered
+  // model's.
   p_atm: { key: "p_atm", kind: "atmosphericPressure", label: "Atmospheric pressure" },
   met: { key: "met", kind: "metabolicRate", label: "Metabolic rate" },
   clo: { key: "clo", kind: "clothingInsulation", label: "Clothing insulation" },
@@ -111,7 +112,7 @@ export const quantities = {
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
   utci: { key: "utci", kind: "temperature", label: "Universal Thermal Climate Index" },
   // UTCI's `derived` key: the library bounds `tr` by its difference from `tdb`.
-  tr_minus_tdb: { key: "tr_minus_tdb", kind: "temperatureDifference", label: "Mean radiant minus dry-bulb air temperature" },
+  "tr - tdb": { key: "tr - tdb", kind: "temperatureDifference", label: "Mean radiant minus dry-bulb air temperature" },
   stress_category: { key: "stress_category", kind: "category", label: "Thermal stress category" },
   t_running_mean: { key: "t_running_mean", kind: "temperature", label: "Prevailing mean outdoor temperature" },
   tmp_cmf: { key: "tmp_cmf", kind: "temperature", label: "Comfort temperature" },

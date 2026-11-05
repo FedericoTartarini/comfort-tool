@@ -9,6 +9,7 @@
  * line. Comfort zones are not checked: Adaptive's bands coincide below
  * 0.6 m/s, as the standard gives them.
  */
+import type { InputsInfo } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
@@ -120,7 +121,9 @@ describe("the check that keeps the three markers apart", () => {
   // chart's axes move: the check must see one marker on another.
   it("catches markers on one another for a model whose only moved values are off its chart's axes", () => {
     const upperEndOf = (quantity: Quantity) => {
-      const max = pmvPpdAshrae.info.inputs[quantity.key]?.applicability?.max;
+      const inputs: InputsInfo = pmvPpdAshrae.info.inputs;
+      const field = inputs[quantity.key];
+      const max = field?.kind === "numeric" ? field.applicability?.max : undefined;
       if (max === undefined) {
         throw new Error(`${pmvPpdAshrae.info.label} bounds no ${quantity.label} from above`);
       }

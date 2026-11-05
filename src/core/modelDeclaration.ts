@@ -1,4 +1,4 @@
-import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
+import type { ClassifierBins, ModelInfo, ModelOutputs, StandardId } from "jsthermalcomfort";
 import type { Calculator } from "./calculators";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor, type ClothingCorrection } from "./clothingCorrection";
@@ -7,18 +7,16 @@ import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
  * The model's own result object, keyed by the same strings as its `_INFO`:
- * a number for a physical output, or the category label (or NaN) a classified
- * output returns. `run` returns this directly (ADR-0002 decision 3) — the app
- * reads it by key rather than transcribing a shape of its own.
+ * a number for a physical output, a category label or a yes/no, or `null`
+ * where the library returns no value. `run` returns this directly (ADR-0002
+ * decision 3) — the app reads it by key rather than transcribing a shape of
+ * its own.
  *
- * Deliberately widened to `object` rather than an indexed `Record`: a library
- * result declared as a plain `interface` (`HeatIndexResult`) carries no index
- * signature and TypeScript never infers one for it, so a `Record` type here
- * would reject every such model at its declaration. `core/modelRun.ts` casts
- * it in two places: `resultValue` reads it by key, `resultWarnings` reads its
- * `warnings`.
+ * The library's `ModelOutputs`, which every model's outputs extend: it types
+ * `warnings` and no output, so `core/modelRun.ts`'s `resultValue` reads an
+ * output by key.
  */
-export type ModelResult = object;
+export type ModelResult = ModelOutputs;
 
 /**
  * How a declaration reads its slot's values: one number per Quantity, under
@@ -203,9 +201,9 @@ export type DeclaredChart =
       /**
        * The chart is drawn on these two quantities whatever the entry mode,
        * and the picker is not offered. An operative-temperature axis stays
-       * operative under separate entry, marked at the library's `t_o` of the
-       * entered temperatures and air speed by the model's standard
-       * (`slot.operativeTemperatureOf`).
+       * operative under separate entry, marked at the library's
+       * `operative_tmp` of the entered temperatures and air speed by its
+       * model's standard's method (`slot.operativeTemperatureOf`).
        */
       readonly axes: ChartAxes;
       /**
@@ -339,16 +337,18 @@ export function adaptiveChartOf(model: RegisteredModel): DeclaredAdaptiveChart |
 }
 
 /**
- * The declared axis range of `quantity`, else `info.inputs`' own applicability
- * bound when it has both a `min` and a `max`, else `undefined` when `quantity`
- * may not carry an axis at all (ADR-0002 decision 5).
+ * The declared axis range of `quantity`, else the applicability bound of its
+ * numeric input in `info.inputs` when it has both a `min` and a `max`, else
+ * `undefined` when `quantity` may not carry an axis at all (ADR-0002
+ * decision 5).
  */
 export function axisRangeFor(model: RegisteredModel, quantity: Quantity): Range | undefined {
   const declared = model.axisRanges.find((range) => range.quantity === quantity);
   if (declared) {
     return { min: declared.min, max: declared.max };
   }
-  const bound = model.info.inputs[quantity.key]?.applicability;
+  const input = model.info.inputs[quantity.key];
+  const bound = input?.kind === "numeric" ? input.applicability : undefined;
   if (bound?.min !== undefined && bound.max !== undefined) {
     return { min: bound.min, max: bound.max };
   }
@@ -444,7 +444,7 @@ export function clothingCorrectionOf(model: RegisteredModel): ClothingCorrection
  * decision 86, rule 3). `undefined` for a model whose info lists none, such as
  * Heat Index, which has no Standard page.
  */
-export function standardOf(model: RegisteredModel): Standard | undefined {
+export function standardOf(model: RegisteredModel): StandardId | undefined {
   return model.info.standards[0];
 }
 

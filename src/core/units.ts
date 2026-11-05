@@ -68,7 +68,7 @@ const displayUnits = {
       fromSi: (celsius) => (celsius * 9) / 5 + 32,
     },
   },
-  // A difference of two temperatures, UTCI's `tr_minus_tdb`: a degree
+  // A difference of two temperatures, UTCI's `"tr - tdb"`: a degree
   // Fahrenheit is 5/9 of a degree Celsius, and no 32 °F offset applies.
   temperatureDifference: {
     si: { symbol: "°C", step: 0.1, toSi: identity, fromSi: identity },

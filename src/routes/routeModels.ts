@@ -1,4 +1,4 @@
-import { Standard } from "jsthermalcomfort";
+import type { StandardId } from "jsthermalcomfort";
 import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { standardEntryFor, type StandardEntry } from "$lib/core/standard";
@@ -107,7 +107,7 @@ export function defaultModel(): RegisteredModel {
 }
 
 /** `standardOf(model)`, or throws when the model has none (an Explore-only model has no Standard page). */
-export function requireStandard(model: RegisteredModel): Standard {
+export function requireStandard(model: RegisteredModel): StandardId {
   const standard = standardOf(model);
   if (!standard) {
     throw new Error(`${model.info.label} has no standard and no Standard page`);

@@ -12,7 +12,7 @@ describe("humidityMode", () => {
   });
 
   it("enters humidity ratio in the library's kg/kg at full precision", () => {
-    expect(humidityMode.humidityRatio.fromRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(0.0098815475775, 13);
+    expect(humidityMode.humidityRatio.fromRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(0.0098815997472, 13);
   });
 
   it("is the identity in rh mode", () => {

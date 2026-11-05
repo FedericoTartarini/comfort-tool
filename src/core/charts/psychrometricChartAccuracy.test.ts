@@ -188,7 +188,7 @@ function numberAt(model: RegisteredModel, slot: Slot, temperature: number, hr: n
 
 /** Whether `model`'s run on `slot` at `temperature` and the humidity ratio `hr` breaks a bound: its `warnings` has a row. */
 function isOutsideApplicabilityAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): boolean {
-  return resultWarnings(model, runAt(model, slot, temperature, hr)).length > 0;
+  return resultWarnings(runAt(model, slot, temperature, hr)).length > 0;
 }
 
 describe("criterion 3a: the psychrometric chart's zones against the library", () => {

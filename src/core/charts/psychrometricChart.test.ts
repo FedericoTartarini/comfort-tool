@@ -7,7 +7,7 @@
  * (`psychrometricChartBands.test.ts`).
  */
 import { describe, expect, it } from "vitest";
-import { clo_dynamic_iso, hr_to_rh, PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
+import { clo_dynamic_iso, hr_to_rh, PMV_PPD_ASHRAE_INFO, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { intervalZone } from "$lib/core/comfortZones";
@@ -137,7 +137,8 @@ function numberAt(entered: Slot, temperature: number, hr: number): number {
  * ISO 7730's PMV called on the library directly, unrounded: an oracle that
  * agrees with a cell's number only if the app handed the model the inputs the
  * result table uses — `vr` derived with `v_relative`, `clo` corrected by
- * `clo_dynamic_iso`, `tr` from the entry mode.
+ * `clo_dynamic_iso`, `tr` from the entry mode. A `null` reads as NaN, as the
+ * scan reads it.
  */
 function pmvAt(db: number, rh: number, tr: number): number {
   return pmv_ppd_iso({
@@ -150,7 +151,7 @@ function pmvAt(db: number, rh: number, tr: number): number {
     wme: 0,
     limit_inputs: false,
     round_output: false,
-  }).pmv;
+  }).pmv ?? NaN;
 }
 
 /**
@@ -374,7 +375,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("draws the zones of the model it is handed, a one-zone scan as one zone", () => {
-    const zone = intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE);
+    const zone = intervalZone(copy.comfortZone, PMV_PPD_ASHRAE_INFO.outputs.compliance.interval);
     const drawn = psychrometricSpec(requestWithZones([zone]));
     expect([...zoneFillsOf(drawn), ...zoneLinesOf(drawn)].map((trace) => [trace.fill !== undefined, trace.label])).toEqual([
       [true, copy.zoneLegend(zone)],

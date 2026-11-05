@@ -17,9 +17,9 @@ describe("displayUnitFor", () => {
   });
 
   it("converts a temperature difference by the degree's size alone, with no 32 °F offset", () => {
-    const celsius = displayUnitFor(quantities.tr_minus_tdb, unitSystem.si);
+    const celsius = displayUnitFor(quantities["tr - tdb"], unitSystem.si);
     expect([celsius.symbol, celsius.step, celsius.fromSi(70)]).toEqual(["°C", 0.1, 70]);
-    const fahrenheit = displayUnitFor(quantities.tr_minus_tdb, unitSystem.ip);
+    const fahrenheit = displayUnitFor(quantities["tr - tdb"], unitSystem.ip);
     expect([fahrenheit.symbol, fahrenheit.step]).toEqual(["°F", 0.1]);
     expect(fahrenheit.fromSi(0)).toBe(0);
     expect(fahrenheit.fromSi(-30)).toBeCloseTo(-54);
