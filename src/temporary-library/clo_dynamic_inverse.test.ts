@@ -169,6 +169,10 @@ describe("clo_dynamic_iso_vr_inverse", () => {
     expect(clo_dynamic_iso_vr_inverse(-0.5, 2, 0.4)).toBe(-0.5);
   });
 
+  it("gives Infinity for an infinite dynamic clothing insulation", () => {
+    expect(clo_dynamic_iso_vr_inverse(Infinity, 2, 0.4)).toBe(Infinity);
+  });
+
   it("returns NaN for a NaN argument", () => {
     expect(clo_dynamic_iso_vr_inverse(NaN, 2, 0.4)).toBeNaN();
     expect(clo_dynamic_iso_vr_inverse(0.8, NaN, 0.4)).toBeNaN();
