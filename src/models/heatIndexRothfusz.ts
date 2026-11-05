@@ -1,4 +1,4 @@
-import { heat_index_rothfusz, HEAT_INDEX_ROTHFUSZ_INFO, HEAT_INDEX_STRESS_CATEGORY_BINS } from "jsthermalcomfort";
+import { heat_index_rothfusz, HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
@@ -38,6 +38,6 @@ export const heatIndexRothfusz = {
   // The scanned number is `hi`, cut by the same stress-category bins the
   // kernel classifies `stress_category` with. No Comfort zones: the model has
   // no standard to draw a limit on it.
-  scan: { output: q.hi, classifier: HEAT_INDEX_STRESS_CATEGORY_BINS },
+  scan: { output: q.hi, bands: q.stress_category },
   charts: [{ type: chartType.dynamic, axes: { x: q.tdb, y: q.rh } }],
 } satisfies RegisteredModel;

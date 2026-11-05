@@ -12,7 +12,7 @@ import type { ChartSpec, PathPiece, PointTrace, Trace } from "$lib/core/charts/c
 import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { traceRegion } from "$lib/core/charts/regionTracer";
 import { chartType } from "$lib/core/chartType";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
@@ -189,7 +189,7 @@ describe("The page in the session", () => {
         const list = session.chart.bands;
         const traces = outputs.chart?.traces ?? [];
         const bands = fillsOf(traces);
-        expect(list).toEqual(bandListOf(pmvPpdIso.scan.classifier));
+        expect(list).toEqual(bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)));
         expect(bands.map((band) => [band.label, band.fill])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
         if (list) {
           expectContiguousFills(traces, list, outputs.slots[0].scan.values);

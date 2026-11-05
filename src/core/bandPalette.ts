@@ -1,12 +1,7 @@
-import {
-  HEAT_INDEX_STRESS_CATEGORY_BINS,
-  PMV_CATEGORY_BINS_ISO_7730_2025,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-  UTCI_STRESS_CATEGORY_BINS,
-  type ClassifierBins,
-} from "jsthermalcomfort";
+import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO, UTCI_INFO, type ClassifierBins } from "jsthermalcomfort";
+import { classifierOf } from "./modelDeclaration";
 import { lettering, palette } from "./palette";
+import { quantities } from "./quantities";
 import type { SlotHue } from "./slotBadge";
 
 /**
@@ -81,15 +76,17 @@ export const palettes = {
  * Every classifier the app paints, with its palette. A new classifier lands
  * here ahead of its model, its own commit with a test, as a new quantity lands
  * in the quantity table; a family gains the colours at a new count with it.
+ * Each is read off its model info by the output it classifies, so an output
+ * the info stops classifying fails here when the app loads.
  */
 const classifierPalettes: ReadonlyMap<ClassifierBins, PaletteEntry> = new Map<ClassifierBins, PaletteEntry>([
   // Neutral is "Neutral", the fourth of seven.
-  [PMV_THERMAL_SENSATION_VOTE_BINS_ISO, palettes.diverging(3)],
-  [PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE, palettes.diverging(3)],
-  [HEAT_INDEX_STRESS_CATEGORY_BINS, palettes.sequential],
-  [PMV_CATEGORY_BINS_ISO_7730_2025, palettes.sequentialCategories],
+  [classifierOf(PMV_PPD_ISO_INFO, quantities.tsv), palettes.diverging(3)],
+  [classifierOf(PMV_PPD_ASHRAE_INFO, quantities.tsv), palettes.diverging(3)],
+  [classifierOf(HEAT_INDEX_ROTHFUSZ_INFO, quantities.stress_category), palettes.sequential],
+  [classifierOf(PMV_PPD_ISO_INFO, quantities.category), palettes.sequentialCategories],
   // Neutral is "no thermal stress", the sixth of ten.
-  [UTCI_STRESS_CATEGORY_BINS, palettes.diverging(5)],
+  [classifierOf(UTCI_INFO, quantities.stress_category), palettes.diverging(5)],
 ]);
 
 /**

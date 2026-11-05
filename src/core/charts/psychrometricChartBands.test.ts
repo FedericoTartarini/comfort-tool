@@ -12,7 +12,7 @@ import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
@@ -43,7 +43,7 @@ const q = quantities;
 const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const p = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-const isoBands = bandListOf(pmvPpdIso.scan.classifier);
+const isoBands = bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands));
 
 /** `model`'s psychrometric chart of `slot` as slot 1, painting `bands`, with `changes` to the request. */
 function bandedSpec(
@@ -208,7 +208,7 @@ describe("the psychrometric chart given a Band list", () => {
   });
 
   it("stops the cover's saturation line where it leaves the top of the drawn range, as on PMV (ASHRAE 55)'s 10 to 40 °C", () => {
-    const ashrae = bandedSpec(bandListOf(pmvPpdAshrae.scan.classifier), startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
+    const ashrae = bandedSpec(bandListOf(classifierOf(pmvPpdAshrae.info, pmvPpdAshrae.scan.bands)), startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
     const cover = onlyPieceOf(coverOf(ashrae));
     const [xMin, xMax] = ashrae.layout.x.range;
     const top = ashrae.layout.y.range[1];
@@ -323,7 +323,7 @@ describe("the psychrometric chart given a Band list", () => {
   });
 
   it("paints PMV (ASHRAE 55)'s list over its own scan", () => {
-    const ashraeBands = bandListOf(pmvPpdAshrae.scan.classifier);
+    const ashraeBands = bandListOf(classifierOf(pmvPpdAshrae.info, pmvPpdAshrae.scan.bands));
     const drawn = bandedSpec(ashraeBands, startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
     const own = scannedOf(ashraeBands, startingSlot(pmvPpdAshrae), {}, pmvPpdAshrae);
     expectFills(drawn, ashraeBands, ashraeBands.labels.map((_, index) => ({ index, top: ashraeBands.edges.length - 1 })), own.values);

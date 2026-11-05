@@ -10,12 +10,13 @@
  * axis range a chart reads off it — is the sibling `modelDeclaration.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import { classifyFromBins, pmv_ppd_iso, type ClassifierBins } from "jsthermalcomfort";
+import { classifyFromBins, pmv_ppd_iso } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import {
   adaptiveChartOf,
+  classifierOf,
   dynamicChartOf,
   requireAxisRange,
   type ChartAxes,
@@ -25,23 +26,8 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { startingSlot, withEnteredValues, type Slot } from "./slot";
-
-/**
- * The classified output the declared bands cut, found by object identity:
- * nothing in `_INFO` names the quantity a classifier belongs to, which is why
- * the declaration pairs them by reference in the first place (ADR-0002
- * decision 27).
- */
-function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quantity {
-  const key = Object.entries(model.info.outputs).find(([, output]) => output.classifier === bins)?.[0];
-  const quantity = key === undefined ? undefined : quantityFor(key);
-  if (!quantity) {
-    throw new Error(`${model.info.label} declares bands that classify none of its outputs`);
-  }
-  return quantity;
-}
 
 /**
  * The ISO declaration scanning nothing, its one chart the adaptive chart, as
@@ -113,7 +99,7 @@ function driftProbes(model: RegisteredModel, axes: ChartAxes, scan: DeclaredScan
   const outputAt = (position: number) => Number(valueAt(position, scan.output));
 
   const probes = [defaults];
-  for (const edge of scan.classifier.edges) {
+  for (const edge of classifierOf(model.info, scan.bands).edges) {
     const bracket = bracketAcross(outputAt, range, edge);
     if (bracket) {
       probes.push(at(bracket[0]), at(bracket[1]));
@@ -128,7 +114,7 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
   const chart = dynamicChartOf(model);
   // A model that scans nothing declares no bands to check.
   if (!scan || !chart) return;
-  const classified = classifiedOutputOf(model, scan.classifier);
+  const classifier = classifierOf(model.info, scan.bands);
   const probes = driftProbes(model, chart.axes, scan);
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
@@ -136,8 +122,8 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
     const result = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
     const value = resultValue(result, scan.output);
     expect(typeof value, `${model.info.label} ${scan.output.label}`).toBe("number");
-    expect(classifyFromBins(Number(value), scan.classifier), `${model.info.label} at ${scan.output.label} ${String(value)}`).toBe(
-      resultValue(result, classified),
+    expect(classifyFromBins(Number(value), classifier), `${model.info.label} at ${scan.output.label} ${String(value)}`).toBe(
+      resultValue(result, scan.bands),
     );
   }
 }

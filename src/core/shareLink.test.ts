@@ -19,7 +19,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { addEdge, moveEdge, setColor, setLabel } from "./bands";
 import { chartType } from "./chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
-import { optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { rehearseSwitch } from "./modelSwitch";
 import { page, pagesOf, paintsBandsOn, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -81,7 +81,7 @@ function editedSession(): WrittenSession {
   }
   const charts = new Map<RegisteredModel, ChartSettings>([
     [pmvPpdAshrae, { type: chartType.dynamic, axes: { x: q.tdb, y: q.rh }, bands: moveEdge(setColor(ashraeBands, 1, "#00FF7f"), 3, 0.4) }],
-    [pmvPpdIso, { type: chartType.dynamic, axes: { x: q.met, y: q.v }, bands: setColor(setLabel(addEdge(isoBands, 2, pmvPpdIso.scan.classifier), 0, FAR_LABEL), 4, undefined) }],
+    [pmvPpdIso, { type: chartType.dynamic, axes: { x: q.met, y: q.v }, bands: setColor(setLabel(addEdge(isoBands, 2, classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)), 0, FAR_LABEL), 4, undefined) }],
     [adaptiveAshrae, startingChartSettings(adaptiveAshrae)],
   ]);
   return {

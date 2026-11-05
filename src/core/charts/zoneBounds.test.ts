@@ -15,7 +15,7 @@ import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
@@ -218,7 +218,7 @@ describe("PMV (ASHRAE 55)'s air-speed chart", () => {
   });
 
   it("is painted over by a Band list on Explore where the zone leaves a grid point out", () => {
-    const bands = bandListOf(pmvPpdAshrae.scan.classifier);
+    const bands = bandListOf(classifierOf(pmvPpdAshrae.info, pmvPpdAshrae.scan.bands));
     const banded = dynamicSpec({ ...chartRequestFor(pmvPpdAshrae, inScope(false)), bands }, airSpeedAxes);
     const [without, within] = [regionOf(off, zoneOf(off)), regionOf(on, zoneOf(on))];
     const left = speeds.map((_, yIndex) => yIndex).filter((yIndex) => !without[yIndex][column] && within[yIndex][column]);
@@ -361,7 +361,7 @@ describe("the note of a slot whose Comfort zones are all empty", () => {
   });
 
   it("does not stand on Explore, where a Band list paints the field", () => {
-    const bands = bandListOf(pmvPpdAshrae.scan.classifier);
+    const bands = bandListOf(classifierOf(pmvPpdAshrae.info, pmvPpdAshrae.scan.bands));
     expect(psychrometricSpec({ ...chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 })), bands }).notes).toEqual([]);
   });
 

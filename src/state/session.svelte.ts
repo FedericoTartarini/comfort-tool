@@ -4,7 +4,7 @@ import type { BandList } from "$lib/core/bands";
 import { shownRow, type Calculator, type CalculatorResult } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
-import type { ChartAxes, OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
 import {
   atmosphericPressureRow,
@@ -176,7 +176,7 @@ export class ChartState {
   constructor(model: RegisteredModel, settings: ChartSettings) {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
-    this.#classifier = model.scan?.classifier ?? null;
+    this.#classifier = model.scan ? classifierOf(model.info, model.scan.bands) : null;
     this.#startingBands = startingChartSettings(model).bands;
     this.#bands = $state.raw(settings.bands);
   }

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { chartType, type ChartType } from "$lib/core/chartType";
+import { classifierOf } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -19,7 +20,7 @@ import type { BandListDraft } from "./bandListDraft.svelte";
 import { Session } from "./session.svelte";
 import { bandsDraftOf } from "./sessionTestReaders";
 
-const sensation = pmvPpdIso.scan.classifier;
+const sensation = classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands);
 // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10; band 3 is Neutral.
 const defaultList = bandListOf(sensation);
 
@@ -259,7 +260,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
 
     session.requestModel(pmvPpdAshrae);
     expect(session.model).toBe(pmvPpdAshrae);
-    expect(session.chart.bands).toEqual(bandListOf(pmvPpdAshrae.scan.classifier));
+    expect(session.chart.bands).toEqual(bandListOf(classifierOf(pmvPpdAshrae.info, pmvPpdAshrae.scan.bands)));
     session.requestModel(pmvPpdIso);
 
     expect(session.model).toBe(pmvPpdIso);

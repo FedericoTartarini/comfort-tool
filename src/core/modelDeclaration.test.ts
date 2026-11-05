@@ -7,7 +7,7 @@
  * `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
+import { Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -20,6 +20,7 @@ import { categoryZones } from "./comfortZones";
 import {
   adaptiveChartOf,
   axisRangeFor,
+  classifierOf,
   clothingCorrectionOf,
   dynamicChartOf,
   hasClothingGroup,
@@ -35,6 +36,7 @@ import {
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
+import { startingChartSettings } from "./writtenSession";
 
 const q = quantities;
 
@@ -56,9 +58,22 @@ describe("standard", () => {
 
   it("is ISO 7730:2025 for PMV (ISO 7730), whose comfort zones are its info's category classifier's, that edition's bins", () => {
     expect(standardOf(pmvPpdIso)).toBe(Standard.iso_7730_2025);
-    const classifier = pmvPpdIso.info.outputs.category.classifier;
-    expect(classifier).toBe(PMV_CATEGORY_BINS_ISO_7730_2025);
+    const classifier = classifierOf(pmvPpdIso.info, q.category);
+    // ISO 7730:2025's categories (ADR-0002 decision 80 rule 1): I to IV at
+    // |PMV| 0.2, 0.5, 0.7 and 1.0, strict at both ends, "none" beyond.
+    expect(classifier.labels).toEqual(["I", "II", "III", "IV", "none"]);
+    expect(classifier.edges.slice(0, 4)).toEqual([0.2, 0.5, 0.7, 1]);
+    expect(classifier.right).toBe(false);
     expect(pmvPpdIso.scan.comfortZones).toEqual(categoryZones(classifier));
+  });
+});
+
+describe("scan", () => {
+  it("that names an output its model info does not classify throws when the model is loaded, naming the model and the output", () => {
+    const unclassified: RegisteredModel = { ...pmvPpdIso, scan: { ...pmvPpdIso.scan, bands: q.pmv } };
+    expect(() => startingChartSettings(unclassified)).toThrow(
+      `${pmvPpdIso.info.label} gives its output ${q.pmv.label} no classifier`,
+    );
   });
 });
 
@@ -111,7 +126,7 @@ describe("charts", () => {
     const noZones: RegisteredModel = {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, label: "Fixture scanning without Comfort zones" },
-      scan: { output: pmvPpdIso.scan.output, classifier: pmvPpdIso.scan.classifier },
+      scan: { output: pmvPpdIso.scan.output, bands: pmvPpdIso.scan.bands },
     };
     expect(() => expectZonesUnderAPsychrometricChart(noZones)).toThrow(noZones.info.label);
   });
@@ -414,7 +429,7 @@ describe("requireAxisRange", () => {
  * Type-level proof of the declaration's shapes (ADR-0002 decisions 37, 61 and
  * 62), compiled by `npm run check` and never called: each `@ts-expect-error`
  * fails the build the day the compiler stops refusing that literal. What the
- * model scans is its own, so no chart names an output or a classifier; the
+ * model scans is its own, so no chart names an output or its Bands; the
  * psychrometric chart names nothing but its type, the dynamic chart its axes,
  * and the adaptive chart its axes and its limits source; and only the adaptive
  * chart may be declared by a model without a scan. Exported only because
@@ -422,7 +437,6 @@ describe("requireAxisRange", () => {
  */
 export function chartShapesTypeProof(limits: readonly ZoneLimits[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
-  const classifier = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
   const zone = { label: "Zone", limit: 0.5, inclusive: false };
   return [
     { type: chartType.psychrometric },
@@ -430,8 +444,8 @@ export function chartShapesTypeProof(limits: readonly ZoneLimits[]): DeclaredCha
     { type: chartType.adaptive, axes, limits: () => limits },
     // @ts-expect-error an output on a chart, which is the model's scan's
     { type: chartType.dynamic, axes, output: q.pmv },
-    // @ts-expect-error a classifier on a chart, which is the model's scan's
-    { type: chartType.dynamic, axes, classifier },
+    // @ts-expect-error Bands on a chart, which are the model's scan's
+    { type: chartType.dynamic, axes, bands: q.tsv },
     // @ts-expect-error a psychrometric chart with axes, which its temperature entry mode fixes
     { type: chartType.psychrometric, axes },
     // @ts-expect-error a psychrometric chart with Comfort zones, which are the model's scan's
@@ -446,15 +460,15 @@ export function chartShapesTypeProof(limits: readonly ZoneLimits[]): DeclaredCha
     { type: chartType.adaptive, axes, limits: () => [{ label: "Zone", x: [0, 1, 1], y: [0, 0, 1] }] },
     // @ts-expect-error an adaptive chart with an output it does not scan
     { type: chartType.adaptive, axes, limits: () => limits, output: q.pmv },
-    // @ts-expect-error an adaptive chart with a classifier it does not scan
-    { type: chartType.adaptive, axes, limits: () => limits, classifier },
+    // @ts-expect-error an adaptive chart with Bands it does not scan
+    { type: chartType.adaptive, axes, limits: () => limits, bands: q.tsv },
   ];
 }
 
 /** The same, for which charts a model may declare with and without a scan. */
 export function scanShapesTypeProof(limits: readonly ZoneLimits[]): RegisteredModel[] {
   const { charts: _charts, ...unscanned } = adaptiveAshrae;
-  const scan = { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO };
+  const scan = { output: q.pmv, bands: q.tsv };
   const axes = { x: q.v, y: q.operative_tmp };
   const adaptive = { type: chartType.adaptive, axes, limits: () => limits };
   return [

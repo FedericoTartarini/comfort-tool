@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
-import {
-  HEAT_INDEX_STRESS_CATEGORY_BINS,
-  PMV_CATEGORY_BINS_ISO_7730_2025,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
-  UTCI_STRESS_CATEGORY_BINS,
-  type ClassifierBins,
-} from "jsthermalcomfort";
+import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO, UTCI_INFO, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { bandColors, chartInk, colorForBand, letteringOn, palettes, type PaletteEntry } from "./bandPalette";
+import { classifierOf } from "./modelDeclaration";
 import { palette } from "./palette";
+import { quantities } from "./quantities";
+
+const isoSensation = classifierOf(PMV_PPD_ISO_INFO, quantities.tsv);
+const ashraeSensation = classifierOf(PMV_PPD_ASHRAE_INFO, quantities.tsv);
+const isoCategory = classifierOf(PMV_PPD_ISO_INFO, quantities.category);
+const heatIndexStress = classifierOf(HEAT_INDEX_ROTHFUSZ_INFO, quantities.stress_category);
+const utciStress = classifierOf(UTCI_INFO, quantities.stress_category);
 
 // ColorBrewer's RdBu-7, read cold to hot: the thermal-sensation scale's Cold … Hot.
 const rdBu7 = ["#2166ac", "#67a9cf", "#d1e5f0", "#f7f7f7", "#fddbc7", "#ef8a62", "#b2182b"];
@@ -21,22 +22,22 @@ const binsOfLength = (count: number): ClassifierBins => {
 
 describe("bandColors", () => {
   it("gives the thermal-sensation bins of either standard RdBu-7, Neutral its grey at the fourth position", () => {
-    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO)).toEqual(rdBu7);
-    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE)).toEqual(rdBu7);
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe("#f7f7f7");
+    expect(bandColors(isoSensation)).toEqual(rdBu7);
+    expect(bandColors(ashraeSensation)).toEqual(rdBu7);
+    expect(colorForBand(isoSensation, "Neutral")).toBe("#f7f7f7");
   });
 
   it("gives Heat Index's five stress categories YlOrRd-6 without its lightest, so \"no risk\" is not near white", () => {
-    expect(bandColors(HEAT_INDEX_STRESS_CATEGORY_BINS)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"]);
+    expect(bandColors(heatIndexStress)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"]);
   });
 
   it("gives ISO 7730:2025's five bands YlOrRd-6 without its lightest, \"none\" unpainted", () => {
-    expect(bandColors(PMV_CATEGORY_BINS_ISO_7730_2025)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", undefined]);
+    expect(bandColors(isoCategory)).toEqual(["#fed976", "#feb24c", "#fd8d3c", "#f03b20", undefined]);
   });
 
   it("gives UTCI's ten stress categories five blues, RdBu-11's grey at the sixth position and four reds", () => {
     // RdBu-11 centred on "no thermal stress": the warm side's surplus, the red next to the grey, dropped.
-    expect(bandColors(UTCI_STRESS_CATEGORY_BINS)).toEqual([
+    expect(bandColors(utciStress)).toEqual([
       "#053061",
       "#2166ac",
       "#4393c3",
@@ -99,7 +100,7 @@ describe("bandColors", () => {
         variable.classifier ? [{ name: `${model.info.label} ${key}`, bins: variable.classifier }] : [],
       );
       if (model.scan) {
-        painted.push({ name: `${model.info.label} scan`, bins: model.scan.classifier });
+        painted.push({ name: `${model.info.label} scan`, bins: classifierOf(model.info, model.scan.bands) });
       }
       for (const { name, bins } of painted) {
         expect(bandColors(bins), name).toHaveLength(bins.labels.length);
@@ -110,16 +111,16 @@ describe("bandColors", () => {
 
 describe("colorForBand", () => {
   it("colours a category as the table colours its band", () => {
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Cold")).toBe(rdBu7[0]);
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe(rdBu7[3]);
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Hot")).toBe(rdBu7[6]);
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, "II")).toBe("#feb24c");
+    expect(colorForBand(isoSensation, "Cold")).toBe(rdBu7[0]);
+    expect(colorForBand(isoSensation, "Neutral")).toBe(rdBu7[3]);
+    expect(colorForBand(isoSensation, "Hot")).toBe(rdBu7[6]);
+    expect(colorForBand(isoCategory, "II")).toBe("#feb24c");
   });
 
   it("returns nothing for \"none\" and for a category past the last Edge or not named", () => {
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, "none")).toBeUndefined();
-    expect(colorForBand(PMV_CATEGORY_BINS_ISO_7730_2025, Number.NaN)).toBeUndefined();
-    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Freezing")).toBeUndefined();
+    expect(colorForBand(isoCategory, "none")).toBeUndefined();
+    expect(colorForBand(isoCategory, Number.NaN)).toBeUndefined();
+    expect(colorForBand(isoSensation, "Freezing")).toBeUndefined();
   });
 });
 

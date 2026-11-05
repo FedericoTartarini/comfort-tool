@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { PMV_CATEGORY_BINS_ISO_7730_2025, PMV_COMPLIANCE_INTERVAL_ASHRAE } from "jsthermalcomfort";
+import { PMV_COMPLIANCE_INTERVAL_ASHRAE, PMV_PPD_ISO_INFO } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { categoryZones, intervalZone } from "./comfortZones";
+import { classifierOf } from "./modelDeclaration";
+import { quantities } from "./quantities";
 
 // Expected values are read off the library's own objects, never written as
 // numbers: the limits and the category labels are the library's.
-const bins = PMV_CATEGORY_BINS_ISO_7730_2025;
+const bins = classifierOf(PMV_PPD_ISO_INFO, quantities.category);
 
 describe("categoryZones", () => {
   it("names one zone per bin below the sentinel edge, from the bin's label and upper edge", () => {

@@ -9,7 +9,7 @@ import { bandListOf } from "./bands";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import { inputSummary, type DrawnRun } from "./inputSummary";
-import { inputsOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, inputsOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
@@ -200,7 +200,7 @@ describe("inputSummary", () => {
     if (!scan) {
       throw new Error("PMV (ISO 7730) declares no scan");
     }
-    const bands = bandListOf(scan.classifier);
+    const bands = bandListOf(classifierOf(pmvPpdIso.info, scan.bands));
     const summary = inputSummary({ model: pmvPpdIso, runs: [runOf(startingSlot(pmvPpdIso))], unitSystem: si, bands });
     const last = summary[summary.length - 1];
     expect(last).toHaveLength(1);

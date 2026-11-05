@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { classifyFromBins, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
+import { classifyFromBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { bandColors } from "./bandPalette";
 import { addEdge, bandListFrom, bandListOf, isEdgeInOrder, edgeNeighbours, moveEdge, removeEdge, setColor, setLabel, type BandList } from "./bands";
+import { classifierOf } from "./modelDeclaration";
 
 /** Every classifier a registered model's scan declares. */
-const classifiers = registeredModels.flatMap((model) => (model.scan ? [model.scan.classifier] : []));
+const classifiers = registeredModels.flatMap((model) => (model.scan ? [classifierOf(model.info, model.scan.bands)] : []));
 
 /** PMV's thermal sensation, the classifier the operations are shown on: seven bands, Cold … Hot. */
-const sensation = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
+const sensation = classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands);
 const defaultList = bandListOf(sensation);
 
 /**
@@ -48,7 +49,7 @@ describe("bandListOf", () => {
 
   it("gives each PMV model's default list RdBu-7, Cold blue to Hot red", () => {
     for (const model of [pmvPpdIso, pmvPpdAshrae]) {
-      expect(bandListOf(model.scan.classifier).colors, model.info.label).toEqual([
+      expect(bandListOf(classifierOf(model.info, model.scan.bands)).colors, model.info.label).toEqual([
         "#2166ac",
         "#67a9cf",
         "#d1e5f0",

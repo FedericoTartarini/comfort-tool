@@ -15,7 +15,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { imageSize, type ImageSize } from "$lib/core/image";
 import { valuesReader } from "$lib/core/libraryInputs";
-import { psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
@@ -369,7 +369,7 @@ describe("psychrometricSpec", () => {
   );
 
   it("covers the chart above the saturation line as it does given a Band list", () => {
-    const banded = psychrometricSpec({ ...request(temperatureMode.separate), bands: bandListOf(pmvPpdIso.scan.classifier) });
+    const banded = psychrometricSpec({ ...request(temperatureMode.separate), bands: bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)) });
     expect(coverOf(spec)).toEqual(coverOf(banded));
   });
 

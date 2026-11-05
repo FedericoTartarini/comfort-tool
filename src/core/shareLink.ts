@@ -34,7 +34,7 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { dynamicChartOf, hasHumidityGroup, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, dynamicChartOf, hasHumidityGroup, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { page, paintsBandsOn, type Page } from "./page";
 import { quantities, type Quantity } from "./quantities";
 import {
@@ -352,7 +352,7 @@ function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: Written
   return {
     type,
     axes: dynamic ? axesFrom(written.axes, model, modes.values) : null,
-    bands: model.scan && bands !== undefined ? bandsFrom(bands, model.scan.classifier) : null,
+    bands: model.scan && bands !== undefined ? bandsFrom(bands, classifierOf(model.info, model.scan.bands)) : null,
   };
 }
 

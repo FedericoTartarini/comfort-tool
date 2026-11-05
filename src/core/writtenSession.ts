@@ -7,7 +7,7 @@
  */
 import { bandListOf, type BandList } from "./bands";
 import type { ChartType } from "./chartType";
-import { dynamicChartOf, type ChartAxes, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, dynamicChartOf, type ChartAxes, type RegisteredModel } from "./modelDeclaration";
 import { page, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "./quantities";
 import { startingSlot, type Slot } from "./slot";
@@ -73,7 +73,7 @@ export function startingChartSettings(model: RegisteredModel): ChartSettings {
   return {
     type: model.charts[0].type,
     axes: dynamicChartOf(model)?.axes ?? null,
-    bands: model.scan ? bandListOf(model.scan.classifier) : null,
+    bands: model.scan ? bandListOf(classifierOf(model.info, model.scan.bands)) : null,
   };
 }
 

@@ -1,9 +1,4 @@
-import {
-  PMV_COMPLIANCE_INTERVAL_ASHRAE,
-  pmv_ppd_ashrae,
-  PMV_PPD_ASHRAE_INFO,
-  PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
-} from "jsthermalcomfort";
+import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_ashrae, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
@@ -92,7 +87,7 @@ export const pmvPpdAshrae = {
   // against.
   scan: {
     output: q.pmv,
-    classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
+    bands: q.tsv,
     comfortZones: [intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)],
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],

@@ -131,10 +131,10 @@ export interface ComfortZone {
 /**
  * What the model scans, declared once for every chart that scans it
  * (ADR-0002 decision 61): the dynamic chart and the psychrometric chart both
- * scan {@link output}; on Explore both paint the Band list copied from
- * {@link classifier}, on Standard both draw {@link comfortZones} (decision
- * 58). Each field is named for the GLOSSARY.md
- * term it holds, not for the page that paints it.
+ * scan {@link output}; on Explore both paint the Band list copied from the
+ * classifier of {@link bands}, on Standard both draw {@link comfortZones}
+ * (decision 58). Each field is named for the GLOSSARY.md term it holds, or,
+ * for {@link bands}, the term it gives, not for the page that paints it.
  */
 export interface DeclaredScan {
   /**
@@ -145,19 +145,16 @@ export interface DeclaredScan {
    */
   readonly output: Quantity;
   /**
-   * The library classifier that cuts {@link output}, as a reference to the
-   * library's own object. Nothing in `_INFO` says which quantity a
-   * classifier cuts and no key string pairs the two, so the pairing is the
-   * object identity itself (ADR-0002 decision 27).
-   *
-   * Written as `<MODEL>_INFO.outputs.<key>.classifier` where that types as
-   * defined, else as the library's exported bins constant — the same
-   * object either way, and never a cast or a `!`. The model's default
-   * Band list is a copy of it (`core/bands.ts`), and the library's own
-   * `classifyFromBins` against that list answers Explore's hover readout,
-   * so the app holds no Edge, no label and no inclusivity rule of its own.
+   * The classified output whose classifier cuts {@link output}: `tsv` for
+   * `pmv`, `stress_category` for `hi`. The classifier is read off the model
+   * info by {@link classifierOf}, which throws for an
+   * output the info does not classify (ADR-0002 decision 90 rule 5), so a
+   * declaration imports no classifier. The model's default Band list is a
+   * copy of it (`core/bands.ts`), and the library's own `classifyFromBins`
+   * against that list answers Explore's hover readout, so the app holds no
+   * Edge, no label and no inclusivity rule of its own.
    */
-  readonly classifier: ClassifierBins;
+  readonly bands: Quantity;
   /**
    * The Comfort zones Standard draws on {@link output}, nested, one per
    * limit: one for a standard with one interval, one per category for a
@@ -176,7 +173,7 @@ export interface DeclaredScan {
  * entry mode, the dynamic chart starts on axes the user may change, and the
  * adaptive chart is drawn from its model's geometry on axes it declares. What
  * a chart scans is the model's {@link DeclaredScan}, so no chart names an
- * output or a classifier (decision 61).
+ * output or its Bands (decision 61).
  *
  * The members' types are object identities, which discriminate nothing for
  * the compiler, and an object literal checked against a union has only the
@@ -365,6 +362,22 @@ export function requireAxisRange(model: RegisteredModel, quantity: Quantity): Ra
     throw new Error(`${model.info.label} declares no axis range for ${quantity.label}, so it cannot carry an axis`);
   }
   return range;
+}
+
+/**
+ * The classifier `info` puts on its output `output`, the library's own object
+ * (ADR-0002 decision 90 rule 5): what a scan's Bands start as, and what the
+ * band palette is keyed by. The model info types every classifier as
+ * optional; a declaration or a palette entry naming an output the info does
+ * not classify is a bug, so this throws, naming the model and the output,
+ * rather than leave a `!` at each reader.
+ */
+export function classifierOf(info: ModelInfo, output: Quantity): ClassifierBins {
+  const classifier = info.outputs[output.key]?.classifier;
+  if (!classifier) {
+    throw new Error(`${info.label} gives its output ${output.label} no classifier`);
+  }
+  return classifier;
 }
 
 /** What `model` scans, for a scanned chart already being drawn: a model without a scan is a declaration bug. */

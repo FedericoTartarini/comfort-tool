@@ -1,4 +1,4 @@
-import { pmv_ppd_iso, PMV_PPD_ISO_INFO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
+import { pmv_ppd_iso, PMV_PPD_ISO_INFO } from "jsthermalcomfort";
 import { customEnsemble } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { categoryZones } from "$lib/core/comfortZones";
@@ -63,9 +63,9 @@ export const pmvPpdIso = {
   ],
   table: [q.tsv, q.category, q.pmv, q.ppd],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the
-  // kernel classifies `tsv` with. The category bins cannot be the classifier:
+  // kernel classifies `tsv` with. `category`'s bins cannot cut the Bands:
   // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
-  // pairs the classifier with the output it classifies by identity.
+  // checks the Bands against the output they name.
   //
   // The zones are cut from a scan of `run` itself: Fanger unmodified at this edition.
   // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
@@ -75,7 +75,7 @@ export const pmvPpdIso = {
   // not ported.
   scan: {
     output: q.pmv,
-    classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+    bands: q.tsv,
     comfortZones: categoryZones(PMV_PPD_ISO_INFO.outputs.category.classifier),
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],

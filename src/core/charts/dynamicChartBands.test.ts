@@ -11,7 +11,7 @@ import { classifyFromBins } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
@@ -39,7 +39,7 @@ function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
 }
 
 const isoChart = dynamicOf(pmvPpdIso);
-const isoBands = bandListOf(pmvPpdIso.scan.classifier);
+const isoBands = bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands));
 const isoRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
 /** `model`'s dynamic chart of its starting slot, painting `bands`. */
@@ -153,7 +153,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   });
 
   it("paints Heat Index's five bands in its own palette, over its own scan", () => {
-    const heatBands = bandListOf(heatIndexRothfusz.scan.classifier);
+    const heatBands = bandListOf(classifierOf(heatIndexRothfusz.info, heatIndexRothfusz.scan.bands));
     const heatValues = scannedValuesOf(chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz)));
     const drawn = bandedSpec(heatBands, heatIndexRothfusz);
     expectFills(drawn, contiguousFillsOf(heatBands), heatValues, heatBands.right);
