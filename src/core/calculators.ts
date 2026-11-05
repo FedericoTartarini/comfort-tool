@@ -1,6 +1,6 @@
 /**
  * The input calculators (ADR-0002 decision 75): Custom ensemble, Clothing
- * from outdoor temperature and Solar gain on occupants, each an object
+ * prediction and Solar gain on people, each an object
  * referred to by identity, as an option is (decision 36), and declared on the
  * row it writes (`DeclaredQuantity.calculators`); and the one rule by which
  * a result is written into a slot. Each computes by calling the library in
@@ -48,16 +48,33 @@ export interface CalculatorResult {
   readonly warnings: readonly ModelWarning[];
 }
 
+/** A posture value `solar_gain` takes, one of `SOLAR_GAIN_INFO.inputs.posture.allowed`. */
+type Posture = NonNullable<SolarGainInputs["posture"]>;
+
 /** A posture `solar_gain` takes, the library's value under the standard's word. */
 export interface PostureOption {
-  readonly value: NonNullable<SolarGainInputs["posture"]>;
+  readonly value: Posture;
   readonly label: string;
+}
+
+/** The standard's word for each posture value the library allows; a value the library adds fails the type check. */
+const postureWords = {
+  sitting: copy.postureSeated,
+  standing: copy.postureStanding,
+  supine: copy.postureSupine,
+} as const satisfies Record<Posture, string>;
+
+/** The postures `SOLAR_GAIN_INFO` allows, its default first, then the rest in the library's order, each under its word. */
+function solarGainPostures(): [PostureOption, ...PostureOption[]] {
+  const { allowed, default: defaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
+  const option = (value: Posture): PostureOption => ({ value, label: postureWords[value] });
+  return [option(defaultPosture), ...allowed.filter((value) => value !== defaultPosture).map(option)];
 }
 
 /** What a form dialog holds: each asked quantity's SI value, and the posture where one is asked. */
 export interface CalculatorInputs {
   readonly values: ReadonlyMap<Quantity, number>;
-  readonly posture?: PostureOption["value"];
+  readonly posture?: Posture;
 }
 
 /** What every calculator says of itself, whatever its dialog asks. */
@@ -166,7 +183,7 @@ export function requireGarment(garment: string): number {
  * prediction moves as the box does.
  */
 export const clothingFromOutdoorTemperature: FormCalculator = {
-  label: copy.clothingFromOutdoorTemperature,
+  label: CLO_TOUT_INFO.label,
   method: copy.clothingFromOutdoorTemperatureMethod,
   meets: meeting.replaces,
   output: q.clo,
@@ -189,7 +206,7 @@ export const clothingFromOutdoorTemperature: FormCalculator = {
  * tool's (the rest).
  */
 export const solarGainOnOccupants: FormCalculator = {
-  label: copy.solarGainOnOccupants,
+  label: SOLAR_GAIN_INFO.label,
   method: copy.solarGainMethod,
   meets: meeting.adds,
   output: q.delta_mrt,
@@ -203,11 +220,7 @@ export const solarGainOnOccupants: FormCalculator = {
     { quantity: q.f_bes, value: 0.5 },
     { quantity: q.asw, value: 0.7 },
   ],
-  postures: [
-    { value: "sitting", label: copy.postureSeated },
-    { value: "standing", label: copy.postureStanding },
-    { value: "supine", label: copy.postureSupine },
-  ],
+  postures: solarGainPostures(),
   outputs: [q.erf, q.delta_mrt],
   compute: ({ values, posture }) => {
     const { erf, delta_mrt, warnings } = solar_gain({

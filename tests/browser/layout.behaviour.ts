@@ -546,10 +546,11 @@ for (const width of [767, 375]) {
 test.describe("the input card's width", () => {
   // Playwright's headless Chromium hides its scrollbars, which then take no room (the gutter is still reserved), so
   // without the gutter Compare would move nothing there either; this test launches one that shows them.
-  test("at 1600 × 1000, where Compare makes the page scroll, the input card's left edge and width are the same with Compare off and on", async ({ playwright, baseURL }) => {
+  test("at 1600 × 960, where Compare makes the page scroll, the input card's left edge and width are the same with Compare off and on", async ({ playwright, baseURL }) => {
     const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
     try {
-      const page = await browser.newPage({ baseURL, viewport: { width: 1600, height: 1000 } });
+      // The page is about 930 px tall with Compare off and 990 px with it on, so 960 scrolls only under Compare.
+      const page = await browser.newPage({ baseURL, viewport: { width: 1600, height: 960 } });
       await page.goto(PMV_ADDRESS);
       await expect(page.locator(".chart-plot svg").first()).toBeVisible();
       const scrolls = () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight);

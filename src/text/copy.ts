@@ -97,10 +97,9 @@ export const copy = {
   // The footer's slot checkboxes while the slots are named (decision 75, rule 6 (c)).
   calculatorApplyTo: "Apply to",
   restoreDefaults: "Restore defaults",
-  // The input calculators' tab names, and Solar gain's postures in the standard's words (ADR-0002 decision 75).
+  // Custom ensemble's tab name, the other calculators being named by their model infos, and Solar gain's postures in
+  // the standard's words (ADR-0002 decision 75).
   customEnsemble: "Custom ensemble",
-  clothingFromOutdoorTemperature: "Clothing from outdoor temperature",
-  solarGainOnOccupants: "Solar gain on occupants",
   postureSeated: "Seated",
   postureStanding: "Standing",
   postureSupine: "Supine",

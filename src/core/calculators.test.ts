@@ -83,8 +83,9 @@ describe("wearGarment", () => {
 });
 
 describe("clothingFromOutdoorTemperature", () => {
-  it("is labelled, replaces the clothing insulation, reads CLO_TOUT_INFO and asks the outdoor temperature from 20 °C", () => {
-    expect(clothingFromOutdoorTemperature.label).toBe("Clothing from outdoor temperature");
+  it("is named by CLO_TOUT_INFO's label, replaces the clothing insulation, reads CLO_TOUT_INFO and asks the outdoor temperature from 20 °C", () => {
+    expect(clothingFromOutdoorTemperature.label).toBe("Clothing prediction");
+    expect(clothingFromOutdoorTemperature.label).toBe(CLO_TOUT_INFO.label);
     expect(clothingFromOutdoorTemperature.meets).toBe(meeting.replaces);
     expect(clothingFromOutdoorTemperature.output).toBe(q.clo);
     expect(clothingFromOutdoorTemperature.info).toBe(CLO_TOUT_INFO);
@@ -104,8 +105,9 @@ describe("clothingFromOutdoorTemperature", () => {
 });
 
 describe("solarGainOnOccupants", () => {
-  it("is labelled, adds to the mean radiant temperature and reads SOLAR_GAIN_INFO", () => {
-    expect(solarGainOnOccupants.label).toBe("Solar gain on occupants");
+  it("is named by SOLAR_GAIN_INFO's label, adds to the mean radiant temperature and reads SOLAR_GAIN_INFO", () => {
+    expect(solarGainOnOccupants.label).toBe("Solar gain on people");
+    expect(solarGainOnOccupants.label).toBe(SOLAR_GAIN_INFO.label);
     expect(solarGainOnOccupants.meets).toBe(meeting.adds);
     expect(solarGainOnOccupants.output).toBe(q.delta_mrt);
     expect(solarGainOnOccupants.info).toBe(SOLAR_GAIN_INFO);
@@ -131,6 +133,14 @@ describe("solarGainOnOccupants", () => {
       { value: "supine", label: "Supine" },
     ]);
     expect(startingInputs(solarGainOnOccupants).posture).toBe("sitting");
+  });
+
+  it("offers each posture SOLAR_GAIN_INFO allows once, its default first", () => {
+    const { allowed, default: defaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
+    const values = solarGainOnOccupants.postures?.map((posture) => posture.value);
+    expect(values).toHaveLength(allowed.length);
+    expect(new Set(values)).toEqual(new Set(allowed));
+    expect(values?.[0]).toBe(defaultPosture);
   });
 
   const defaults = startingInputs(solarGainOnOccupants);
@@ -312,7 +322,7 @@ describe("withCalculatorResult", () => {
 
   it("throws naming a calculator the model does not declare", () => {
     expect(() => withCalculatorResult(startingSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
-      "Solar gain on occupants",
+      "Solar gain on people",
     );
   });
 });

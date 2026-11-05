@@ -16,9 +16,9 @@ const ISO_ADDRESS = "/standard/iso-7730-2025/pmv-ppd-iso";
 const ADAPTIVE_ADDRESS = "/standard/ashrae-55-2023/adaptive-ashrae";
 const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
-const SOLAR = "Solar gain on occupants";
+const SOLAR = "Solar gain on people";
 const ENSEMBLE = "Custom ensemble";
-const CLOTHING = "Clothing from outdoor temperature";
+const CLOTHING = "Clothing prediction";
 const ALL_NAMES = `${SOLAR} · ${ENSEMBLE} · ${CLOTHING}`;
 const OUTDOOR_TEMPERATURE = /^Outdoor air temperature at 6 a\.m\./;
 const DASH = "—";
@@ -209,9 +209,9 @@ test.describe("the dialog", () => {
   });
 });
 
-test.describe("Solar gain on occupants", () => {
+test.describe("Solar gain on people", () => {
 
-  test("opens on the method line, Posture and seven boxes with the deployed tool's labels and their ranges, and the dock", async ({ page }) => {
+  test("opens on the method line, Posture offering Seated, Standing and Supine, seven boxes with the deployed tool's labels and their ranges, and the dock", async ({ page }) => {
     await open(page);
     const dialog = await openDialog(page, SOLAR);
     const panel = dialog.getByRole("tabpanel");
@@ -229,6 +229,10 @@ test.describe("Solar gain on occupants", () => {
     await expect(panel.locator(".caption-line")).toHaveText(["", "0 – 90 °", "0 – 180 °", "200 – 1000 W/m²", "0 – 1", "0 – 1", "0 – 1", "0.2 – 0.9"]);
     const posture = panel.getByRole("button", { name: "Posture", exact: true });
     await expect(posture).toHaveText("Seated");
+    await posture.click();
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Seated", "Standing", "Supine"]);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
     // The choice select's default size, a box's height, where the chart type's is the small one.
     expect((await posture.boundingBox())?.height).toBe((await panel.getByRole("spinbutton").first().boundingBox())?.height);
 
@@ -305,7 +309,7 @@ test.describe("Solar gain on occupants", () => {
   });
 });
 
-test.describe("Clothing from outdoor temperature", () => {
+test.describe("Clothing prediction", () => {
   test("opens on the method line; its box is in °F with IP on, its prediction in the dock, and Apply writes it", async ({ page }) => {
     await open(page);
     await page.getByRole("radio", { name: "IP" }).click();
