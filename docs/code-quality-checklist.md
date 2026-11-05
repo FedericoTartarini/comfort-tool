@@ -28,7 +28,7 @@ checklist line below turns out to be mechanisable, it should move up into the ma
 |---|---|---|
 | `core/` imports no `svelte` / `state` / `ui` / `routes` | eslint `coreBoundary` | ADR §5 |
 | `ui/charts/` imports no model, state or `jsthermalcomfort` | eslint `chartBoundary` | ADR §4.4 |
-| Library model functions imported only in `models/` and `temporary-library/`, and `clo_tout` and `solar_gain` also in `core/calculators.ts` | eslint `libraryModelImports` | ADR §3, ADR-0002 decision 75 |
+| Library model functions imported only in `models/` and `temporary-library/`, and `clo_tout` and `solar_gain` also in `core/calculators.ts` | eslint `libraryModelImports` | ADR §3, ADR-0002 decision 75. *Noted 2026-11-05 (ADR-0002 decision 90's close-out): the rule bars imports from the package root only; since the lock moved to `v2-typescript` the package also exports `./models` and other subpaths, and an import from `jsthermalcomfort/models` passes it. Open for the user.* |
 | No quantity wire string outside `shareLink.ts` | eslint `wireStringSyntax` | ADR §4.0, DRY |
 | Tailwind utilities only in `ui/primitives/` and `ui/layout/` | eslint `tailwindSyntax` | ADR §2 |
 | No `<style>` block outside `ui/primitives/` and `ui/layout/` | eslint `styleBlockSyntax` | ADR-0002 decision 65 |

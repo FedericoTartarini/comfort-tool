@@ -538,6 +538,18 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > corrected; `AGENTS.md` names the lock command. Open points B32–B37 (crashes that predate the move) and D19–D21. Naming
 > across the app was opened in the same session and moved to its own grilling (`.scratch/naming/notes.md`). New models
 > are not in this step. **Next: the user's `/to-spec` and `/to-tickets` for decision 90, then the naming grilling.**
+>
+> **2026-11-05 — position, the move onto jsthermalcomfort `v2-typescript` done**: `.scratch/library-v2-typescript/`
+> landed on `rewrite/v1`, tickets 01 to 05, ADR-0002 decision 90: a standard key's part and the library's version read
+> by file path (`36f56d6`); a scan names its classified output, whose classifier is read off the model info
+> (`38c6206`); the temporary library written as the library's helpers (`ceab2c4`); the lock on `#v2-typescript` at
+> `88015e5`, with every site the move breaks (`8a10cac`); the calculators named, and Solar gain's postures listed, by
+> the library (`867ff33`). For the person, the calculator tabs read "Clothing prediction" and "Solar gain on people",
+> and a dew point or wet bulb is the library's unrounded value. Decision 90 carries a close-out note; ADR-0001's two
+> notes naming `t_o` are noted; GLOSSARY's **Temporary library** and **Band** hold. `npm test` passes at 1280 tests and
+> `npm run test:browser` at 176. Open for the user: `resultValue`'s remaining cast (spec story 32), the lint rule's gap
+> on the package's subpaths, `PET_STEADY_INFO`'s `p_atm` in hPa. Open points B32–B37 and D19–D21 stand. **Next: the
+> naming grilling (`.scratch/naming/notes.md`).**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -1842,6 +1854,10 @@ already and `v1z.` is withdrawn, so the grilling decides only what the text carr
    quantities to `quantities`"). The main repository ships `utci` in TypeScript with `UTCI_INFO`, `UTCI_LIMITS` and
    `UTCI_STRESS_CATEGORY_BINS` (`src/models/utci.ts:66-111`), pinned by the lock; the root exports all but
    `UTCI_LIMITS`, which the declaration does not need (corrected 2026-10-07, it read "exported from the root").
+   Noted 2026-11-05 (ADR-0002 decision 90 rule 5): at `88015e5` the root exports neither `UTCI_LIMITS` nor
+   `UTCI_STRESS_CATEGORY_BINS` (`Object.keys(await import("jsthermalcomfort"))` holds `UTCI_INFO` alone of the three);
+   the stress-category classifier is `UTCI_INFO.outputs.stress_category.classifier`, which the band palette already
+   reads (`src/core/bandPalette.ts:89`).
 2. App side: **add only `src/models/utci.ts` + one registry line**, zero other files change, and it appears only in the
    Explore navigation (no `standard` attached in the library). `table` is required, so UTCI declares it too.
    **Runs twice (2026-10-07)**: first when Phase 5 closes, on the declaration as it is then; finally here, after
