@@ -6,10 +6,10 @@ import { v_relative } from "jsthermalcomfort";
  * The air speed `v_relative` adds per met above 1 met, [m/s]: the library
  * holds it unexported, in `src/environment/v_relative.js:32` at `88015e5`.
  */
-const activity_air_speed_per_met = 0.3;
+const ACTIVITY_AIR_SPEED_PER_MET = 0.3;
 
 /** Decimals kept of the air speed: far finer than `v_relative`'s 0.001, far coarser than float noise. */
-const air_speed_decimals = 9;
+const AIR_SPEED_DECIMALS = 9;
 
 /**
  * Estimates the air speed that gives a relative air speed at a metabolic
@@ -43,5 +43,5 @@ export function v_relative_inverse(vr: number, met: number): number {
   }
   if (v_relative(0, met) === vr) return 0;
   if (met <= 1) return vr;
-  return Number((vr - activity_air_speed_per_met * (met - 1)).toFixed(air_speed_decimals));
+  return Number((vr - ACTIVITY_AIR_SPEED_PER_MET * (met - 1)).toFixed(AIR_SPEED_DECIMALS));
 }

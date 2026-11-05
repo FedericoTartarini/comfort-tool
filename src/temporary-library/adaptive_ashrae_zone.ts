@@ -50,7 +50,7 @@ type AdaptiveModel = (inputs: ASHRAEInputs) => Pick<AdaptiveASHRAE, LimitKey>;
  * holds it unexported, in `src/_internal/adaptive_cooling_effect.ts:13` at
  * `88015e5`.
  */
-const cooling_effect_onset = 25;
+const COOLING_EFFECT_ONSET = 25;
 
 /**
  * Draws the 80 % and 90 % acceptability bands of the ASHRAE 55 adaptive model
@@ -174,14 +174,14 @@ export function _adaptive_ashrae_zone(
     };
   };
   // Still air, so no cooling effect whatever the operative temperature.
-  const still_start = readLimits(start, 0, cooling_effect_onset);
-  const still_end = readLimits(end, 0, cooling_effect_onset);
+  const still_start = readLimits(start, 0, COOLING_EFFECT_ONSET);
+  const still_end = readLimits(end, 0, COOLING_EFFECT_ONSET);
   // The entered air speed at the onset, where any cooling effect applies.
-  const moving_start = readLimits(start, v, cooling_effect_onset);
-  const moving_end = readLimits(end, v, cooling_effect_onset);
+  const moving_start = readLimits(start, v, COOLING_EFFECT_ONSET);
+  const moving_end = readLimits(end, v, COOLING_EFFECT_ONSET);
   const point = (t_running_mean: number, operative_tmp: number): AdaptivePoint => Object.freeze({ t_running_mean, operative_tmp });
   // Where a straight line from `from` at the start to `to` at the end reaches the onset.
-  const onsetAlong = (from: number, to: number): number => start + ((cooling_effect_onset - from) * (end - start)) / (to - from);
+  const onsetAlong = (from: number, to: number): number => start + ((COOLING_EFFECT_ONSET - from) * (end - start)) / (to - from);
 
   const traceUpperLimit = (percent: number, upper: LimitKey): [AdaptivePoint, ...AdaptivePoint[]] => {
     const [base_start, base_end] = [still_start[upper], still_end[upper]];
@@ -191,21 +191,21 @@ export function _adaptive_ashrae_zone(
     // The library applies no cooling effect below 0.6 m/s.
     if (shifted_start === base_start && shifted_end === base_end) return base;
     // Every limit at the onset or above: shifted end to end.
-    if (base_start >= cooling_effect_onset) return shifted;
+    if (base_start >= COOLING_EFFECT_ONSET) return shifted;
     // The shifted line never reaches the onset, so there is no strip.
-    if (shifted_end < cooling_effect_onset) return base;
-    if (base_end <= cooling_effect_onset) {
+    if (shifted_end < COOLING_EFFECT_ONSET) return base;
+    if (base_end <= COOLING_EFFECT_ONSET) {
       throw new RangeError(
         `t_running_mean_max ${t_running_mean_max} °C ends the ${percent} % band at ${v} m/s where its shifted upper ` +
-          `limit reaches ${cooling_effect_onset} °C and the base one does not, so the strip above it touches no other ` +
+          `limit reaches ${COOLING_EFFECT_ONSET} °C and the base one does not, so the strip above it touches no other ` +
           `part of the band.`,
       );
     }
-    const base_onset = point(onsetAlong(base_start, base_end), cooling_effect_onset);
+    const base_onset = point(onsetAlong(base_start, base_end), COOLING_EFFECT_ONSET);
     const along_onset =
-      shifted_start > cooling_effect_onset
-        ? [point(start, cooling_effect_onset), shifted[0]]
-        : [point(onsetAlong(shifted_start, shifted_end), cooling_effect_onset)];
+      shifted_start > COOLING_EFFECT_ONSET
+        ? [point(start, COOLING_EFFECT_ONSET), shifted[0]]
+        : [point(onsetAlong(shifted_start, shifted_end), COOLING_EFFECT_ONSET)];
     return [base[0], base_onset, ...along_onset, shifted[1]];
   };
 

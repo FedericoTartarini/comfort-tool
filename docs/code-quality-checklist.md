@@ -29,14 +29,14 @@ checklist line below turns out to be mechanisable, it should move up into the ma
 | `core/` imports no `svelte` / `state` / `ui` / `routes` | eslint `coreBoundary` | ADR §5 |
 | `ui/charts/` imports no model, state or `jsthermalcomfort` | eslint `chartBoundary` | ADR §4.4 |
 | Library model functions imported only in `models/` and `temporary-library/`, and `clo_tout` and `solar_gain` also in `core/calculators.ts` | eslint `libraryModelImports` | ADR §3, ADR-0002 decision 75. *Noted 2026-11-05 (ADR-0002 decision 90's close-out): the rule bars imports from the package root only; since the lock moved to `v2-typescript` the package also exports `./models` and other subpaths, and an import from `jsthermalcomfort/models` passes it; left for the Vite+ migration (open point D22).* |
-| No quantity wire string outside `shareLink.ts` | eslint `wireStringSyntax` | ADR §4.0, DRY |
+| No quantity wire string outside `shareLink.ts` and `src/temporary-library/`, which writes the library's keys itself | eslint `wireStringSyntax` | ADR §4.0, DRY, ADR-0002 decision 90 rule 12 |
 | Tailwind utilities only in `ui/primitives/` and `ui/layout/` | eslint `tailwindSyntax` | ADR §2 |
 | No `<style>` block outside `ui/primitives/` and `ui/layout/` | eslint `styleBlockSyntax` | ADR-0002 decision 65 |
 | No `export let` / `$:` / `on:` / `<slot>` / `<svelte:component>` | eslint `legacySvelteSyntax` | Svelte Best practices |
 | No `any` | eslint `no-explicit-any` | TS Do's and Don'ts |
 | No `enum` / `namespace` / parameter properties | `erasableSyntaxOnly` | ADR §6 |
 | **No assignment to state inside `$effect`; no `untrack`** | eslint `effectPurity` | Svelte Best practices |
-| **Scalar module constants are `CONSTANT_CASE`**, outside `src/temporary-library/`, which names them in snake_case as the library does | eslint `constantCase` | ADR §6, Google TS Style Guide, ADR-0002 decision 90 rule 12 |
+| **Scalar module constants are `CONSTANT_CASE`**, in `src/temporary-library/` too, as the library names a constant it adds | eslint `constantCase` | ADR §6, Google TS Style Guide, jsthermalcomfort ADR 0021 |
 | Every Playwright call in a browser test is awaited, and every promise in a repository script | eslint `no-floating-promises` | Playwright Best Practices |
 | Types check (`src/`, `tests/`, `scripts/`, the Playwright config), tests pass, build succeeds | `npm run check` / `test` / `build`; `test:browser` where AGENTS.md's done line says | — |
 

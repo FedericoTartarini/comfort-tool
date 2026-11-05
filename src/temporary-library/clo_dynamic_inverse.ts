@@ -6,7 +6,7 @@
 import { clo_dynamic_ashrae, clo_dynamic_iso_vr } from "jsthermalcomfort";
 
 /** Decimals kept of the clothing insulation at most: far finer than a person enters one, far coarser than float noise. */
-const clo_decimals = 9;
+const CLO_DECIMALS = 9;
 
 /**
  * Estimates the clothing insulation (I_cl) that ASHRAE 55's correction,
@@ -117,6 +117,6 @@ function inverseByBisection(clo_dynamic: number, correction: (clo: number) => nu
     if (correction(nearest) === clo_dynamic) return nearest;
     // The nearest decimal may lie below the search's answer, and be corrected to less.
     const above = nearest < upper ? Number((nearest + 10 ** -decimals).toFixed(decimals)) : nearest;
-    if (correction(above) === clo_dynamic || decimals === clo_decimals) return above;
+    if (correction(above) === clo_dynamic || decimals === CLO_DECIMALS) return above;
   }
 }
