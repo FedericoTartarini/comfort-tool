@@ -115,12 +115,12 @@ const displayUnits = {
   angle: sameInBothSystems({ symbol: "°", step: 1 }),
   irradiance: sameInBothSystems({ symbol: "W/m²", step: 10 }),
   fraction: sameInBothSystems({ symbol: "", step: 0.01 }),
-  // A classified output (`tsv`, `stress_category`): no unit, no meaningful
+  // A band's label (`tsv`, `stress_category`): no unit, no meaningful
   // step — it is never an editable input.
-  category: sameInBothSystems({ symbol: "", step: 0 }),
-  // A boolean output (`acceptability_80`, `compliance`), shown as "Yes" or
-  // "No": no unit, and like a category never an editable input.
-  yesNo: sameInBothSystems({ symbol: "", step: 0 }),
+  label: sameInBothSystems({ symbol: "", step: 0 }),
+  // A yes-or-no output (`acceptability_80`, `compliance`), shown as "Yes" or
+  // "No": no unit, and like a label never an editable input.
+  flag: sameInBothSystems({ symbol: "", step: 0 }),
   pressure: pressureUnits,
   atmosphericPressure: pressureUnits,
 } satisfies Record<QuantityKind, UnitPair>;

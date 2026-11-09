@@ -18,6 +18,12 @@
  */
 import type { Bound } from "jsthermalcomfort";
 
+/**
+ * The kind of value a quantity holds, which picks its units and its kind
+ * bound. The last two are the library's `OutputField.kind` words: `label`, an
+ * output whose value is a band's label (`tsv`'s "Neutral"), and `flag`, a
+ * yes-or-no output.
+ */
 export type QuantityKind =
   | "temperature"
   | "temperatureDifference"
@@ -32,8 +38,8 @@ export type QuantityKind =
   | "angle"
   | "irradiance"
   | "fraction"
-  | "category"
-  | "yesNo";
+  | "label"
+  | "flag";
 
 /**
  * The range a kind's values are defined over, whatever the model: a
@@ -107,22 +113,22 @@ export const quantities = {
   wme: { key: "wme", kind: "metabolicRate", label: "External work" },
   pmv: { key: "pmv", kind: "thermalSensation", label: "PMV" },
   ppd: { key: "ppd", kind: "percentage", label: "PPD" },
-  tsv: { key: "tsv", kind: "category", label: "Thermal sensation" },
-  category: { key: "category", kind: "category", label: "Category" },
+  tsv: { key: "tsv", kind: "label", label: "Thermal sensation" },
+  category: { key: "category", kind: "label", label: "Category" },
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
   utci: { key: "utci", kind: "temperature", label: "Universal Thermal Climate Index" },
   // UTCI's `derived` key: the library bounds `tr` by its difference from `tdb`.
   "tr - tdb": { key: "tr - tdb", kind: "temperatureDifference", label: "Mean radiant minus dry-bulb air temperature" },
-  stress_category: { key: "stress_category", kind: "category", label: "Thermal stress category" },
+  stress_category: { key: "stress_category", kind: "label", label: "Thermal stress category" },
   t_running_mean: { key: "t_running_mean", kind: "temperature", label: "Prevailing mean outdoor temperature" },
   tmp_cmf: { key: "tmp_cmf", kind: "temperature", label: "Comfort temperature" },
   tmp_cmf_80_low: { key: "tmp_cmf_80_low", kind: "temperature", label: "80% acceptability lower limit" },
   tmp_cmf_80_up: { key: "tmp_cmf_80_up", kind: "temperature", label: "80% acceptability upper limit" },
   tmp_cmf_90_low: { key: "tmp_cmf_90_low", kind: "temperature", label: "90% acceptability lower limit" },
   tmp_cmf_90_up: { key: "tmp_cmf_90_up", kind: "temperature", label: "90% acceptability upper limit" },
-  acceptability_80: { key: "acceptability_80", kind: "yesNo", label: "80% acceptability" },
-  acceptability_90: { key: "acceptability_90", kind: "yesNo", label: "90% acceptability" },
-  compliance: { key: "compliance", kind: "yesNo", label: "Compliance" },
+  acceptability_80: { key: "acceptability_80", kind: "flag", label: "80% acceptability" },
+  acceptability_90: { key: "acceptability_90", kind: "flag", label: "90% acceptability" },
+  compliance: { key: "compliance", kind: "flag", label: "Compliance" },
   // The input calculators' quantities, named by `CLO_TOUT_INFO` and
   // `SOLAR_GAIN_INFO` (ADR-0002 decision 75). The labels are the deployed
   // tool's words less their ranges and symbols, SHARP kept as the standard's

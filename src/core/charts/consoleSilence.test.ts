@@ -13,8 +13,8 @@ import {
   adaptiveChartOf,
   dynamicChartOf,
   psychrometricChartOf,
+  type LibraryInputs,
   type RegisteredModel,
-  type Values,
 } from "$lib/core/modelDeclaration";
 import { adaptiveSpec } from "./adaptiveChart";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
@@ -65,12 +65,12 @@ describe("drawing a model's charts", () => {
     let logged = false;
     const logsOnce = {
       ...pmvPpdIso,
-      run: (values: Values) => {
+      run: (inputs: LibraryInputs) => {
         if (!logged) {
           logged = true;
           console.warn("cooling effect assumed 0");
         }
-        return pmvPpdIso.run(values);
+        return pmvPpdIso.run(inputs);
       },
     } satisfies RegisteredModel;
     expect(consoleWritesWhileDrawing(logsOnce)).toEqual(["console.warn: cooling effect assumed 0"]);

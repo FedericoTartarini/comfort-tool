@@ -3,7 +3,7 @@ import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, operative_tmp } from "jsthermalc
 import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { valuesReader } from "$lib/core/libraryInputs";
+import { inputsReader } from "$lib/core/libraryInputs";
 import { requireAxisRange, type AxisRange, type DeclaredAdaptiveChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
@@ -44,7 +44,7 @@ function isoDrawing(chart: DeclaredAdaptiveChart): RegisteredModel {
 const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = valuesReader(startingSlot(pmvPpdIso).values);
+const { v } = inputsReader(startingSlot(pmvPpdIso).values);
 
 /** The fixture's range for `quantity`, as the layout writes a range. */
 function fixtureRangeOf(quantity: Quantity): [number, number] {
@@ -90,11 +90,11 @@ describe("a declared limits source", () => {
   const zoned: DeclaredAdaptiveChart = {
     type: chartType.adaptive,
     axes: { x: q.operative_tmp, y: q.v },
-    limits: ({ values, xRange }) => [
+    limits: ({ inputs, xRange }) => [
       {
         label: "80% acceptability",
         lower: [{ x: xRange.min, y: 0 }, { x: xRange.max, y: 0 }],
-        upper: [{ x: xRange.min, y: values.vr }, { x: xRange.max, y: values.vr }],
+        upper: [{ x: xRange.min, y: inputs.vr }, { x: xRange.max, y: inputs.vr }],
       },
       { label: "90% acceptability", lower: [{ x: 20, y: 0 }, { x: 30, y: 0 }], upper: [{ x: 20, y: 1 }, { x: 30, y: 1 }] },
     ],
@@ -181,7 +181,7 @@ describe("a declared limits source", () => {
   it("throws, naming it, when the source reads a quantity the slot does not hold", () => {
     const readsMissing = isoDrawing({
       ...zoned,
-      limits: ({ values }) => [{ label: "Unreached", lower: [{ x: values.t_running_mean, y: 0 }], upper: [] }],
+      limits: ({ inputs }) => [{ label: "Unreached", lower: [{ x: inputs.t_running_mean, y: 0 }], upper: [] }],
     });
     expect(() => adaptiveSpec(chartRequestFor(readsMissing, slot))).toThrow(q.t_running_mean.label);
   });
@@ -194,7 +194,7 @@ describe("a declared limits source", () => {
 const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae));
 
 /** Adaptive's own air speed, at which `adaptiveRequest` draws. */
-const { v: startingAirSpeed } = valuesReader(startingSlot(adaptiveAshrae).values);
+const { v: startingAirSpeed } = inputsReader(startingSlot(adaptiveAshrae).values);
 
 describe("Adaptive's running mean axis", () => {
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -478,7 +478,7 @@ describe("Adaptive's chart against adaptive_ashrae", () => {
     const marker = markerOf(spec);
     const [fill80, fill90] = fillsOf(spec);
     expect({ x: marker?.x, y: marker?.y }).toEqual({ x: 11, y: 25.5 });
-    expect(adaptiveAshrae.run(valuesReader(entered.values)).acceptability_80).toBe(true);
+    expect(adaptiveAshrae.run(inputsReader(entered.values)).acceptability_80).toBe(true);
     expect(containsPoint(onlyPieceOf(fill80), 11, 25.5)).toBe(true);
     expect(containsPoint(onlyPieceOf(fill90), 11, 25.5)).toBe(false);
   });

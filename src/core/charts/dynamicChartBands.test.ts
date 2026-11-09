@@ -254,7 +254,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
 
   /** A model whose PMV is `pmvAt` of each point's dry-bulb temperature, on the dynamic chart's tdb × v. */
   function modelOf(pmvAt: (tdb: number) => number): RegisteredModel {
-    return { ...pmvPpdIso, axisRanges: fixtureAxisRanges, run: (values) => ({ pmv: pmvAt(values.tdb), warnings: [] }) } satisfies RegisteredModel;
+    return { ...pmvPpdIso, axisRanges: fixtureAxisRanges, run: (inputs) => ({ pmv: pmvAt(inputs.tdb), warnings: [] }) } satisfies RegisteredModel;
   }
 
   /** The spec of a model whose PMV is `value` at every point of the field, painting `bands`. */
@@ -349,7 +349,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
       ...pmvPpdIso,
       axisRanges: fixtureAxisRanges,
       scan: { ...pmvPpdIso.scan, output: q.operative_tmp },
-      run: (values) => ({ operative_tmp: values.tdb, warnings: [] }),
+      run: (inputs) => ({ operative_tmp: inputs.tdb, warnings: [] }),
     } satisfies RegisteredModel;
     const degrees: BandList = { ...uneven, edges: [15, 20, 30, 100] };
     const lines = linesOf(dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: degrees }, isoChart.axes));

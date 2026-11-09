@@ -14,7 +14,7 @@ import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { imageSize, type ImageSize } from "$lib/core/image";
-import { valuesReader } from "$lib/core/libraryInputs";
+import { inputsReader } from "$lib/core/libraryInputs";
 import { classifierOf, psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
@@ -42,7 +42,7 @@ const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const PMV_DIGITS = 2;
 
 /** The ISO declaration's own met, clothing insulation and v, which every slot below keeps. */
-const { met, clo: clothingInsulation, v } = valuesReader(startingSlot(pmvPpdIso).values);
+const { met, clo: clothingInsulation, v } = inputsReader(startingSlot(pmvPpdIso).values);
 /** The dynamic clothing insulation the model is given for it: ISO 7730's rule, by the library. */
 const clo = clo_dynamic_iso(clothingInsulation, met, v);
 
@@ -98,7 +98,7 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
 /** PMV (ISO 7730) whose every run breaks no bound, so its zones are its numbers' alone. */
 const isoWithoutBounds: RegisteredModel = {
   ...pmvPpdIso,
-  run: (values) => ({ ...pmvPpdIso.run(values), warnings: [] }),
+  run: (inputs) => ({ ...pmvPpdIso.run(inputs), warnings: [] }),
 };
 
 /** The cover above the saturation line: the path filled in the plot's ground. */
@@ -319,7 +319,7 @@ describe("psychrometricSpec", () => {
   it("ends a zone where the model stops giving a number, the end found on the run as a bound's is", () => {
     const noNumberWhenDry: RegisteredModel = {
       ...pmvPpdIso,
-      run: (values) => ({ ...pmvPpdIso.run(values), ...(values.rh < 10 ? { pmv: Number.NaN } : {}) }),
+      run: (inputs) => ({ ...pmvPpdIso.run(inputs), ...(inputs.rh < 10 ? { pmv: Number.NaN } : {}) }),
     };
     const drawn = psychrometricSpec({ ...request(temperatureMode.separate), model: noNumberWhenDry });
     const [zone] = zoneFillsOf(drawn);

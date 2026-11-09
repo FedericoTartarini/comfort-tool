@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { chartInk } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
-import { valuesReader } from "$lib/core/libraryInputs";
+import { inputsReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   requireAxisRange,
@@ -38,7 +38,7 @@ const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 const request = chartRequestFor(pmvPpdIso, slot);
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = valuesReader(startingSlot(pmvPpdIso).values);
+const { v } = inputsReader(startingSlot(pmvPpdIso).values);
 
 /** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
 function declaredRangeOf(quantity: Quantity): [number, number] {

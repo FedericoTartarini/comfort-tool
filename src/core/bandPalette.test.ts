@@ -96,8 +96,8 @@ describe("bandColors", () => {
     // Each classified output is a column of the result table; the scan's
     // declared bands are Explore's default Band list.
     for (const model of registeredModels) {
-      const painted = Object.entries(model.info.outputs).flatMap(([key, variable]) =>
-        variable.classifier ? [{ name: `${model.info.label} ${key}`, bins: variable.classifier }] : [],
+      const painted = Object.entries(model.info.outputs).flatMap(([key, field]) =>
+        field.classifier ? [{ name: `${model.info.label} ${key}`, bins: field.classifier }] : [],
       );
       if (model.scan) {
         painted.push({ name: `${model.info.label} scan`, bins: classifierOf(model.info, model.scan.bands) });

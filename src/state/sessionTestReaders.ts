@@ -182,9 +182,9 @@ export function withBounds(bounds: Readonly<Record<string, Bound>>): RegisteredM
       ...pmvPpdIso.info,
       name: `fixture_bounds_${Object.keys(bounds).join("_")}`,
       inputs: Object.fromEntries(
-        Object.entries(pmvPpdIso.info.inputs).map(([key, variable]) => [
+        Object.entries(pmvPpdIso.info.inputs).map(([key, field]) => [
           key,
-          key in bounds ? { ...variable, applicability: bounds[key] } : variable,
+          key in bounds ? { ...field, applicability: bounds[key] } : field,
         ]),
       ),
     },

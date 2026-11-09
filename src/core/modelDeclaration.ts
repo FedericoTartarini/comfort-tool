@@ -6,12 +6,13 @@ import { temperatureMode } from "./entryModes";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
- * How a declaration reads its slot's values: one number per Quantity, under
- * the quantity table's own key, so `values.tdb` type-checks and `values.tbd`
- * does not (ADR-0002 decision 34). Reading a quantity the slot does not hold
- * throws, naming it; there is no key that answers `undefined`.
+ * How a declaration reads the library's inputs, resolved from its slot: one
+ * number per Quantity, under the quantity table's own key, so `inputs.tdb`
+ * type-checks and `inputs.tbd` does not (ADR-0002 decision 34). Reading a
+ * quantity the slot does not hold throws, naming it; there is no key that
+ * answers `undefined`.
  */
-export type Values = { readonly [K in keyof typeof quantities]: number };
+export type LibraryInputs = { readonly [K in keyof typeof quantities]: number };
 
 /**
  * A switch a model takes beside its quantities (`airspeed_control`): no unit,
@@ -28,7 +29,7 @@ export interface OptionSpec {
 
 /**
  * How a declaration reads its slot's options: the boolean for the option
- * asked, so it lands in the library's params where the compiler checks it
+ * asked, so it lands in the library's inputs where the compiler checks it
  * (ADR-0002 decision 36).
  */
 export type OptionsReader = (option: OptionSpec) => boolean;
@@ -94,9 +95,9 @@ export interface ZoneLimits {
   readonly upper: readonly { readonly x: number; readonly y: number }[];
 }
 
-/** What a `limits` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
+/** What a `limits` source is given: the library's inputs resolved from the slot, in SI, read as `run` reads them, and the x axis range being drawn. */
 export interface ZoneRequest {
-  readonly values: Values;
+  readonly inputs: LibraryInputs;
   readonly xRange: Range;
 }
 
@@ -231,19 +232,20 @@ interface CommonDeclaration {
   readonly timeSeries?: true;
   /**
    * The library's model function, called by the declaration itself with the
-   * library's one params object, every quantity written by name (ADR-0002
+   * library's one inputs object, every quantity written by name (ADR-0002
    * decision 34):
    *
    * ```ts
-   * run: (values) =>
-   *   pmv_ppd_iso({ tdb: values.tdb, tr: values.tr, vr: values.vr, rh: values.rh, met: values.met, clo: values.clo, … })
+   * run: (inputs) =>
+   *   pmv_ppd_iso({ tdb: inputs.tdb, tr: inputs.tr, vr: inputs.vr, rh: inputs.rh, met: inputs.met, clo: inputs.clo, … })
    * ```
    *
-   * The compiler checks every key against the library's params: a misspelt
-   * key is an excess property, a forgotten quantity a missing required one.
-   * What it cannot see is two quantities in each other's place
-   * (`tdb: values.tr`), and a registry-wide test checks that every quantity key
-   * the library receives carries that quantity's own number.
+   * The compiler checks every key against the library function's inputs
+   * type: a misspelt key is an excess property, a forgotten quantity a
+   * missing required one. What it cannot see is two quantities in each
+   * other's place (`tdb: inputs.tr`), and a registry-wide test checks that
+   * every quantity key the library receives carries that quantity's own
+   * number.
    *
    * A model that lists options reads them through the second reader, each
    * written inline under its library key:
@@ -256,8 +258,8 @@ interface CommonDeclaration {
    *
    * The contract: the model's own outputs, returned directly (ADR-0002
    * decision 3) and keyed by the same strings as its `_INFO`: a number for a
-   * physical output, a category label or a yes/no, or `null` where the library
-   * returns no value. `ModelOutputs`, which every model's outputs extend, types
+   * physical output, a band's label or a yes-or-no flag, or `null` where the
+   * library returns no value. `ModelOutputs`, which every model's outputs extend, types
    * `warnings` and no output, so the app reads an output by key
    * (`core/modelRun.ts`'s `outputValue`) rather than transcribing a shape of its
    * own. The numbers are unrounded (ADR-0002 decision 18), with the library's
@@ -265,7 +267,7 @@ interface CommonDeclaration {
    * samples the table's first number column and fails when it was left on
    * (decision 38). Called by `state/compute` and by the chart spec builders.
    */
-  readonly run: (values: Values, options: OptionsReader) => ModelOutputs;
+  readonly run: (inputs: LibraryInputs, options: OptionsReader) => ModelOutputs;
   /**
    * The panel's list, in panel order: each quantity with its SI default, and
    * each option where its switch stands among the rows (ADR-0002 decision

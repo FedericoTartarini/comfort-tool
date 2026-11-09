@@ -5,9 +5,9 @@ import type { Quantity } from "./quantities";
 import type { Slot } from "./slot";
 
 /**
- * `model` run on `slot` at `atmosphericPressure`: its resolved values
- * ({@link toLibraryInputs}) and the options it holds, handed to the
- * declaration's `run`. The one statement of the call.
+ * `model` run on `slot` at `atmosphericPressure`: the library's inputs
+ * resolved from it ({@link toLibraryInputs}) and the options it holds, handed
+ * to the declaration's `run`. The one statement of the call.
  */
 export function runOn(slot: Slot, model: RegisteredModel, atmosphericPressure: number): ModelOutputs {
   return model.run(toLibraryInputs(slot, model, atmosphericPressure), optionsReader(slot.options));

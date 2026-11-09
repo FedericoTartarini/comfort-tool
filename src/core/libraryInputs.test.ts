@@ -4,7 +4,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode } from "./entryModes";
-import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
+import { inputsReader, optionsReader, resolveQuantities, toLibraryInputs } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { relativeHumidityOf, startingSlot, type Slot } from "./slot";
@@ -12,7 +12,7 @@ import { relativeHumidityOf, startingSlot, type Slot } from "./slot";
 const q = quantities;
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
+const { tdb, v, met } = inputsReader(startingSlot(pmvPpdIso).values);
 const rh = relativeHumidityOf(startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("resolveQuantities", () => {
@@ -37,10 +37,10 @@ describe("resolveQuantities", () => {
   it("gives PMV (ISO 7730) the clothing corrected by ISO 7730's rule, under the library's key for it", () => {
     for (const entered of [{}, { v: 0.4, met: 2, clo: 1 }]) {
       const slot = enteredSlotFor(pmvPpdIso, entered);
-      const values = valuesReader(slot.values);
+      const inputs = inputsReader(slot.values);
       const resolved = resolveQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
-      expect(resolved.get(q.clo)).toBe(clo_dynamic_iso(values.clo, values.met, values.v));
-      expect(resolved.get(q.clo)).not.toBe(values.clo);
+      expect(resolved.get(q.clo)).toBe(clo_dynamic_iso(inputs.clo, inputs.met, inputs.v));
+      expect(resolved.get(q.clo)).not.toBe(inputs.clo);
       expect(resolved.has(q.clo_dynamic)).toBe(false);
     }
   });
@@ -121,19 +121,19 @@ describe("toLibraryInputs", () => {
   });
 });
 
-describe("valuesReader", () => {
+describe("inputsReader", () => {
   it("answers each quantity under its own key", () => {
     const resolved = new Map<Quantity, number>([
       [q.tdb, 25],
       [q.rh, 50],
     ]);
-    const values = valuesReader(resolved);
-    expect([values.rh, values.tdb, values.rh]).toEqual([50, 25, 50]);
+    const inputs = inputsReader(resolved);
+    expect([inputs.rh, inputs.tdb, inputs.rh]).toEqual([50, 25, 50]);
   });
 
   it("throws naming the quantity the map does not carry, rather than answering undefined", () => {
-    const values = valuesReader(resolveQuantities(startingSlot(pmvPpdIso), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE));
-    expect(() => values.wme).toThrow(`Slot has no value for ${q.wme.label}`);
+    const inputs = inputsReader(resolveQuantities(startingSlot(pmvPpdIso), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE));
+    expect(() => inputs.wme).toThrow(`Slot has no value for ${q.wme.label}`);
   });
 });
 

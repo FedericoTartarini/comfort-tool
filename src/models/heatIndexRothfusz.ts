@@ -20,7 +20,7 @@ export const heatIndexRothfusz = {
   // 0.1 °C. `limit_inputs: false`: the app gates entered values itself and
   // reads the rows the run breaks off `warnings`. The function takes no
   // `units`, and no `wme` or `standard`.
-  run: (values) => heat_index_rothfusz({ tdb: values.tdb, rh: values.rh, round_output: false, limit_inputs: false }),
+  run: (inputs) => heat_index_rothfusz({ tdb: inputs.tdb, rh: inputs.rh, round_output: false, limit_inputs: false }),
   inputs: [
     { quantity: q.tdb, value: 30 },
     { quantity: q.rh, value: 50 },

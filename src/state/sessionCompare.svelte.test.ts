@@ -18,7 +18,7 @@ import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { optionsOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
+import { optionsOf, type LibraryInputs, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
@@ -64,9 +64,9 @@ function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
   let runs = 0;
   const model = {
     ...pmvPpdIso,
-    run: (values: Values) => {
+    run: (inputs: LibraryInputs) => {
       runs += 1;
-      return pmvPpdIso.run(values);
+      return pmvPpdIso.run(inputs);
     },
   } satisfies RegisteredModel;
   return { model, runs: () => runs };

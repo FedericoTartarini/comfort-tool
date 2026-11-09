@@ -36,14 +36,14 @@ export const pmvPpdAshrae = {
   // library's default is SI, and so is the boundary (ADR-0002 decision 1). No
   // `standard`: the library's default edition, the one its info lists first
   // (decision 86, rule 3).
-  run: (values, options) =>
+  run: (inputs, options) =>
     pmv_ppd_ashrae({
-      tdb: values.tdb,
-      tr: values.tr,
-      vr: values.vr,
-      rh: values.rh,
-      met: values.met,
-      clo: values.clo,
+      tdb: inputs.tdb,
+      tr: inputs.tr,
+      vr: inputs.vr,
+      rh: inputs.rh,
+      met: inputs.met,
+      clo: inputs.clo,
       wme: 0,
       limit_inputs: false,
       round_output: false,

@@ -24,12 +24,12 @@ export const adaptiveAshrae = {
   // before deriving the limits and the answers from it, and the display
   // rounds. No `units`: the library's default is SI, and so is the boundary
   // (ADR-0002 decision 1). The function takes no `standard`.
-  run: (values) =>
+  run: (inputs) =>
     adaptive_ashrae({
-      tdb: values.tdb,
-      tr: values.tr,
-      t_running_mean: values.t_running_mean,
-      v: values.v,
+      tdb: inputs.tdb,
+      tr: inputs.tr,
+      t_running_mean: inputs.t_running_mean,
+      v: inputs.v,
       limit_inputs: false,
       round_output: false,
     }),
@@ -78,8 +78,8 @@ export const adaptiveAshrae = {
     {
       type: chartType.adaptive,
       axes: { x: q.t_running_mean, y: q.operative_tmp },
-      limits: ({ values, xRange }) => {
-        const zone = adaptive_ashrae_zone(values.v, xRange.min, xRange.max);
+      limits: ({ inputs, xRange }) => {
+        const zone = adaptive_ashrae_zone(inputs.v, xRange.min, xRange.max);
         return [
           toZoneLimits(zone.acceptability_80, q.acceptability_80.label),
           toZoneLimits(zone.acceptability_90, q.acceptability_90.label),

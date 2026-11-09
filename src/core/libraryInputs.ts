@@ -4,10 +4,10 @@ import {
   hasHumidityGroup,
   hasTemperatureGroup,
   takesRelativeAirSpeed,
+  type LibraryInputs,
   type OptionSpec,
   type OptionsReader,
   type RegisteredModel,
-  type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import { dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
@@ -51,8 +51,8 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
 }
 
 /**
- * The values a declaration reads for `slot`, in `run` and in an adaptive
- * chart's `limits`: its resolved quantities, wrapped by {@link valuesReader}.
+ * The library's inputs a declaration reads for `slot`, in `run` and in an adaptive
+ * chart's `limits`: its resolved quantities, wrapped by {@link inputsReader}.
  * On the `run` side, the declaration hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
@@ -61,8 +61,8 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
  * speed breaks a limit the gate does not hold the entry to) come back on the outputs'
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Values {
-  return valuesReader(resolveQuantities(slot, model, atmosphericPressure));
+export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericPressure: number): LibraryInputs {
+  return inputsReader(resolveQuantities(slot, model, atmosphericPressure));
 }
 
 /**
@@ -72,20 +72,20 @@ export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericP
  * that reaches the library unnoticed is the failure this shape exists to rule
  * out.
  */
-export function valuesReader(values: ReadonlyMap<Quantity, number>): Values {
+export function inputsReader(values: ReadonlyMap<Quantity, number>): LibraryInputs {
   const object = {};
   for (const [key, quantity] of Object.entries(quantities)) {
     Object.defineProperty(object, key, { enumerable: true, get: () => requireValue(values, quantity) });
   }
   // `defineProperty` cannot tell the compiler what it added; the loop above
-  // defines exactly the table's keys, which is what `Values` promises.
-  return object as Values;
+  // defines exactly the table's keys, which is what `LibraryInputs` promises.
+  return object as LibraryInputs;
 }
 
 /**
  * `options` as the reader a declaration's `run` asks: the boolean the slot
  * holds for the option, and a throw naming an option the map does not carry,
- * for the reason {@link valuesReader} gives (ADR-0002 decision 36).
+ * for the reason {@link inputsReader} gives (ADR-0002 decision 36).
  */
 export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): OptionsReader {
   return (option) => {

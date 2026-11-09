@@ -24,7 +24,7 @@ import { unitSystem } from "./unitSystem";
 const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp", "clo_dynamic"]);
 
 /** The keys `info` names a quantity by: its numeric inputs, its outputs and its derived checks. */
-function variableKeys(info: ModelInfo): string[] {
+function infoKeysOf(info: ModelInfo): string[] {
   const numericInputs = Object.entries(info.inputs).filter(([, field]) => field.kind === "numeric");
   return [...numericInputs.map(([key]) => key), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
 }
@@ -43,12 +43,12 @@ const tableKeys = Object.keys(quantities);
 describe("quantities table drift", () => {
   it("direction 1: has a row for every input, output and derived key a registered model's or an input calculator's info names", () => {
     for (const model of registeredModels) {
-      for (const key of variableKeys(model.info)) {
+      for (const key of infoKeysOf(model.info)) {
         expect(tableKeys).toContain(key);
       }
     }
     for (const info of [SOLAR_GAIN_INFO, CLO_TOUT_INFO]) {
-      for (const key of variableKeys(info).filter((named) => !calculatorKeysWithoutRow.has(named))) {
+      for (const key of infoKeysOf(info).filter((named) => !calculatorKeysWithoutRow.has(named))) {
         expect(tableKeys).toContain(key);
       }
     }
@@ -58,9 +58,9 @@ describe("quantities table drift", () => {
     }
   });
 
-  it("direction 2: every table key names a package `_INFO` variable or an app-owned quantity", () => {
+  it("direction 2: every table key names a package `_INFO` field or an app-owned quantity", () => {
     const infoExports = Object.entries(jsthermalcomfort).filter(([name]) => name.endsWith("_INFO"));
-    const infoNamedKeys = new Set(infoExports.flatMap(([, info]) => variableKeys(info as ModelInfo)));
+    const infoNamedKeys = new Set(infoExports.flatMap(([, info]) => infoKeysOf(info as ModelInfo)));
     for (const key of tableKeys) {
       expect(infoNamedKeys.has(key) || appOwnedQuantities.has(key)).toBe(true);
     }
@@ -71,11 +71,11 @@ describe("quantities table drift", () => {
   });
 
   it("hi and stress_category are named by HEAT_INDEX_ROTHFUSZ_INFO", () => {
-    expect(variableKeys(HEAT_INDEX_ROTHFUSZ_INFO)).toEqual(expect.arrayContaining(["hi", "stress_category"]));
+    expect(infoKeysOf(HEAT_INDEX_ROTHFUSZ_INFO)).toEqual(expect.arrayContaining(["hi", "stress_category"]));
   });
 
   it("utci is named by UTCI_INFO, a temperature", () => {
-    expect(variableKeys(UTCI_INFO)).toContain("utci");
+    expect(infoKeysOf(UTCI_INFO)).toContain("utci");
     expect(quantities.utci.key).toBe("utci");
     expect(quantities.utci.kind).toBe("temperature");
   });
@@ -98,12 +98,12 @@ describe("quantities table drift", () => {
       "acceptability_90",
     ];
     expect(tableKeys).toEqual(expect.arrayContaining(adaptiveKeys));
-    expect(variableKeys(ADAPTIVE_ASHRAE_INFO)).toEqual(expect.arrayContaining(adaptiveKeys));
+    expect(infoKeysOf(ADAPTIVE_ASHRAE_INFO)).toEqual(expect.arrayContaining(adaptiveKeys));
   });
 
   it("compliance is named by PMV_PPD_ASHRAE_INFO", () => {
     expect(tableKeys).toContain("compliance");
-    expect(variableKeys(PMV_PPD_ASHRAE_INFO)).toContain("compliance");
+    expect(infoKeysOf(PMV_PPD_ASHRAE_INFO)).toContain("compliance");
   });
 });
 

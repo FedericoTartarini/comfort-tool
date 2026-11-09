@@ -53,7 +53,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
   const legendOfSlot = request.slots.map((): LegendEntry[] => []);
 
   const zonesOfSlot = request.slots.map((charted) =>
-    chart.limits({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
+    chart.limits({ inputs: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
   );
   /** Each slot's zones as the regions their lines close, in SI: what is filled and what the hover grid reads. */
   const regionsOfSlot = zonesOfSlot.map((zones) => zones.map(regionOf));

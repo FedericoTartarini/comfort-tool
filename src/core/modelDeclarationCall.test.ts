@@ -1,6 +1,6 @@
 /**
  * How every registered declaration's `run` calls its library function, in the
- * two ways the compiler cannot see: each quantity key of the params object has
+ * two ways the compiler cannot see: each quantity key of the inputs object has
  * to carry that quantity's own number (ADR-0002 decision 34); and each option
  * has to sit under the key its `key` names, since the key and the property are
  * spelled separately in the declaration (decision 36). What `run` returns is
@@ -11,8 +11,8 @@ import { pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
-import { inputsOf, optionsOf, type OptionSpec, type OptionsReader, type RegisteredModel, type Values } from "./modelDeclaration";
+import { inputsReader, optionsReader, resolveQuantities } from "./libraryInputs";
+import { inputsOf, optionsOf, type LibraryInputs, type OptionSpec, type OptionsReader, type RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantityFor, type Quantity } from "./quantities";
 import { startingSlot } from "./slot";
@@ -45,20 +45,20 @@ vi.mock("jsthermalcomfort", async (importOriginal) => {
 /** The option PMV (ASHRAE 55) reads through `run`'s second reader. */
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
-/** The params object of the last call `model.run` made to the library function it is named after. */
-function receivedParams(model: RegisteredModel, values: Values, options: OptionsReader): Readonly<Record<string, unknown>> {
+/** The inputs object of the last call `model.run` made to the library function it is named after. */
+function receivedInputs(model: RegisteredModel, inputs: LibraryInputs, options: OptionsReader): Readonly<Record<string, unknown>> {
   lastCalls.delete(model.info.name);
-  model.run(values, options);
-  const params = lastCalls.get(model.info.name)?.[0];
-  if (typeof params !== "object" || params === null) {
-    throw new Error(`${model.info.name}'s run did not call the library function it is named after with a params object`);
+  model.run(inputs, options);
+  const received = lastCalls.get(model.info.name)?.[0];
+  if (typeof received !== "object" || received === null) {
+    throw new Error(`${model.info.name}'s run did not call the library function it is named after with an inputs object`);
   }
-  return params as Readonly<Record<string, unknown>>;
+  return received as Readonly<Record<string, unknown>>;
 }
 
 /**
- * The quantity keys of the params object `model.run` hands its library
- * function whose number is not the one the values object gave for that
+ * The quantity keys of the inputs object `model.run` hands its library
+ * function whose number is not the one `model.run` was given for that
  * quantity. The values are the model's own resolved defaults, each moved by a
  * different thousandth so that no two quantities share a number and the
  * kernel still runs on numbers it runs on in the app. A key whose quantity the
@@ -71,10 +71,10 @@ function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: 
     [...resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
   );
   expect(new Set(distinct.values()).size, `${model.info.name} distinct values`).toBe(distinct.size);
-  const params = receivedParams(model, valuesReader(distinct), optionsReader(slot.options));
+  const received = receivedInputs(model, inputsReader(distinct), optionsReader(slot.options));
   const checked: string[] = [];
   const mispaired: string[] = [];
-  for (const [key, value] of Object.entries(params)) {
+  for (const [key, value] of Object.entries(received)) {
     const quantity = quantityFor(key);
     if (!quantity || !distinct.has(quantity)) continue;
     checked.push(key);
@@ -83,7 +83,7 @@ function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: 
   return { checked, mispaired };
 }
 
-describe("run's params object", () => {
+describe("run's inputs object", () => {
   it("carries each quantity's own number under that quantity's key, for every registered model", () => {
     for (const model of registeredModels) {
       const { checked, mispaired } = mispairedKeys(model);
@@ -96,18 +96,18 @@ describe("run's params object", () => {
   it("catches two quantities in each other's place, which is all the compiler cannot see", () => {
     // The same swap in the real declaration is what the registry test above
     // catches and `npm run check` does not, because both keys are numbers.
-    // Written out rather than wrapped: spreading `values` would read every
+    // Written out rather than wrapped: spreading `inputs` would read every
     // quantity, and throw on the first one the slot does not hold.
     const swapped = {
       ...pmvPpdIso,
-      run: (values: Values) =>
+      run: (inputs: LibraryInputs) =>
         pmv_ppd_iso({
-          tdb: values.tr,
-          tr: values.tdb,
-          vr: values.vr,
-          rh: values.rh,
-          met: values.met,
-          clo: values.clo,
+          tdb: inputs.tr,
+          tr: inputs.tdb,
+          vr: inputs.vr,
+          rh: inputs.rh,
+          met: inputs.met,
+          clo: inputs.clo,
           wme: 0,
           limit_inputs: false,
           round_output: false,
@@ -123,20 +123,20 @@ describe("run's params object", () => {
 
 /**
  * Type-level proof, compiled by `npm run check` and never called: the
- * library's params types are what make the compiler check each key, so each
+ * library's inputs types are what make the compiler check each key, so each
  * `@ts-expect-error` here fails the build the day it stops doing so. Exported
  * only because `noUnusedLocals` would otherwise flag it.
  */
-export function valuesTypeProof(values: Values, options: OptionsReader): void {
+export function inputsTypeProof(inputs: LibraryInputs, options: OptionsReader): void {
   // Spread only where every key is a required quantity, which a wrong key
   // turns into a missing one; the key under test is always written inline.
-  const withoutClo = { tdb: values.tdb, tr: values.tr, vr: values.vr, rh: values.rh, met: values.met };
-  pmv_ppd_iso({ ...withoutClo, clo: values.clo, wme: 0, limit_inputs: false });
+  const withoutClo = { tdb: inputs.tdb, tr: inputs.tr, vr: inputs.vr, rh: inputs.rh, met: inputs.met };
+  pmv_ppd_iso({ ...withoutClo, clo: inputs.clo, wme: 0, limit_inputs: false });
   // @ts-expect-error a missing required key: the quantity `clo` is forgotten
   pmv_ppd_iso({ ...withoutClo, wme: 0 });
   // @ts-expect-error a misspelt key: the library spells it `limit_inputs`
-  pmv_ppd_iso({ ...withoutClo, clo: values.clo, limit_input: false });
-  const ashrae = { ...withoutClo, clo: values.clo };
+  pmv_ppd_iso({ ...withoutClo, clo: inputs.clo, limit_input: false });
+  const ashrae = { ...withoutClo, clo: inputs.clo };
   pmv_ppd_ashrae({ ...ashrae, airspeed_control: options(airSpeedControl) });
   // @ts-expect-error the reader itself, not its answer: the key takes the boolean `options(…)` returns
   pmv_ppd_ashrae({ ...ashrae, airspeed_control: options });
@@ -194,7 +194,7 @@ describe("an option's key", () => {
     const declared = {
       ...pmvPpdAshrae,
       inputs: [...inputsOf(pmvPpdAshrae), { option: misspelt }],
-      run: (values: Values, options: OptionsReader) => pmvPpdAshrae.run(values, () => options(misspelt)),
+      run: (inputs: LibraryInputs, options: OptionsReader) => pmvPpdAshrae.run(inputs, () => options(misspelt)),
     } satisfies RegisteredModel;
     expect(kwargsFedBy(declared, misspelt)).not.toEqual([misspelt.key]);
   });

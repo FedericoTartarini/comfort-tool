@@ -20,14 +20,14 @@ export const pmvPpdIso = {
   // `warnings`; `round_output: false`, since the charts trace the zones on
   // a scan of this `pmv` and the display rounds. No `units`: the library's
   // default is SI, and so is the boundary (ADR-0002 decision 1).
-  run: (values) =>
+  run: (inputs) =>
     pmv_ppd_iso({
-      tdb: values.tdb,
-      tr: values.tr,
-      vr: values.vr,
-      rh: values.rh,
-      met: values.met,
-      clo: values.clo,
+      tdb: inputs.tdb,
+      tr: inputs.tr,
+      vr: inputs.vr,
+      rh: inputs.rh,
+      met: inputs.met,
+      clo: inputs.clo,
       wme: 0,
       limit_inputs: false,
       round_output: false,

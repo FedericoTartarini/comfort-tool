@@ -39,9 +39,9 @@ const takesExternalWork = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_external_work" },
   inputs: [...pmvPpdIso.inputs, { quantity: q.wme, value: 0.4 }],
-  run: (values) => {
-    const wme = values.wme;
-    return { ...pmvPpdIso.run(values), wme };
+  run: (inputs) => {
+    const wme = inputs.wme;
+    return { ...pmvPpdIso.run(inputs), wme };
   },
 } satisfies RegisteredModel;
 

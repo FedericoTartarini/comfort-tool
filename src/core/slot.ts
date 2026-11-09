@@ -4,7 +4,7 @@
  * add a Slot offset, set an option, convert an entry mode, seed a model's
  * defaults and build the slot a model starts on; and the get-or-throws they
  * read through.
- * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
+ * Turning a slot into the library's inputs is `core/libraryInputs.ts`'s and
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */

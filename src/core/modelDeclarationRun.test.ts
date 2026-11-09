@@ -21,9 +21,9 @@ import {
   requireAxisRange,
   type ChartAxes,
   type DeclaredScan,
+  type LibraryInputs,
   type Range,
   type RegisteredModel,
-  type Values,
 } from "./modelDeclaration";
 import { outputValue, runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -162,10 +162,10 @@ const SAMPLES_ALONG_THE_AXIS = 25;
 /**
  * The first column of `model`'s table whose output is a number: a classified
  * output's category leads the table (ADR-0002 decision 85, rule 1), and a
- * category or a yes or no has no decimals to round.
+ * label or a flag has no decimals to round.
  */
 function firstNumberColumn(model: RegisteredModel): Quantity | undefined {
-  return model.table.find((column) => column.kind !== "category" && column.kind !== "yesNo");
+  return model.table.find((column) => column.kind !== "label" && column.kind !== "flag");
 }
 
 /**
@@ -192,7 +192,7 @@ function unroundedSampleCount(
   // one; left to the comparison below it would read as rounding. Heat Index
   // returns NaN below 27 °C unless the call turns `limit_inputs` off, so the
   // next model would fail this test with the wrong reason printed. A column
-  // that is a category or a yes-or-no answer has no decimals to check.
+  // that is a label or a flag has no decimals to check.
   const finite = (position: number) => {
     const value = valueAt(position, quantity);
     if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -222,14 +222,14 @@ function unroundedSampleCount(
 function isoRounding(round_output: boolean) {
   return {
     ...pmvPpdIso,
-    run: (values: Values) =>
+    run: (inputs: LibraryInputs) =>
       pmv_ppd_iso({
-        tdb: values.tdb,
-        tr: values.tr,
-        vr: values.vr,
-        rh: values.rh,
-        met: values.met,
-        clo: values.clo,
+        tdb: inputs.tdb,
+        tr: inputs.tr,
+        vr: inputs.vr,
+        rh: inputs.rh,
+        met: inputs.met,
+        clo: inputs.clo,
         wme: 0,
         limit_inputs: false,
         round_output,

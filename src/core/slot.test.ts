@@ -8,7 +8,7 @@ import { registeredModels } from "$lib/models";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "./calculators";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import { resolveQuantities, valuesReader } from "./libraryInputs";
+import { inputsReader, resolveQuantities } from "./libraryInputs";
 import { hasHumidityGroup, optionsOf, type RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import {
@@ -45,7 +45,7 @@ const LOWER_PRESSURE = 80000;
 const withoutStandard = { ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
+const { tdb, v, met } = inputsReader(startingSlot(pmvPpdIso).values);
 const rh = relativeHumidityOf(startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("operativeTemperatureOf", () => {

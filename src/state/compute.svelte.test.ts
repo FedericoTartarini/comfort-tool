@@ -14,7 +14,7 @@ import { violationRows, warningFor } from "$lib/core/applicability";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
+import type { LibraryInputs, RegisteredModel } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -44,9 +44,9 @@ function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
   let runs = 0;
   const model = {
     ...pmvPpdIso,
-    run: (values: Values) => {
+    run: (inputs: LibraryInputs) => {
       runs += 1;
-      return pmvPpdIso.run(values);
+      return pmvPpdIso.run(inputs);
     },
   } satisfies RegisteredModel;
   return { model, runs: () => runs };

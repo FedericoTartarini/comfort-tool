@@ -83,7 +83,7 @@ describe("table", () => {
     // A classified output is a column of its own, first in the table
     // (ADR-0002 decision 85, rule 1): one left out would be lost from the page.
     for (const model of registeredModels) {
-      const classifiedKeys = Object.entries(model.info.outputs).flatMap(([key, variable]) => (variable.classifier ? [key] : []));
+      const classifiedKeys = Object.entries(model.info.outputs).flatMap(([key, field]) => (field.classifier ? [key] : []));
       const leading = model.table.slice(0, classifiedKeys.length).map((column) => column.key);
       expect(leading, model.info.label).toEqual(classifiedKeys);
     }
