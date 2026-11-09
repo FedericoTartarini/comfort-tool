@@ -39,8 +39,7 @@ export interface DrawnAxes {
  * the scan for that slot alone. All three are built up front, so a slot
  * disabled and enabled again needs nothing built; one that is not compared is
  * not read, and a derivation not read does not run. What every slot shares is
- * judged here once: whether the atmospheric pressure is out of range, and the
- * frame every slot is scanned in.
+ * built here once: the frame every slot is scanned in.
  *
  * Nothing is kept (ADR-0002 decision 84, rule 9): the result, the violation
  * rows and the chart are derived from the slots as they are, at the session's
