@@ -1,13 +1,13 @@
 <script module lang="ts">
   import type { Verdict } from "$lib/core/applicability";
   import type { Quantity } from "$lib/core/quantities";
-  import type { SlotOutputs } from "$lib/state/compute.svelte";
+  import type { SlotComputation } from "$lib/state/compute.svelte";
   import type { InputSlot, SlotPosition } from "$lib/state/session.svelte";
 
-  /** One slot's column: what the slot holds and what its outputs say of it. */
-  export interface SlotColumn {
+  /** One compared slot: what the slot holds and what its computation says of it. */
+  export interface ComparedSlot {
     inputSlot: InputSlot;
-    outputs: SlotOutputs;
+    computation: SlotComputation;
   }
 
   /** What judges and commits a value entered in a slot: the session's (ADR-0002 decision 84, rule 2). */
@@ -38,7 +38,7 @@
      * One per slot column, in slot order: slot 1 alone, or on Compare the
      * three, `null` for a slot not compared, whose column stays empty.
      */
-    columns: readonly [SlotColumn, ...(SlotColumn | null)[]];
+    columns: readonly [ComparedSlot, ...(ComparedSlot | null)[]];
     unitSystem: UnitSystem;
     /** The session's, in Pa: a slot converts its humidity entry at it. */
     atmosphericPressure: number;
@@ -63,10 +63,10 @@
     return "option" in row ? row.option : row.quantity;
   }
 
-  function entryOf(column: SlotColumn, quantity: Quantity): QuantityEntry {
-    const { inputSlot, outputs } = column;
-    const { position } = outputs;
-    const slotName = outputs.badge.name;
+  function entryOf(slot: ComparedSlot, quantity: Quantity): QuantityEntry {
+    const { inputSlot, computation } = slot;
+    const { position } = computation;
+    const slotName = computation.appearance.name;
     return {
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
@@ -78,7 +78,7 @@
 
   function entriesOf(quantity: Quantity): readonly [QuantityEntry, ...(QuantityEntry | null)[]] {
     const [head, ...rest] = columns;
-    return [entryOf(head, quantity), ...rest.map((column) => column && entryOf(column, quantity))];
+    return [entryOf(head, quantity), ...rest.map((slot) => slot && entryOf(slot, quantity))];
   }
 </script>
 
@@ -91,16 +91,16 @@
     <Stack gap="1">
       <Label for="{id}-option-{index}-0">{option.label}</Label>
       <SlotColumns count={columns.length}>
-        {#each columns as column, position (position)}
+        {#each columns as slot, position (position)}
           <div>
-            {#if column}
-              {@const isOn = column.inputSlot.options.get(option)}
+            {#if slot}
+              {@const isOn = slot.inputSlot.options.get(option)}
               <Inline gap="2" align="center">
                 <Switch
                   id="{id}-option-{index}-{position}"
-                  aria-label={column.outputs.badge.name && copy.slotControl(option.label, column.outputs.badge.name)}
+                  aria-label={slot.computation.appearance.name && copy.slotControl(option.label, slot.computation.appearance.name)}
                   checked={isOn}
-                  onCheckedChange={(checked) => column.inputSlot.setOption(option, checked)}
+                  onCheckedChange={(checked) => slot.inputSlot.setOption(option, checked)}
                 />
                 <span class="caption" aria-hidden="true">{isOn ? copy.on : copy.off}</span>
               </Inline>

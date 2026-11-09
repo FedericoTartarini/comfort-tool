@@ -335,16 +335,16 @@ export class Session {
     return this.#compare;
   }
 
-  /** The slots the outputs are asked about, in slot order: slot 1 always. */
+  /** The slots the computation is asked about, in slot order: slot 1 always. */
   get comparedPositions(): readonly SlotPosition[] {
     return this.#comparedPositions;
   }
 
   /**
-   * Whether each compared slot's badge carries its position name: on the
-   * Standard page while Compare is on, and nowhere else (ADR-0002 decision
-   * 50). Asked here alone; each slot's badge is given from it
-   * (`state/compute.svelte.ts`). A slot not shown has no badge, so the
+   * Whether each compared slot's appearance carries its position name: on
+   * the Standard page while Compare is on, and nowhere else (ADR-0002
+   * decision 50). Asked here alone; each slot's appearance is given from it
+   * (`state/compute.svelte.ts`). A slot not shown has no appearance, so the
    * switch's dialog and the pressure's toast name a slot by position on their
    * own rule (decision 84, rule 4).
    */

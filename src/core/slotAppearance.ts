@@ -18,7 +18,7 @@ import type { SlotPosition } from "./writtenSession";
  */
 export type SlotHue = (typeof palette.slots)[number];
 
-export interface SlotBadge {
+export interface SlotAppearance {
   /** The slot's name while the session names its slots, and absent otherwise; whatever prints the slot prints this and decides nothing. */
   readonly name?: string;
   readonly hue: SlotHue;
@@ -27,8 +27,8 @@ export interface SlotBadge {
 /** The name each position gives its slot while the slots are named, as the slot buttons read it. */
 export const slotNames = [copy.slotName(0), copy.slotName(1), copy.slotName(2)] as const;
 
-/** The badge of the slot at `position`: its hue, and its name while `named`. */
-export function slotBadge(position: SlotPosition, named: boolean): SlotBadge {
+/** The appearance of the slot at `position`: its hue, and its name while `named`. */
+export function slotAppearance(position: SlotPosition, named: boolean): SlotAppearance {
   const hue = palette.slots[position];
   return named ? { name: slotNames[position], hue } : { hue };
 }

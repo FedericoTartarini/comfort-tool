@@ -15,7 +15,7 @@ import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
-import { slotNames } from "./slotBadge";
+import { slotNames } from "./slotAppearance";
 import { standardEntryFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";

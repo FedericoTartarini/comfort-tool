@@ -1,6 +1,6 @@
 import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import type { Address } from "$lib/core/page";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { firstLoadAt } from "./firstLoad";
 import { clearKeptText, readKeptText } from "./keptText";
 import type { OpenSession, Toast } from "./openSession";
@@ -28,7 +28,7 @@ export class Tab {
     this.#ontoast = ontoast;
   }
 
-  /** The open session and its outputs, or `undefined` until the first address opens them. */
+  /** The open session and its computation, or `undefined` until the first address opens them. */
   get opened(): OpenSession | undefined {
     return this.#opened;
   }
@@ -101,7 +101,7 @@ export class Tab {
    */
   #openAt(address: Address, link: string | undefined): void {
     const load = firstLoadAt(address, { link, kept: readKeptText() }, this.#models);
-    this.#opened = { session: load.session, outputs: new Outputs(load.session) };
+    this.#opened = { session: load.session, computation: new Computation(load.session) };
     this.#waitingLink = load.waitingLink;
     this.#declineToasts = load.declineToasts;
     for (const toast of load.toasts) {

@@ -1,11 +1,11 @@
 /**
  * The design's named colours (ADR-0002 decision 66). The charts read them as
- * values, through the chart ink (`core/bandPalette.ts`) and the slot badges
- * (`core/slotBadge.ts`); the interface reads the same hex values as the
- * stylesheet's tokens (`app.css`), and a test holds the two files to one
- * another. Hue is spent on data alone: the slots' hues here, the bands' in
- * the band palette; the interface itself is the brand blue and slate, with
- * red and amber for its two marks, `alert` and `warning`.
+ * values, through the chart ink (`core/bandPalette.ts`) and the slot
+ * appearances (`core/slotAppearance.ts`); the interface reads the same hex
+ * values as the stylesheet's tokens (`app.css`), and a test holds the two
+ * files to one another. Hue is spent on data alone: the slots' hues here, the
+ * bands' in the band palette; the interface itself is the brand blue and
+ * slate, with red and amber for its two marks, `alert` and `warning`.
  */
 export const palette = {
   /**

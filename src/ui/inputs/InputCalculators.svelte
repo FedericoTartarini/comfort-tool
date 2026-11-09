@@ -54,12 +54,12 @@
   import * as Tabs from "$lib/ui/primitives/tabs";
   import CalculatorEnsembleTab from "./CalculatorEnsembleTab.svelte";
   import CalculatorFormTab from "./CalculatorFormTab.svelte";
-  import type { SlotColumn } from "./InputPanel.svelte";
+  import type { ComparedSlot } from "./InputPanel.svelte";
 
   interface Props {
     model: ModelDeclaration;
     /** The page's slot columns, as the input panel takes them, `null` for a slot not compared: the others are those Apply can write. */
-    columns: readonly [SlotColumn, ...(SlotColumn | null)[]];
+    columns: readonly [ComparedSlot, ...(ComparedSlot | null)[]];
     unitSystem: UnitSystem;
     /** The session's, in Pa: a slot's row is read in its entry mode at it. */
     atmosphericPressure: number;
@@ -75,13 +75,13 @@
   const calculators = $derived(panelCalculators(model, columns[0].inputSlot));
   const current = $derived(lastUsed && calculators.includes(lastUsed) ? lastUsed : calculators[0]);
 
-  const enabled = $derived(columns.filter((column) => column !== null));
+  const compared = $derived(columns.filter((slot) => slot !== null));
   /** Whether the slots carry names, Standard with Compare on (decision 50): only then does the footer ask which Apply writes. */
-  const named = $derived(columns[0].outputs.badge.name !== undefined);
+  const named = $derived(columns[0].computation.appearance.name !== undefined);
   /** The slots "Apply to" has checked, by position, slot 1 alone each time the dialog opens. */
   let checked: readonly SlotPosition[] = $state.raw([0]);
   /** The slots Apply writes, in slot order: the checked ones while the slots are named, and slot 1 otherwise. */
-  const targets = $derived(named ? enabled.filter((column) => checked.includes(column.outputs.position)) : [columns[0]]);
+  const targets = $derived(named ? compared.filter((slot) => checked.includes(slot.computation.position)) : [columns[0]]);
 
   let open = $state(false);
 
@@ -97,8 +97,8 @@
 
   /** Apply: each target's row committed as the dock shows it, cut to the row's bound. */
   function apply(calculator: Calculator, calculatorOutputs: CalculatorOutputs) {
-    for (const { outputs } of targets) {
-      calculatorWriter.applyCalculator(outputs.position, calculator, calculatorOutputs);
+    for (const { computation } of targets) {
+      calculatorWriter.applyCalculator(computation.position, calculator, calculatorOutputs);
     }
     open = false;
   }
@@ -146,13 +146,13 @@
                   {@const lineUnit = displayUnitFor(line.quantity, unitSystem)}
                   {@render dockLine(`${index}-${line.quantity.key}`, nameWithUnit(line.name, lineUnit), numberInUnit(line.value, lineUnit))}
                 {/each}
-                {#each targets as { inputSlot, outputs } (outputs.position)}
+                {#each targets as { inputSlot, computation } (computation.position)}
                   {@const row = shownRow(inputSlot, calculator, calculatorOutputs ?? undefined, model, atmosphericPressure)}
                   {@const unit = displayUnitFor(row.quantity, unitSystem)}
                   {@const after = numberInUnit(row.after, unit)}
                   {@render dockLine(
-                    `${index}-row-${outputs.position}`,
-                    nameWithUnit(outputs.badge.name ? copy.slotControl(row.quantity.label, outputs.badge.name) : row.quantity.label, unit),
+                    `${index}-row-${computation.position}`,
+                    nameWithUnit(computation.appearance.name ? copy.slotControl(row.quantity.label, computation.appearance.name) : row.quantity.label, unit),
                     numberInUnit(row.before, unit),
                     row.cutTo ? copy.calculatorCutTo(after, formatBound(row.cutTo, row.quantity, unitSystem)) : after,
                   )}
@@ -192,16 +192,16 @@
   <div class="apply-to" role="group" aria-labelledby="{prefix}-heading">
     <Inline gap="2">
       <span id="{prefix}-heading" class="apply-to-heading">{copy.calculatorApplyTo}</span>
-      {#each enabled as { outputs } (outputs.position)}
+      {#each compared as { computation } (computation.position)}
         <Inline gap="2">
           <Checkbox
-            id="{prefix}-{outputs.position}"
-            checked={checked.includes(outputs.position)}
-            onCheckedChange={(isChecked) => check(outputs.position, isChecked)}
+            id="{prefix}-{computation.position}"
+            checked={checked.includes(computation.position)}
+            onCheckedChange={(isChecked) => check(computation.position, isChecked)}
           />
-          <Label for="{prefix}-{outputs.position}">
-            <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(outputs.badge.hue)}></span>
-            {outputs.badge.name}
+          <Label for="{prefix}-{computation.position}">
+            <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(computation.appearance.hue)}></span>
+            {computation.appearance.name}
           </Label>
         </Inline>
       {/each}

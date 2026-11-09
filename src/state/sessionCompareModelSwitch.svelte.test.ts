@@ -3,7 +3,7 @@
  * holds values is rehearsed, the question lists every held slot's rows,
  * grouped by slot in slot order, and one answer lands the model with every
  * slot or leaves them all. Asserted at the seam the other session tests use —
- * a session in, its state and its outputs out, with no component and no
+ * a session in, its state and its computation out, with no component and no
  * router — and nothing flushes, for the reason `compute.svelte.test.ts` gives.
  *
  * A slot's expected rows and landed values are those of a session holding that
@@ -19,7 +19,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import {
   differenceFromSlot1,
@@ -235,12 +235,12 @@ describe("Session.requestModel while Compare is on", () => {
 
   it("leaves every compared slot's outputs the current model's while the question is pending", () => {
     const session = comparingSlotsEntered(entriesBreaking([0, 2]));
-    const outputs = new Outputs(session);
-    const before = outputs.slots.map((slot) => slot.outputs);
+    const computation = new Computation(session);
+    const before = computation.slots.map((slot) => slot.outputs);
 
     session.requestModel(coolerAndTakesWork);
 
-    outputs.slots.forEach((slot, index) => expect(slot.outputs).toBe(before[index]));
+    computation.slots.forEach((slot, index) => expect(slot.outputs).toBe(before[index]));
     expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], [], []]);
   });
 });

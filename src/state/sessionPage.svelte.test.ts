@@ -1,9 +1,10 @@
 /**
  * The page a session is on (ADR-0002 decision 57): one session serves every
  * page, and the address sets the page as it sets the model. Asserted at the
- * seam the other session tests use — a session in, its state and its outputs
- * out, with no component and no router — and nothing flushes, for the reason
- * `compute.svelte.test.ts` gives. The page is set as the address sets it.
+ * seam the other session tests use — a session in, its state and
+ * its computation out, with no component and no router — and nothing
+ * flushes, for the reason `compute.svelte.test.ts` gives. The page is set
+ * as the address sets it.
  */
 import { describe, expect, it } from "vitest";
 import { bandListOf, type BandList } from "$lib/core/bands";
@@ -22,7 +23,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import { editBands, heldSlot, outputValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
@@ -109,13 +110,13 @@ describe("The page in the session", () => {
 
     expect(session.page).toBe(page.explore);
     expect(session.model).toBe(heatIndexRothfusz);
-    expect(outputValueOf(new Outputs(session).slots[0].outputs, q.hi)).toBeTypeOf("number");
+    expect(outputValueOf(new Computation(session).slots[0].outputs, q.hi)).toBeTypeOf("number");
   });
 
   it("paints Comfort zones and no band on the Standard page's dynamic chart with Compare off", () => {
     const session = new Session(pmvPpdIso);
     session.chart.type = chartType.dynamic;
-    const traces = new Outputs(session).chart?.traces ?? [];
+    const traces = new Computation(session).chart?.traces ?? [];
 
     expect(session.page).toBe(page.standard);
     expect(zoneFillsOf({ traces })).toHaveLength(4);
@@ -127,16 +128,16 @@ describe("The page in the session", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     heldSlot(session, 1).setEntered(q.tdb, 28);
     session.chart.type = chartType.psychrometric;
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     for (const compare of [false, true]) {
       session.setCompare(compare);
-      const traces = outputs.chart?.traces ?? [];
+      const traces = computation.chart?.traces ?? [];
       const fills = zoneFillsOf({ traces });
       const lines = zoneLinesOf({ traces });
-      expect(fills).toHaveLength(4 * outputs.slots.length);
-      expect(lines).toHaveLength(4 * outputs.slots.length);
-      outputs.slots.forEach((slot, position) => {
+      expect(fills).toHaveLength(4 * computation.slots.length);
+      expect(lines).toHaveLength(4 * computation.slots.length);
+      computation.slots.forEach((slot, position) => {
         // Each zone is its own scan's traced, the humidity ratio shown in g/kg.
         const shown = (piece: PathPiece) => ({ x: piece.x, y: piece.y.map((hr) => hrUnit.fromSi(hr)) });
         const own = slot.scan.zones.map(traceRegion);
@@ -144,16 +145,16 @@ describe("The page in the session", () => {
         expect(lines.slice(4 * position, 4 * position + 4).map((line) => line.pieces)).toEqual(own.map((zone) => zone.lines.map(shown)));
       });
       expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
-      expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
+      expect(markedPositions(computation.chart)).toEqual(compare ? [0, 1, 2] : [0]);
     }
   });
 
   it("lays the psychrometric chart out in one order, on Standard with Compare on and on Explore painting the Band list", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     session.chart.type = chartType.psychrometric;
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
-    expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
+    expect(psychrometricLayersOf(computation.chart?.traces ?? [])).toEqual([
       "fill",
       "isoline",
       "line",
@@ -162,10 +163,10 @@ describe("The page in the session", () => {
       "saturationLine",
       "point",
     ]);
-    expect(markedPositions(outputs.chart)).toEqual([0, 1, 2]);
+    expect(markedPositions(computation.chart)).toEqual([0, 1, 2]);
 
     openAt(session, page.explore);
-    expect(psychrometricLayersOf(outputs.chart?.traces ?? [])).toEqual([
+    expect(psychrometricLayersOf(computation.chart?.traces ?? [])).toEqual([
       "fill",
       "isoline",
       "line",
@@ -181,38 +182,38 @@ describe("The page in the session", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       heldSlot(session, 1).setEntered(q.tdb, 28);
       session.chart.type = chartType.dynamic;
-      const outputs = new Outputs(session);
+      const computation = new Computation(session);
       openAt(session, page.explore);
 
       for (const compare of [true, false]) {
         session.setCompare(compare);
         const list = session.chart.bands;
-        const traces = outputs.chart?.traces ?? [];
+        const traces = computation.chart?.traces ?? [];
         const bands = fillsOf(traces);
         expect(list).toEqual(bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)));
         expect(bands.map((band) => [band.label, band.fill])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
         if (list) {
-          expectContiguousFills(traces, list, outputs.slots[0].scan.values);
-          expectEdgesCrossed(traces, list, outputs.slots[0].scan.values);
+          expectContiguousFills(traces, list, computation.slots[0].scan.values);
+          expectEdgesCrossed(traces, list, computation.slots[0].scan.values);
         }
-        expect(markedPositions(outputs.chart)).toEqual([0]);
+        expect(markedPositions(computation.chart)).toEqual([0]);
       }
     });
 
     it("paints the current model's Band list on the psychrometric chart over slot 1's scan, the cover above it, and no zone", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
-      const outputs = new Outputs(session);
-      const zones = () => zoneLinesOf({ traces: outputs.chart?.traces ?? [] });
-      const covers = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
+      const computation = new Computation(session);
+      const zones = () => zoneLinesOf({ traces: computation.chart?.traces ?? [] });
+      const covers = () => (computation.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
       expect(zones()).toHaveLength(12);
       expect(covers()).toHaveLength(1);
       openAt(session, page.explore);
 
       const list = session.chart.bands;
-      const traces = outputs.chart?.traces ?? [];
+      const traces = computation.chart?.traces ?? [];
       const bands = fillsOf(traces);
-      const { values } = outputs.slots[0].scan;
+      const { values } = computation.slots[0].scan;
       expect(bands.map((band) => [band.label, band.fill])).toEqual(list?.labels.map((label, index) => [label, list.colors[index]]));
       expect(values.flat().every((value) => Number.isFinite(value))).toBe(true);
       if (list) {
@@ -221,24 +222,24 @@ describe("The page in the session", () => {
       }
       expect(zones()).toHaveLength(0);
       expect(traces.indexOf(covers()[0])).toBeGreaterThan(traces.indexOf(bands[bands.length - 1]));
-      expect(markedPositions(outputs.chart)).toEqual([0]);
+      expect(markedPositions(computation.chart)).toEqual([0]);
     });
 
     it("moves the psychrometric chart's boundary and its line with an Edge, on the same scan", () => {
       const session = new Session(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
-      const outputs = new Outputs(session);
+      const computation = new Computation(session);
       openAt(session, page.explore);
-      const scan = outputs.slots[0].scan;
+      const scan = computation.slots[0].scan;
 
       editBands(session, (draft) => draft.moveEdge(2, -0.1));
       const list = session.chart.bands;
       expect(list?.edges[2]).toBe(-0.1);
       if (list) {
-        expectContiguousFills(outputs.chart?.traces ?? [], list, scan.values);
-        expectEdgesCrossed(outputs.chart?.traces ?? [], list, scan.values);
+        expectContiguousFills(computation.chart?.traces ?? [], list, scan.values);
+        expectEdgesCrossed(computation.chart?.traces ?? [], list, scan.values);
       }
-      expect(outputs.slots[0].scan).toBe(scan);
+      expect(computation.slots[0].scan).toBe(scan);
     });
 
     it("paints Adaptive's Comfort zones, which have no Band list", () => {
@@ -246,7 +247,7 @@ describe("The page in the session", () => {
       openAt(session, page.explore, adaptiveAshrae);
 
       expect(session.chart.bands).toBeNull();
-      const traces = new Outputs(session).chart?.traces ?? [];
+      const traces = new Computation(session).chart?.traces ?? [];
       expect(zoneFillsOf({ traces }).length).toBeGreaterThan(0);
       expect(linesOf(traces)).toEqual([]);
     });
@@ -273,16 +274,16 @@ describe("The page in the session", () => {
         const session = sessionComparingThreeSlots(pmvPpdIso);
         heldSlot(session, 1).setEntered(q.tdb, 28);
         session.chart.type = type;
-        const outputs = new Outputs(session);
-        expect(markedPositions(outputs.chart)).toEqual([0, 1, 2]);
+        const computation = new Computation(session);
+        expect(markedPositions(computation.chart)).toEqual([0, 1, 2]);
 
         openAt(session, page.explore);
-        expect(outputs.slots.map((slot) => slot.position)).toEqual([0]);
-        expect(markedPositions(outputs.chart)).toEqual([0]);
+        expect(computation.slots.map((slot) => slot.position)).toEqual([0]);
+        expect(markedPositions(computation.chart)).toEqual([0]);
 
         session.setCompare(false);
-        expect(outputs.slots.map((slot) => slot.position)).toEqual([0]);
-        expect(markedPositions(outputs.chart)).toEqual([0]);
+        expect(computation.slots.map((slot) => slot.position)).toEqual([0]);
+        expect(markedPositions(computation.chart)).toEqual([0]);
       });
     }
   });
@@ -295,7 +296,7 @@ describe("The page in the session", () => {
     session.chart.setAxes({ y: q.vr });
     const before = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
     const chart = session.chart;
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     openAt(session, page.explore);
     openAt(session, page.standard);
@@ -305,8 +306,8 @@ describe("The page in the session", () => {
     expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(before);
     expect(session.chart).toBe(chart);
     expect(session.chart.axes?.y).toBe(q.vr);
-    expect(outputs.slots.map((slot) => slot.position)).toEqual([0, 1]);
-    expect(markedPositions(outputs.chart)).toEqual([0, 1]);
+    expect(computation.slots.map((slot) => slot.position)).toEqual([0, 1]);
+    expect(markedPositions(computation.chart)).toEqual([0, 1]);
   });
 
   it("answers a question held on the Standard page with a no when the address moves to Explore on the same model", () => {

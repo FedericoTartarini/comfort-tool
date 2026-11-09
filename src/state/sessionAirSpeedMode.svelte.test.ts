@@ -2,8 +2,8 @@
  * The air-speed entry group at the session (ADR-0002 decision 54): one entry
  * mode for the session, the air speed or the relative air speed, converting
  * every slot that holds values. Asserted at the seam the other session tests
- * use — a session in, its state and its outputs out — and nothing flushes, for
- * the reason `compute.svelte.test.ts` gives.
+ * use — a session in, its state and its computation out — and nothing
+ * flushes, for the reason `compute.svelte.test.ts` gives.
  *
  * Every expected number is the library's own `v_relative`, or what a session
  * in the default mode gives; an air speed the switch back leaves is written
@@ -19,7 +19,7 @@ import { quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
 import {
   differenceFromSlot1,
@@ -78,34 +78,34 @@ describe("the session's air-speed entry mode", () => {
 
   it("moves no output on the switch into relative air speed entry: the entry shows what the model was given", () => {
     const session = threeDifferentSlots();
-    const outputs = new Outputs(session);
-    const before = outputs.slots.map((slot) => outputValueOf(slot.outputs, q.pmv));
+    const computation = new Computation(session);
+    const before = computation.slots.map((slot) => outputValueOf(slot.outputs, q.pmv));
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(outputs.slots.map((slot) => outputValueOf(slot.outputs, q.pmv))).toEqual(before);
+    expect(computation.slots.map((slot) => outputValueOf(slot.outputs, q.pmv))).toEqual(before);
   });
 
   /** What the model returned for each slot: equal before and after only if it was given the same values. */
-  function outputsOfEachSlot(outputs: Outputs) {
-    return outputs.slots.map((slot) => slot.outputs);
+  function outputsOfEachSlot(computation: Computation) {
+    return computation.slots.map((slot) => slot.outputs);
   }
 
   it("gives the air speed back on the switch back, the model given the same relative air speed throughout", () => {
     const session = threeDifferentSlots();
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     const entered = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
-    const before = outputsOfEachSlot(outputs);
+    const before = outputsOfEachSlot(computation);
     expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
     // A third round trip as the first: the number does not ratchet up by the activity's share.
     for (const roundTrip of [1, 2, 3]) {
       session.setAirSpeedMode(airSpeedMode.corrected);
-      expect(outputsOfEachSlot(outputs), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
+      expect(outputsOfEachSlot(computation), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
 
       session.setAirSpeedMode(airSpeedMode.uncorrected);
       expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
-      expect(outputsOfEachSlot(outputs), `back in air speed entry, round ${roundTrip}`).toEqual(before);
+      expect(outputsOfEachSlot(computation), `back in air speed entry, round ${roundTrip}`).toEqual(before);
     }
   });
 
@@ -114,17 +114,17 @@ describe("the session's air-speed entry mode", () => {
   // own rounding and no further, and the model is given what it was given.
   it("gives an air speed finer than the library's 0.001 back at the shown precision, and the same from then on", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.slots[0].setEntered(q.met, 2);
     session.slots[0].setEntered(q.v, 0.1234);
-    const before = outputs.slots[0].outputs;
+    const before = computation.slots[0].outputs;
 
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
     const restored = session.slots[0].values.get(q.v);
     expect(restored).toBeCloseTo(0.123, 2);
-    expect(outputs.slots[0].outputs).toEqual(before);
+    expect(computation.slots[0].outputs).toEqual(before);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
@@ -145,12 +145,12 @@ describe("the session's air-speed entry mode", () => {
 
     it("is cut to an air speed of 0, the air speed's bound, and calculated (ADR-0002 decision 84, rule 5)", () => {
       const session = switchedBack();
-      const outputs = new Outputs(session);
+      const computation = new Computation(session);
 
       expect(session.slots[0].values.get(q.v)).toBe(0);
       expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
       expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-      expect(outputs.slots[0].outputs).not.toBeNull();
+      expect(computation.slots[0].outputs).not.toBeNull();
     });
   });
 
@@ -164,7 +164,7 @@ describe("the session's air-speed entry mode", () => {
     derived.slots[0].setEntered(q.met, met);
     derived.slots[0].setEntered(q.v, v);
 
-    expect(new Outputs(entered).slots[0].outputs).toEqual(new Outputs(derived).slots[0].outputs);
+    expect(new Computation(entered).slots[0].outputs).toEqual(new Computation(derived).slots[0].outputs);
   });
 
   it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode", () => {
@@ -188,7 +188,7 @@ describe("the session's air-speed entry mode", () => {
     const first = threeDifferentSlots();
     first.setAirSpeedMode(airSpeedMode.corrected);
     first.setTemperatureMode(temperatureMode.operative);
-    const outputs = new Outputs(first);
+    const computation = new Computation(first);
 
     expect(first.temperatureMode).toBe(temperatureMode.operative);
     slotPositions.forEach((position) => {
@@ -196,64 +196,64 @@ describe("the session's air-speed entry mode", () => {
       expect(heldSlot(first, position).values.has(q.vr)).toBe(true);
     });
     expect(first.comparedPositions.map((position) => outOfRangeQuantitiesAt(first, position))).toEqual([[], [], []]);
-    expect(outputs.chart).not.toBeNull();
+    expect(computation.chart).not.toBeNull();
   });
 
   it("reports a relative air speed the run breaks on the row entered: the air speed's, then its own", () => {
     // PMV (ASHRAE 55) with the air-speed control off: 0.15 m/s at met 1.29 is a vr of 0.237,
     // over the 0.2 m/s the standard allows at this operative temperature.
     const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     for (const [quantity, value] of [[q.tdb, 22], [q.tr, 22], [q.v, 0.15], [q.met, 1.29]] as const) {
       session.slots[0].setEntered(quantity, value);
     }
-    expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
+    expect(computation.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.vr, q.vr]]);
+    expect(computation.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.vr, q.vr]]);
   });
 
   it("calculates an air speed the model is given past its relative-air-speed row, reporting it on the air speed's row, and cuts it to the row as an entered relative air speed", () => {
     const bound = pmvPpdIso.info.inputs.vr?.applicability;
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.slots[0].setEntered(q.met, 2);
     // 0.8 m/s at 2 met is a relative air speed of 1.1 m/s, past the model's 1.
     session.slots[0].setEntered(q.v, 0.8);
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].outputs).not.toBeNull();
-    expect(outputs.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({ bounded: q.vr, bound });
+    expect(computation.slots[0].outputs).not.toBeNull();
+    expect(computation.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({ bounded: q.vr, bound });
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
     expect(enteredBound(pmvPpdIso, q.vr, session.slots[0], session.atmosphericPressure)).toEqual(bound);
     expect(session.slots[0].values.get(q.vr)).toBe(bound?.max);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].outputs).not.toBeNull();
+    expect(computation.slots[0].outputs).not.toBeNull();
   });
 });
 
 describe("the dynamic chart under the session's air-speed entry mode", () => {
-  function markerOf(outputs: Outputs): PointTrace | undefined {
-    return outputs.chart?.traces.find((trace): trace is PointTrace => trace.kind === "point");
+  function markerOf(computation: Computation): PointTrace | undefined {
+    return computation.chart?.traces.find((trace): trace is PointTrace => trace.kind === "point");
   }
 
   it("offers and draws the relative air speed where it offered the air speed", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.chart.type = chartType.dynamic;
-    expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
+    expect(computation.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.vr });
-    expect(outputs.drawnAxes?.choices).toContain(q.vr);
-    expect(outputs.drawnAxes?.choices).not.toContain(q.v);
-    expect(outputs.chart?.layout.y.title).toContain(q.vr.label);
-    expect(markerOf(outputs)?.y).toBe(session.slots[0].values.get(q.vr));
+    expect(computation.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.vr });
+    expect(computation.drawnAxes?.choices).toContain(q.vr);
+    expect(computation.drawnAxes?.choices).not.toContain(q.v);
+    expect(computation.chart?.layout.y.title).toContain(q.vr.label);
+    expect(markerOf(computation)?.y).toBe(session.slots[0].values.get(q.vr));
   });
 });
 
@@ -312,7 +312,7 @@ describe("a model switch under relative air speed entry", () => {
 
   it("switches without asking to a model whose relative-air-speed row the air speed breaks, and reports it on the air speed's row", () => {
     const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.slots[0].setEntered(q.met, 2);
     // A relative air speed of 1.8 m/s: inside ASHRAE 55's 2, past ISO 7730's 1.
     session.slots[0].setEntered(q.v, 1.5);
@@ -322,8 +322,8 @@ describe("a model switch under relative air speed entry", () => {
     expect(listedRowsOf(session)).toBeUndefined();
     expect(session.model).toBe(pmvPpdIso);
     expect(session.slots[0].values.get(q.v)).toBe(1.5);
-    expect(outputs.slots[0].outputs).not.toBeNull();
-    expect(outputs.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({
+    expect(computation.slots[0].outputs).not.toBeNull();
+    expect(computation.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({
       bounded: q.vr,
       bound: pmvPpdIso.info.inputs.vr?.applicability,
     });
@@ -334,11 +334,11 @@ describe("a model switch under relative air speed entry", () => {
   // the relative air speed the PMV model takes is not (ADR-0002 decision 54).
   it("returns to air speed entry through a model without the group, holding the inverted air speed, and gives the model its relative air speed back", () => {
     const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.slots[0].setEntered(q.met, 2);
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.slots[0].setEntered(q.vr, 1.9);
-    const before = outputs.slots[0].outputs;
+    const before = computation.slots[0].outputs;
     expect(before).not.toBeNull();
 
     session.setModel(adaptiveAshrae);
@@ -351,6 +351,6 @@ describe("a model switch under relative air speed entry", () => {
 
     expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
     expect(v_relative(1.6, 2)).toBe(1.9);
-    expect(outputs.slots[0].outputs).toEqual(before);
+    expect(computation.slots[0].outputs).toEqual(before);
   });
 });

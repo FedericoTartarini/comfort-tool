@@ -1,8 +1,8 @@
 /**
  * The session is built from a written session and reads itself out as one
  * (ADR-0002 decision 63, rules 1 and 10), asserted at the seam the other
- * session tests use: a session in, its state and its outputs out, with no
- * component and no router. The expected state after a round trip is the
+ * session tests use: a session in, its state and its computation out, with
+ * no component and no router. The expected state after a round trip is the
  * session's own state before it, read through its public readers, so a
  * field the read-out drops is caught even where building would drop it too.
  *
@@ -19,7 +19,7 @@ import { startingSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, slotPositions, type ChartState } from "./session.svelte";
 import {
   differenceFromSlot1,
@@ -62,15 +62,15 @@ function stateOf(session: Session) {
   };
 }
 
-/** What the page shows of the outputs: each compared slot's outputs and rows, and the chart. */
-function shownOf(outputs: Outputs) {
+/** What the page shows of the computation: each compared slot's outputs and rows, and the chart. */
+function shownOf(computation: Computation) {
   return {
-    slots: outputs.slots.map((slot) => ({
+    slots: computation.slots.map((slot) => ({
       position: slot.position,
       outputs: slot.outputs,
       violations: slot.violations,
     })),
-    chart: outputs.chart,
+    chart: computation.chart,
   };
 }
 
@@ -116,7 +116,7 @@ describe("a session built on a model alone", () => {
       const onStart = new Session(startingSession(model));
 
       expect(stateOf(onStart), model.info.label).toEqual(stateOf(onModel));
-      expect(shownOf(new Outputs(onStart)), model.info.label).toEqual(shownOf(new Outputs(onModel)));
+      expect(shownOf(new Computation(onStart)), model.info.label).toEqual(shownOf(new Computation(onModel)));
       expect(onModel.toWrittenSession(), model.info.label).toEqual(startingSession(model));
     }
   });
@@ -138,17 +138,17 @@ describe("a session read out and built again", () => {
   it("gives the same outputs, with the pressure out of range and back in it", () => {
     const session = editedSession();
     const again = rebuilt(session);
-    const outputs = new Outputs(session);
-    const againOutputs = new Outputs(again);
+    const computation = new Computation(session);
+    const againComputation = new Computation(again);
 
-    expect(shownOf(againOutputs)).toEqual(shownOf(outputs));
+    expect(shownOf(againComputation)).toEqual(shownOf(computation));
     expect(isAtmosphericPressureOutOfRange(again.atmosphericPressure)).toBe(true);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
     again.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
-    expect(shownOf(againOutputs)).toEqual(shownOf(outputs));
+    expect(shownOf(againComputation)).toEqual(shownOf(computation));
     expect(again.comparedPositions.map((position) => outOfRangeQuantitiesAt(again, position))).toEqual([[], [], [q.operative_tmp]]);
-    expect(againOutputs.chart).not.toBeNull();
+    expect(againComputation.chart).not.toBeNull();
   });
 
   it("keeps every slot that holds values in slot 1's entry modes", () => {

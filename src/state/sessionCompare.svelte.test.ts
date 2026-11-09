@@ -1,9 +1,9 @@
 /**
  * Compare (ADR-0002 decisions 50 and 52): the session holds whether Compare is
- * on and which of slots 2 and 3 are enabled, and the outputs are asked about
- * the compared slots, each with its own gate. Asserted at the seam the other
- * session tests use — a session in, its state and its outputs out, with no
- * component and no router — and nothing flushes, for the reason
+ * on and which of slots 2 and 3 are enabled, and the computation is asked
+ * about the compared slots, each with its own gate. Asserted at the seam the
+ * other session tests use — a session in, its state and its computation out,
+ * with no component and no router — and nothing flushes, for the reason
  * `compute.svelte.test.ts` gives.
  *
  * A compared slot's expected outputs are the ones a session holding that slot
@@ -28,7 +28,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import {
   differenceFromSlot1,
@@ -45,9 +45,9 @@ import {
 
 const q = quantities;
 
-/** The positions of the slots the outputs are asked about, in the order they are given. */
-function positionsAskedAbout(outputs: Outputs): SlotPosition[] {
-  return outputs.slots.map((slot) => slot.position);
+/** The positions of the slots the computation is asked about, in the order they are given. */
+function positionsAskedAbout(computation: Computation): SlotPosition[] {
+  return computation.slots.map((slot) => slot.position);
 }
 
 /** The outputs a session holding only a slot entered with `entries` gives slot 1. */
@@ -56,10 +56,10 @@ function outputsAlone(entries: ReadonlyMap<Quantity, number>) {
   for (const [quantity, value] of entries) {
     session.slots[0].setEntered(quantity, value);
   }
-  return new Outputs(session).slots[0].outputs;
+  return new Computation(session).slots[0].outputs;
 }
 
-/** `pmvPpdIso`, counting every call the outputs make of it. */
+/** `pmvPpdIso`, counting every call the computation makes of it. */
 function modelCountingRuns(): { model: ModelDeclaration; runs: () => number } {
   let runs = 0;
   const model = {
@@ -75,13 +75,13 @@ function modelCountingRuns(): { model: ModelDeclaration; runs: () => number } {
 describe("Compare in the session", () => {
   it("starts off, with slot 1 alone compared and slots 2 and 3 holding nothing", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     expect(session.compare).toBe(false);
     expect(session.slots[1]).toBeNull();
     expect(session.slots[2]).toBeNull();
-    expect(positionsAskedAbout(outputs)).toEqual([0]);
-    expect(outputs.slots[0].outputs).not.toBeNull();
+    expect(positionsAskedAbout(computation)).toEqual([0]);
+    expect(computation.slots[0].outputs).not.toBeNull();
   });
 
   it("enables slots 1 and 2 at the first switch-on, slot 2 holding what slot 1 holds, entry modes and options included, moved by its Slot offset", () => {
@@ -100,7 +100,7 @@ describe("Compare in the session", () => {
       shownDifferences([q.operative_tmp, 1.5], [q.v, 0.1], [q.met, 0.15], [q.clo, 0.11]),
     );
     expect(session.slots[2]).toBeNull();
-    expect(positionsAskedAbout(new Outputs(session))).toEqual([0, 1]);
+    expect(positionsAskedAbout(new Computation(session))).toEqual([0, 1]);
   });
 
   it("keeps which slots were enabled and what each holds when Compare is switched off and on again", () => {
@@ -112,26 +112,26 @@ describe("Compare in the session", () => {
     const held = session.slots.map((slot) => (slot ? shapeOf(slot) : null));
 
     session.setCompare(false);
-    expect(positionsAskedAbout(new Outputs(session))).toEqual([0]);
+    expect(positionsAskedAbout(new Computation(session))).toEqual([0]);
     session.setCompare(true);
 
     expect(slotPositions.map((position) => session.isSlotEnabled(position))).toEqual([true, false, true]);
     expect(session.slots.map((slot) => (slot ? shapeOf(slot) : null))).toEqual(held);
-    expect(positionsAskedAbout(new Outputs(session))).toEqual([0, 2]);
+    expect(positionsAskedAbout(new Computation(session))).toEqual([0, 2]);
   });
 
   it("compares slot 1 whatever else is enabled or off", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     session.setCompare(true);
     session.setSlotEnabled(1, false);
     expect(session.isSlotEnabled(0)).toBe(true);
-    expect(positionsAskedAbout(outputs)).toEqual([0]);
+    expect(positionsAskedAbout(computation)).toEqual([0]);
 
     session.setCompare(false);
     expect(session.isSlotEnabled(0)).toBe(true);
-    expect(positionsAskedAbout(outputs)).toEqual([0]);
+    expect(positionsAskedAbout(computation)).toEqual([0]);
   });
 
   it("gives a slot enabled again what it held, not a new copy of slot 1", () => {
@@ -284,36 +284,36 @@ describe("the Slot offsets of a slot first enabled", () => {
 describe("the outputs of the compared slots", () => {
   it("give each compared slot its own outputs, the ones a session holding that slot alone gives", () => {
     const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(pmvPpdIso));
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     heldSlot(session, 1).setEntered(q.tdb, 22);
     heldSlot(session, 2).setEntered(q.clo, 1);
 
-    expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
-    expect(outputs.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>()));
-    expect(outputs.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 22]])));
-    expect(outputs.slots[2].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.clo, 1]])));
-    expect(outputs.slots[1].outputs).not.toEqual(outputs.slots[0].outputs);
+    expect(positionsAskedAbout(computation)).toEqual([0, 1, 2]);
+    expect(computation.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>()));
+    expect(computation.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 22]])));
+    expect(computation.slots[2].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.clo, 1]])));
+    expect(computation.slots[1].outputs).not.toEqual(computation.slots[0].outputs);
   });
 
   it("give a slot that is not compared no outputs, and do not run the model for it", () => {
     const { model, runs } = modelCountingRuns();
     const session = new Session(model);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
     session.setSlotEnabled(1, false);
-    void outputs.slots.map((slot) => slot.outputs);
+    void computation.slots.map((slot) => slot.outputs);
     const before = runs();
 
     heldSlot(session, 1).setEntered(q.tdb, 22);
-    void outputs.slots.map((slot) => slot.outputs);
+    void computation.slots.map((slot) => slot.outputs);
 
-    expect(positionsAskedAbout(outputs)).toEqual([0]);
+    expect(positionsAskedAbout(computation)).toEqual([0]);
     expect(runs()).toBe(before);
   });
 
   it("each show the run of their own slot as it is, an out-of-range one's too, and name its quantities", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
     enterSlot1ValuesInOthers(session);
 
@@ -322,42 +322,42 @@ describe("the outputs of the compared slots", () => {
     session.slots[0].setEntered(q.tdb, 24);
 
     expect(outOfRangeQuantitiesAt(session, 1)).toEqual([q.tdb]);
-    expect(outputs.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 35]])));
+    expect(computation.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 35]])));
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 24]])));
+    expect(computation.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 24]])));
   });
 
   it("run the model once for an edit to one slot, for that slot", () => {
     const { model, runs } = modelCountingRuns();
     const session = new Session(model);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
     session.setSlotEnabled(2, true);
-    void outputs.slots.map((slot) => slot.outputs);
-    const first = outputs.slots[0].outputs;
-    const third = outputs.slots[2].outputs;
+    void computation.slots.map((slot) => slot.outputs);
+    const first = computation.slots[0].outputs;
+    const third = computation.slots[2].outputs;
     const before = runs();
 
     heldSlot(session, 1).setEntered(q.tdb, 22);
-    void outputs.slots.map((slot) => slot.outputs);
+    void computation.slots.map((slot) => slot.outputs);
 
     expect(runs()).toBe(before + 1);
-    expect(outputs.slots[0].outputs).toBe(first);
-    expect(outputs.slots[2].outputs).toBe(third);
+    expect(computation.slots[0].outputs).toBe(first);
+    expect(computation.slots[2].outputs).toBe(third);
   });
 
   // A switch seeds every slot that holds values, so a compared slot holds
   // what the new model runs on: here PMV (ASHRAE 55)'s option.
   it("calculate every compared slot after a switch to a model they held nothing of", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
     enterSlot1ValuesInOthers(session);
 
     session.setModel(pmvPpdAshrae);
 
     expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], []]);
-    expect(outputs.slots[1].outputs).toEqual(outputs.slots[0].outputs);
+    expect(computation.slots[1].outputs).toEqual(computation.slots[0].outputs);
   });
 });
 
@@ -385,62 +385,62 @@ function chartAlone(entries: ReadonlyMap<Quantity, number>): ChartSpec | null {
   for (const [quantity, value] of entries) {
     session.slots[0].setEntered(quantity, value);
   }
-  return new Outputs(session).chart;
+  return new Computation(session).chart;
 }
 
-describe("the compared slots' badges", () => {
-  /** The name each compared slot's badge carries, in slot order: `undefined` for a slot not named. */
-  function badgeNamesOf(outputs: Outputs): (string | undefined)[] {
-    return outputs.slots.map((slot) => slot.badge.name);
+describe("the compared slots' appearances", () => {
+  /** The name each compared slot's appearance carries, in slot order: `undefined` for a slot not named. */
+  function appearanceNamesOf(computation: Computation): (string | undefined)[] {
+    return computation.slots.map((slot) => slot.appearance.name);
   }
 
   /** The labels of the chart's marker entries in its legend, in slot order. */
-  function markerEntriesOf(outputs: Outputs): string[] {
-    return (outputs.chart?.legend ?? []).filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
+  function markerEntriesOf(computation: Computation): string[] {
+    return (computation.chart?.legend ?? []).filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
   }
 
   it("names no slot on the Standard page with Compare off, and the marker reads Input", () => {
-    const outputs = new Outputs(new Session(pmvPpdIso));
-    expect(badgeNamesOf(outputs)).toEqual([undefined]);
-    expect(markerEntriesOf(outputs)).toEqual(["Input"]);
+    const computation = new Computation(new Session(pmvPpdIso));
+    expect(appearanceNamesOf(computation)).toEqual([undefined]);
+    expect(markerEntriesOf(computation)).toEqual(["Input"]);
   });
 
   it("names every compared slot by position while Compare is on, slots 2 and 3 disabled or not", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
-    expect(badgeNamesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
-    expect(markerEntriesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    const computation = new Computation(session);
+    expect(appearanceNamesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(markerEntriesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
     session.setSlotEnabled(1, false);
     session.setSlotEnabled(2, false);
-    expect(badgeNamesOf(outputs)).toEqual(["Input 1"]);
-    expect(markerEntriesOf(outputs)).toEqual(["Input 1"]);
+    expect(appearanceNamesOf(computation)).toEqual(["Input 1"]);
+    expect(markerEntriesOf(computation)).toEqual(["Input 1"]);
   });
 
   it("follows Compare: switched off, the slot is unnamed again, and on, named again", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(false);
-    expect(badgeNamesOf(outputs)).toEqual([undefined]);
+    expect(appearanceNamesOf(computation)).toEqual([undefined]);
     session.setCompare(true);
-    expect(badgeNamesOf(outputs)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(appearanceNamesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("names no slot on Explore, whatever Compare holds", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     session.setAddress({ page: page.explore, model: pmvPpdIso });
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     expect(session.compare).toBe(true);
-    expect(badgeNamesOf(outputs)).toEqual([undefined]);
-    expect(markerEntriesOf(outputs)).toEqual(["Input"]);
+    expect(appearanceNamesOf(computation)).toEqual([undefined]);
+    expect(markerEntriesOf(computation)).toEqual(["Input"]);
   });
 
   it("keeps each slot's hue by position, named or not", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
-    expect(outputs.slots.map((slot) => slot.badge.hue)).toEqual(palette.slots);
+    const computation = new Computation(session);
+    expect(computation.slots.map((slot) => slot.appearance.hue)).toEqual(palette.slots);
     session.setCompare(false);
-    expect(outputs.slots.map((slot) => slot.badge.hue)).toEqual([palette.slots[0]]);
+    expect(computation.slots.map((slot) => slot.appearance.hue)).toEqual([palette.slots[0]]);
   });
 });
 
@@ -449,40 +449,40 @@ describe("the charts of the compared slots", () => {
 
   it("draw two slots that differ in clothing as two zones that differ, and two markers at their own values", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
     enterSlot1ValuesInOthers(session);
     heldSlot(session, 1).setEntered(q.clo, 1);
 
     const alone = chartAlone(moreClothing);
-    expect(zoneShapesOf(outputs.chart, 1)).toEqual(zoneShapesOf(alone, 0));
-    expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(zoneShapesOf(outputs.chart, 0));
-    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(alone, 0));
-    expect(markerAt(outputs.chart, 0)).toEqual(markerAt(chartAlone(new Map()), 0));
+    expect(zoneShapesOf(computation.chart, 1)).toEqual(zoneShapesOf(alone, 0));
+    expect(zoneShapesOf(computation.chart, 1)).not.toEqual(zoneShapesOf(computation.chart, 0));
+    expect(markerAt(computation.chart, 1)).toEqual(markerAt(alone, 0));
+    expect(markerAt(computation.chart, 0)).toEqual(markerAt(chartAlone(new Map()), 0));
   });
 
   it("draw a slot out of range at the slot as it is", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setCompare(true);
-    void outputs.chart;
+    void computation.chart;
 
     // 35 °C is past ISO 7730's 30 °C, written past the commit's judgement.
     heldSlot(session, 1).setEntered(q.tdb, 35);
 
-    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(chartAlone(new Map<Quantity, number>([[q.tdb, 35]])), 0));
+    expect(markerAt(computation.chart, 1)).toEqual(markerAt(chartAlone(new Map<Quantity, number>([[q.tdb, 35]])), 0));
   });
 
   it("draw no zone and no marker of a slot that is disabled", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
-    expect(markerAt(outputs.chart, 2)).toBeDefined();
+    const computation = new Computation(session);
+    expect(markerAt(computation.chart, 2)).toBeDefined();
 
     session.setSlotEnabled(2, false);
 
-    expect(zoneShapesOf(outputs.chart, 2)).toEqual([]);
-    expect(markerAt(outputs.chart, 2)).toBeUndefined();
-    expect(markerAt(outputs.chart, 1)).toBeDefined();
+    expect(zoneShapesOf(computation.chart, 2)).toEqual([]);
+    expect(markerAt(computation.chart, 2)).toBeUndefined();
+    expect(markerAt(computation.chart, 1)).toBeDefined();
   });
 
   describe("on the dynamic chart", () => {
@@ -497,9 +497,9 @@ describe("the charts of the compared slots", () => {
       session.chart.type = chartType.dynamic;
       prepare(session);
       const before = runs();
-      const outputs = new Outputs(session);
-      void outputs.slots[0].outputs;
-      void outputs.chart;
+      const computation = new Computation(session);
+      void computation.slots[0].outputs;
+      void computation.chart;
       return runs() - before;
     }
 
@@ -509,18 +509,18 @@ describe("the charts of the compared slots", () => {
       session.chart.type = chartType.dynamic;
       session.setCompare(true);
       enterSlot1ValuesInOthers(session);
-      const outputs = new Outputs(session);
+      const computation = new Computation(session);
       const readEverything = () => {
-        void outputs.slots.map((slot) => slot.outputs);
-        void outputs.chart;
+        void computation.slots.map((slot) => slot.outputs);
+        void computation.chart;
       };
       readEverything();
-      return { model, session, outputs, runs, readEverything };
+      return { model, session, computation, runs, readEverything };
     }
 
     it("scan once for an edit to one slot", () => {
-      const { model, session, outputs, runs, readEverything } = twoSlotsOnTheDynamicChart();
-      const first = zoneShapesOf(outputs.chart, 0);
+      const { model, session, computation, runs, readEverything } = twoSlotsOnTheDynamicChart();
+      const first = zoneShapesOf(computation.chart, 0);
       const edited = onePassOf(model, runs, (alone) => alone.slots[0].setEntered(q.clo, 1));
       const before = runs();
 
@@ -528,8 +528,8 @@ describe("the charts of the compared slots", () => {
       readEverything();
 
       expect(runs()).toBe(before + edited);
-      expect(zoneShapesOf(outputs.chart, 0)).toEqual(first);
-      expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(first);
+      expect(zoneShapesOf(computation.chart, 0)).toEqual(first);
+      expect(zoneShapesOf(computation.chart, 1)).not.toEqual(first);
     });
 
     it("scan once for a slot first enabled, the slot enabled", () => {
@@ -751,12 +751,12 @@ describe("the session's entry modes", () => {
 
   it("moves no marker off the value its slot's input shows", () => {
     const session = threeDifferentSlots(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     for (const mode of [temperatureMode.operative, temperatureMode.separate]) {
       session.setTemperatureMode(mode);
       slotPositions.forEach((position) => {
-        expect(markerAt(outputs.chart, position)?.x).toBe(heldSlot(session, position).values.get(mode.axis));
+        expect(markerAt(computation.chart, position)?.x).toBe(heldSlot(session, position).values.get(mode.axis));
       });
     }
   });
@@ -764,8 +764,8 @@ describe("the session's entry modes", () => {
 
 describe("the compared slots' scans", () => {
   /** The slot's scan in `frameOf`'s frame, of the slot as it is. */
-  function expectScansOf(session: Session, outputs: Outputs, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
-    for (const slot of outputs.slots) {
+  function expectScansOf(session: Session, computation: Computation, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
+    for (const slot of computation.slots) {
       const held = heldSlot(session, slot.position).toSlot();
       // The same scan, whose reader of a Band's region is its own.
       expect(slot.scan).toEqual({ ...scannedField(frameOf(entryModesOf(held), session.atmosphericPressure), held), regionWithin: expect.any(Function) });
@@ -776,42 +776,42 @@ describe("the compared slots' scans", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     heldSlot(session, 1).setEntered(q.tdb, 28);
     session.chart.type = chartType.psychrometric;
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
-    expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
-    expectScansOf(session, outputs, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
+    expect(positionsAskedAbout(computation)).toEqual([0, 1, 2]);
+    expectScansOf(session, computation, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
   });
 
   it("are each drawn slot's own of the dynamic chart while it is on screen", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     heldSlot(session, 1).setEntered(q.tdb, 28);
     session.chart.type = chartType.dynamic;
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     const axes = session.chart.axes;
     if (!axes) throw new Error("PMV (ISO 7730) declares a dynamic chart");
-    expectScansOf(session, outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
+    expectScansOf(session, computation, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
   });
 
   it("are none while the adaptive chart is on screen", () => {
     const session = new Session(adaptiveAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
-    expect(outputs.chart).not.toBeNull();
-    expect(() => outputs.slots[0].scan).toThrow();
+    expect(computation.chart).not.toBeNull();
+    expect(() => computation.slots[0].scan).toThrow();
   });
 
   it("change for an edit to slot 1 on its own, the others' kept as the same objects", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     session.chart.type = chartType.psychrometric;
-    const outputs = new Outputs(session);
-    void outputs.chart;
-    const before = outputs.slots.map((slot) => slot.scan);
+    const computation = new Computation(session);
+    void computation.chart;
+    const before = computation.slots.map((slot) => slot.scan);
 
     session.slots[0].setEntered(q.tdb, 27);
-    void outputs.chart;
+    void computation.chart;
 
-    const after = outputs.slots.map((slot) => slot.scan);
+    const after = computation.slots.map((slot) => slot.scan);
     expect(after[0]).not.toBe(before[0]);
     expect(after.slice(1)).toEqual(before.slice(1));
     after.slice(1).forEach((scan, index) => expect(scan).toBe(before[index + 1]));

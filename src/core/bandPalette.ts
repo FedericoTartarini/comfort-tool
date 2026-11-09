@@ -2,7 +2,7 @@ import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO, UTCI_I
 import { classifierOf } from "./modelDeclaration";
 import { lettering, palette } from "./palette";
 import { quantities } from "./quantities";
-import type { SlotHue } from "./slotBadge";
+import type { SlotHue } from "./slotAppearance";
 
 /**
  * The band palettes of the app (ADR-0002 decisions 60 and 66). A classifier's
@@ -13,7 +13,7 @@ import type { SlotHue } from "./slotBadge";
  * The result table's Band badges read their fill and lettering from here
  * (`core/resultCell.ts`), as Explore's default Band list does its colours
  * (`core/bands.ts`), and both charts' chrome ink; a slot's own
- * ink is its hue (`core/slotBadge.ts`).
+ * ink is its hue (`core/slotAppearance.ts`).
  */
 
 /** Colours by count, first first, as its source lists them. */
@@ -177,7 +177,7 @@ export function letteringOn(fill: string): string {
 
 /**
  * Chart ink. Not bands — the Comfort zones and the markers are in their
- * slot's hue (`core/slotBadge.ts`), the isolines are neutral chrome, and a
+ * slot's hue (`core/slotAppearance.ts`), the isolines are neutral chrome, and a
  * Band's Edge is one neutral line whatever the band's own colour. The chrome
  * is the interface's slate (`core/palette.ts`), so the page is one palette.
  */

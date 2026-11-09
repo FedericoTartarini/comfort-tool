@@ -20,7 +20,7 @@
     presets: readonly Preset[];
     /** The unit the list shows each preset's value in: the box's. */
     unit: DisplayUnit;
-    /** The slot's badge's name, while the slots are named: the button is named for it. */
+    /** The name the slot's appearance carries while the slots are named: the button is named for it. */
     slotName?: string;
     /** Whether the slot takes an SI value as it is, as the box judges a typed value; every one, without it. */
     isLegal?: (si: number) => boolean;

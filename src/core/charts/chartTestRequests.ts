@@ -9,7 +9,7 @@
 import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "$lib/core/quantities";
 import { entryModesOf, type Slot, type ValueEntryModes } from "$lib/core/slot";
-import { slotBadge } from "$lib/core/slotBadge";
+import { slotAppearance } from "$lib/core/slotAppearance";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import type { SlotPosition } from "$lib/core/writtenSession";
 import type { ChartedSlot, ChartRequest } from "./chartRequest";
@@ -21,7 +21,7 @@ export function chartRequestFor(
   system: UnitSystem = unitSystem.si,
   modes: ValueEntryModes = entryModesOf(slot),
 ): ChartRequest {
-  return requestOf(model, [{ ...slotBadge(0, false), slot }], system, modes);
+  return requestOf(model, [{ ...slotAppearance(0, false), slot }], system, modes);
 }
 
 /**
@@ -36,7 +36,7 @@ export function chartRequestForSlots(
   system: UnitSystem = unitSystem.si,
   modes: ValueEntryModes = entryModesOf(slots[0]),
 ): ChartRequest {
-  const charted = slots.map((slot, position) => ({ ...slotBadge(position as SlotPosition, true), slot }));
+  const charted = slots.map((slot, position) => ({ ...slotAppearance(position as SlotPosition, true), slot }));
   return requestOf(model, charted, system, modes);
 }
 

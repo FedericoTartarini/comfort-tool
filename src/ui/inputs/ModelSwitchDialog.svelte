@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { slotNames } from "$lib/core/slotBadge";
+  import { slotNames } from "$lib/core/slotAppearance";
   import { displayUnitFor, numberWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { PendingSwitch } from "$lib/state/session.svelte";

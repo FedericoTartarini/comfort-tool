@@ -61,12 +61,12 @@
       watched = opened;
       brokenBefore = new Map();
     }
-    for (const slot of opened.outputs.slots) {
+    for (const slot of opened.computation.slots) {
       if (breaksNewLimit(brokenBefore.get(slot.position) ?? [], slot.violations)) {
-        raiseLimitsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.badge.name);
+        raiseLimitsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.appearance.name);
       }
     }
-    brokenBefore = new Map([...brokenBefore, ...opened.outputs.slots.map((slot) => [slot.position, slot.violations] as const)]);
+    brokenBefore = new Map([...brokenBefore, ...opened.computation.slots.map((slot) => [slot.position, slot.violations] as const)]);
   });
 
   setOpenSession(() => {

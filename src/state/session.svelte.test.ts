@@ -3,10 +3,10 @@
  * model and a slot it can run on land together. The rehearsal that works the
  * slot out is a pure function in `core/`, but every rule in it is observable
  * from the session, so this is the only seam it is asserted at — a session in,
- * its state and its outputs out, with no component and no router.
+ * its state and its computation out, with no component and no router.
  *
- * Nothing flushes, for the reason `compute.svelte.test.ts` gives: the outputs
- * are a derivation, so reading one after a change is what recomputes it.
+ * Nothing flushes, for the reason `compute.svelte.test.ts` gives: the
+ * computation is a derivation, so reading it after a change recomputes it.
  *
  * Each fixture here spreads PMV (ISO 7730)'s declaration and overrides the one
  * thing it is about; the options block uses the registered PMV (ASHRAE 55)
@@ -23,7 +23,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
 import { outOfRangeQuantitiesAt, outputValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
@@ -102,13 +102,13 @@ describe("the humidity entry", () => {
 describe("Session.setModel", () => {
   it("seeds a quantity the slot lacks from the new model's default, and the run then completes", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.wme)).toBe(0.4);
-    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBe(0.4);
-    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(computation.slots[0].outputs, q.wme)).toBe(0.4);
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
   it("keeps the values already in the slot, whichever model put them there", () => {
@@ -238,13 +238,13 @@ describe("Session.requestModel", () => {
    */
   it("holds outputs the model it names could have produced", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
-    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBeUndefined();
+    const computation = new Computation(session);
+    expect(outputValueOf(computation.slots[0].outputs, q.wme)).toBeUndefined();
 
     session.requestModel(takesExternalWork);
 
-    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBe(0.4);
-    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(computation.slots[0].outputs, q.wme)).toBe(0.4);
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
   it("does nothing when the model is already the current one", () => {
@@ -275,14 +275,14 @@ describe("options", () => {
 
   it("are set on the slot like a value, and the outputs follow", () => {
     const session = new Session(pmvPpdAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
     session.slots[0].setEntered(q.v, 0.8);
-    expect(outputs.slots[0].violations.map((violation) => violation.quantity)).toContain(q.v);
+    expect(computation.slots[0].violations.map((violation) => violation.quantity)).toContain(q.v);
 
     session.slots[0].setOption(airSpeedControl, true);
 
-    expect(outputs.slots[0].violations).toEqual([]);
+    expect(computation.slots[0].violations).toEqual([]);
   });
 
   it("seed an option the slot lacks at its default on a switch", () => {
@@ -325,23 +325,23 @@ describe("options", () => {
 describe("the axes of a model without a dynamic chart", () => {
   it("are none, and stay none when an axis is set", () => {
     const session = new Session(adaptiveAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     expect(session.chart.type).toBe(chartType.adaptive);
     expect(session.chart.axes).toBeNull();
     session.chart.setAxes({ x: q.clo, y: q.met });
 
     expect(session.chart.axes).toBeNull();
-    expect(outputs.chart?.layout.x.title).toContain(q.t_running_mean.label);
-    expect(outputs.chart?.layout.y.title).toContain(q.operative_tmp.label);
+    expect(computation.chart?.layout.x.title).toContain(q.t_running_mean.label);
+    expect(computation.chart?.layout.y.title).toContain(q.operative_tmp.label);
   });
 
   it("leave the adaptive chart operative under separate entry", () => {
     const session = new Session(adaptiveAshrae);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
 
     expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
-    expect(outputs.chart?.layout.y.title).toContain(q.operative_tmp.label);
+    expect(computation.chart?.layout.y.title).toContain(q.operative_tmp.label);
   });
 });
 
@@ -352,16 +352,16 @@ describe("the axes of a model without a dynamic chart", () => {
 describe("InputSlot.setEntered", () => {
   it("enters the humidity entry's quantity as the entry, in its own mode, and the outputs follow", () => {
     const session = new Session(pmvPpdIso);
-    const outputs = new Outputs(session);
+    const computation = new Computation(session);
     session.setHumidityMode(humidityMode.dewPoint);
-    const before = outputValueOf(outputs.slots[0].outputs, q.pmv);
+    const before = outputValueOf(computation.slots[0].outputs, q.pmv);
 
     session.slots[0].setEntered(q.dew_point_tmp, 12);
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).not.toBe(before);
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).not.toBe(before);
   });
 });
 

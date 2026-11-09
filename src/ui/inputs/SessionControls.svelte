@@ -1,6 +1,6 @@
 <script lang="ts">
   import { kindBounds, quantities } from "$lib/core/quantities";
-  import { slotNames } from "$lib/core/slotBadge";
+  import { slotNames } from "$lib/core/slotAppearance";
   import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";

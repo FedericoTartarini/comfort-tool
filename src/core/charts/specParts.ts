@@ -8,7 +8,7 @@
 import { chartInk } from "$lib/core/bandPalette";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
-import type { SlotBadge } from "$lib/core/slotBadge";
+import type { SlotAppearance } from "$lib/core/slotAppearance";
 import { labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartedSlot } from "./chartRequest";
@@ -58,12 +58,12 @@ export function zoneInkFor(charted: ChartedSlot, zoneLabel: string, level: numbe
  * the slot has no name. Chrome, so it never captures the pointer.
  */
 export function markerFor(
-  badge: SlotBadge,
+  appearance: SlotAppearance,
   x: number,
   y: number,
 ): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
-  const color = chartInk.marker(badge.hue);
-  const label = badge.name ?? copy.unnamedMarker;
+  const color = chartInk.marker(appearance.hue);
+  const label = appearance.name ?? copy.unnamedMarker;
   return {
     trace: { kind: "point", x, y, color, hover: "off", label },
     legendEntry: { label, swatch: "marker", color },

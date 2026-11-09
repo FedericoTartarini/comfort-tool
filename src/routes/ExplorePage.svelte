@@ -17,7 +17,7 @@
   import ChartTypeSelect from "$lib/ui/inputs/ChartTypeSelect.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputCalculators from "$lib/ui/inputs/InputCalculators.svelte";
-  import InputPanel, { type SlotColumn } from "$lib/ui/inputs/InputPanel.svelte";
+  import InputPanel, { type ComparedSlot } from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
@@ -25,19 +25,19 @@
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { raiseToast } from "$lib/ui/layout/toasts";
-  import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
+  import ResultTable from "$lib/ui/results/ResultTable.svelte";
   import { Separator } from "$lib/ui/primitives/separator";
   import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
   import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
-  const { session, outputs } = getOpenSession();
+  const { session, computation } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
 
-  /** Explore compares nothing: slot 1's column alone, for the input panel and the input calculators. */
-  const columns = $derived<readonly [SlotColumn]>([{ inputSlot: session.slots[0], outputs: outputs.slots[0] }]);
+  /** Explore compares slot 1 alone: its column, for the input panel and the input calculators. */
+  const columns = $derived<readonly [ComparedSlot]>([{ inputSlot: session.slots[0], computation: computation.slots[0] }]);
 </script>
 
 <PageFrame mark={inAppLinkTo({ page: page.standard, model: defaultModel() }, inApp.follow)}>
@@ -90,7 +90,7 @@
   {#snippet results(headingId)}
     <ResultTable
       model={session.model}
-      rows={outputs.slots}
+      rows={computation.slots}
       unitSystem={session.unitSystem}
       labelledby={headingId}
     />
@@ -104,10 +104,10 @@
     <Inline gap="2" align="center">
       <BandsDialog model={session.model} chart={session.chart} unitSystem={session.unitSystem} />
       <ExportImageDialog
-        chart={outputs.chart}
+        chart={computation.chart}
         model={session.model}
         chartType={session.chart.type}
-        runs={outputs.drawnRuns}
+        runs={computation.drawnRuns}
         unitSystem={session.unitSystem}
         bands={session.chart.bands}
         onfailed={() => raiseToast("imageFailed")}
@@ -117,11 +117,11 @@
 
   {#snippet chart()}
     <Stack gap="4">
-      <ChartControls chart={session.chart} drawnAxes={outputs.drawnAxes} />
-      {#if outputs.chart}
+      <ChartControls chart={session.chart} drawnAxes={computation.drawnAxes} />
+      {#if computation.chart}
         <div class="chart-area">
-          <ChartLegend entries={outputs.chart.legend} />
-          <PlotlyChart spec={outputs.chart} />
+          <ChartLegend entries={computation.chart.legend} />
+          <PlotlyChart spec={computation.chart} />
         </div>
       {/if}
     </Stack>

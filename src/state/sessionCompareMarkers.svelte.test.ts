@@ -19,7 +19,7 @@ import { quantities, type Quantity } from "$lib/core/quantities";
 import { valueEntryGroups, type ValueEntryGroup } from "$lib/core/slot";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session } from "./session.svelte";
 
 const q = quantities;
@@ -68,13 +68,13 @@ function distanceBetween(a: PointTrace, b: PointTrace, spec: ChartSpec): number 
 }
 
 /** `chart` drawn of the session's compared slots as the page draws it, at the chart's declared axes. */
-function drawChart(session: Session, outputs: Outputs, chart: DeclaredChart): ChartSpec {
+function drawChart(session: Session, computation: Computation, chart: DeclaredChart): ChartSpec {
   session.chart.type = chart.type;
   const dynamic = dynamicChartOf(session.model);
   if (dynamic && chart === dynamic) {
     session.chart.setAxes(dynamic.axes);
   }
-  const spec = outputs.chart;
+  const spec = computation.chart;
   if (!spec) {
     throw new Error(`${session.model.info.label} draws no ${chart.type.title} chart`);
   }
@@ -89,14 +89,14 @@ function drawChart(session: Session, outputs: Outputs, chart: DeclaredChart): Ch
  */
 function markersTooClose(model: ModelDeclaration, modeCase: ModeCase): string[] {
   const session = new Session(model);
-  const outputs = new Outputs(session);
+  const computation = new Computation(session);
   // Before Compare: a slot first enabled takes slot 1's entry modes, so the
   // move is tested in the mode, as a person who switched it first meets it.
   modeCase.enter(session);
   session.setCompare(true);
   session.setSlotEnabled(2, true);
   return model.charts.flatMap((chart) => {
-    const spec = drawChart(session, outputs, chart);
+    const spec = drawChart(session, computation, chart);
     const where = `${model.info.label}, ${modeCase.name}, ${chart.type.title} chart`;
     const markers = markersOf(spec);
     if (markers.length !== 3) {

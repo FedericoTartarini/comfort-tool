@@ -12,7 +12,7 @@ import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "$lib/core/quantities";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import { Session } from "./session.svelte";
 import { enterSlot1ValuesInOthers, heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
@@ -128,7 +128,7 @@ describe("an air speed or a clothing insulation, committed", () => {
     "on $model.info.label, a metabolic rate that takes a held $entered.label past the model's row commits, and the run has a violation on the entered row",
     ({ model, entered, value, startMet, met }) => {
       const session = new Session(model);
-      const outputs = new Outputs(session);
+      const computation = new Computation(session);
       session.commitEntry(0, q.met, startMet);
       session.commitEntry(0, entered, value);
 
@@ -136,8 +136,8 @@ describe("an air speed or a clothing insulation, committed", () => {
 
       expect(session.slots[0].values.get(q.met)).toBe(met);
       expect(session.slots[0].values.get(entered)).toBe(value);
-      expect(outputs.slots[0].outputs).not.toBeNull();
-      expect(outputs.slots[0].violations.find((row) => row.quantity === entered)).toMatchObject({ quantity: entered, ...rowOf(model, entered) });
+      expect(computation.slots[0].outputs).not.toBeNull();
+      expect(computation.slots[0].violations.find((row) => row.quantity === entered)).toMatchObject({ quantity: entered, ...rowOf(model, entered) });
     },
   );
 

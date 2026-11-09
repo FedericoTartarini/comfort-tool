@@ -28,7 +28,7 @@ export interface ChartSettings {
 
 /**
  * Everything a session holds that is not derived and not a question left
- * standing: never the page, which the address names, nor the outputs.
+ * standing: never the page, which the address names, nor the computation.
  *
  * Every slot it holds is in slot 1's entry modes, humidity's included, as
  * every slot of a session is (ADR-0002 decision 51); a session built from one
@@ -59,8 +59,8 @@ export const slotPositions = [0, 1, 2] as const satisfies readonly SlotPosition[
  * The slots compared on `onPage`, in slot order: slot 1 always, and slots 2
  * and 3 while Compare is on and they are enabled, on the Standard page alone.
  * Compare is the Standard page's, and Explore compares slot 1 whatever
- * Compare holds (ADR-0002 decision 57). The session's outputs and a share
- * link both read it (decision 63, rule 5).
+ * Compare holds (ADR-0002 decision 57). The session's computation and a
+ * share link both read it (decision 63, rule 5).
  */
 export function comparedPositionsOf(session: Pick<WrittenSession, "compare" | "enabled">, onPage: Page): SlotPosition[] {
   return slotPositions.filter(

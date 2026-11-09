@@ -34,8 +34,8 @@ export interface Sweep {
  * What every slot's scan on one chart shares (ADR-0002 decision 61): the
  * model and the output it scans, the two quantities swept, the entry modes
  * the slot is converted into, and the atmospheric pressure. A slot's scan is
- * a function of this and the slot alone, so the outputs can keep one per slot
- * and an edit to one slot scans that slot and no other
+ * a function of this and the slot alone, so the computation can keep one per
+ * slot and an edit to one slot scans that slot and no other
  * (`state/compute.svelte.ts`). Each chart builds its own frame; the scan is
  * the same for both.
  */

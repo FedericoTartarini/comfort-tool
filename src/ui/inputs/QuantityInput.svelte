@@ -20,7 +20,7 @@
     /** Allowed bound in SI; shown converted, a step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
-    /** The slot's badge's name, while the slots are named: the box and its menu are named for it. */
+    /** The name the slot's appearance carries while the slots are named: the box and its menu are named for it. */
     slotName?: string;
     /**
      * Whether an SI value is taken as it is: a typed one may commit on a pause in the typing, and a preset may be

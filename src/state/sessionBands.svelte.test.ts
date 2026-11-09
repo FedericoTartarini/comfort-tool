@@ -15,7 +15,7 @@ import { page } from "$lib/core/page";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
-import { Outputs } from "./compute.svelte";
+import { Computation } from "./compute.svelte";
 import type { BandListDraft } from "./bandListDraft.svelte";
 import { Session } from "./session.svelte";
 import { bandsDraftOf } from "./sessionTestReaders";
@@ -24,23 +24,23 @@ const sensation = classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands);
 // Thermal sensation's Edges: -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 10; band 3 is Neutral.
 const defaultList = bandListOf(sensation);
 
-/** A session on Explore on PMV (ISO 7730)'s `type` chart, the dynamic one unless named, and its outputs. */
-function exploreSession(type: ChartType = chartType.dynamic): { session: Session; outputs: Outputs } {
+/** A session on Explore on PMV (ISO 7730)'s `type` chart, the dynamic one unless named, and its computation. */
+function exploreSession(type: ChartType = chartType.dynamic): { session: Session; computation: Computation } {
   const session = new Session(pmvPpdIso);
   session.setAddress({ page: page.explore, model: pmvPpdIso });
   session.chart.type = type;
-  return { session, outputs: new Outputs(session) };
+  return { session, computation: new Computation(session) };
 }
 
 /**
  * Where the chart strokes an Edge: each band line's label, and whether it
  * runs where slot 1's scanned number crosses `list`'s Edge of the same band.
  */
-function strokedEdges(outputs: Outputs, list: BandList) {
-  const spec = { traces: outputs.chart?.traces ?? [] };
+function strokedEdges(computation: Computation, list: BandList) {
+  const spec = { traces: computation.chart?.traces ?? [] };
   return bandLinesOf(spec).map((line, index) => ({
     label: line.label,
-    onEdge: numbersAlong(spec, line, outputs.slots[0].scan.values).every((number) => Math.abs(number - list.edges[index]) < 1e-9),
+    onEdge: numbersAlong(spec, line, computation.slots[0].scan.values).every((number) => Math.abs(number - list.edges[index]) < 1e-9),
   }));
 }
 
@@ -55,19 +55,19 @@ function edgesOf(list: BandList) {
 }
 
 /** The fills the chart paints: each one's label, colour, and the grid points of the scan it holds. */
-function paintedFills(outputs: Outputs) {
-  const spec = { traces: outputs.chart?.traces ?? [] };
+function paintedFills(computation: Computation) {
+  const spec = { traces: computation.chart?.traces ?? [] };
   return bandFillsOf(spec).map((fill) => ({ label: fill.label, color: fill.fill, held: regionOf(spec, fill) }));
 }
 
 /**
- * The fills `list` implies over slot 1's scan in `outputs`: a coloured band
+ * The fills `list` implies over slot 1's scan in `computation`: a coloured band
  * from the Edge below it up to the Edge of the last band of the coloured run
  * it starts, which an uncoloured band or the list's end closes, holding the
  * grid points whose number lies in that interval.
  */
-function fillsOf(list: BandList, outputs: Outputs) {
-  const { values } = outputs.slots[0].scan;
+function fillsOf(list: BandList, computation: Computation) {
+  const { values } = computation.slots[0].scan;
   return list.labels.flatMap((label, index) => {
     const color = list.colors[index];
     const closing = list.colors.findIndex((above, position) => position > index && above === undefined);
@@ -98,12 +98,12 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
   for (const type of [chartType.dynamic, chartType.psychrometric]) {
     for (const { name, edit, expected } of edits) {
       it(`${name} in the draft alone, and Apply writes it to the current model's Band list and the ${type.title} chart's spec, rescanning nothing`, () => {
-        const { session, outputs } = exploreSession(type);
-        expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
-        expect(strokedEdges(outputs, defaultList)).toEqual(edgesOf(defaultList));
-        const { outputs: outputsBefore, scan } = outputs.slots[0];
+        const { session, computation } = exploreSession(type);
+        expect(paintedFills(computation)).toEqual(fillsOf(defaultList, computation));
+        expect(strokedEdges(computation, defaultList)).toEqual(edgesOf(defaultList));
+        const { outputs: outputsBefore, scan } = computation.slots[0];
         const list = session.chart.bands;
-        const spec = outputs.chart;
+        const spec = computation.chart;
         const draft = bandsDraftOf(session);
 
         edit(draft);
@@ -111,30 +111,30 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
         expect(draft.bands).toEqual(expected);
         // The chart never reads the draft.
         expect(session.chart.bands).toBe(list);
-        expect(outputs.chart).toBe(spec);
+        expect(computation.chart).toBe(spec);
 
         draft.apply();
 
         expect(session.chart.bands).toEqual(expected);
-        expect(paintedFills(outputs)).toEqual(fillsOf(expected, outputs));
-        expect(strokedEdges(outputs, expected)).toEqual(edgesOf(expected));
-        expect(outputs.slots[0].scan).toBe(scan);
+        expect(paintedFills(computation)).toEqual(fillsOf(expected, computation));
+        expect(strokedEdges(computation, expected)).toEqual(edgesOf(expected));
+        expect(computation.slots[0].scan).toBe(scan);
         // The result table reads the kernel's own category, never the list.
-        expect(outputs.slots[0].outputs).toEqual(outputsBefore);
+        expect(computation.slots[0].outputs).toEqual(outputsBefore);
       });
     }
   }
 
   it("leaves the Band list as it was when the draft is discarded, and the next draft starts from it", () => {
-    const { session, outputs } = exploreSession();
-    const spec = outputs.chart;
+    const { session, computation } = exploreSession();
+    const spec = computation.chart;
     const discarded = bandsDraftOf(session);
     discarded.setLabel(3, "Fine");
     discarded.addBand(2);
     discarded.moveEdge(0, -3);
 
     expect(session.chart.bands).toEqual(defaultList);
-    expect(outputs.chart).toBe(spec);
+    expect(computation.chart).toBe(spec);
     expect(bandsDraftOf(session).bands).toEqual(defaultList);
   });
 
@@ -148,7 +148,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
   });
 
   it("resets the draft alone to the list the model starts on, and Apply writes the reset", () => {
-    const { session, outputs } = exploreSession();
+    const { session, computation } = exploreSession();
     const edited = bandsDraftOf(session);
     edited.addBand(3);
     edited.setColor(0, undefined);
@@ -165,7 +165,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
     draft.apply();
 
     expect(session.chart.bands).toEqual(defaultList);
-    expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
+    expect(paintedFills(computation)).toEqual(fillsOf(defaultList, computation));
   });
 
   it("refuses an Edge at or beyond a neighbour, the draft as it was, and says which Edges it must fall between", () => {
@@ -234,25 +234,25 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
   });
 
   it("leaves the Standard page's dynamic chart to its Comfort zones, whatever the list holds", () => {
-    const { session, outputs } = exploreSession();
+    const { session, computation } = exploreSession();
     const draft = bandsDraftOf(session);
     draft.setLabel(3, "Fine");
     draft.addBand(2);
     draft.apply();
 
     session.setAddress({ page: page.standard, model: pmvPpdIso });
-    const traces = outputs.chart?.traces ?? [];
+    const traces = computation.chart?.traces ?? [];
 
     expect(zoneFillsOf({ traces }).map((fill) => fill.label)).toEqual(
       [...pmvPpdIso.scan.comfortZones].sort((a, b) => b.limit - a.limit).map((zone) => copy.zoneLegend(zone)),
     );
     expect(zoneLinesOf({ traces })).toHaveLength(4);
-    expect(paintedFills(outputs)).toEqual([]);
-    expect(strokedEdges(outputs, defaultList)).toEqual([]);
+    expect(paintedFills(computation)).toEqual([]);
+    expect(strokedEdges(computation, defaultList)).toEqual([]);
   });
 
   it("keeps an applied list across a model switch and back, and the other model's list its own", () => {
-    const { session, outputs } = exploreSession();
+    const { session, computation } = exploreSession();
     const draft = bandsDraftOf(session);
     draft.setLabel(3, "Fine");
     draft.apply();
@@ -265,6 +265,6 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
 
     expect(session.model).toBe(pmvPpdIso);
     expect(session.chart.bands).toBe(edited);
-    expect(paintedFills(outputs).map((fill) => fill.label)).toContain("Fine");
+    expect(paintedFills(computation).map((fill) => fill.label)).toContain("Fine");
   });
 });

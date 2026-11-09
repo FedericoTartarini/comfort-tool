@@ -2,7 +2,7 @@
   import { chartInk } from "$lib/core/bandPalette";
   import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
-  import { slotNames } from "$lib/core/slotBadge";
+  import { slotNames } from "$lib/core/slotAppearance";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { slotPositions, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -12,7 +12,7 @@ import { palette } from "$lib/core/palette";
   import ChartTypeSelect from "$lib/ui/inputs/ChartTypeSelect.svelte";
   import ExportImageDialog from "$lib/ui/inputs/ExportImageDialog.svelte";
   import InputCalculators from "$lib/ui/inputs/InputCalculators.svelte";
-  import InputPanel, { type SlotColumn } from "$lib/ui/inputs/InputPanel.svelte";
+  import InputPanel, { type ComparedSlot } from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
@@ -21,7 +21,7 @@ import { palette } from "$lib/core/palette";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { raiseToast } from "$lib/ui/layout/toasts";
-  import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
+  import ResultTable from "$lib/ui/results/ResultTable.svelte";
   import { Label } from "$lib/ui/primitives/label";
   import { Separator } from "$lib/ui/primitives/separator";
   import { Switch } from "$lib/ui/primitives/switch";
@@ -31,7 +31,7 @@ import { palette } from "$lib/core/palette";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
-  const { session, outputs } = getOpenSession();
+  const { session, computation } = getOpenSession();
   const tab = getTabControls();
   const inApp = inAppSwitch(session);
   const id = $props.id();
@@ -44,14 +44,14 @@ import { palette } from "$lib/core/palette";
   }
 
   /** The input panel's columns: slot 1 alone, or on Compare the three, `null` for a slot not compared. */
-  const columns = $derived.by((): readonly [SlotColumn, ...(SlotColumn | null)[]] => {
-    const columnAt = (position: SlotPosition): SlotColumn | null => {
+  const columns = $derived.by((): readonly [ComparedSlot, ...(ComparedSlot | null)[]] => {
+    const slotAt = (position: SlotPosition): ComparedSlot | null => {
       const inputSlot = session.slots[position];
-      const slotOutputs = outputs.slots.find((slot) => slot.position === position);
-      return inputSlot && slotOutputs ? { inputSlot, outputs: slotOutputs } : null;
+      const slotComputation = computation.slots.find((slot) => slot.position === position);
+      return inputSlot && slotComputation ? { inputSlot, computation: slotComputation } : null;
     };
-    const first = { inputSlot: session.slots[0], outputs: outputs.slots[0] };
-    return session.compare ? [first, columnAt(1), columnAt(2)] : [first];
+    const first = { inputSlot: session.slots[0], computation: computation.slots[0] };
+    return session.compare ? [first, slotAt(1), slotAt(2)] : [first];
   });
 </script>
 
@@ -135,7 +135,7 @@ import { palette } from "$lib/core/palette";
   {#snippet results(headingId)}
     <ResultTable
       model={session.model}
-      rows={outputs.slots}
+      rows={computation.slots}
       unitSystem={session.unitSystem}
       labelledby={headingId}
     />
@@ -147,10 +147,10 @@ import { palette } from "$lib/core/palette";
 
   {#snippet chartActions()}
     <ExportImageDialog
-      chart={outputs.chart}
+      chart={computation.chart}
       model={session.model}
       chartType={session.chart.type}
-      runs={outputs.drawnRuns}
+      runs={computation.drawnRuns}
       unitSystem={session.unitSystem}
       onfailed={() => raiseToast("imageFailed")}
     />
@@ -158,17 +158,17 @@ import { palette } from "$lib/core/palette";
 
   {#snippet chart()}
     <Stack gap="4">
-      <ChartControls chart={session.chart} drawnAxes={outputs.drawnAxes} />
-      {#if outputs.chart}
+      <ChartControls chart={session.chart} drawnAxes={computation.drawnAxes} />
+      {#if computation.chart}
         <div class="chart-area">
-          <ChartLegend entries={outputs.chart.legend} />
-          <PlotlyChart spec={outputs.chart} />
+          <ChartLegend entries={computation.chart.legend} />
+          <PlotlyChart spec={computation.chart} />
         </div>
         <!-- Under the plot, a caption per slot whose Comfort zones are all empty, its swatch while the slots are named
              (ADR-0002 decision 83, rule 1); the axes, the marker, the hover and the legend stay as they are. -->
-        {#if outputs.chart.notes.length > 0}
+        {#if computation.chart.notes.length > 0}
           <ul>
-            {#each outputs.chart.notes as note (note)}
+            {#each computation.chart.notes as note (note)}
               <li class="caption">
                 <span class="swatch-label">
                   {#if note.color}
