@@ -61,8 +61,8 @@ function editedSession(): Session {
   session.setModel(pmvPpdAshrae);
   editBands(session, (draft) => draft.setLabel(0, "Freezing"));
   session.setTemperatureMode(temperatureMode.operative);
-  session.setAirSpeedMode(airSpeedMode.corrected);
-  session.setClothingMode(clothingMode.corrected);
+  session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
+  session.setClothingMode(clothingMode.dynamicClothingInsulation);
   session.setHumidityMode(humidityMode.dewPoint);
   heldSlot(session, 1).setEntered(q.operative_tmp, 27);
   heldSlot(session, 1).setOption(airSpeedControl, true);

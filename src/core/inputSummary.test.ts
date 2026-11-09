@@ -117,7 +117,7 @@ describe("inputSummary", () => {
   });
 
   it("lists each entry group's second mode under that mode's quantities and not the first mode's", () => {
-    const second = { temperature: { mode: temperatureMode.operative }, airSpeed: { mode: airSpeedMode.corrected }, clothing: { mode: clothingMode.corrected } };
+    const second = { temperature: { mode: temperatureMode.operative }, airSpeed: { mode: airSpeedMode.relativeAirSpeed }, clothing: { mode: clothingMode.dynamicClothingInsulation } };
     const [, lines] = summaryOf(pmvPpdAshrae, [runOf(withEntryModes(startingSlot(pmvPpdAshrae), second, pmvPpdAshrae))]);
     for (const quantity of [q.operative_tmp, q.vr, q.clo_dynamic]) {
       expect(hasRowOf(lines, quantity), quantity.key).toBe(true);

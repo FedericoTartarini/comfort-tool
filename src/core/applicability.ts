@@ -186,15 +186,15 @@ function humidityEntryBoundFor(model: ModelDeclaration, mode: HumidityMode, slot
  * The bound an entry of an activity-adjusted group must satisfy under `model`
  * (ADR-0002 decision 84's note of 2026-10-28, rule 2, and decision 54's note
  * of that day). The model's info bounds the quantity the model takes,
- * `correction.taken`: an entry of the corrected mode is held to that row as
- * it is, and an entry of the other mode to its kind's bound alone, so no
- * other entry moves it. A run that takes the corrected value past the row is
- * calculated, and its violation is reported on the entered row
+ * `correction.takenByModel`: an entry of the corrected mode is held to that
+ * row as it is, and an entry of the other mode to its kind's bound alone, so
+ * no other entry moves it. A run that takes the corrected value past the row
+ * is calculated, and its violation is reported on the entered row
  * ({@link violationRows}).
  */
 function correctedEntryBoundFor(model: ModelDeclaration, quantity: Quantity, correction: EntryCorrection): Bound | undefined {
   if (correction.corrected.panel.includes(quantity)) {
-    return boundFor(model.info.inputs, correction.taken);
+    return boundFor(model.info.inputs, correction.takenByModel);
   }
   return kindBounds[quantity.kind];
 }
@@ -470,7 +470,7 @@ export function violationRows(model: ModelDeclaration, outputs: ModelOutputs, mo
  */
 function reportedRow(model: ModelDeclaration, keyed: Quantity, modes: ValueEntryModes): Pick<ViolationRow, "quantity" | "bounded"> {
   for (const group of valueEntryGroups) {
-    if (group.correction?.taken === keyed && group.appliesTo(model)) {
+    if (group.correction?.takenByModel === keyed && group.appliesTo(model)) {
       return { quantity: group.modeOf(modes).axis, bounded: group.correction.corrected.axis };
     }
   }

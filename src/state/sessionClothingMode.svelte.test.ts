@@ -68,7 +68,7 @@ function enteringDynamic(model: ModelDeclaration, entries: { v: number; met: num
   const session = new Session(model);
   session.slots[0].setEntered(q.v, entries.v);
   session.slots[0].setEntered(q.met, entries.met);
-  session.setClothingMode(clothingMode.corrected);
+  session.setClothingMode(clothingMode.dynamicClothingInsulation);
   session.slots[0].setEntered(q.clo_dynamic, dynamic);
   return session;
 }
@@ -77,7 +77,7 @@ describe("the session's clothing entry mode", () => {
   it("starts as clothing insulation entry", () => {
     const session = new Session(pmvPpdIso);
 
-    expect(session.clothingMode).toBe(clothingMode.uncorrected);
+    expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
     expect(session.slots[0].values.has(q.clo_dynamic)).toBe(false);
   });
 
@@ -96,11 +96,11 @@ describe("the session's clothing entry mode", () => {
     it("converts every slot that holds values into dynamic clothing entry, each at its own values", () => {
       const session = threeDifferentSlots(model);
 
-      session.setClothingMode(clothingMode.corrected);
+      session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
-      expect(session.clothingMode).toBe(clothingMode.corrected);
+      expect(session.clothingMode).toBe(clothingMode.dynamicClothingInsulation);
       slotPositions.forEach((position) => {
-        expect(heldSlot(session, position).clothing.mode).toBe(clothingMode.corrected);
+        expect(heldSlot(session, position).clothing.mode).toBe(clothingMode.dynamicClothingInsulation);
         expect(heldSlot(session, position).values.get(q.clo_dynamic)).toBe(dynamic(entriesOfSlot[position]));
         expect(heldSlot(session, position).values.has(q.clo)).toBe(false);
       });
@@ -112,7 +112,7 @@ describe("the session's clothing entry mode", () => {
       const before = computation.slots.map((slot) => slot.outputs);
       expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
-      session.setClothingMode(clothingMode.corrected);
+      session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
       expect(computation.slots.map((slot) => slot.outputs)).toEqual(before);
     });
@@ -128,14 +128,14 @@ describe("the session's clothing entry mode", () => {
 
       // A third round trip as the first: the clothing does not ratchet down.
       for (const roundTrip of [1, 2, 3]) {
-        session.setClothingMode(clothingMode.corrected);
+        session.setClothingMode(clothingMode.dynamicClothingInsulation);
         slotPositions.forEach((position) => {
           expect(heldSlot(session, position).values.get(q.clo_dynamic), `round ${roundTrip}`).toBe(dynamic(entriesOfSlot[position]));
         });
         expect(computation.slots.map((slot) => slot.outputs), `into dynamic clothing entry, round ${roundTrip}`).toEqual(before);
 
-        session.setClothingMode(clothingMode.uncorrected);
-        expect(session.clothingMode).toBe(clothingMode.uncorrected);
+        session.setClothingMode(clothingMode.clothingInsulation);
+        expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
         expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
         expect(computation.slots.map((slot) => slot.outputs), `back in clothing insulation entry, round ${roundTrip}`).toEqual(before);
       }
@@ -166,12 +166,12 @@ describe("the session's clothing entry mode", () => {
     session.slots[0].setEntered(q.met, 1.2);
     const before = computation.slots[0].outputs;
 
-    session.setClothingMode(clothingMode.corrected);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(0.5);
     expect(computation.slots[0].outputs).toEqual(before);
 
-    session.setClothingMode(clothingMode.uncorrected);
+    session.setClothingMode(clothingMode.clothingInsulation);
 
     expect(computation.slots[0].outputs).toEqual(before);
   });
@@ -179,7 +179,7 @@ describe("the session's clothing entry mode", () => {
   it("converts by the session's model's standard: one entry is two dynamic clothing insulations under the two", () => {
     const [ashrae, iso] = corrections.map(({ model }) => {
       const session = threeDifferentSlots(model);
-      session.setClothingMode(clothingMode.corrected);
+      session.setClothingMode(clothingMode.dynamicClothingInsulation);
       return heldSlot(session, 1).values.get(q.clo_dynamic);
     });
 
@@ -190,9 +190,9 @@ describe("the session's clothing entry mode", () => {
 
   it("corrects by ISO 7730's rule at the relative air speed the model is given, in either air-speed mode", () => {
     const session = threeDifferentSlots(pmvPpdIso);
-    session.setAirSpeedMode(airSpeedMode.corrected);
+    session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
 
-    session.setClothingMode(clothingMode.corrected);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     slotPositions.forEach((position) => {
       const { clo, met, v } = entriesOfSlot[position];
@@ -207,11 +207,11 @@ describe("the session's clothing entry mode", () => {
     heldSlot(session, 1).setEntered(q.met, 2);
     session.setSlotEnabled(1, false);
 
-    session.setClothingMode(clothingMode.corrected);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
     session.setSlotEnabled(2, true);
 
     expect(heldSlot(session, 1).values.get(q.clo_dynamic)).toBe(clo_dynamic_ashrae(0.5, 2));
-    expect(heldSlot(session, 2).clothing.mode).toBe(clothingMode.corrected);
+    expect(heldSlot(session, 2).clothing.mode).toBe(clothingMode.dynamicClothingInsulation);
     expect(differenceFromSlot1(session, 2)).toEqual(
       shownDifferences([q.tdb, 3], [q.tr, 3], [q.v, 0.2], [q.met, 0.3], [q.clo_dynamic, 0.22]),
     );
@@ -237,7 +237,7 @@ describe("the session's clothing entry mode", () => {
       expect(computation.slots[0].outputs).not.toBeNull();
       expect(computation.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({ bounded: q.clo_dynamic, value: dynamic, bound });
 
-      session.setClothingMode(clothingMode.corrected);
+      session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
       expect(enteredBound(model, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
       expect(session.slots[0].values.get(q.clo_dynamic)).toBe(bound?.max);
@@ -273,7 +273,7 @@ describe("a model switch under clothing insulation entry", () => {
 
     expect(listedRowsOf(session)).toBeUndefined();
     expect(session.model).toBe(pmvPpdAshrae);
-    expect(session.clothingMode).toBe(clothingMode.uncorrected);
+    expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
     expect(session.slots[0].values.get(q.clo)).toBe(1.9);
     expect(computation.slots[0].outputs).not.toBeNull();
     expect(computation.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({
@@ -302,7 +302,7 @@ describe("the dynamic chart under the session's clothing entry mode", () => {
     const computation = new Computation(session);
     expect(computation.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.clo });
 
-    session.setClothingMode(clothingMode.corrected);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     expect(computation.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.clo_dynamic });
     expect(computation.drawnAxes?.choices).toContain(q.clo_dynamic);
@@ -347,7 +347,7 @@ describe("a model switch under dynamic clothing entry", () => {
     session.acceptSwitch();
 
     expect(session.model).toBe(pmvPpdAshrae);
-    expect(session.clothingMode).toBe(clothingMode.corrected);
+    expect(session.clothingMode).toBe(clothingMode.dynamicClothingInsulation);
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(ashraeBound?.max);
     expect(session.slots[0].values.has(q.clo)).toBe(false);
   });
@@ -357,7 +357,7 @@ describe("a model switch under dynamic clothing entry", () => {
 
     session.setModel(pmvPpdAshrae);
 
-    expect(session.clothingMode).toBe(clothingMode.corrected);
+    expect(session.clothingMode).toBe(clothingMode.dynamicClothingInsulation);
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(1.8);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.clo_dynamic]);
   });
@@ -371,7 +371,7 @@ describe("a model switch under dynamic clothing entry", () => {
     session.requestModel(pmvPpdAshrae);
 
     expect(session.model).toBe(pmvPpdAshrae);
-    expect(session.clothingMode).toBe(clothingMode.uncorrected);
+    expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
     expect(session.slots[0].values.get(q.clo)).toBe(1);
     expect(computation.slots[0].outputs).toEqual(new Computation(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, clo_dynamic_ashrae(1, 2))).slots[0].outputs);
   });
@@ -393,13 +393,13 @@ describe("a model switch under dynamic clothing entry", () => {
 
       session.setModel(adaptiveAshrae);
 
-      expect(session.clothingMode).toBe(clothingMode.uncorrected);
+      expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
       expect(session.slots[0].values.get(q.clo)).toBe(1);
       expect(session.slots[0].values.has(q.clo_dynamic)).toBe(false);
 
       session.setModel(model);
 
-      expect(session.clothingMode).toBe(clothingMode.uncorrected);
+      expect(session.clothingMode).toBe(clothingMode.clothingInsulation);
       expect(session.slots[0].values.get(q.clo)).toBe(1);
       expect(computation.slots[0].outputs).toEqual(before);
     },

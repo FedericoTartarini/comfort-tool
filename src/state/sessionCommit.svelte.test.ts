@@ -118,8 +118,8 @@ const pastTheRow: readonly PastTheRow[] = [
 
 /** The row of `model`'s info that bounds what the model is given for an entered `entered`, and that quantity. */
 function rowOf(model: ModelDeclaration, entered: Quantity) {
-  const [bounded, taken] = entered === q.v ? [q.vr, q.vr] : [q.clo_dynamic, q.clo];
-  const field = model.info.inputs[taken.key];
+  const [bounded, takenByModel] = entered === q.v ? [q.vr, q.vr] : [q.clo_dynamic, q.clo];
+  const field = model.info.inputs[takenByModel.key];
   return { bounded, bound: field?.kind === "numeric" ? field.applicability : undefined };
 }
 
@@ -163,8 +163,8 @@ describe("an air speed or a clothing insulation, committed", () => {
 
   it("entered as the relative air speed or the dynamic clothing insulation past its row, is cut to the row's end", () => {
     const session = new Session(pmvPpdAshrae);
-    session.setAirSpeedMode(airSpeedMode.corrected);
-    session.setClothingMode(clothingMode.corrected);
+    session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     expect(session.commitEntry(0, q.vr, 2.5)).toEqual({ kind: "cut", value: 2, bound: { min: 0, max: 2 } });
     expect(session.commitEntry(0, q.clo_dynamic, 1.8)).toEqual({ kind: "cut", value: 1.5, bound: { min: 0, max: 1.5 } });

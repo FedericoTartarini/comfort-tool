@@ -253,7 +253,7 @@ describe("the violation rows, in the words of the bounds icon", () => {
   it("name the same bound under relative air speed entry", () => {
     const { session, computation } = ashraeWithoutControlAt09();
 
-    session.setAirSpeedMode(airSpeedMode.corrected);
+    session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
 
     expect(sentencesOf(computation.slots[0])).toEqual(["Relative air speed must be ≤ 0.64 m/s"]);
   });

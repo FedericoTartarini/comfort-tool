@@ -38,29 +38,31 @@ export const temperatureMode = {
 
 /**
  * How the user enters the air speed, an activity-adjusted input (ADR-0002
- * decision 54). Uncorrected, the default, enters the air speed, and the model
- * is given the relative air speed derived from it; corrected enters the
- * relative air speed itself, and the model is given it unchanged.
+ * decision 54). Air speed entry, the default, enters the air speed, and the
+ * model is given the relative air speed derived from it; relative air speed
+ * entry enters the relative air speed itself, and the model is given it
+ * unchanged.
  */
 export type AirSpeedMode = ValueEntryMode;
 
 export const airSpeedMode = {
-  uncorrected: { id: "air-speed", panel: [quantities.v], axis: quantities.v },
-  corrected: { id: "relative-air-speed", panel: [quantities.vr], axis: quantities.vr },
+  airSpeed: { id: "air-speed", panel: [quantities.v], axis: quantities.v },
+  relativeAirSpeed: { id: "relative-air-speed", panel: [quantities.vr], axis: quantities.vr },
 } as const satisfies Record<string, AirSpeedMode>;
 
 /**
  * How the user enters the clothing, an activity-adjusted input (ADR-0002
- * decision 54). Uncorrected, the default, enters the clothing insulation, the
- * value the presets publish, and the model is given the dynamic clothing
- * insulation its standard's rule derives from it; corrected enters the dynamic
- * clothing insulation itself, and the model is given it unchanged.
+ * decision 54). Clothing insulation entry, the default, enters the clothing
+ * insulation, the value the presets publish, and the model is given the
+ * dynamic clothing insulation its standard's rule derives from it; dynamic
+ * clothing entry enters the dynamic clothing insulation itself, and the model
+ * is given it unchanged.
  */
 export type ClothingMode = ValueEntryMode;
 
 export const clothingMode = {
-  uncorrected: { id: "clothing-insulation", panel: [quantities.clo], axis: quantities.clo },
-  corrected: { id: "dynamic-clothing-insulation", panel: [quantities.clo_dynamic], axis: quantities.clo_dynamic },
+  clothingInsulation: { id: "clothing-insulation", panel: [quantities.clo], axis: quantities.clo },
+  dynamicClothingInsulation: { id: "dynamic-clothing-insulation", panel: [quantities.clo_dynamic], axis: quantities.clo_dynamic },
 } as const satisfies Record<string, ClothingMode>;
 
 /**
@@ -94,7 +96,7 @@ export interface HumidityMode {
 }
 
 export const humidityMode = {
-  rh: {
+  relativeHumidity: {
     id: "relative-humidity",
     quantity: quantities.rh,
     bounded: "both",

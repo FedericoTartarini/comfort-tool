@@ -210,10 +210,10 @@ describe("the Slot offsets of a slot first enabled", () => {
     { model: pmvPpdAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1.5 },
     { model: pmvPpdIso, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1 },
     { model: adaptiveAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1.5 },
-    { model: pmvPpdAshrae, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.corrected), quantity: q.clo_dynamic, share: 0.11 },
-    { model: pmvPpdIso, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.corrected), quantity: q.clo_dynamic, share: 0.2 },
-    { model: pmvPpdAshrae, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.corrected), quantity: q.vr, share: 0.1 },
-    { model: pmvPpdIso, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.corrected), quantity: q.vr, share: 0.05 },
+    { model: pmvPpdAshrae, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, share: 0.11 },
+    { model: pmvPpdIso, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, share: 0.2 },
+    { model: pmvPpdAshrae, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, share: 0.1 },
+    { model: pmvPpdIso, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, share: 0.05 },
   ])("move the $mode entry mode's quantity of slot 3 by two shares, on $model.info.label", ({ model, set, quantity, share }) => {
     const session = new Session(model);
     set(session);
@@ -682,9 +682,9 @@ describe("the session's entry modes", () => {
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setCompare(true),
       (changed) => heldSlot(changed, 1).setEntered(q.operative_tmp, 27),
-      (changed) => changed.setAirSpeedMode(airSpeedMode.corrected),
+      (changed) => changed.setAirSpeedMode(airSpeedMode.relativeAirSpeed),
       (changed) => heldSlot(changed, 1).setEntered(q.vr, 0.3),
-      (changed) => changed.setClothingMode(clothingMode.corrected),
+      (changed) => changed.setClothingMode(clothingMode.dynamicClothingInsulation),
       (changed) => heldSlot(changed, 1).setEntered(q.clo_dynamic, 0.9),
       (changed) => changed.setHumidityMode(humidityMode.wetBulb),
       (changed) => heldSlot(changed, 1).setEntered(q.wet_bulb_tmp, 18),
@@ -694,8 +694,8 @@ describe("the session's entry modes", () => {
       (changed) => heldSlot(changed, 2).setEntered(q.tr, 29),
       (changed) => changed.setHumidityMode(humidityMode.vapourPressure),
       (changed) => changed.setCompare(false),
-      (changed) => changed.setAirSpeedMode(airSpeedMode.uncorrected),
-      (changed) => changed.setClothingMode(clothingMode.uncorrected),
+      (changed) => changed.setAirSpeedMode(airSpeedMode.airSpeed),
+      (changed) => changed.setClothingMode(clothingMode.clothingInsulation),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setSlotEnabled(1, true),
       (changed) => changed.setCompare(true),
@@ -704,8 +704,8 @@ describe("the session's entry modes", () => {
       (changed) => changed.requestModel(pmvPpdIso),
       (changed) => changed.setHumidityMode(humidityMode.dewPoint),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
-      (changed) => changed.setAirSpeedMode(airSpeedMode.corrected),
-      (changed) => changed.setClothingMode(clothingMode.corrected),
+      (changed) => changed.setAirSpeedMode(airSpeedMode.relativeAirSpeed),
+      (changed) => changed.setClothingMode(clothingMode.dynamicClothingInsulation),
       (changed) => {
         changed.requestModel(cooler);
         expect(changed.pendingSwitch).not.toBeNull();
@@ -724,8 +724,8 @@ describe("the session's entry modes", () => {
     }
     expect(session.slots.every((slot) => slot !== null)).toBe(true);
     // The switch kept the modes the last steps before it set.
-    expect(session.airSpeedMode).toBe(airSpeedMode.corrected);
-    expect(session.clothingMode).toBe(clothingMode.corrected);
+    expect(session.airSpeedMode).toBe(airSpeedMode.relativeAirSpeed);
+    expect(session.clothingMode).toBe(clothingMode.dynamicClothingInsulation);
   });
 
   // A slot started on Adaptive holds no humidity, and one started on Heat

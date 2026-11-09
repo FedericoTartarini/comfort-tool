@@ -83,7 +83,7 @@ describe("the humidity entry", () => {
   it("starts at the declared relative humidity, with temperatures in separate entry", () => {
     const session = new Session(declaresDrierAir);
 
-    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.rh, value: 40 });
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.relativeHumidity, value: 40 });
     expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
   });
 
@@ -94,7 +94,7 @@ describe("the humidity entry", () => {
       session[act](declaresDrierAir);
 
       expect(session.model).toBe(declaresDrierAir);
-      expect(session.slots[0].humidity).toEqual({ mode: humidityMode.rh, value: 40 });
+      expect(session.slots[0].humidity).toEqual({ mode: humidityMode.relativeHumidity, value: 40 });
     });
   }
 });
@@ -377,7 +377,7 @@ export function slotWritesTypeProof(slot: InputSlot): void {
   // @ts-expect-error an option written past `setOption`
   slot.options.set(airSpeedControl, true);
   // @ts-expect-error a humidity entry written past `setEntered` and the session's `setHumidityMode`
-  slot.humidity = { mode: humidityMode.rh, value: 50 };
+  slot.humidity = { mode: humidityMode.relativeHumidity, value: 50 };
   // @ts-expect-error a temperature entry written past the session's `setTemperatureMode`
   slot.temperature = { mode: temperatureMode.operative };
 }
@@ -389,11 +389,11 @@ export function slotWritesTypeProof(slot: InputSlot): void {
  * each conversion runs on a value the one before it produced.
  */
 describe("Session.setHumidityMode", () => {
-  const walk = [...Object.values(humidityMode).filter((mode) => mode !== humidityMode.rh), humidityMode.rh];
+  const walk = [...Object.values(humidityMode).filter((mode) => mode !== humidityMode.relativeHumidity), humidityMode.relativeHumidity];
 
   /** The values the walk should enter, each mode's own conversions composed at `tdb`. */
   function expectedWalk(rh: number, tdb: number): number[] {
-    let mode: HumidityMode = humidityMode.rh;
+    let mode: HumidityMode = humidityMode.relativeHumidity;
     let value = rh;
     return walk.map((next) => {
       value = next.fromRelativeHumidity(mode.toRelativeHumidity(value, tdb, DEFAULT_ATMOSPHERIC_PRESSURE), tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
@@ -416,7 +416,7 @@ describe("Session.setHumidityMode", () => {
     session.slots[0].setEntered(q.rh, 35);
 
     expect(walkedValues(session)).toEqual(expectedWalk(35, 27));
-    expect(session.slots[0].humidity?.mode).toBe(humidityMode.rh);
+    expect(session.slots[0].humidity?.mode).toBe(humidityMode.relativeHumidity);
   });
 
   it("converts at the operative temperature under operative entry", () => {

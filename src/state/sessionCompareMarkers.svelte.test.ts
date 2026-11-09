@@ -34,7 +34,7 @@ interface ModeCase {
 }
 
 /** Each value entry group's mode set through the session, as the input panel's menu sets it. */
-const setModeOf: Record<ValueEntryGroup["field"], (session: Session, mode: ValueEntryMode) => void> = {
+const setModeOf: Record<ValueEntryGroup["name"], (session: Session, mode: ValueEntryMode) => void> = {
   temperature: (session, mode) => session.setTemperatureMode(mode),
   airSpeed: (session, mode) => session.setAirSpeedMode(mode),
   clothing: (session, mode) => session.setClothingMode(mode),
@@ -46,7 +46,7 @@ function modeCasesOf(model: ModelDeclaration): ModeCase[] {
   const cases: ModeCase[] = [{ name: "the default entry modes", enter: () => {} }];
   for (const group of valueEntryGroups.filter((candidate) => candidate.appliesTo(model))) {
     for (const mode of group.modes.filter((candidate) => candidate !== group.modeOf(fresh.entryModes))) {
-      cases.push({ name: `${group.field} entered as ${mode.id}`, enter: (session) => setModeOf[group.field](session, mode) });
+      cases.push({ name: `${group.name} entered as ${mode.id}`, enter: (session) => setModeOf[group.name](session, mode) });
     }
   }
   if (hasHumidityGroup(model)) {

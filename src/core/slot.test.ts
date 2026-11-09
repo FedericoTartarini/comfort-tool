@@ -14,7 +14,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quant
 import {
   areSameEntryModes,
   defaultEntryModes,
-  dynamicClothingOf,
+  dynamicClothingInsulationOf,
   enteredQuantities,
   enteredValue,
   entryModesOf,
@@ -100,7 +100,7 @@ describe("entered values", () => {
   });
 
   it("lists the relative air speed where the air speed stood, under relative air speed entry", () => {
-    const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+    const corrected = entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed);
     expect(enteredQuantities(pmvPpdIso, corrected)).toEqual([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]);
     expect(enteredQuantities(pmvPpdIso, { ...corrected, temperature: { mode: temperatureMode.operative } })).toEqual([
       q.operative_tmp,
@@ -112,7 +112,7 @@ describe("entered values", () => {
   });
 
   it("lists the dynamic clothing insulation where the clothing insulation stood, under dynamic clothing entry", () => {
-    const corrected = entryModesWithClothing(clothingMode.corrected);
+    const corrected = entryModesWithClothing(clothingMode.dynamicClothingInsulation);
     expect(enteredQuantities(pmvPpdIso, defaultEntryModes)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
     expect(enteredQuantities(pmvPpdIso, corrected)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo_dynamic]);
   });
@@ -120,7 +120,7 @@ describe("entered values", () => {
   it("lists the air speed of a model whose info names no relative air speed, in either mode", () => {
     const rows = enteredQuantities(adaptiveAshrae, defaultEntryModes);
     expect(rows).toContain(q.v);
-    expect(enteredQuantities(adaptiveAshrae, entryModesWithAirSpeed(airSpeedMode.corrected))).toEqual(rows);
+    expect(enteredQuantities(adaptiveAshrae, entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed))).toEqual(rows);
   });
 
   it("lists only the inputs of a model without the temperature entry group, in either mode", () => {
@@ -180,7 +180,7 @@ describe("entered values", () => {
       });
 
       it("are the clothing calculators on the row re-pointed to the dynamic clothing insulation", () => {
-        const dynamic = { ...starting, ...entryModesWithClothing(clothingMode.corrected) };
+        const dynamic = { ...starting, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) };
         expect(offeredOn(pmvPpdAshrae, dynamic, q.clo_dynamic)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
       });
 
@@ -202,7 +202,7 @@ describe("entered values", () => {
     describe("an option", () => {
       const [airSpeedControl] = optionsOf(pmvPpdAshrae);
       const starting = startingSlot(pmvPpdAshrae);
-      const corrected = { ...starting, ...entryModesWithAirSpeed(airSpeedMode.corrected) };
+      const corrected = { ...starting, ...entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed) };
       /** Each row as what it lists: its quantity, or its option. */
       const listed = (slot: Slot) => panelRows(pmvPpdAshrae, slot).map((row) => ("option" in row ? row.option : row.quantity));
 
@@ -263,7 +263,7 @@ describe("entered values", () => {
   it("sweeps rh as rh whatever the entry mode", () => {
     const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
-    expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
+    expect(swept.humidity).toEqual({ mode: humidityMode.relativeHumidity, value: 70 });
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(70);
     expect(slot.humidity?.mode).toBe(humidityMode.dewPoint);
   });
@@ -315,16 +315,16 @@ describe("a slot that holds no humidity", () => {
 });
 
 describe("withHumidityMode", () => {
-  const room: Slot = { ...enteredSlotFor(pmvPpdIso, { tdb: 27 }), humidity: { mode: humidityMode.rh, value: 35 } };
+  const room: Slot = { ...enteredSlotFor(pmvPpdIso, { tdb: 27 }), humidity: { mode: humidityMode.relativeHumidity, value: 35 } };
 
   it("re-expresses the entry at the slot's dry-bulb temperature, leaving the original untouched", () => {
     const converted = withHumidityMode(room, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(converted.humidity).toEqual({ mode: humidityMode.dewPoint, value: humidityMode.dewPoint.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE) });
-    expect(room.humidity).toEqual({ mode: humidityMode.rh, value: 35 });
+    expect(room.humidity).toEqual({ mode: humidityMode.relativeHumidity, value: 35 });
   });
 
   it("returns the slot unchanged for the mode it is already in", () => {
-    expect(withHumidityMode(room, humidityMode.rh, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(room);
+    expect(withHumidityMode(room, humidityMode.relativeHumidity, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(room);
   });
 });
 
@@ -351,14 +351,14 @@ describe("a humidity entry at an atmospheric pressure", () => {
   });
 
   it("re-expresses a relative humidity as the humidity ratio at that pressure", () => {
-    const slot = enteredAs(humidityMode.rh, 35);
+    const slot = enteredAs(humidityMode.relativeHumidity, 35);
     for (const pressure of pressures) {
       expect(withHumidityMode(slot, humidityMode.humidityRatio, pressure).humidity?.value, `${pressure} Pa`).toBe(psy_ta_rh(27, 35, pressure).hr);
     }
   });
 
   it("converts every other entry mode, both ways, the same whatever the pressure", () => {
-    const others = [humidityMode.rh, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure];
+    const others = [humidityMode.relativeHumidity, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure];
     for (const mode of others) {
       const slot = enteredAs(mode, mode.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE));
       expect(relativeHumidityOf(slot, LOWER_PRESSURE), mode.id).toBe(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE));
@@ -396,8 +396,8 @@ describe("withAirSpeedMode", () => {
   const moving = enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 });
 
   it("writes the relative air speed the model was given into the entry, at the slot's own air speed and metabolic rate", () => {
-    const converted = withAirSpeedMode(moving, airSpeedMode.corrected);
-    expect(converted.airSpeed.mode).toBe(airSpeedMode.corrected);
+    const converted = withAirSpeedMode(moving, airSpeedMode.relativeAirSpeed);
+    expect(converted.airSpeed.mode).toBe(airSpeedMode.relativeAirSpeed);
     expect(converted.values.get(q.vr)).toBe(v_relative(0.4, 2));
     expect(converted.values.get(q.vr)).toBe(resolveQuantities(moving, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr));
     expect(converted.values.has(q.v)).toBe(false);
@@ -410,8 +410,8 @@ describe("withAirSpeedMode", () => {
     { name: "at exactly 1 met keeps the number", vr: 0.7, met: 1, v: 0.7 },
     { name: "below 1 met keeps the number", vr: 0.7, met: 0.8, v: 0.7 },
   ])("inverts the correction going back: $name", ({ vr, met, v }) => {
-    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr, met }), airSpeedMode.uncorrected);
-    expect(converted.airSpeed.mode).toBe(airSpeedMode.uncorrected);
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr, met }), airSpeedMode.airSpeed);
+    expect(converted.airSpeed.mode).toBe(airSpeedMode.airSpeed);
     expect(converted.values.get(q.v)).toBe(v);
     expect(v_relative(v, met)).toBe(vr);
     expect(relativeAirSpeedOf(converted)).toBe(vr);
@@ -419,14 +419,14 @@ describe("withAirSpeedMode", () => {
   });
 
   it("gives a negative air speed back for a relative air speed below the activity's share", () => {
-    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.uncorrected);
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.airSpeed);
     expect(converted.values.get(q.v)).toBe(-0.2);
     expect(relativeAirSpeedOf(converted)).toBe(0.1);
   });
 
   /** `slot` switched into relative air speed entry and back. */
   function roundTripped(slot: Slot): Slot {
-    return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.corrected), airSpeedMode.uncorrected);
+    return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.relativeAirSpeed), airSpeedMode.airSpeed);
   }
 
   // `v_relative` rounds the activity's share to 0.001, so taking 0.3·(met − 1)
@@ -458,7 +458,7 @@ describe("withAirSpeedMode", () => {
   });
 
   it("hands back the slot itself when it is in the mode already", () => {
-    expect(withAirSpeedMode(moving, airSpeedMode.uncorrected)).toBe(moving);
+    expect(withAirSpeedMode(moving, airSpeedMode.airSpeed)).toBe(moving);
   });
 
   it("answers the relative air speed of a slot in either mode", () => {
@@ -477,8 +477,8 @@ describe("withClothingMode", () => {
       [pmvPpdIso, clo_dynamic_iso(active.clo, active.met, active.v)],
     ] as const) {
       const slot = enteredSlotFor(model, active);
-      const converted = withClothingMode(slot, clothingMode.corrected, model);
-      expect(converted.clothing.mode, model.info.label).toBe(clothingMode.corrected);
+      const converted = withClothingMode(slot, clothingMode.dynamicClothingInsulation, model);
+      expect(converted.clothing.mode, model.info.label).toBe(clothingMode.dynamicClothingInsulation);
       expect(converted.values.get(q.clo_dynamic), model.info.label).toBe(dynamic);
       expect(converted.values.get(q.clo_dynamic)).toBe(resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.clo));
       expect(converted.values.has(q.clo), model.info.label).toBe(false);
@@ -488,7 +488,7 @@ describe("withClothingMode", () => {
 
   it("corrects at the relative air speed the slot holds under relative air speed entry, by ISO 7730's rule", () => {
     const slot = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2, clo: 1 });
-    expect(withClothingMode(slot, clothingMode.corrected, pmvPpdIso).values.get(q.clo_dynamic)).toBe(clo_dynamic_iso_vr(1, 2, 0.7));
+    expect(withClothingMode(slot, clothingMode.dynamicClothingInsulation, pmvPpdIso).values.get(q.clo_dynamic)).toBe(clo_dynamic_iso_vr(1, 2, 0.7));
     // The same number the air speed that gives this relative air speed is corrected to.
     expect(clo_dynamic_iso_vr(1, 2, 0.7)).toBe(clo_dynamic_iso(1, 2, 0.4));
   });
@@ -503,23 +503,23 @@ describe("withClothingMode", () => {
     { model: pmvPpdIso, name: "ISO 7730 under relative air speed entry", entries: { clo_dynamic: clo_dynamic_iso_vr(1, 2, 0.7), met: 2, vr: 0.7 }, clo: 1 },
   ])("inverts the correction going back: $name", ({ model, entries, clo }) => {
     const kept = enteredSlotFor(model, entries);
-    const converted = withClothingMode(kept, clothingMode.uncorrected, model);
-    expect(converted.clothing.mode).toBe(clothingMode.uncorrected);
+    const converted = withClothingMode(kept, clothingMode.clothingInsulation, model);
+    expect(converted.clothing.mode).toBe(clothingMode.clothingInsulation);
     expect(converted.values.get(q.clo)).toBe(clo);
-    expect(dynamicClothingOf(converted, model)).toBe(entries.clo_dynamic);
+    expect(dynamicClothingInsulationOf(converted, model)).toBe(entries.clo_dynamic);
     expect(converted.values.has(q.clo_dynamic)).toBe(false);
   });
 
   it("inverts a dynamic clothing insulation no entry of few decimals gives, to one that reads the same", () => {
     const kept = enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 });
-    const converted = withClothingMode(kept, clothingMode.uncorrected, pmvPpdIso);
-    expect(dynamicClothingOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 2);
+    const converted = withClothingMode(kept, clothingMode.clothingInsulation, pmvPpdIso);
+    expect(dynamicClothingInsulationOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 2);
     expect(converted.values.get(q.clo)).not.toBe(0.8);
   });
 
   /** `slot` switched into dynamic clothing entry and back. */
   function roundTripped(slot: Slot, model: ModelDeclaration): Slot {
-    return withClothingMode(withClothingMode(slot, clothingMode.corrected, model), clothingMode.uncorrected, model);
+    return withClothingMode(withClothingMode(slot, clothingMode.dynamicClothingInsulation, model), clothingMode.clothingInsulation, model);
   }
 
   it.each([pmvPpdAshrae, pmvPpdIso])("gives the clothing insulation back after any number of round trips, on $info.label", (model) => {
@@ -527,7 +527,7 @@ describe("withClothingMode", () => {
       const slot = enteredSlotFor(model, { ...active, met });
       const once = roundTripped(slot, model);
       expect(once.values.get(q.clo), `${met} met`).toBe(active.clo);
-      expect(dynamicClothingOf(once, model), `${met} met`).toBe(dynamicClothingOf(slot, model));
+      expect(dynamicClothingInsulationOf(once, model), `${met} met`).toBe(dynamicClothingInsulationOf(slot, model));
       expect(roundTripped(roundTripped(once, model), model).values, `${met} met`).toEqual(slot.values);
     }
   });
@@ -541,27 +541,27 @@ describe("withClothingMode", () => {
   // Nothing corrects it, so nothing is inverted: the group's conversion for a
   // model without the group, which the model switch never asks for.
   it("keeps the number going back for a model whose standard has no correction", () => {
-    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, withoutStandard);
+    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.clothingInsulation, withoutStandard);
     expect(converted.values.get(q.clo)).toBe(0.8);
   });
 
   it("moves nothing at or below 1.2 met under ASHRAE 55", () => {
-    const converted = withClothingMode(enteredSlotFor(pmvPpdAshrae, { met: 1.2, clo: 1 }), clothingMode.corrected, pmvPpdAshrae);
+    const converted = withClothingMode(enteredSlotFor(pmvPpdAshrae, { met: 1.2, clo: 1 }), clothingMode.dynamicClothingInsulation, pmvPpdAshrae);
     expect(converted.values.get(q.clo_dynamic)).toBe(1);
   });
 
   it("hands back the slot itself when it is in the mode already", () => {
     const slot = enteredSlotFor(pmvPpdIso, active);
-    expect(withClothingMode(slot, clothingMode.uncorrected, pmvPpdIso)).toBe(slot);
+    expect(withClothingMode(slot, clothingMode.clothingInsulation, pmvPpdIso)).toBe(slot);
   });
 
   it("answers the dynamic clothing insulation of a slot in either mode", () => {
-    expect(dynamicClothingOf(enteredSlotFor(pmvPpdIso, active), pmvPpdIso)).toBe(clo_dynamic_iso(active.clo, active.met, active.v));
-    expect(dynamicClothingOf(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), pmvPpdIso)).toBe(0.8);
+    expect(dynamicClothingInsulationOf(enteredSlotFor(pmvPpdIso, active), pmvPpdIso)).toBe(clo_dynamic_iso(active.clo, active.met, active.v));
+    expect(dynamicClothingInsulationOf(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), pmvPpdIso)).toBe(0.8);
   });
 
   it("answers the clothing insulation as entered for a model whose standard has no correction", () => {
-    expect(dynamicClothingOf(enteredSlotFor(pmvPpdIso, active), withoutStandard)).toBe(active.clo);
+    expect(dynamicClothingInsulationOf(enteredSlotFor(pmvPpdIso, active), withoutStandard)).toBe(active.clo);
   });
 });
 
@@ -583,13 +583,13 @@ describe("the entry groups held among the values", () => {
   });
 
   it("stand the relative air speed in for the air speed under relative air speed entry, and back", () => {
-    expect(underEntryModes(q.v, entryModesWithAirSpeed(airSpeedMode.corrected))).toBe(q.vr);
+    expect(underEntryModes(q.v, entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed))).toBe(q.vr);
     expect(underEntryModes(q.vr, defaultEntryModes)).toBe(q.v);
     expect(underEntryModes(q.v, defaultEntryModes)).toBe(q.v);
   });
 
   it("stand the dynamic clothing insulation in for the clothing insulation under dynamic clothing entry, and back", () => {
-    expect(underEntryModes(q.clo, entryModesWithClothing(clothingMode.corrected))).toBe(q.clo_dynamic);
+    expect(underEntryModes(q.clo, entryModesWithClothing(clothingMode.dynamicClothingInsulation))).toBe(q.clo_dynamic);
     expect(underEntryModes(q.clo_dynamic, defaultEntryModes)).toBe(q.clo);
     expect(underEntryModes(q.clo, defaultEntryModes)).toBe(q.clo);
   });
@@ -597,7 +597,7 @@ describe("the entry groups held among the values", () => {
   // Adaptive (ASHRAE 55) is under a standard with a correction and takes no
   // clothing; Heat Index takes none and has no standard.
   it("have the clothing group on a model that takes the clothing under a standard with a correction, and on no other", () => {
-    const clothing = valueEntryGroups.find((group) => group.modes.includes(clothingMode.corrected));
+    const clothing = valueEntryGroups.find((group) => group.modes.includes(clothingMode.dynamicClothingInsulation));
     expect([pmvPpdIso, pmvPpdAshrae, adaptiveAshrae, heatIndexRothfusz].map((model) => clothing?.appliesTo(model))).toEqual([
       true,
       true,
@@ -608,7 +608,7 @@ describe("the entry groups held among the values", () => {
   });
 
   it("have the air-speed group on a model whose info names the relative air speed, and on no other", () => {
-    const airSpeed = valueEntryGroups.find((group) => group.modes.includes(airSpeedMode.corrected));
+    const airSpeed = valueEntryGroups.find((group) => group.modes.includes(airSpeedMode.relativeAirSpeed));
     expect([pmvPpdIso, pmvPpdAshrae, adaptiveAshrae, heatIndexRothfusz].map((model) => airSpeed?.appliesTo(model))).toEqual([
       true,
       true,
@@ -620,13 +620,13 @@ describe("the entry groups held among the values", () => {
   it("convert a slot by every group whose mode differs", () => {
     const modes = {
       temperature: { mode: temperatureMode.operative },
-      airSpeed: { mode: airSpeedMode.corrected },
-      clothing: { mode: clothingMode.corrected },
+      airSpeed: { mode: airSpeedMode.relativeAirSpeed },
+      clothing: { mode: clothingMode.dynamicClothingInsulation },
     };
     expect(withEntryModes(separate, modes, pmvPpdIso)).toEqual(
       withClothingMode(
-        withAirSpeedMode(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso), airSpeedMode.corrected),
-        clothingMode.corrected,
+        withAirSpeedMode(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso), airSpeedMode.relativeAirSpeed),
+        clothingMode.dynamicClothingInsulation,
         pmvPpdIso,
       ),
     );
@@ -691,12 +691,12 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
 
     it(`offers each group ${model.info.label} has on exactly one row, in any entry modes`, () => {
       for (const slot of slotsInEveryMode(model)) {
-        const offered = panelQuantities(model, slot).flatMap((row) => rowEntryGroupOf(model, slot, row)?.field ?? []);
-        const fields = [
-          ...valueEntryGroups.filter((group) => group.appliesTo(model)).map((group) => group.field),
+        const offered = panelQuantities(model, slot).flatMap((row) => rowEntryGroupOf(model, slot, row)?.name ?? []);
+        const names = [
+          ...valueEntryGroups.filter((group) => group.appliesTo(model)).map((group) => group.name),
           ...(hasHumidityGroup(model) ? ["humidity"] : []),
         ];
-        expect([...offered].sort()).toEqual([...fields].sort());
+        expect([...offered].sort()).toEqual([...names].sort());
       }
     });
   }
@@ -704,17 +704,17 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   it("returns the temperature, air speed, clothing and humidity groups on their rows, with the modes in the table's order", () => {
     const slot = startingSlot(pmvPpdIso);
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.tdb)).toEqual({
-      field: "temperature",
+      name: "temperature",
       modes: Object.values(temperatureMode),
       mode: temperatureMode.separate,
     });
-    expect(rowEntryGroupOf(pmvPpdIso, slot, q.v)).toEqual({ field: "airSpeed", modes: Object.values(airSpeedMode), mode: airSpeedMode.uncorrected });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.v)).toEqual({ name: "airSpeed", modes: Object.values(airSpeedMode), mode: airSpeedMode.airSpeed });
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.clo)).toEqual({
-      field: "clothing",
+      name: "clothing",
       modes: Object.values(clothingMode),
-      mode: clothingMode.uncorrected,
+      mode: clothingMode.clothingInsulation,
     });
-    expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toEqual({ field: "humidity", modes: Object.values(humidityMode), mode: humidityMode.rh });
+    expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toEqual({ name: "humidity", modes: Object.values(humidityMode), mode: humidityMode.relativeHumidity });
   });
 
   it("returns none for the metabolic rate, the pressure and the mean radiant temperature, which the temperature row folds", () => {
@@ -727,7 +727,7 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   it("returns the temperature group on the operative row under operative entry, so the way back is offered", () => {
     const slot = enteredSlotFor(pmvPpdIso, { operative_tmp: 24 });
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.operative_tmp)).toEqual({
-      field: "temperature",
+      name: "temperature",
       modes: Object.values(temperatureMode),
       mode: temperatureMode.operative,
     });

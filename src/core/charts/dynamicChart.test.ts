@@ -327,13 +327,13 @@ describe("axes across a temperature entry mode switch", () => {
 });
 
 describe("axes across an air-speed entry mode switch", () => {
-  const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+  const corrected = entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed);
 
   it("offers the relative air speed where it offered the air speed", () => {
     const offered = dynamicAxisQuantities(pmvPpdIso, corrected);
     expect(offered).toContain(q.vr);
     expect(offered).not.toContain(q.v);
-    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithAirSpeed(airSpeedMode.uncorrected))).toContain(q.v);
+    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithAirSpeed(airSpeedMode.airSpeed))).toContain(q.v);
   });
 
   it("sweeps the relative air speed when a remembered air-speed axis no longer exists, and marks the entry", () => {
@@ -360,14 +360,14 @@ describe("axes across an air-speed entry mode switch", () => {
 });
 
 describe("axes across a clothing entry mode switch", () => {
-  const corrected = entryModesWithClothing(clothingMode.corrected);
+  const corrected = entryModesWithClothing(clothingMode.dynamicClothingInsulation);
   const clothingAxes = { x: q.tdb, y: q.clo };
 
   it("offers the dynamic clothing insulation where it offered the clothing insulation", () => {
     const offered = dynamicAxisQuantities(pmvPpdIso, corrected);
     expect(offered).toContain(q.clo_dynamic);
     expect(offered).not.toContain(q.clo);
-    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithClothing(clothingMode.uncorrected))).toContain(q.clo);
+    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithClothing(clothingMode.clothingInsulation))).toContain(q.clo);
   });
 
   it("sweeps the dynamic clothing insulation when a remembered clothing axis no longer exists, as far as it drew the clothing, and marks the entry", () => {

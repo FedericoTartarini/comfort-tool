@@ -162,7 +162,7 @@ describe("enteredBound / outOfRangeRows", () => {
   it("does not gate a value only a derived row bounds", () => {
     // tdb at the ISO bound, rh 95: no entered value breaks a row; the derived vapour pressure does.
     const slot = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
-    const humid: Slot = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
+    const humid: Slot = { ...slot, humidity: { mode: humidityMode.relativeHumidity, value: 95 } };
     expect(quantitiesOutOfRange(humid, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 });
@@ -171,9 +171,9 @@ describe("enteredBound / outOfRangeRows", () => {
 describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   it("bounds relative humidity to 0 – 100 % and gates an entry outside it", () => {
     expect(enteredBound(pmvPpdIso, q.rh, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ min: 0, max: 100 });
-    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
-    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, -20), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
-    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 50), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.relativeHumidity, 150), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
+    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.relativeHumidity, -20), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
+    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.relativeHumidity, 50), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
   it("converts the bound into the entered humidity ratio at the slot's dry-bulb temperature", () => {
@@ -240,7 +240,7 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
       info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, rh: { kind: "numeric", unit: "%", applicability: { min: 30, max: 120 } } as const } },
     };
     expect(enteredBound(bounded, q.rh, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual({ min: 30, max: 100 });
-    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 20), bounded, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
+    expect(quantitiesOutOfRange(withHumidity(startingSlot(pmvPpdIso), humidityMode.relativeHumidity, 20), bounded, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
   });
 
   it("neither bounds nor lists a humidity for a slot that holds none", () => {
@@ -252,12 +252,12 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
       expect(enteredBound(pmvPpdIso, mode.quantity, holdsNone, DEFAULT_ATMOSPHERIC_PRESSURE), mode.id).toBeUndefined();
     }
     // The same slot holding a humidity past 100 % lists it, so the empty list is the absent entry's doing.
-    expect(quantitiesOutOfRange(withHumidity(holdsNone, humidityMode.rh, 150), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
+    expect(quantitiesOutOfRange(withHumidity(holdsNone, humidityMode.relativeHumidity, 150), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.rh]);
     expect(outOfRangeRows(holdsNone, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
   it("does not bound the humidity entry of a model that takes no humidity", () => {
-    const slot = withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150);
+    const slot = withHumidity(startingSlot(pmvPpdIso), humidityMode.relativeHumidity, 150);
     expect(enteredBound(adaptiveAshrae, q.rh, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
     expect(quantitiesOutOfRange(slot, adaptiveAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
@@ -307,7 +307,7 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
   });
 
   it("bounds a relative-humidity, dew-point, wet-bulb and vapour-pressure entry as in range", () => {
-    for (const mode of [humidityMode.rh, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure]) {
+    for (const mode of [humidityMode.relativeHumidity, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure]) {
       const inRange = enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), DEFAULT_ATMOSPHERIC_PRESSURE);
       expect(inRange, mode.id).toBeDefined();
       for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
@@ -360,7 +360,7 @@ describe("violationRows", () => {
 
   it("maps the kernel's derived vapour-pressure row to pa", () => {
     const slot = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
-    const humid: Slot = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
+    const humid: Slot = { ...slot, humidity: { mode: humidityMode.relativeHumidity, value: 95 } };
     const violation = rowsFor(humid).find((row) => row.quantity === q.pa);
     expect(violation?.role).toBe("derived");
     expect(violation?.bound).toEqual(pmvPpdIso.info.derived?.pa?.applicability);
@@ -424,7 +424,7 @@ describe("violationRows", () => {
     const rowOf = (modes: Parameters<typeof violationRows>[2]) =>
       violationRows(pmvPpdIso, { warnings }, modes).map(({ quantity, bounded }) => [quantity, bounded]);
     expect(rowOf(defaultEntryModes)).toEqual([[q.clo, q.clo_dynamic]]);
-    expect(rowOf(entryModesWithClothing(clothingMode.corrected))).toEqual([[q.clo_dynamic, q.clo_dynamic]]);
+    expect(rowOf(entryModesWithClothing(clothingMode.dynamicClothingInsulation))).toEqual([[q.clo_dynamic, q.clo_dynamic]]);
   });
 
   it("reports a run whose metabolic rate takes the entered clothing past the model's row, naming the dynamic clothing insulation", () => {
@@ -443,7 +443,7 @@ describe("violationRows", () => {
     const warnings = [rangeRow("vr", "input", 0.9, { max: 0.2 })];
     const rowOf = (modes: Parameters<typeof violationRows>[2]) => violationRows(pmvPpdIso, { warnings }, modes)[0].quantity;
     expect(rowOf(defaultEntryModes)).toBe(q.v);
-    expect(rowOf(entryModesWithAirSpeed(airSpeedMode.corrected))).toBe(q.vr);
+    expect(rowOf(entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed))).toBe(q.vr);
   });
 
   it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {

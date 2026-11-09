@@ -25,18 +25,18 @@ import {
   clothingCorrectionOf,
   declaredQuantitiesOf,
   dynamicChartOf,
+  hasAirSpeedGroup,
   hasClothingGroup,
   optionsOf,
   psychrometricChartOf,
   requireAxisRange,
   standardOf,
-  takesRelativeAirSpeed,
   type DeclaredChart,
   type ModelDeclaration,
   type ZoneLimits,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
+import { defaultEntryModes, dynamicClothingInsulationOf, startingSlot, valueEntryGroups } from "./slot";
 import { startingChartSettings } from "./writtenSession";
 
 const q = quantities;
@@ -152,18 +152,18 @@ describe("charts", () => {
 
 /** `vr` is derived as `v_relative(v, met)`, so a model that takes it must be entered both. */
 function expectVAndMetUnderRelativeAirSpeed(model: ModelDeclaration): void {
-  if (!takesRelativeAirSpeed(model)) return;
+  if (!hasAirSpeedGroup(model)) return;
   const entered = declaredQuantitiesOf(model).map((entry) => entry.quantity);
   expect(entered, model.info.label).toEqual(expect.arrayContaining([q.v, q.met]));
 }
 
-describe("takesRelativeAirSpeed", () => {
+describe("hasAirSpeedGroup", () => {
   it("answers whether the model info's inputs name vr", () => {
     expect(pmvPpdIso.info.inputs[q.vr.key]).toBeDefined();
-    expect(takesRelativeAirSpeed(pmvPpdIso)).toBe(true);
+    expect(hasAirSpeedGroup(pmvPpdIso)).toBe(true);
 
     const inputs = Object.fromEntries(Object.entries(pmvPpdIso.info.inputs).filter(([key]) => key !== q.vr.key));
-    expect(takesRelativeAirSpeed({ ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } })).toBe(false);
+    expect(hasAirSpeedGroup({ ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } })).toBe(false);
   });
 });
 
@@ -262,7 +262,7 @@ function expectWhatTheClothingCorrectionTakes(model: ModelDeclaration): void {
   expect(declaredQuantitiesOf(model).map((entry) => entry.quantity), model.info.label).toContain(q.met);
   let corrected: number;
   try {
-    corrected = dynamicClothingOf(startingSlot(model), model);
+    corrected = dynamicClothingInsulationOf(startingSlot(model), model);
   } catch (error) {
     throw new Error(`${model.info.label}: ${String(error)}`);
   }

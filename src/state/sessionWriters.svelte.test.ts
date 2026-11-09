@@ -29,7 +29,7 @@ const dynamicClothingBound = pmvPpdAshrae.info.inputs.clo!.applicability!;
 /** A session on PMV (ASHRAE 55) under dynamic clothing entry, at its starting metabolic rate. */
 function dynamicClothingSession(): Session {
   const session = new Session(pmvPpdAshrae);
-  session.setClothingMode(clothingMode.corrected);
+  session.setClothingMode(clothingMode.dynamicClothingInsulation);
   return session;
 }
 
@@ -108,9 +108,9 @@ function switchesOf<Mode extends { readonly id: string }>(
   );
 }
 
-/** Whether the session's model has the entry group held in `field`. */
-const hasGroup = (field: keyof ValueEntryModes) => (session: Session) =>
-  valueEntryGroups.find((group) => group.field === field)!.appliesTo(session.model);
+/** Whether the session's model has the entry group named `name`. */
+const hasGroup = (name: keyof ValueEntryModes) => (session: Session) =>
+  valueEntryGroups.find((group) => group.name === name)!.appliesTo(session.model);
 
 const modeControls: readonly ModeControl[] = [
   {
@@ -163,8 +163,8 @@ describe("an entry-mode switch", () => {
     session.commitEntry(0, q.v, 3);
     session.commitEntry(0, q.clo, 3);
 
-    session.setAirSpeedMode(airSpeedMode.corrected);
-    session.setClothingMode(clothingMode.corrected);
+    session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
+    session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     expect(session.slots[0].values.get(q.vr)).toBe(pmvPpdAshrae.info.inputs.vr!.applicability!.max);
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingBound.max);

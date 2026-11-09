@@ -1,16 +1,16 @@
 import { temperatureMode } from "./entryModes";
 import {
+  hasAirSpeedGroup,
   hasClothingGroup,
   hasHumidityGroup,
   hasTemperatureGroup,
-  takesRelativeAirSpeed,
   type LibraryInputs,
   type ModelDeclaration,
   type OptionSpec,
   type OptionsReader,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
+import { dynamicClothingInsulationOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -37,13 +37,13 @@ export function resolveQuantities(slot: Slot, model: ModelDeclaration, atmospher
     resolved.set(q.rh, relativeHumidityOf(slot, atmosphericPressure));
   }
 
-  if (takesRelativeAirSpeed(model)) {
+  if (hasAirSpeedGroup(model)) {
     resolved.set(q.vr, relativeAirSpeedOf(slot));
     resolved.delete(q.v);
   }
 
   if (hasClothingGroup(model)) {
-    resolved.set(q.clo, dynamicClothingOf(slot, model));
+    resolved.set(q.clo, dynamicClothingInsulationOf(slot, model));
     resolved.delete(q.clo_dynamic);
   }
 

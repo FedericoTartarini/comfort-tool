@@ -97,8 +97,8 @@ function editedSession(): Session {
     draft.setLabel(0, "Freezing");
   });
   session.setTemperatureMode(temperatureMode.operative);
-  session.setAirSpeedMode(airSpeedMode.corrected);
-  session.setClothingMode(clothingMode.corrected);
+  session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
+  session.setClothingMode(clothingMode.dynamicClothingInsulation);
   session.setHumidityMode(humidityMode.dewPoint);
   heldSlot(session, 1).setEntered(q.operative_tmp, 27);
   heldSlot(session, 2).setEntered(q.met, 1.4);
@@ -215,8 +215,8 @@ describe("Session.toWrittenSession", () => {
       () => session.slots[0].setEntered(q.tdb, 28),
       () => session.slots[0].setOption(airSpeedControl, true),
       () => session.setTemperatureMode(temperatureMode.operative),
-      () => session.setAirSpeedMode(airSpeedMode.corrected),
-      () => session.setClothingMode(clothingMode.corrected),
+      () => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed),
+      () => session.setClothingMode(clothingMode.dynamicClothingInsulation),
       () => session.setHumidityMode(humidityMode.dewPoint),
       () => session.setCompare(true),
       () => session.setSlotEnabled(2, true),

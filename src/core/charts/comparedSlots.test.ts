@@ -21,7 +21,7 @@ import {
   entryModesWithTemperature,
 } from "$lib/core/declarationTestSlots";
 import {
-  dynamicClothingOf,
+  dynamicClothingInsulationOf,
   operativeTemperatureOf,
   relativeAirSpeedOf,
   startingSlot,
@@ -419,12 +419,12 @@ describe("a slot in another temperature entry mode than the session's", () => {
 /** The same, for the air-speed entry group: both builders convert the whole kept slot. */
 describe("a slot in another air-speed entry mode than the session's", () => {
   const entered = enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 });
-  const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+  const corrected = entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed);
 
   it("is marked on the session's air-speed axis, at the value the entry-mode change converts it to", () => {
     const chart = dynamicOf(pmvPpdIso);
     const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart.axes);
-    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.relativeAirSpeed)), chart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
     expect(markersOf(spec)[1].y).toBe(relativeAirSpeedOf(entered));
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
@@ -436,8 +436,8 @@ describe("a slot in another air-speed entry mode than the session's", () => {
   it("is drawn in an air-speed session at the relative air speed its run was given", () => {
     const chart = dynamicOf(pmvPpdIso);
     const kept = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
-    const back = withAirSpeedMode(kept, airSpeedMode.uncorrected);
-    const uncorrected = entryModesWithAirSpeed(airSpeedMode.uncorrected);
+    const back = withAirSpeedMode(kept, airSpeedMode.airSpeed);
+    const uncorrected = entryModesWithAirSpeed(airSpeedMode.airSpeed);
     const spec = dynamicSpec(chartRequestFor(pmvPpdIso, kept, unitSystem.si, uncorrected), chart.axes);
     const alone = dynamicSpec(chartRequestFor(pmvPpdIso, back), chart.axes);
     expect(spec.layout.y.title).toContain(q.v.label);
@@ -452,7 +452,7 @@ describe("a slot in another air-speed entry mode than the session's", () => {
 
   it("has its comfort zones scanned on the relative air speed the model is given, in either mode", () => {
     const kept = psychrometricSpec(chartRequestFor(pmvPpdIso, entered, unitSystem.si, corrected));
-    const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)));
+    const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.relativeAirSpeed)));
     const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered));
     expect(kept.traces).toEqual(converted.traces);
     expect(converted.traces).toEqual(uncorrected.traces);
@@ -462,20 +462,20 @@ describe("a slot in another air-speed entry mode than the session's", () => {
 /** The same, for the clothing entry group, on both PMV models: each corrects by its own standard's rule. */
 describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode than the session's, on $info.label", (model) => {
   const entered = enteredSlotFor(model, { clo: 1, met: 2 });
-  const corrected = entryModesWithClothing(clothingMode.corrected);
+  const corrected = entryModesWithClothing(clothingMode.dynamicClothingInsulation);
   const clothingAxes = { x: q.tdb, y: q.clo };
 
   it("is marked on the session's clothing axis, at the dynamic clothing insulation the model was given", () => {
     const spec = dynamicSpec(chartRequestForSlots(model, [startingSlot(model), entered], unitSystem.si, corrected), clothingAxes);
-    const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), clothingAxes);
+    const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.dynamicClothingInsulation, model)), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
-    expect(markersOf(spec)[1].y).toBe(dynamicClothingOf(entered, model));
+    expect(markersOf(spec)[1].y).toBe(dynamicClothingInsulationOf(entered, model));
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
   });
 
   it("has its comfort zones scanned on the dynamic clothing insulation the model is given, in either mode", () => {
     const kept = psychrometricSpec(chartRequestFor(model, entered, unitSystem.si, corrected));
-    const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)));
+    const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.dynamicClothingInsulation, model)));
     const uncorrected = psychrometricSpec(chartRequestFor(model, entered));
     expect(kept.traces).toEqual(converted.traces);
     expect(converted.traces).toEqual(uncorrected.traces);
@@ -489,14 +489,14 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
   // clothing insulation its run was given: marked at the clothing insulation
   // that gives it, its zones where they were.
   it("is drawn in a clothing-insulation session at the dynamic clothing insulation its run was given", () => {
-    const kept = withClothingMode(entered, clothingMode.corrected, model);
-    const back = withClothingMode(kept, clothingMode.uncorrected, model);
-    const uncorrected = entryModesWithClothing(clothingMode.uncorrected);
+    const kept = withClothingMode(entered, clothingMode.dynamicClothingInsulation, model);
+    const back = withClothingMode(kept, clothingMode.clothingInsulation, model);
+    const uncorrected = entryModesWithClothing(clothingMode.clothingInsulation);
     const spec = dynamicSpec(chartRequestFor(model, kept, unitSystem.si, uncorrected), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo.label);
     expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), clothingAxes).traces);
     expect(markersOf(spec)[0].y).toBe(1);
-    expect(dynamicClothingOf(back, model)).toBe(dynamicClothingOf(kept, model));
+    expect(dynamicClothingInsulationOf(back, model)).toBe(dynamicClothingInsulationOf(kept, model));
 
     const drawn = psychrometricSpec(chartRequestFor(model, kept, unitSystem.si, uncorrected));
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back)).traces);

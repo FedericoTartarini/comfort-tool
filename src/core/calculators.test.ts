@@ -287,11 +287,11 @@ describe("withCalculatorOutputs", () => {
   });
 
   it("writes the standard's correction of the output under dynamic clothing entry", () => {
-    const dynamic = withClothingMode(room, clothingMode.corrected, pmvPpdAshrae);
+    const dynamic = withClothingMode(room, clothingMode.dynamicClothingInsulation, pmvPpdAshrae);
     const written = withCalculatorOutputs(dynamic, customEnsemble, clothing, pmvPpdAshrae);
     expect(written.values.get(q.clo_dynamic)).toBeCloseTo(clo_dynamic_ashrae(0.83, 1.5), 2);
     expect(written.values.has(q.clo)).toBe(false);
-    expect(written.clothing.mode).toBe(clothingMode.corrected);
+    expect(written.clothing.mode).toBe(clothingMode.dynamicClothingInsulation);
     expectUntouched(written, dynamic);
   });
 
@@ -340,7 +340,7 @@ describe("panelCalculators", () => {
       const starting = startingSlot(model);
       expect(panelCalculators(model, starting)).toEqual(calculators);
       expect(panelCalculators(model, { ...starting, ...entryModesWithTemperature(temperatureMode.operative) })).toEqual(calculators);
-      expect(panelCalculators(model, { ...starting, ...entryModesWithClothing(clothingMode.corrected) })).toEqual(calculators);
+      expect(panelCalculators(model, { ...starting, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) })).toEqual(calculators);
     });
   }
 });
@@ -356,7 +356,7 @@ describe("shownRow", () => {
   });
 
   it("is the dynamic clothing insulation under dynamic clothing entry, the standard's correction of the output after", () => {
-    const dynamic = withClothingMode(room, clothingMode.corrected, pmvPpdAshrae);
+    const dynamic = withClothingMode(room, clothingMode.dynamicClothingInsulation, pmvPpdAshrae);
     const row = shownRow(dynamic, customEnsemble, clothing, pmvPpdAshrae, P);
     expect(row.quantity).toBe(q.clo_dynamic);
     expect(row.before).toBe(dynamic.values.get(q.clo_dynamic));

@@ -34,11 +34,11 @@
     humidity: copy.humidityGroup,
     airSpeed: copy.airSpeedGroup,
     clothing: copy.clothingGroup,
-  } satisfies Record<RowEntryGroup["field"], string>;
+  } satisfies Record<RowEntryGroup["name"], string>;
 
   /** Each mode's quantities, in the group's order: the rows a choice puts on the panel. */
   const choices = $derived<readonly { quantities: readonly Quantity[]; id: string }[]>(
-    group.field === "humidity"
+    group.name === "humidity"
       ? group.modes.map((mode) => ({ quantities: [mode.quantity], id: mode.id }))
       : group.modes.map((mode) => ({ quantities: mode.panel, id: mode.id })),
   );
@@ -46,7 +46,7 @@
   const currentIndex = $derived(group.modes.findIndex((mode) => mode === group.mode));
 
   function choose(index: number) {
-    switch (group.field) {
+    switch (group.name) {
       case "humidity":
         return setters.setHumidityMode(group.modes[index]);
       case "temperature":
@@ -62,7 +62,7 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
-      <Button {...props} variant="outline" size="sm" aria-label={copy.entryGroupButtonName(groupLabels[group.field])}>
+      <Button {...props} variant="outline" size="sm" aria-label={copy.entryGroupButtonName(groupLabels[group.name])}>
         {copy.entryGroupButton}
         <ChevronDownIcon data-icon="inline-end" />
       </Button>

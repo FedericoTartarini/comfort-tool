@@ -65,7 +65,8 @@ export class InputSlot implements Slot {
   readonly #options = new SvelteMap<OptionSpec, boolean>();
   // `$state.raw`, not `$state`: a deep proxy would wrap the mode objects and
   // the Quantity they reference, and identity comparisons against
-  // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
+  // `humidityMode.relativeHumidity` / `io.quantities.rh` would fail. Replace,
+  // don't mutate.
   #humidity = $state.raw<Slot["humidity"]>(undefined);
   #temperature = $state.raw<Slot["temperature"]>(defaultEntryModes.temperature);
   #airSpeed = $state.raw<Slot["airSpeed"]>(defaultEntryModes.airSpeed);

@@ -31,14 +31,14 @@ export interface RehearsedSwitch {
 }
 
 /**
- * What `slot`, held under the model `from`, would hold under `model`, and
- * what `model` would not accept of it at `atmosphericPressure`, which the
+ * What `slot`, held under the model `from`, would hold under the model `to`,
+ * and what `to` would not accept of it at `atmosphericPressure`, which the
  * switch keeps (ADR-0002 decision 49), as {@link settledOutOfRangeRows}
  * lists it.
  */
-export function rehearseSwitch(slot: Slot, from: ModelDeclaration, model: ModelDeclaration, atmosphericPressure: number): RehearsedSwitch {
-  const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, model), model);
-  return { slot: seeded, outOfRangeRows: settledOutOfRangeRows(seeded, model, atmosphericPressure) };
+export function rehearseSwitch(slot: Slot, from: ModelDeclaration, to: ModelDeclaration, atmosphericPressure: number): RehearsedSwitch {
+  const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, to), to);
+  return { slot: seeded, outOfRangeRows: settledOutOfRangeRows(seeded, to, atmosphericPressure) };
 }
 
 /**
@@ -100,17 +100,17 @@ export function cutToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
 }
 
 /**
- * `slot` in the default entry mode of every entry group the new model does
- * not have: a slot in operative entry becomes separate entry for a model
+ * `slot` in the default entry mode of every entry group the new model, `to`,
+ * does not have: a slot in operative entry becomes separate entry for a model
  * without the temperature entry group, because such a model needs the
  * dry-bulb temperature the operative entry is standing in for. Converted as
  * the group's control converts under `from`, the model the slot is on: the
  * dynamic clothing insulation is inverted by that model's standard's rule,
  * which the new model, having no clothing group, does not have.
  */
-function convertEntryModes(slot: Slot, from: ModelDeclaration, model: ModelDeclaration): Slot {
+function convertEntryModes(slot: Slot, from: ModelDeclaration, to: ModelDeclaration): Slot {
   return valueEntryGroups.reduce(
-    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from)),
+    (converted, group) => (group.appliesTo(to) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from)),
     slot,
   );
 }

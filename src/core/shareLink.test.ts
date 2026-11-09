@@ -54,7 +54,7 @@ function roundTrip(session: WrittenSession): WrittenSession | undefined {
 /** `slot` on `model` in every entry group's other mode: operative, relative air speed, dynamic clothing, dew point. */
 function inOtherEntryModes(slot: Slot, model: ModelDeclaration): Slot {
   const operative = withTemperatureMode(slot, temperatureMode.operative, model);
-  const corrected = withClothingMode(withAirSpeedMode(operative, airSpeedMode.corrected), clothingMode.corrected, model);
+  const corrected = withClothingMode(withAirSpeedMode(operative, airSpeedMode.relativeAirSpeed), clothingMode.dynamicClothingInsulation, model);
   return withHumidityMode(corrected, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
 }
 

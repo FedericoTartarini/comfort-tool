@@ -58,8 +58,11 @@ import {
 
 const PREFIX = "v1.";
 
-/** Every field of the entry modes held among the values, so a new entry group is written without a line here. */
-const entryModeFields = Object.keys(defaultEntryModes) as (keyof ValueEntryModes)[];
+/**
+ * The name of every entry group whose mode is held among the values, each a member of a text's `entryModes`, so a new
+ * entry group is written without a line here.
+ */
+const entryModeNames = Object.keys(defaultEntryModes) as (keyof ValueEntryModes)[];
 
 /** `session` written out as a text, its options grouped under the model in `models` that declares each. */
 export function toText(session: WrittenSession, models: readonly ModelDeclaration[]): string {
@@ -80,7 +83,7 @@ export function narrowedToPage(session: WrittenSession, onPage: Page): WrittenSe
   const compared = comparedPositionsOf(session, onPage);
   const narrowed = (position: SlotPosition) => {
     const slot = session.slots[position];
-    return slot && compared.includes(position) ? enteredSlot(slot, model) : null;
+    return slot && compared.includes(position) ? narrowedSlot(slot, model) : null;
   };
   const chart = session.charts.get(model);
   if (!chart) {
@@ -90,13 +93,13 @@ export function narrowedToPage(session: WrittenSession, onPage: Page): WrittenSe
     ...session,
     compare: onPage === page.standard && session.compare,
     enabled: [compared.includes(1), compared.includes(2)],
-    slots: [enteredSlot(session.slots[0], model), narrowed(1), narrowed(2)],
+    slots: [narrowedSlot(session.slots[0], model), narrowed(1), narrowed(2)],
     charts: new Map([[model, paintsBandsOn(onPage) ? chart : { ...chart, bands: null }]]),
   };
 }
 
 /** What of `slot` `model` is computed from: the values it holds under the slot's entry modes, its humidity, its options. */
-function enteredSlot(slot: Slot, model: ModelDeclaration): Slot {
+function narrowedSlot(slot: Slot, model: ModelDeclaration): Slot {
   const held = heldQuantities(model, slot);
   return {
     ...slot,
@@ -144,7 +147,7 @@ function withStartingBands(settings: ChartSettings, model: ModelDeclaration): Ch
 
 function sessionJson(session: WrittenSession, models: readonly ModelDeclaration[]) {
   const [first] = session.slots;
-  const entryModes: Record<string, string> = Object.fromEntries(entryModeFields.map((field) => [field, first[field].mode.id]));
+  const entryModes: Record<string, string> = Object.fromEntries(entryModeNames.map((name) => [name, first[name].mode.id]));
   if (first.humidity) {
     entryModes.humidity = first.humidity.mode.id;
   }
@@ -261,24 +264,24 @@ function sessionFrom(json: unknown, models: readonly ModelDeclaration[]): Writte
 
 /** The entry modes a text writes once, and hands to every slot (ADR-0002 decision 51). */
 interface WrittenEntryModes {
-  readonly values: ValueEntryModes;
+  readonly valueModes: ValueEntryModes;
   readonly humidity: HumidityMode | undefined;
 }
 
 /** The entry modes `json` writes, an entry group it lacks in its default mode. */
 function entryModesFrom(json: unknown): WrittenEntryModes {
   const written = recordOf(json);
-  const values = { ...defaultEntryModes };
-  for (const field of entryModeFields) {
-    const fieldDefault = defaultEntryModes[field].mode;
+  const valueModes = { ...defaultEntryModes };
+  for (const name of entryModeNames) {
+    const fieldDefault = defaultEntryModes[name].mode;
     const group = valueEntryGroups.find((candidate) => candidate.modes.includes(fieldDefault));
     const mode: ValueEntryMode =
-      written[field] === undefined ? fieldDefault : (memberNamed(group?.modes ?? [], (candidate) => candidate.id, written[field]) ?? refuse());
-    values[field] = { mode };
+      written[name] === undefined ? fieldDefault : (memberNamed(group?.modes ?? [], (candidate) => candidate.id, written[name]) ?? refuse());
+    valueModes[name] = { mode };
   }
   const humidity =
     written.humidity === undefined ? undefined : (memberNamed(Object.values(humidityMode), (mode) => mode.id, written.humidity) ?? refuse());
-  return { values, humidity };
+  return { valueModes, humidity };
 }
 
 /**
@@ -291,7 +294,7 @@ function entryModesFrom(json: unknown): WrittenEntryModes {
  */
 function slotFrom(json: unknown, modes: WrittenEntryModes, model: ModelDeclaration, models: readonly ModelDeclaration[]): Slot {
   const written = membersOf(json, ["values", "options"]);
-  const enterable = models.flatMap((candidate) => heldQuantities(candidate, modes.values));
+  const enterable = models.flatMap((candidate) => heldQuantities(candidate, modes.valueModes));
   const values = new Map<Quantity, number>();
   let humidity: Slot["humidity"];
   for (const [key, value] of Object.entries(recordOf(written.values))) {
@@ -320,7 +323,7 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: ModelDeclarati
   if (modes.humidity && humidity === undefined) {
     refuse();
   }
-  return seedDeclaredDefaults({ values, humidity, ...modes.values, options }, model);
+  return seedDeclaredDefaults({ values, humidity, ...modes.valueModes, options }, model);
 }
 
 /**
@@ -351,7 +354,7 @@ function chartSettingsFrom(json: unknown, model: ModelDeclaration, modes: Writte
     ) ?? refuse();
   return {
     type,
-    axes: dynamic ? axesFrom(written.axes, model, modes.values) : null,
+    axes: dynamic ? axesFrom(written.axes, model, modes.valueModes) : null,
     bands: model.scan && bands !== undefined ? bandsFrom(bands, classifierOf(model.info, model.scan.bands)) : null,
   };
 }

@@ -54,12 +54,12 @@ export function enteredSlotFor(
       values.delete(quantity);
     }
   }
-  const airSpeedEntry = entered.vr === undefined ? airSpeedMode.uncorrected : airSpeedMode.corrected;
-  if (airSpeedEntry === airSpeedMode.corrected) {
+  const airSpeedEntry = entered.vr === undefined ? airSpeedMode.airSpeed : airSpeedMode.relativeAirSpeed;
+  if (airSpeedEntry === airSpeedMode.relativeAirSpeed) {
     values.delete(quantities.v);
   }
-  const clothingEntry = entered.clo_dynamic === undefined ? clothingMode.uncorrected : clothingMode.corrected;
-  if (clothingEntry === clothingMode.corrected) {
+  const clothingEntry = entered.clo_dynamic === undefined ? clothingMode.clothingInsulation : clothingMode.dynamicClothingInsulation;
+  if (clothingEntry === clothingMode.dynamicClothingInsulation) {
     values.delete(quantities.clo);
   }
   for (const [key, value] of Object.entries(entered)) {

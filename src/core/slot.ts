@@ -26,12 +26,12 @@ import {
   axisRangeFor,
   clothingCorrectionOf,
   declaredQuantitiesOf,
+  hasAirSpeedGroup,
   hasClothingGroup,
   hasHumidityGroup,
   hasTemperatureGroup,
   optionsOf,
   standardOf,
-  takesRelativeAirSpeed,
   type DeclaredOption,
   type DeclaredQuantity,
   type ModelDeclaration,
@@ -68,8 +68,8 @@ export type ValueEntryModes = Pick<Slot, "temperature" | "airSpeed" | "clothing"
 /** The entry modes a slot starts in, which are those a declaration writes its inputs in. */
 export const defaultEntryModes: ValueEntryModes = {
   temperature: { mode: temperatureMode.separate },
-  airSpeed: { mode: airSpeedMode.uncorrected },
-  clothing: { mode: clothingMode.uncorrected },
+  airSpeed: { mode: airSpeedMode.airSpeed },
+  clothing: { mode: clothingMode.clothingInsulation },
 };
 
 /** The entry modes `slot` is in, apart from the slot. */
@@ -100,13 +100,13 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * axis is the library's `rh` in every mode ({@link panelQuantities}).
  */
 export interface ValueEntryGroup {
-  /** The slot's field that holds the group's mode: how the input panel tells the groups apart. */
-  readonly field: keyof ValueEntryModes;
+  /** The group's name, the slot's field that holds its mode: how the input panel tells the groups apart. */
+  readonly name: keyof ValueEntryModes;
   /** Every mode of the group, the one in {@link defaultEntryModes} among them. */
   readonly modes: readonly ValueEntryMode[];
   /** Whether `model` has the group: read from the model, not declared (ADR §4.2). */
   readonly appliesTo: (model: ModelDeclaration) => boolean;
-  /** The group's mode among `modes`, read from its {@link field}. */
+  /** The group's mode among `modes`, read from the field named {@link ValueEntryGroup.name}. */
   readonly modeOf: (modes: ValueEntryModes) => ValueEntryMode;
   /**
    * `slot` re-expressed under `mode`, one of the group's, for `model`: the
@@ -132,36 +132,36 @@ export interface ValueEntryGroup {
  */
 export interface EntryCorrection {
   /** The quantity the model's info names what the model is given by, and so bounds. */
-  readonly taken: Quantity;
+  readonly takenByModel: Quantity;
   /** The mode whose entry the model is given as it is. */
   readonly corrected: ValueEntryMode;
 }
 
-// Each group's mode is read from its field, so the table names the field once.
+// Each group's mode is read from the field of the same name, so the table names the field once.
 export const valueEntryGroups: readonly ValueEntryGroup[] = (
   [
     {
-      field: "temperature",
+      name: "temperature",
       modes: Object.values(temperatureMode),
       appliesTo: hasTemperatureGroup,
       convert: withTemperatureMode,
     },
     {
-      field: "airSpeed",
+      name: "airSpeed",
       modes: Object.values(airSpeedMode),
-      appliesTo: takesRelativeAirSpeed,
+      appliesTo: hasAirSpeedGroup,
       convert: withAirSpeedMode,
-      correction: { taken: q.vr, corrected: airSpeedMode.corrected },
+      correction: { takenByModel: q.vr, corrected: airSpeedMode.relativeAirSpeed },
     },
     {
-      field: "clothing",
+      name: "clothing",
       modes: Object.values(clothingMode),
       appliesTo: hasClothingGroup,
       convert: withClothingMode,
-      correction: { taken: q.clo, corrected: clothingMode.corrected },
+      correction: { takenByModel: q.clo, corrected: clothingMode.dynamicClothingInsulation },
     },
   ] satisfies Omit<ValueEntryGroup, "modeOf">[]
-).map((group) => ({ ...group, modeOf: (modes: ValueEntryModes) => modes[group.field].mode }));
+).map((group) => ({ ...group, modeOf: (modes: ValueEntryModes) => modes[group.name].mode }));
 
 /**
  * The quantity that stands in for `quantity` under `modes`.
@@ -258,7 +258,7 @@ export function operativeTemperatureOf(slot: Slot, model: ModelDeclaration): num
  * `v_relative`.
  */
 export function relativeAirSpeedOf(slot: Slot): number {
-  if (slot.airSpeed.mode === airSpeedMode.corrected) {
+  if (slot.airSpeed.mode === airSpeedMode.relativeAirSpeed) {
     return requireValue(slot.values, q.vr);
   }
   return v_relative(requireValue(slot.values, q.v), requireValue(slot.values, q.met));
@@ -277,8 +277,8 @@ export function relativeAirSpeedOf(slot: Slot): number {
  * rule {@link withClothingMode} and {@link clothingGiving} invert, at
  * {@link correctionInputsOf}.
  */
-export function dynamicClothingOf(slot: Slot, model: ModelDeclaration): number {
-  if (slot.clothing.mode === clothingMode.corrected) {
+export function dynamicClothingInsulationOf(slot: Slot, model: ModelDeclaration): number {
+  if (slot.clothing.mode === clothingMode.dynamicClothingInsulation) {
     return requireValue(slot.values, q.clo_dynamic);
   }
   const clothing = requireValue(slot.values, q.clo);
@@ -288,7 +288,7 @@ export function dynamicClothingOf(slot: Slot, model: ModelDeclaration): number {
 /**
  * The slot's own metabolic rate and relative air speed
  * ({@link relativeAirSpeedOf}), as a clothing correction reads them: where
- * {@link dynamicClothingOf} corrects and {@link clothingGiving} inverts.
+ * {@link dynamicClothingInsulationOf} corrects and {@link clothingGiving} inverts.
  */
 function correctionInputsOf(slot: Slot): ClothingCorrectionInputs {
   // Getters: a rule reads only what it takes, so ASHRAE 55's asks for no air speed.
@@ -410,14 +410,14 @@ export function panelQuantities(model: ModelDeclaration, slot: Slot): Quantity[]
 }
 
 /**
- * An entry group as the row that offers its modes reads it: the slot's field
- * that holds the group's mode, the group's modes in its table's order, and the
- * mode the slot is in. The humidity group is told apart by its field, since
- * its modes are another shape.
+ * An entry group as the row that offers its modes reads it: the group's name
+ * (the slot's field that holds its mode), the group's modes in its table's
+ * order, and the mode the slot is in. The humidity group is told apart by its
+ * name, since its modes are another shape.
  */
 export type RowEntryGroup =
-  | { readonly field: keyof ValueEntryModes; readonly modes: readonly ValueEntryMode[]; readonly mode: ValueEntryMode }
-  | { readonly field: "humidity"; readonly modes: readonly HumidityMode[]; readonly mode: HumidityMode };
+  | { readonly name: keyof ValueEntryModes; readonly modes: readonly ValueEntryMode[]; readonly mode: ValueEntryMode }
+  | { readonly name: "humidity"; readonly modes: readonly HumidityMode[]; readonly mode: HumidityMode };
 
 /**
  * The entry group whose modes the row of `quantity` offers, among the rows
@@ -429,10 +429,10 @@ export type RowEntryGroup =
  */
 export function rowEntryGroupOf(model: ModelDeclaration, slot: Slot, quantity: Quantity): RowEntryGroup | undefined {
   if (hasHumidityGroup(model) && quantity === slot.humidity?.mode.quantity) {
-    return { field: "humidity", modes: Object.values(humidityMode), mode: slot.humidity.mode };
+    return { name: "humidity", modes: Object.values(humidityMode), mode: slot.humidity.mode };
   }
   const group = valueEntryGroups.find((candidate) => candidate.appliesTo(model) && candidate.modeOf(slot).panel[0] === quantity);
-  return group && { field: group.field, modes: group.modes, mode: group.modeOf(slot) };
+  return group && { name: group.name, modes: group.modes, mode: group.modeOf(slot) };
 }
 
 /**
@@ -574,12 +574,12 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Mo
 }
 
 /**
- * The same slot with its air speed re-expressed under `mode`. Uncorrected →
- * corrected stores {@link relativeAirSpeedOf}'s answer, the relative air speed
- * the model was given at the slot's own air speed and metabolic rate;
- * corrected → uncorrected stores the temporary library's `v_relative_inverse`,
- * the air speed that gives that relative air speed at the slot's metabolic
- * rate (ADR-0002 decision 54 as revised). Exact both ways to `v_relative`'s
+ * The same slot with its air speed re-expressed under `mode`. Into relative
+ * air speed entry it stores {@link relativeAirSpeedOf}'s answer, the relative
+ * air speed the model was given at the slot's own air speed and metabolic
+ * rate; back into air speed entry, the temporary library's
+ * `v_relative_inverse`, the air speed that gives that relative air speed at
+ * the slot's metabolic rate (ADR-0002 decision 54 as revised). Exact both ways to `v_relative`'s
  * rounding of 0.001: the model is given the same relative air speed before and
  * after, but for an entry finer than that rounding, which comes back rounded. Unlike
  * {@link withTemperatureMode}, which is lossy; the two representations never
@@ -595,7 +595,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     return slot;
   }
   const values = new Map(slot.values);
-  if (mode === airSpeedMode.corrected) {
+  if (mode === airSpeedMode.relativeAirSpeed) {
     values.set(q.vr, relativeAirSpeedOf(slot));
     values.delete(q.v);
   } else {
@@ -606,13 +606,13 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
 }
 
 /**
- * The same slot with its clothing re-expressed under `mode`. Uncorrected →
- * corrected stores {@link dynamicClothingOf}'s answer, the dynamic clothing
- * insulation `model` was given at the slot's own values, by its standard's
- * rule; corrected → uncorrected stores the clothing insulation that rule
- * corrects to the entry, by the rule's inverse in the temporary library
- * (`clo_dynamic_ashrae_inverse`, `clo_dynamic_iso_vr_inverse`), which searches
- * the rule itself: ISO 7730's has no closed inverse, and the
+ * The same slot with its clothing re-expressed under `mode`. Into dynamic
+ * clothing entry it stores {@link dynamicClothingInsulationOf}'s answer, the
+ * dynamic clothing insulation `model` was given at the slot's own values, by
+ * its standard's rule; back into clothing insulation entry, the clothing
+ * insulation that rule corrects to the entry, by the rule's inverse in the
+ * temporary library (`clo_dynamic_ashrae_inverse`,
+ * `clo_dynamic_iso_vr_inverse`), which searches the rule itself: ISO 7730's has no closed inverse, and the
  * app writes neither standard's formula (ADR-0002 decision 54 as revised a
  * third time). So `model` is given the same dynamic clothing insulation
  * before and after, as {@link withAirSpeedMode} leaves the relative air
@@ -633,8 +633,8 @@ export function withClothingMode(slot: Slot, mode: ClothingMode, model: ModelDec
     return slot;
   }
   const values = new Map(slot.values);
-  if (mode === clothingMode.corrected) {
-    values.set(q.clo_dynamic, dynamicClothingOf(slot, model));
+  if (mode === clothingMode.dynamicClothingInsulation) {
+    values.set(q.clo_dynamic, dynamicClothingInsulationOf(slot, model));
     values.delete(q.clo);
   } else {
     values.set(q.clo, clothingGiving(requireValue(values, q.clo_dynamic), slot, model));
