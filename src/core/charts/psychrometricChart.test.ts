@@ -35,9 +35,8 @@ import { GRID, scannedField } from "./scan";
 import { samples } from "./specParts";
 
 const q = quantities;
-const p = DEFAULT_ATMOSPHERIC_PRESSURE;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
-const hrUnit = displayUnitFor(q.hr, unitSystem.si);
+const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 /** A cell's number is compared at the precision the readout shows it. */
 const PMV_DIGITS = 2;
 
@@ -116,7 +115,7 @@ function markersOf(spec: ChartSpec): PointTrace[] {
 
 /** Whether the cell of `scan` at (`xIndex`, `yIndex`) is supersaturated: its relative humidity above 100. */
 function isSupersaturated(scan: Scanned, xIndex: number, yIndex: number): boolean {
-  return hr_to_rh(hrUnit.toSi(scan.y[yIndex]), scan.x[xIndex], p) > 100;
+  return hr_to_rh(humidityRatioUnit.toSi(scan.y[yIndex]), scan.x[xIndex], DEFAULT_ATMOSPHERIC_PRESSURE) > 100;
 }
 
 /**
@@ -128,9 +127,9 @@ function isSupersaturated(scan: Scanned, xIndex: number, yIndex: number): boolea
 function numberAt(entered: Slot, temperature: number, hr: number): number {
   const cell = withEnteredValues(entered, new Map([
     [entered.temperature.mode.axis, temperature],
-    [q.rh, hr_to_rh(hr, temperature, p)],
+    [q.rh, hr_to_rh(hr, temperature, DEFAULT_ATMOSPHERIC_PRESSURE)],
   ]));
-  return outputNumber(runOn(cell, pmvPpdIso, p), q.pmv);
+  return outputNumber(runOn(cell, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE), q.pmv);
 }
 
 /**
@@ -140,9 +139,9 @@ function numberAt(entered: Slot, temperature: number, hr: number): number {
  * `clo_dynamic_iso`, `tr` from the entry mode. A `null` reads as NaN, as the
  * scan reads it.
  */
-function pmvAt(db: number, rh: number, tr: number): number {
+function pmvAt(tdb: number, rh: number, tr: number): number {
   return pmv_ppd_iso({
-    tdb: db,
+    tdb,
     tr,
     vr: v_relative(v, met),
     rh,
@@ -293,15 +292,15 @@ describe("psychrometricSpec", () => {
     // The last cell is supersaturated, run at its true relative humidity above 100.
     expect(isSupersaturated(scan, 0, 50)).toBe(true);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40], [40, 50], [50, 0]]) {
-      expect(scan.values[yIndex][xIndex]).toBe(numberAt(slot(temperatureMode.separate), scan.x[xIndex], hrUnit.toSi(scan.y[yIndex])));
+      expect(scan.values[yIndex][xIndex]).toBe(numberAt(slot(temperatureMode.separate), scan.x[xIndex], humidityRatioUnit.toSi(scan.y[yIndex])));
     }
   });
 
   it("hands the model the slot's own inputs: tr as entered, vr derived, clothing corrected", () => {
     const scan = scannedOf(request(temperatureMode.separate));
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
-      const db = scan.x[xIndex];
-      expect(scan.values[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(scan.y[yIndex]), db, p), 24), PMV_DIGITS);
+      const tdb = scan.x[xIndex];
+      expect(scan.values[yIndex][xIndex]).toBeCloseTo(pmvAt(tdb, hr_to_rh(humidityRatioUnit.toSi(scan.y[yIndex]), tdb, DEFAULT_ATMOSPHERIC_PRESSURE), 24), PMV_DIGITS);
     }
   });
 
@@ -311,8 +310,8 @@ describe("psychrometricSpec", () => {
     expect(drawn.layout.x.title).toContain(q.operative_tmp.label);
     expect(zoneFillsOf(drawn)).toHaveLength(4);
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40]]) {
-      const db = scan.x[xIndex];
-      expect(scan.values[yIndex][xIndex]).toBeCloseTo(pmvAt(db, hr_to_rh(hrUnit.toSi(scan.y[yIndex]), db, p), db), PMV_DIGITS);
+      const tdb = scan.x[xIndex];
+      expect(scan.values[yIndex][xIndex]).toBeCloseTo(pmvAt(tdb, hr_to_rh(humidityRatioUnit.toSi(scan.y[yIndex]), tdb, DEFAULT_ATMOSPHERIC_PRESSURE), tdb), PMV_DIGITS);
     }
   });
 
@@ -325,25 +324,25 @@ describe("psychrometricSpec", () => {
     const [zone] = zoneFillsOf(drawn);
     const [whole] = zoneFillsOf(spec);
     const { x, y } = hoverGridOf(drawn);
-    const isDry = (xIndex: number, yIndex: number) => hr_to_rh(hrUnit.toSi(y[yIndex]), x[xIndex], p) < 10;
+    const isDry = (xIndex: number, yIndex: number) => hr_to_rh(humidityRatioUnit.toSi(y[yIndex]), x[xIndex], DEFAULT_ATMOSPHERIC_PRESSURE) < 10;
     const expected = regionOf(spec, whole).map((row, yIndex) => row.map((held, xIndex) => held && !isDry(xIndex, yIndex)));
     expect(regionOf(drawn, zone)).toEqual(expected);
     // The zone reaches the dry air by its numbers, so the end cuts it.
     expect(regionOf(spec, whole)).not.toEqual(expected);
     // A vertex on a grid line where the number ends lies on the 10 % isoline, to a bisection step.
-    const atEnd = zone.pieces.flatMap((ring) => ring.x.map((temperature, index) => hr_to_rh(hrUnit.toSi(ring.y[index]), temperature, p)));
+    const atEnd = zone.pieces.flatMap((ring) => ring.x.map((temperature, index) => hr_to_rh(humidityRatioUnit.toSi(ring.y[index]), temperature, DEFAULT_ATMOSPHERIC_PRESSURE)));
     expect(atEnd.some((rh) => Math.abs(rh - 10) < 0.05)).toBe(true);
   });
 
   it("paints the scan it is handed rather than scanning again", () => {
-    const frame = psychrometricScanFrameFor(pmvPpdIso, request(temperatureMode.separate).entryModes, p);
+    const frame = psychrometricScanFrameFor(pmvPpdIso, request(temperatureMode.separate).entryModes, DEFAULT_ATMOSPHERIC_PRESSURE);
     const [xs, ys] = [samples(frame.x.range, GRID), samples(frame.y.range, GRID)];
     const everywhere = <Value>(value: Value) => ys.map(() => xs.map(() => value));
     // Each zone handed as the whole field: its one ring is the plot's frame.
     const whole = { x: xs, y: ys, inside: everywhere(true), across: everywhere(undefined), up: everywhere(undefined), centre: everywhere(undefined) };
     const handed = { values: everywhere(0.1), zones: [whole, whole, whole, whole], regionWithin: () => whole };
     const drawn = psychrometricSpec(request(temperatureMode.separate), [handed]);
-    const frameRing = { x: [xs[0], xs[50], xs[50], xs[0]], y: [ys[0], ys[0], ys[50], ys[50]].map((hr) => hrUnit.fromSi(hr)) };
+    const frameRing = { x: [xs[0], xs[50], xs[50], xs[0]], y: [ys[0], ys[0], ys[50], ys[50]].map((hr) => humidityRatioUnit.fromSi(hr)) };
     expect(zoneFillsOf(drawn).map((zone) => zone.pieces)).toEqual([[frameRing], [frameRing], [frameRing], [frameRing]]);
     expect(hoverGridOf(drawn).hoverText[0][0][2]).toBe(`${q.pmv.label}: 0.1`);
   });
@@ -413,7 +412,7 @@ describe("psychrometricSpec", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBe(26);
-    expect(marker?.y).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(26, 50).hr), 12);
+    expect(marker?.y).toBeCloseTo(humidityRatioUnit.fromSi(psy_ta_rh(26, 50).hr), 12);
   });
 
   it("draws PMV (ISO 7730)'s temperature from 10 to 30 °C, its entry bound, in either entry mode", () => {
@@ -432,13 +431,13 @@ describe("psychrometricSpec", () => {
     expect(marker?.x).toBeCloseTo(78.8, 10);
     // The zones over the same scan as in SI, every vertex the SI vertex converted.
     const temperatureUnit = displayUnitFor(q.tdb, unitSystem.ip);
-    const ipHrUnit = displayUnitFor(q.hr, unitSystem.ip);
+    const ipHumidityRatioUnit = displayUnitFor(q.hr, unitSystem.ip);
     const ipZones = zoneFillsOf(spec);
     const siZones = zoneFillsOf(psychrometricSpec(request(temperatureMode.separate)));
     expect(ipZones).toHaveLength(siZones.length);
     ipZones.forEach((zone, position) => {
       const converted = siZones[position].pieces.flatMap((ring) =>
-        ring.x.flatMap((x, index) => [temperatureUnit.fromSi(x), ipHrUnit.fromSi(hrUnit.toSi(ring.y[index]))]),
+        ring.x.flatMap((x, index) => [temperatureUnit.fromSi(x), ipHumidityRatioUnit.fromSi(humidityRatioUnit.toSi(ring.y[index]))]),
       );
       const shown = zone.pieces.flatMap((ring) => ring.x.flatMap((x, index) => [x, ring.y[index]]));
       expect(shown).toHaveLength(converted.length);

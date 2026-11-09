@@ -130,13 +130,13 @@ describe("run's inputs object", () => {
 export function inputsTypeProof(inputs: LibraryInputs, options: OptionsReader): void {
   // Spread only where every key is a required quantity, which a wrong key
   // turns into a missing one; the key under test is always written inline.
-  const withoutClo = { tdb: inputs.tdb, tr: inputs.tr, vr: inputs.vr, rh: inputs.rh, met: inputs.met };
-  pmv_ppd_iso({ ...withoutClo, clo: inputs.clo, wme: 0, limit_inputs: false });
+  const withoutClothingInsulation = { tdb: inputs.tdb, tr: inputs.tr, vr: inputs.vr, rh: inputs.rh, met: inputs.met };
+  pmv_ppd_iso({ ...withoutClothingInsulation, clo: inputs.clo, wme: 0, limit_inputs: false });
   // @ts-expect-error a missing required key: the quantity `clo` is forgotten
-  pmv_ppd_iso({ ...withoutClo, wme: 0 });
+  pmv_ppd_iso({ ...withoutClothingInsulation, wme: 0 });
   // @ts-expect-error a misspelt key: the library spells it `limit_inputs`
-  pmv_ppd_iso({ ...withoutClo, clo: inputs.clo, limit_input: false });
-  const ashrae = { ...withoutClo, clo: inputs.clo };
+  pmv_ppd_iso({ ...withoutClothingInsulation, clo: inputs.clo, limit_input: false });
+  const ashrae = { ...withoutClothingInsulation, clo: inputs.clo };
   pmv_ppd_ashrae({ ...ashrae, airspeed_control: options(airSpeedControl) });
   // @ts-expect-error the reader itself, not its answer: the key takes the boolean `options(…)` returns
   pmv_ppd_ashrae({ ...ashrae, airspeed_control: options });

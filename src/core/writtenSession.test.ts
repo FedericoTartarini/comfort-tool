@@ -8,7 +8,7 @@ import { unitSystem } from "./unitSystem";
 import { defaultChartSettings, defaultSession } from "./writtenSession";
 
 describe("defaultSession", () => {
-  it("is the model on its default slot alone, SI, standard pressure, Compare off and its own chart settings, for every registered model", () => {
+  it("is the model on its default slot alone, SI, default atmospheric pressure, Compare off and its own chart settings, for every registered model", () => {
     for (const model of registeredModels) {
       const settings = {
         type: model.charts[0].type,

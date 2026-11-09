@@ -33,10 +33,11 @@ const ISOLINE_SAMPLES = 121;
  * 61): the model's scan's output, swept over the temperature entry mode's axis
  * quantity — `tdb`, or `operative_tmp` under operative entry — across its
  * declared range, and over the humidity ratio across the range drawn at the
- * pressure. Sweeping `hr` puts each cell in the humidity-ratio entry mode, so
- * the slot's own conversion gives its relative humidity at the pressure and at
- * the temperature the mode has, and a supersaturated cell is run at its true
- * relative humidity above 100. A model without a scan throws, naming it.
+ * atmospheric pressure. Sweeping `hr` puts each cell in the humidity-ratio
+ * entry mode, so the slot's own conversion gives its relative humidity at the
+ * atmospheric pressure and at the temperature the mode has, and a
+ * supersaturated cell is run at its true relative humidity above 100. A model
+ * without a scan throws, naming it.
  */
 export function psychrometricScanFrameFor(
   model: ModelDeclaration,
@@ -78,23 +79,23 @@ export function psychrometricScanFrameFor(
  * atmospheric pressure, and the humidity-ratio axis reaches as far as
  * {@link drawnHumidityRatioRange} says (ADR-0002 decision 49).
  *
- * A cell above saturation, `rh` > 100 at the pressure, is air that cannot
- * exist: it is scanned and painted, the cover ({@link coverFor}) hides it, and
- * it reads "—" and no band. The cover sits over the paint and the hover grid
- * and under the saturation line and the markers, so a zone's or a band's top
- * edge is the saturation line itself (ADR-0002 decision 61). The other
- * isolines lie between the fills and the outlines, so only an outline cuts
- * one (decision 62).
+ * A cell above saturation, `rh` > 100 at the atmospheric pressure, is air that
+ * cannot exist: it is scanned and painted, the cover ({@link coverFor}) hides
+ * it, and it reads "—" and no band. The cover sits over the paint and the
+ * hover grid and under the saturation line and the markers, so a zone's or a
+ * band's top edge is the saturation line itself (ADR-0002 decision 61). The
+ * other isolines lie between the fills and the outlines, so only an outline
+ * cuts one (decision 62).
  */
 export function psychrometricSpec(request: ChartRequest, scans?: readonly ScannedField[]): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
   const axisQuantity = request.entryModes.temperature.mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);
-  const hrUnit = displayUnitFor(q.hr, unitSystem);
-  const rhUnit = displayUnitFor(q.rh, unitSystem);
+  const humidityRatioUnit = displayUnitFor(q.hr, unitSystem);
+  const relativeHumidityUnit = displayUnitFor(q.rh, unitSystem);
   const frame = psychrometricScanFrameFor(model, request.entryModes, atmosphericPressure);
   const xRange = frame.x.range;
-  const hrRange = frame.y.range;
+  const humidityRatioRange = frame.y.range;
 
   const paint = fieldPaintFor(request, frame, scans, (temperature, hr) => hr_to_rh(hr, temperature, atmosphericPressure) > 100);
   const annotations: Annotation[] = [];
@@ -108,35 +109,35 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const sampled = temperatures.map((temperature) => ({ temperature, hr: psy_ta_rh(temperature, rh, atmosphericPressure).hr }));
     // Cut the curve where it leaves the top of the viewport, so a label sits
     // on the last drawn point rather than off the plot.
-    const curve = sampled.filter((point) => point.hr <= hrRange.max);
+    const curve = sampled.filter((point) => point.hr <= humidityRatioRange.max);
     const end = curve[curve.length - 1];
     if (!end) {
       continue;
     }
     const saturation = rh === 100;
     if (saturation) {
-      const boundary = coverFor(sampled, xRange, hrRange);
+      const boundary = coverFor(sampled, xRange, humidityRatioRange);
       // Chrome with no label and no legend entry: it reads nothing, so the
       // hover grid under it reads for the cell, "—" as it does above the line.
       cover = {
         kind: "path",
-        pieces: [{ x: boundary.map((point) => xUnit.fromSi(point.temperature)), y: boundary.map((point) => hrUnit.fromSi(point.hr)) }],
+        pieces: [{ x: boundary.map((point) => xUnit.fromSi(point.temperature)), y: boundary.map((point) => humidityRatioUnit.fromSi(point.hr)) }],
         color: chartInk.ground,
         width: 0,
         fill: chartInk.ground,
         hover: "off",
       };
     }
-    const rhText = numberWithUnit(rh, rhUnit);
+    const relativeHumidityText = numberWithUnit(rh, relativeHumidityUnit);
     const isoline: PathTrace = {
       kind: "path",
-      pieces: [{ x: curve.map((point) => xUnit.fromSi(point.temperature)), y: curve.map((point) => hrUnit.fromSi(point.hr)) }],
+      pieces: [{ x: curve.map((point) => xUnit.fromSi(point.temperature)), y: curve.map((point) => humidityRatioUnit.fromSi(point.hr)) }],
       color: saturation ? chartInk.saturationLine : chartInk.isoline,
       width: saturation ? chartInk.saturationLineWidth : chartInk.isolineWidth,
       // Chrome: the isolines carry the humidity reading in their label, not on
       // the pointer (ADR §4.4).
       hover: "off",
-      label: `${q.rh.label} ${rhText}`,
+      label: `${q.rh.label} ${relativeHumidityText}`,
     };
     if (saturation) {
       saturationLine = isoline;
@@ -146,8 +147,8 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     if (rh % LABEL_STEP === 0) {
       annotations.push({
         x: xUnit.fromSi(end.temperature),
-        y: hrUnit.fromSi(end.hr),
-        text: rhText,
+        y: humidityRatioUnit.fromSi(end.hr),
+        text: relativeHumidityText,
       });
     }
   }
@@ -168,7 +169,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const marker = markerFor(
       charted,
       xUnit.fromSi(tdb),
-      hrUnit.fromSi(psy_ta_rh(tdb, requireValue(resolved, q.rh), atmosphericPressure).hr),
+      humidityRatioUnit.fromSi(psy_ta_rh(tdb, requireValue(resolved, q.rh), atmosphericPressure).hr),
     );
     traces.push(marker.trace);
     legend.push(...paint.zoneLegendOfSlot[position], marker.legendEntry);
@@ -179,7 +180,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     layout: {
       x: axisFor(axisQuantity, xUnit, xRange),
       // On the right, as the deployed tool draws it (ADR-0002 decision 89, rule 7).
-      y: { ...axisFor(q.hr, hrUnit, hrRange), side: "right" },
+      y: { ...axisFor(q.hr, humidityRatioUnit, humidityRatioRange), side: "right" },
     },
     legend,
     annotations,
@@ -189,11 +190,11 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
 
 /**
  * The humidity-ratio axis as drawn at `atmosphericPressure`. A declaration
- * writes its range at the default pressure; the upper end is scaled by the
- * default over the pressure, so a thinner air, which holds more water per
- * kilogram at the same relative humidity, gets a taller axis and the
- * declaration never mentions the pressure (ADR-0002 decision 45, as amended
- * 2026-09-29).
+ * writes its range at the default atmospheric pressure; the upper end is
+ * scaled by the default over the atmospheric pressure, so a thinner air, which
+ * holds more water per kilogram at the same relative humidity, gets a taller
+ * axis and the declaration never mentions the atmospheric pressure (ADR-0002
+ * decision 45, as amended 2026-09-29).
  */
 function drawnHumidityRatioRange(declared: Range, atmosphericPressure: number): Range {
   return { ...declared, max: (declared.max * DEFAULT_ATMOSPHERIC_PRESSURE) / atmosphericPressure };
@@ -208,21 +209,21 @@ interface ChartPoint {
 /**
  * The boundary of the cover over the air above saturation, in SI (ADR-0002
  * decision 61): the saturation line as `saturation` samples it, from the
- * lowest temperature to where it leaves the top of `hrRange`, interpolated
- * there between its two samples, and closed through the plot's top-left
- * corner, so the left edge closes it. A line that never leaves the top runs to
- * the right edge and closes through the top-right corner first. The cover
- * hides whatever a scan paints above the line, so a band's or a zone's top
- * edge is the line itself.
+ * lowest temperature to where it leaves the top of `humidityRatioRange`,
+ * interpolated there between its two samples, and closed through the plot's
+ * top-left corner, so the left edge closes it. A line that never leaves the
+ * top runs to the right edge and closes through the top-right corner first.
+ * The cover hides whatever a scan paints above the line, so a band's or a
+ * zone's top edge is the line itself.
  */
-function coverFor(saturation: readonly ChartPoint[], xRange: Range, hrRange: Range): ChartPoint[] {
-  const leaves = saturation.findIndex((point) => point.hr > hrRange.max);
-  const topLeft = { temperature: xRange.min, hr: hrRange.max };
+function coverFor(saturation: readonly ChartPoint[], xRange: Range, humidityRatioRange: Range): ChartPoint[] {
+  const leaves = saturation.findIndex((point) => point.hr > humidityRatioRange.max);
+  const topLeft = { temperature: xRange.min, hr: humidityRatioRange.max };
   if (leaves === -1) {
-    return [...saturation, { temperature: xRange.max, hr: hrRange.max }, topLeft];
+    return [...saturation, { temperature: xRange.max, hr: humidityRatioRange.max }, topLeft];
   }
   const below = saturation[leaves - 1];
   const above = saturation[leaves];
-  const along = (hrRange.max - below.hr) / (above.hr - below.hr);
-  return [...saturation.slice(0, leaves), { temperature: below.temperature + along * (above.temperature - below.temperature), hr: hrRange.max }, topLeft];
+  const along = (humidityRatioRange.max - below.hr) / (above.hr - below.hr);
+  return [...saturation.slice(0, leaves), { temperature: below.temperature + along * (above.temperature - below.temperature), hr: humidityRatioRange.max }, topLeft];
 }

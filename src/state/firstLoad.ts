@@ -75,8 +75,8 @@ export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly
 
 /**
  * The session a link's `written` session opens at `address`, or `undefined`
- * where the move there cuts a value or the pressure, which refuses the link
- * (decision 88, rule 5): the cut is the arrival's own.
+ * where the move there cuts a value or the atmospheric pressure, which
+ * refuses the link (decision 88, rule 5): the cut is the arrival's own.
  */
 function linkOpenedAt(address: Address, written: WrittenSession): Session | undefined {
   const session = new Session(written);

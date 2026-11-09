@@ -151,7 +151,7 @@ describe("charts", () => {
 });
 
 /** `vr` is derived as `v_relative(v, met)`, so a model that takes it must be entered both. */
-function expectVAndMetUnderRelativeAirSpeed(model: ModelDeclaration): void {
+function expectAirSpeedAndMetabolicRateUnderRelativeAirSpeed(model: ModelDeclaration): void {
   if (!hasAirSpeedGroup(model)) return;
   const entered = declaredQuantitiesOf(model).map((entry) => entry.quantity);
   expect(entered, model.info.label).toEqual(expect.arrayContaining([q.v, q.met]));
@@ -232,17 +232,17 @@ describe("calculators", () => {
 describe("inputs", () => {
   it("enter v and met wherever the model takes vr, for every registered model", () => {
     for (const model of registeredModels) {
-      expectVAndMetUnderRelativeAirSpeed(model);
+      expectAirSpeedAndMetabolicRateUnderRelativeAirSpeed(model);
     }
   });
 
   it("that leave out met where the model takes vr fail the check", () => {
-    const noMet: ModelDeclaration = {
+    const withoutMetabolicRate: ModelDeclaration = {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, label: "Fixture taking vr without met" },
       inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.met),
     };
-    expect(() => expectVAndMetUnderRelativeAirSpeed(noMet)).toThrow(noMet.info.label);
+    expect(() => expectAirSpeedAndMetabolicRateUnderRelativeAirSpeed(withoutMetabolicRate)).toThrow(withoutMetabolicRate.info.label);
   });
 });
 
@@ -290,12 +290,12 @@ describe("the clothing entry group", () => {
   });
 
   it("that leaves out met fails the check", () => {
-    const noMet: ModelDeclaration = {
+    const withoutMetabolicRate: ModelDeclaration = {
       ...pmvPpdAshrae,
       info: { ...pmvPpdAshrae.info, label: "Fixture correcting clothing without met" },
       inputs: pmvPpdAshrae.inputs.filter((entry) => entry.quantity !== q.met),
     };
-    expect(() => expectWhatTheClothingCorrectionTakes(noMet)).toThrow(noMet.info.label);
+    expect(() => expectWhatTheClothingCorrectionTakes(withoutMetabolicRate)).toThrow(withoutMetabolicRate.info.label);
   });
 
   it("that leaves out v under ISO 7730, whose correction takes the air speed, fails the check", () => {
@@ -372,12 +372,12 @@ describe("axisRanges", () => {
   });
 
   it("that name the clothing insulation and not the dynamic one fail the check", () => {
-    const noDynamicClothingRange: ModelDeclaration = {
+    const noDynamicClothingInsulationRange: ModelDeclaration = {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, label: "Fixture without a dynamic clothing range" },
       axisRanges: pmvPpdIso.axisRanges.filter((range) => range.quantity !== q.clo_dynamic),
     };
-    expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(noDynamicClothingRange)).toThrow(noDynamicClothingRange.info.label);
+    expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(noDynamicClothingInsulationRange)).toThrow(noDynamicClothingInsulationRange.info.label);
   });
 
   // No model info names the dynamic clothing insulation, so without a declared

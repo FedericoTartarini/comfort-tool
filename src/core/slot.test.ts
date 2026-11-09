@@ -39,7 +39,7 @@ import {
 const q = quantities;
 
 /** An atmospheric pressure other than the default, about 1 950 m above sea level. */
-const LOWER_PRESSURE = 80000;
+const LOWER_ATMOSPHERIC_PRESSURE = 80000;
 
 /** A model with a temperature entry group and no standard: the library's default decides. */
 const withoutStandard = { ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } };
@@ -335,36 +335,36 @@ describe("withHumidityMode", () => {
  */
 describe("a humidity entry at an atmospheric pressure", () => {
   const room = enteredSlotFor(pmvPpdIso, { tdb: 27 });
-  const pressures = [DEFAULT_ATMOSPHERIC_PRESSURE, LOWER_PRESSURE];
+  const atmosphericPressures = [DEFAULT_ATMOSPHERIC_PRESSURE, LOWER_ATMOSPHERIC_PRESSURE];
 
   /** `room` with its humidity entered as `value` in `mode`. */
   function enteredAs(mode: HumidityMode, value: number): Slot {
     return { ...room, humidity: { mode, value } };
   }
 
-  it("gives a humidity ratio's relative humidity at that pressure", () => {
+  it("gives a humidity ratio's relative humidity at that atmospheric pressure", () => {
     const slot = enteredAs(humidityMode.humidityRatio, 0.01);
-    for (const pressure of pressures) {
-      expect(relativeHumidityOf(slot, pressure), `${pressure} Pa`).toBe(hr_to_rh(0.01, 27, pressure));
+    for (const atmosphericPressure of atmosphericPressures) {
+      expect(relativeHumidityOf(slot, atmosphericPressure), `${atmosphericPressure} Pa`).toBe(hr_to_rh(0.01, 27, atmosphericPressure));
     }
-    expect(relativeHumidityOf(slot, LOWER_PRESSURE)).not.toBeCloseTo(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE), 0);
+    expect(relativeHumidityOf(slot, LOWER_ATMOSPHERIC_PRESSURE)).not.toBeCloseTo(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE), 0);
   });
 
-  it("re-expresses a relative humidity as the humidity ratio at that pressure", () => {
+  it("re-expresses a relative humidity as the humidity ratio at that atmospheric pressure", () => {
     const slot = enteredAs(humidityMode.relativeHumidity, 35);
-    for (const pressure of pressures) {
-      expect(withHumidityMode(slot, humidityMode.humidityRatio, pressure).humidity?.value, `${pressure} Pa`).toBe(psy_ta_rh(27, 35, pressure).hr);
+    for (const atmosphericPressure of atmosphericPressures) {
+      expect(withHumidityMode(slot, humidityMode.humidityRatio, atmosphericPressure).humidity?.value, `${atmosphericPressure} Pa`).toBe(psy_ta_rh(27, 35, atmosphericPressure).hr);
     }
   });
 
-  it("converts every other entry mode, both ways, the same whatever the pressure", () => {
+  it("converts every other entry mode, both ways, the same whatever the atmospheric pressure", () => {
     const others = [humidityMode.relativeHumidity, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure];
     for (const mode of others) {
       const slot = enteredAs(mode, mode.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE));
-      expect(relativeHumidityOf(slot, LOWER_PRESSURE), mode.id).toBe(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE));
+      expect(relativeHumidityOf(slot, LOWER_ATMOSPHERIC_PRESSURE), mode.id).toBe(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE));
       const fromRelativeHumidity = enteredAs(humidityMode.humidityRatio, 0.01);
-      expect(withHumidityMode(fromRelativeHumidity, mode, LOWER_PRESSURE).humidity?.value, mode.id).toBe(
-        mode.fromRelativeHumidity(hr_to_rh(0.01, 27, LOWER_PRESSURE), 27, DEFAULT_ATMOSPHERIC_PRESSURE),
+      expect(withHumidityMode(fromRelativeHumidity, mode, LOWER_ATMOSPHERIC_PRESSURE).humidity?.value, mode.id).toBe(
+        mode.fromRelativeHumidity(hr_to_rh(0.01, 27, LOWER_ATMOSPHERIC_PRESSURE), 27, DEFAULT_ATMOSPHERIC_PRESSURE),
       );
     }
   });
@@ -717,7 +717,7 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toEqual({ name: "humidity", modes: Object.values(humidityMode), mode: humidityMode.relativeHumidity });
   });
 
-  it("returns none for the metabolic rate, the pressure and the mean radiant temperature, which the temperature row folds", () => {
+  it("returns none for the metabolic rate, the atmospheric pressure and the mean radiant temperature, which the temperature row folds", () => {
     const slot = defaultSlot(pmvPpdIso);
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.met)).toBeUndefined();
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.p_atm)).toBeUndefined();

@@ -373,7 +373,7 @@
 	background-color: var(--ground);
 }
 /* A box takes the other colour of the surface it stands on (decision 73, rule 6): in the sidebar, which is the ground,
-   the session's pressure box is the paper. The sidebar's content is the slot both the column and the sheet carry. */
+   the session's atmospheric pressure box is the paper. The sidebar's content is the slot both the column and the sheet carry. */
 [data-slot="sidebar-content"] :is([data-slot="input"]:not([type="color"]), [data-slot="input-group"]) {
 	background-color: var(--background);
 }

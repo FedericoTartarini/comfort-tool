@@ -79,8 +79,8 @@ export function defaultChartSettings(model: ModelDeclaration): ChartSettings {
 
 /**
  * The written session `model` starts on, its defaults: slot 1 on
- * {@link defaultSlot} and no other slot, SI, standard pressure, Compare off,
- * and the model's own {@link defaultChartSettings}.
+ * {@link defaultSlot} and no other slot, SI, default atmospheric pressure,
+ * Compare off, and the model's own {@link defaultChartSettings}.
  */
 export function defaultSession(model: ModelDeclaration): WrittenSession {
   return {

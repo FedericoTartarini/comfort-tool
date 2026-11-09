@@ -31,7 +31,7 @@ import { unitSystem, type UnitSystem } from "./unitSystem";
 const q = quantities;
 
 /** An atmospheric pressure other than the default, about 1 950 m above sea level. */
-const LOWER_PRESSURE = 80000;
+const LOWER_ATMOSPHERIC_PRESSURE = 80000;
 
 /** The sentence for a bound on the relative air speed, built from its label and display unit. */
 function relativeAirSpeedViolationSentence(bound: string, system: UnitSystem): string {
@@ -194,12 +194,12 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   it("converts the bound into the entered humidity ratio at the atmospheric pressure, and gates at it", () => {
     // 0.022 kg/kg is above saturation at 25 °C and 101 325 Pa, and below it at 80 000 Pa.
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.humidityRatio, 0.022);
-    expect(enteredBound(pmvPpdIso, q.hr, slot, LOWER_PRESSURE)).toEqual({
-      min: psy_ta_rh(25, 0, LOWER_PRESSURE).hr,
-      max: psy_ta_rh(25, 100, LOWER_PRESSURE).hr,
+    expect(enteredBound(pmvPpdIso, q.hr, slot, LOWER_ATMOSPHERIC_PRESSURE)).toEqual({
+      min: psy_ta_rh(25, 0, LOWER_ATMOSPHERIC_PRESSURE).hr,
+      max: psy_ta_rh(25, 100, LOWER_ATMOSPHERIC_PRESSURE).hr,
     });
     expect(quantitiesOutOfRange(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.hr]);
-    expect(quantitiesOutOfRange(slot, pmvPpdIso, LOWER_PRESSURE)).toEqual([]);
+    expect(quantitiesOutOfRange(slot, pmvPpdIso, LOWER_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
   it("converts the bound at the operative temperature under operative entry", () => {
@@ -263,18 +263,18 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   });
 });
 
-const pressureBound = kindBounds.atmosphericPressure;
-if (pressureBound?.min === undefined || pressureBound.max === undefined) {
+const atmosphericPressureBound = kindBounds.atmosphericPressure;
+if (atmosphericPressureBound?.min === undefined || atmosphericPressureBound.max === undefined) {
   throw new Error("Atmospheric pressure is no longer bounded at both ends");
 }
-/** The two ends of the pressure's bound, both in range. */
-const PRESSURE_ENDS = [pressureBound.min, pressureBound.max];
-/** A pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
-const PRESSURE_ABOVE_RANGE = 120000;
-/** A pressure below the bound's 30 000 Pa. */
-const PRESSURE_BELOW_RANGE = 20000;
+/** The two ends of the atmospheric pressure's bound, both in range. */
+const ATMOSPHERIC_PRESSURE_ENDS = [atmosphericPressureBound.min, atmosphericPressureBound.max];
+/** An atmospheric pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
+const ATMOSPHERIC_PRESSURE_ABOVE_RANGE = 120000;
+/** An atmospheric pressure below the bound's 30 000 Pa. */
+const ATMOSPHERIC_PRESSURE_BELOW_RANGE = 20000;
 
-// No bound is taken at a pressure the app calls out of range (ADR-0002 decision 53).
+// No bound is taken at an atmospheric pressure the app calls out of range (ADR-0002 decision 53).
 describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of range", () => {
   /** A slot on PMV (ISO 7730) at 25 °C, its humidity entered as `value` in `mode`. */
   const at25 = (mode: HumidityMode, value: number) => withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), mode, value);
@@ -283,25 +283,25 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
     // 0.018 kg/kg is about 90 % at 101 325 Pa and 106 % at 120 000 Pa; 0.05 is beyond saturation at either.
     for (const value of [0.018, 0.05, -0.01]) {
       const slot = at25(humidityMode.humidityRatio, value);
-      expect(enteredBound(pmvPpdIso, q.hr, slot, PRESSURE_ABOVE_RANGE), String(value)).toBeUndefined();
-      expect(outOfRangeRows(slot, pmvPpdIso, PRESSURE_ABOVE_RANGE), String(value)).toEqual([]);
+      expect(enteredBound(pmvPpdIso, q.hr, slot, ATMOSPHERIC_PRESSURE_ABOVE_RANGE), String(value)).toBeUndefined();
+      expect(outOfRangeRows(slot, pmvPpdIso, ATMOSPHERIC_PRESSURE_ABOVE_RANGE), String(value)).toEqual([]);
     }
   });
 
   it("below the bound, gives a humidity-ratio entry no bound and lists no row for it, whatever its value", () => {
     for (const value of [0.018, 0.5, -0.01]) {
       const slot = at25(humidityMode.humidityRatio, value);
-      expect(enteredBound(pmvPpdIso, q.hr, slot, PRESSURE_BELOW_RANGE), String(value)).toBeUndefined();
-      expect(outOfRangeRows(slot, pmvPpdIso, PRESSURE_BELOW_RANGE), String(value)).toEqual([]);
+      expect(enteredBound(pmvPpdIso, q.hr, slot, ATMOSPHERIC_PRESSURE_BELOW_RANGE), String(value)).toBeUndefined();
+      expect(outOfRangeRows(slot, pmvPpdIso, ATMOSPHERIC_PRESSURE_BELOW_RANGE), String(value)).toEqual([]);
     }
   });
 
-  it("at either end of the bound, converts a humidity-ratio entry's bound at that pressure", () => {
+  it("at either end of the bound, converts a humidity-ratio entry's bound at that atmospheric pressure", () => {
     const slot = at25(humidityMode.humidityRatio, 0.01);
-    for (const pressure of PRESSURE_ENDS) {
-      expect(enteredBound(pmvPpdIso, q.hr, slot, pressure), String(pressure)).toEqual({
-        min: psy_ta_rh(25, 0, pressure).hr,
-        max: psy_ta_rh(25, 100, pressure).hr,
+    for (const atmosphericPressure of ATMOSPHERIC_PRESSURE_ENDS) {
+      expect(enteredBound(pmvPpdIso, q.hr, slot, atmosphericPressure), String(atmosphericPressure)).toEqual({
+        min: psy_ta_rh(25, 0, atmosphericPressure).hr,
+        max: psy_ta_rh(25, 100, atmosphericPressure).hr,
       });
     }
   });
@@ -310,13 +310,13 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
     for (const mode of [humidityMode.relativeHumidity, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure]) {
       const inRange = enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), DEFAULT_ATMOSPHERIC_PRESSURE);
       expect(inRange, mode.id).toBeDefined();
-      for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
-        expect(enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), pressure), mode.id).toEqual(inRange);
+      for (const atmosphericPressure of [ATMOSPHERIC_PRESSURE_ABOVE_RANGE, ATMOSPHERIC_PRESSURE_BELOW_RANGE]) {
+        expect(enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), atmosphericPressure), mode.id).toEqual(inRange);
       }
     }
   });
 
-  it("reads which ends a mode is bounded at, and whether its bound reads the pressure, off the mode itself", () => {
+  it("reads which ends a mode is bounded at, and whether its bound reads the atmospheric pressure, off the mode itself", () => {
     const vapourPressure = humidityMode.vapourPressure;
     const bothEnds = enteredBound(pmvPpdIso, vapourPressure.quantity, at25(vapourPressure, 1000), DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(bothEnds?.min).toBeDefined();
@@ -325,13 +325,13 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
     const dewPoint = humidityMode.dewPoint;
     const inRange = enteredBound(pmvPpdIso, dewPoint.quantity, at25(dewPoint, 10), DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(inRange).toBeDefined();
-    const readsPressure: HumidityMode = { ...dewPoint, readsPressure: true };
-    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(inRange);
-    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), PRESSURE_ABOVE_RANGE)).toBeUndefined();
+    const readsAtmosphericPressure: HumidityMode = { ...dewPoint, readsAtmosphericPressure: true };
+    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsAtmosphericPressure, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(inRange);
+    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsAtmosphericPressure, 10), ATMOSPHERIC_PRESSURE_ABOVE_RANGE)).toBeUndefined();
   });
 });
 
-// Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).
+// Judged apart from the entered values: no slot holds the atmospheric pressure (ADR-0002 decision 49).
 describe("isAtmosphericPressureOutOfRange", () => {
   it("answers out of range below 30 kPa and above 110 kPa, and in range at both ends", () => {
     expect(isAtmosphericPressureOutOfRange(29990)).toBe(true);
@@ -536,8 +536,8 @@ describe("formatBound", () => {
   });
 
   it("leaves the atmospheric pressure's bound in IP as its ends read nearest", () => {
-    expect(formatBound(pressureBound, q.p_atm, ip)).toBe("8.86 – 32.48");
-    expect(formatBound({ min: pressureBound.min }, q.p_atm, ip)).toBe("≥ 8.86");
+    expect(formatBound(atmosphericPressureBound, q.p_atm, ip)).toBe("8.86 – 32.48");
+    expect(formatBound({ min: atmosphericPressureBound.min }, q.p_atm, ip)).toBe("≥ 8.86");
   });
 
   it("writes ends that, typed into the row, the gate accepts", () => {
@@ -580,7 +580,7 @@ describe("formatBound, across the registry", () => {
     return bounds;
   }
 
-  const bounded = [...registeredModels.flatMap(boundsOf), [q.p_atm, pressureBound] as const];
+  const bounded = [...registeredModels.flatMap(boundsOf), [q.p_atm, atmosphericPressureBound] as const];
 
   it("reads a vapour-pressure bound among them, the one whose end steps", () => {
     expect(bounded.some(([quantity]) => quantity === q.pa)).toBe(true);

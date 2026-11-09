@@ -6,9 +6,9 @@
  * its state and its computation out, with no component and no router — and
  * nothing flushes, for the reason `compute.svelte.test.ts` gives.
  *
- * Expected values come from the library called with `p_atm`: outputs at a
- * pressure are compared with the outputs of a relative-humidity entry of
- * `hr_to_rh(hr, tdb, p_atm)`, which no pressure moves.
+ * Expected values come from the library called with `p_atm`: outputs at an
+ * atmospheric pressure are compared with the outputs of a relative-humidity
+ * entry of `hr_to_rh(hr, tdb, p_atm)`, which no atmospheric pressure moves.
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import type { InputsInfo } from "jsthermalcomfort";
@@ -30,10 +30,10 @@ import { heldSlot, listedRowsOf, outOfRangeQuantitiesAt, outputValueOf, sessionC
 const q = quantities;
 
 /** An atmospheric pressure other than the default, about 1 950 m above sea level. */
-const LOWER_PRESSURE = 80000;
+const LOWER_ATMOSPHERIC_PRESSURE = 80000;
 
 /** PMV (ISO 7730)'s default dry-bulb temperature, [°C], which every slot here keeps. */
-const TDB = 25;
+const DRY_BULB_TEMPERATURE = 25;
 
 /** The humidity ratio entered below, [kg/kg]: about 50 % at 25 °C and 101 325 Pa. */
 const HUMIDITY_RATIO = 0.01;
@@ -55,16 +55,16 @@ function withBound(key: string, bound: { min?: number; max?: number }): ModelDec
   };
 }
 
-/** A session on PMV (ISO 7730) at `pressure`, its humidity entered as {@link HUMIDITY_RATIO}. */
-function humidityRatioSession(pressure: number): { session: Session; computation: Computation } {
+/** A session on PMV (ISO 7730) at `atmosphericPressure`, its humidity entered as {@link HUMIDITY_RATIO}. */
+function humidityRatioSession(atmosphericPressure: number): { session: Session; computation: Computation } {
   const session = new Session(pmvPpdIso);
-  session.atmosphericPressure = pressure;
+  session.atmosphericPressure = atmosphericPressure;
   session.slots[0].setEntered(q.hr, HUMIDITY_RATIO);
   return { session, computation: new Computation(session) };
 }
 
 /** The PMV of a session on PMV (ISO 7730) whose relative humidity is entered as `rh` and dry-bulb temperature as `tdb`. */
-function pmvAtRelativeHumidity(rh: number, tdb = TDB) {
+function pmvAtRelativeHumidity(rh: number, tdb = DRY_BULB_TEMPERATURE) {
   const session = new Session(pmvPpdIso);
   session.slots[0].setEntered(q.tdb, tdb);
   session.slots[0].setEntered(q.rh, rh);
@@ -72,7 +72,7 @@ function pmvAtRelativeHumidity(rh: number, tdb = TDB) {
 }
 
 describe("the session's atmospheric pressure", () => {
-  it("starts at core's default, and no slot holds a pressure", () => {
+  it("starts at core's default, and no slot holds an atmospheric pressure", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     expect(session.atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
     for (const position of slotPositions) {
@@ -82,33 +82,33 @@ describe("the session's atmospheric pressure", () => {
 
   it("is kept by an address arrival, a switch that lands and a switch accepted after its question", () => {
     const session = new Session(pmvPpdIso);
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
 
     session.setModel(adaptiveAshrae);
-    expect(session.atmosphericPressure).toBe(LOWER_PRESSURE);
+    expect(session.atmosphericPressure).toBe(LOWER_ATMOSPHERIC_PRESSURE);
 
     session.requestModel(pmvPpdIso);
     expect(session.model).toBe(pmvPpdIso);
-    expect(session.atmosphericPressure).toBe(LOWER_PRESSURE);
+    expect(session.atmosphericPressure).toBe(LOWER_ATMOSPHERIC_PRESSURE);
 
     // The slot's 25 °C is above this fixture's maximum, so the switch asks first.
     session.requestModel(withBound("tdb", { min: 10, max: 20 }));
     expect(session.pendingSwitch).not.toBeNull();
     session.acceptSwitch();
-    expect(session.atmosphericPressure).toBe(LOWER_PRESSURE);
+    expect(session.atmosphericPressure).toBe(LOWER_ATMOSPHERIC_PRESSURE);
   });
 });
 
 describe("a change of atmospheric pressure", () => {
   it("under a humidity-ratio entry, moves the outputs to the library's relative humidity at it and leaves the entry", () => {
     const { session, computation } = humidityRatioSession(DEFAULT_ATMOSPHERIC_PRESSURE);
-    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, DRY_BULB_TEMPERATURE)));
 
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: HUMIDITY_RATIO });
-    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, LOWER_PRESSURE)));
-    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).not.toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, DRY_BULB_TEMPERATURE, LOWER_ATMOSPHERIC_PRESSURE)));
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).not.toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, DRY_BULB_TEMPERATURE)));
   });
 
   it("under a relative-humidity entry, leaves the outputs", () => {
@@ -116,7 +116,7 @@ describe("a change of atmospheric pressure", () => {
     const computation = new Computation(session);
     const before = outputValueOf(computation.slots[0].outputs, q.pmv);
 
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
 
     expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(before);
   });
@@ -127,33 +127,33 @@ describe("a change of atmospheric pressure", () => {
     session.slots[0].setEntered(q.hr, 0.022);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.hr]);
 
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(0.022, TDB, LOWER_PRESSURE)));
+    expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(0.022, DRY_BULB_TEMPERATURE, LOWER_ATMOSPHERIC_PRESSURE)));
   });
 });
 
-/** A pressure below the bound's 30 000 Pa. */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** An atmospheric pressure below the bound's 30 000 Pa. */
+const ATMOSPHERIC_PRESSURE_OUT_OF_RANGE = 20000;
 
 describe("an atmospheric pressure out of range", () => {
   it("written past the commit's judgement, is run, and the gate reads it out of range", () => {
-    const { session, computation } = humidityRatioSession(LOWER_PRESSURE);
+    const { session, computation } = humidityRatioSession(LOWER_ATMOSPHERIC_PRESSURE);
     const before = outputValueOf(computation.slots[0].outputs, q.pmv);
     expect(isAtmosphericPressureOutOfRange(session.atmosphericPressure)).toBe(false);
 
-    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+    session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     expect(isAtmosphericPressureOutOfRange(session.atmosphericPressure)).toBe(true);
-    // Under a humidity-ratio entry a pressure moves the outputs, so changed ones were calculated again.
+    // Under a humidity-ratio entry an atmospheric pressure moves the outputs, so changed ones were calculated again.
     expect(outputValueOf(computation.slots[0].outputs, q.pmv)).not.toBe(before);
   });
 
   it("is never named by the list of entries out of range", () => {
     const session = new Session(pmvPpdIso);
 
-    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+    session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
     // PMV (ISO 7730) takes 0.8 to 4 met, so 4.5 is out of range beside it.
@@ -161,38 +161,38 @@ describe("an atmospheric pressure out of range", () => {
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.met]);
   });
 
-  it("back in range, is calculated at the new pressure", () => {
-    const { session, computation } = humidityRatioSession(LOWER_PRESSURE);
-    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+  it("back in range, is calculated at the new atmospheric pressure", () => {
+    const { session, computation } = humidityRatioSession(LOWER_ATMOSPHERIC_PRESSURE);
+    session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
     expect(isAtmosphericPressureOutOfRange(session.atmosphericPressure)).toBe(false);
     expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBe(
-      pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, DEFAULT_ATMOSPHERIC_PRESSURE)),
+      pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, DRY_BULB_TEMPERATURE, DEFAULT_ATMOSPHERIC_PRESSURE)),
     );
   });
 
   it("is not asked about by a model switch, and is kept by it", () => {
     const session = new Session(pmvPpdIso);
-    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+    session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     session.requestModel(adaptiveAshrae);
     expect(session.pendingSwitch).toBeNull();
     expect(session.model).toBe(adaptiveAshrae);
-    expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
+    expect(session.atmosphericPressure).toBe(ATMOSPHERIC_PRESSURE_OUT_OF_RANGE);
 
     session.requestModel(pmvPpdIso);
     // The slot's 25 °C is above this fixture's maximum, so the switch asks, about that alone.
     session.requestModel(withBound("tdb", { min: 10, max: 20 }));
     expect(listedRowsOf(session)?.map((row) => row.quantity)).toEqual([q.tdb]);
     session.acceptSwitch();
-    expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
+    expect(session.atmosphericPressure).toBe(ATMOSPHERIC_PRESSURE_OUT_OF_RANGE);
   });
 });
 
-/** A pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
-const PRESSURE_ABOVE_RANGE = 120000;
+/** An atmospheric pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
+const ATMOSPHERIC_PRESSURE_ABOVE_RANGE = 120000;
 
 /**
  * A humidity ratio at 25 °C, [kg/kg]: below saturation at 101 325 Pa
@@ -200,17 +200,17 @@ const PRESSURE_ABOVE_RANGE = 120000;
  */
 const NEAR_SATURATION = 0.019;
 
-// No bound is taken at a pressure out of range (ADR-0002 decision 53).
+// No bound is taken at an atmospheric pressure out of range (ADR-0002 decision 53).
 describe("a humidity-ratio entry while the atmospheric pressure is out of range", () => {
   it("is not named out of range", () => {
-    const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+    const { session } = humidityRatioSession(ATMOSPHERIC_PRESSURE_ABOVE_RANGE);
     session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 
   it("is not listed by a requested switch, and a yes leaves it as entered while it cuts a temperature", () => {
-    const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+    const { session } = humidityRatioSession(ATMOSPHERIC_PRESSURE_ABOVE_RANGE);
     session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     // The slot's 25 °C is above the fixture's maximum; its humidity ratio, about 95 % at 25 °C and 101 325 Pa, is above 40 %.
@@ -222,29 +222,29 @@ describe("a humidity-ratio entry while the atmospheric pressure is out of range"
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: NEAR_SATURATION });
   });
 
-  it("is judged again at the pressure once it is back in range", () => {
-    const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+  it("is judged again at the atmospheric pressure once it is back in range", () => {
+    const { session } = humidityRatioSession(ATMOSPHERIC_PRESSURE_ABOVE_RANGE);
     session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
-    session.atmosphericPressure = HIGHEST_PRESSURE;
+    session.atmosphericPressure = HIGHEST_ATMOSPHERIC_PRESSURE;
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([q.hr]);
   });
 });
 
 describe("a humidity entry and the session's atmospheric pressure", () => {
-  it("re-expresses the entry at the session's pressure when the entry mode changes", () => {
+  it("re-expresses the entry at the session's atmospheric pressure when the entry mode changes", () => {
     const session = new Session(pmvPpdIso);
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
 
     session.setHumidityMode(humidityMode.humidityRatio);
 
-    expect(session.slots[0].humidity?.value).toBe(psy_ta_rh(TDB, 50, LOWER_PRESSURE).hr);
+    expect(session.slots[0].humidity?.value).toBe(psy_ta_rh(DRY_BULB_TEMPERATURE, 50, LOWER_ATMOSPHERIC_PRESSURE).hr);
   });
 
-  it("asks a model switch about a humidity-ratio entry at the session's pressure", () => {
+  it("asks a model switch about a humidity-ratio entry at the session's atmospheric pressure", () => {
     const session = new Session(pmvPpdIso);
-    session.atmosphericPressure = LOWER_PRESSURE;
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
     session.setHumidityMode(humidityMode.humidityRatio);
 
     // The slot's 50 % is above this fixture's maximum of 40 %.
@@ -253,39 +253,39 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
     expect(listedRowsOf(session)).toEqual([
       {
         quantity: q.hr,
-        value: psy_ta_rh(TDB, 50, LOWER_PRESSURE).hr,
-        bound: { min: psy_ta_rh(TDB, 0, LOWER_PRESSURE).hr, max: psy_ta_rh(TDB, 40, LOWER_PRESSURE).hr },
+        value: psy_ta_rh(DRY_BULB_TEMPERATURE, 50, LOWER_ATMOSPHERIC_PRESSURE).hr,
+        bound: { min: psy_ta_rh(DRY_BULB_TEMPERATURE, 0, LOWER_ATMOSPHERIC_PRESSURE).hr, max: psy_ta_rh(DRY_BULB_TEMPERATURE, 40, LOWER_ATMOSPHERIC_PRESSURE).hr },
       },
     ]);
   });
 });
 
 /** Humidity ratio as the SI chart draws it, in g/kg. */
-const hrUnit = displayUnitFor(q.hr, unitSystem.si);
+const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 
-/** The upper end of the humidity-ratio axis PMV (ISO 7730) declares, at the default pressure, [kg/kg]. */
-const DECLARED_HR_MAX = requireAxisRange(pmvPpdIso, q.hr).max;
+/** The upper end of the humidity-ratio axis PMV (ISO 7730) declares, at the default atmospheric pressure, [kg/kg]. */
+const DECLARED_HUMIDITY_RATIO_MAX = requireAxisRange(pmvPpdIso, q.hr).max;
 
-const pressureBound = kindBounds.atmosphericPressure;
-if (pressureBound?.min === undefined || pressureBound.max === undefined) {
+const atmosphericPressureBound = kindBounds.atmosphericPressure;
+if (atmosphericPressureBound?.min === undefined || atmosphericPressureBound.max === undefined) {
   throw new Error("Atmospheric pressure is no longer bounded at both ends");
 }
-/** The low end of the pressure's bound, where the humidity-ratio axis reaches furthest. */
-const LOWEST_PRESSURE = pressureBound.min;
-/** The high end of the pressure's bound, where the humidity-ratio axis ends lowest. */
-const HIGHEST_PRESSURE = pressureBound.max;
+/** The low end of the atmospheric pressure's bound, where the humidity-ratio axis reaches furthest. */
+const LOWEST_ATMOSPHERIC_PRESSURE = atmosphericPressureBound.min;
+/** The high end of the atmospheric pressure's bound, where the humidity-ratio axis ends lowest. */
+const HIGHEST_ATMOSPHERIC_PRESSURE = atmosphericPressureBound.max;
 
-/** The chart of a session on PMV (ISO 7730) at `pressure`, its slot as the model starts it. */
-function chartAt(pressure: number, system: UnitSystem = unitSystem.si): ChartSpec | null {
+/** The chart of a session on PMV (ISO 7730) at `atmosphericPressure`, its slot as the model starts it. */
+function chartAt(atmosphericPressure: number, system: UnitSystem = unitSystem.si): ChartSpec | null {
   const session = new Session(pmvPpdIso);
   session.unitSystem = system;
-  session.atmosphericPressure = pressure;
+  session.atmosphericPressure = atmosphericPressure;
   return new Computation(session).chart;
 }
 
-/** Where the humidity-ratio axis should end at `pressure`, in `unit`: the declared end times the default over it. */
-function drawnHrMax(pressure: number, unit = hrUnit): number {
-  return unit.fromSi((DECLARED_HR_MAX * DEFAULT_ATMOSPHERIC_PRESSURE) / pressure);
+/** Where the humidity-ratio axis should end at `atmosphericPressure`, in `unit`: the declared end times the default over it. */
+function drawnHumidityRatioMax(atmosphericPressure: number, unit = humidityRatioUnit): number {
+  return unit.fromSi((DECLARED_HUMIDITY_RATIO_MAX * DEFAULT_ATMOSPHERIC_PRESSURE) / atmosphericPressure);
 }
 
 /** The relative-humidity isolines of a chart, each its one line with the relative humidity its label names. */
@@ -306,28 +306,28 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
 }
 
 describe("the psychrometric chart at the session's atmospheric pressure", () => {
-  it("draws each relative-humidity isoline at the library's humidity ratio at that pressure", () => {
-    const isolines = isolinesOf(chartAt(LOWER_PRESSURE));
+  it("draws each relative-humidity isoline at the library's humidity ratio at that atmospheric pressure", () => {
+    const isolines = isolinesOf(chartAt(LOWER_ATMOSPHERIC_PRESSURE));
 
     expect(isolines.map((isoline) => isoline.rh)).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
     for (const { rh, line } of isolines) {
-      expect(line.y).toEqual(line.x.map((db) => hrUnit.fromSi(psy_ta_rh(db, rh, LOWER_PRESSURE).hr)));
-      expect(line.y[0]).not.toBe(hrUnit.fromSi(psy_ta_rh(line.x[0], rh).hr));
+      expect(line.y).toEqual(line.x.map((tdb) => humidityRatioUnit.fromSi(psy_ta_rh(tdb, rh, LOWER_ATMOSPHERIC_PRESSURE).hr)));
+      expect(line.y[0]).not.toBe(humidityRatioUnit.fromSi(psy_ta_rh(line.x[0], rh).hr));
     }
   });
 
-  it("puts the marker at the entered humidity ratio, on the isoline of its relative humidity at that pressure", () => {
-    const { computation } = humidityRatioSession(LOWER_PRESSURE);
+  it("puts the marker at the entered humidity ratio, on the isoline of its relative humidity at that atmospheric pressure", () => {
+    const { computation } = humidityRatioSession(LOWER_ATMOSPHERIC_PRESSURE);
     const marker = markerOf(computation.chart);
 
-    expect(marker?.x).toBe(TDB);
-    expect(marker?.y).toBeCloseTo(hrUnit.fromSi(HUMIDITY_RATIO), 9);
-    const rh = hr_to_rh(HUMIDITY_RATIO, TDB, LOWER_PRESSURE);
-    expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, rh, LOWER_PRESSURE).hr));
+    expect(marker?.x).toBe(DRY_BULB_TEMPERATURE);
+    expect(marker?.y).toBeCloseTo(humidityRatioUnit.fromSi(HUMIDITY_RATIO), 9);
+    const rh = hr_to_rh(HUMIDITY_RATIO, DRY_BULB_TEMPERATURE, LOWER_ATMOSPHERIC_PRESSURE);
+    expect(marker?.y).toBe(humidityRatioUnit.fromSi(psy_ta_rh(DRY_BULB_TEMPERATURE, rh, LOWER_ATMOSPHERIC_PRESSURE).hr));
   });
 
-  it("cuts each comfort zone from a scan at that pressure, over the taller axis", () => {
-    const chart = chartAt(LOWER_PRESSURE);
+  it("cuts each comfort zone from a scan at that atmospheric pressure, over the taller axis", () => {
+    const chart = chartAt(LOWER_ATMOSPHERIC_PRESSURE);
     const zones = zonesOf(chart);
     const grid = chart?.traces.find((trace) => trace.kind === "hoverGrid");
     if (!grid) {
@@ -335,51 +335,52 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     }
 
     expect(zones).toHaveLength(4);
-    expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
+    expect(grid.y[grid.y.length - 1]).toBeCloseTo(drawnHumidityRatioMax(LOWER_ATMOSPHERIC_PRESSURE), 9);
     // Column 40 is 26 °C; a grid point's number is the slot's at that dry-bulb
     // temperature and the relative humidity its humidity ratio has at that
-    // pressure, and a zone holds it where its magnitude is within the zone's limit.
+    // atmospheric pressure, and a zone holds it where its magnitude is within
+    // the zone's limit.
     const [column, tdb] = [40, 26];
     expect(grid.x[column]).toBeCloseTo(tdb, 9);
     const limits = [...pmvPpdIso.scan.comfortZones].map((zone) => zone.limit).sort((a, b) => b - a);
     zones.forEach((zone, position) => {
       const region = insideAtSamples(zone, grid.x, grid.y);
       for (const yIndex of [0, 10, 20]) {
-        const rh = hr_to_rh(hrUnit.toSi(grid.y[yIndex]), tdb, LOWER_PRESSURE);
+        const rh = hr_to_rh(humidityRatioUnit.toSi(grid.y[yIndex]), tdb, LOWER_ATMOSPHERIC_PRESSURE);
         expect(region[yIndex][column]).toBe(Math.abs(Number(pmvAtRelativeHumidity(rh, tdb))) < limits[position]);
       }
     });
     expect(zones.some((zone) => insideAtSamples(zone, grid.x, grid.y)[10][column])).toBe(true);
   });
 
-  it("ends the humidity-ratio axis at the declared upper end times the default pressure over the pressure", () => {
-    const rangeAt = (pressure: number, system?: UnitSystem) => chartAt(pressure, system)?.layout.y.range;
+  it("ends the humidity-ratio axis at the declared upper end times the default atmospheric pressure over the atmospheric pressure", () => {
+    const rangeAt = (atmosphericPressure: number, system?: UnitSystem) => chartAt(atmosphericPressure, system)?.layout.y.range;
 
-    expect(rangeAt(LOWEST_PRESSURE)).toEqual([0, drawnHrMax(LOWEST_PRESSURE)]);
-    expect(rangeAt(LOWEST_PRESSURE)?.[1]).toBeCloseTo(101.3, 1);
+    expect(rangeAt(LOWEST_ATMOSPHERIC_PRESSURE)).toEqual([0, drawnHumidityRatioMax(LOWEST_ATMOSPHERIC_PRESSURE)]);
+    expect(rangeAt(LOWEST_ATMOSPHERIC_PRESSURE)?.[1]).toBeCloseTo(101.3, 1);
     expect(rangeAt(DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([0, 30]);
-    expect(rangeAt(HIGHEST_PRESSURE)?.[1]).toBeCloseTo(27.6, 1);
-    expect(rangeAt(LOWEST_PRESSURE, unitSystem.ip)).toEqual([
+    expect(rangeAt(HIGHEST_ATMOSPHERIC_PRESSURE)?.[1]).toBeCloseTo(27.6, 1);
+    expect(rangeAt(LOWEST_ATMOSPHERIC_PRESSURE, unitSystem.ip)).toEqual([
       0,
-      drawnHrMax(LOWEST_PRESSURE, displayUnitFor(q.hr, unitSystem.ip)),
+      drawnHumidityRatioMax(LOWEST_ATMOSPHERIC_PRESSURE, displayUnitFor(q.hr, unitSystem.ip)),
     ]);
   });
 
   it("cuts each isoline where it leaves the axis as drawn, not as declared", () => {
     const highest = (chart: ChartSpec | null) => Math.max(...isolinesOf(chart).flatMap(({ line }) => line.y));
 
-    const high = chartAt(HIGHEST_PRESSURE);
-    expect(highest(high)).toBeLessThanOrEqual(drawnHrMax(HIGHEST_PRESSURE));
-    const low = chartAt(LOWEST_PRESSURE);
-    expect(highest(low)).toBeGreaterThan(hrUnit.fromSi(DECLARED_HR_MAX));
-    expect(highest(low)).toBeLessThanOrEqual(drawnHrMax(LOWEST_PRESSURE));
+    const high = chartAt(HIGHEST_ATMOSPHERIC_PRESSURE);
+    expect(highest(high)).toBeLessThanOrEqual(drawnHumidityRatioMax(HIGHEST_ATMOSPHERIC_PRESSURE));
+    const low = chartAt(LOWEST_ATMOSPHERIC_PRESSURE);
+    expect(highest(low)).toBeGreaterThan(humidityRatioUnit.fromSi(DECLARED_HUMIDITY_RATIO_MAX));
+    expect(highest(low)).toBeLessThanOrEqual(drawnHumidityRatioMax(LOWEST_ATMOSPHERIC_PRESSURE));
   });
 
-  it("keeps the default slot's marker on the chart at the lowest pressure", () => {
-    const marker = markerOf(chartAt(LOWEST_PRESSURE));
+  it("keeps the default slot's marker on the chart at the lowest atmospheric pressure", () => {
+    const marker = markerOf(chartAt(LOWEST_ATMOSPHERIC_PRESSURE));
 
-    expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, 50, LOWEST_PRESSURE).hr));
-    expect(marker?.y).toBeGreaterThan(hrUnit.fromSi(DECLARED_HR_MAX));
-    expect(marker?.y).toBeLessThanOrEqual(drawnHrMax(LOWEST_PRESSURE));
+    expect(marker?.y).toBe(humidityRatioUnit.fromSi(psy_ta_rh(DRY_BULB_TEMPERATURE, 50, LOWEST_ATMOSPHERIC_PRESSURE).hr));
+    expect(marker?.y).toBeGreaterThan(humidityRatioUnit.fromSi(DECLARED_HUMIDITY_RATIO_MAX));
+    expect(marker?.y).toBeLessThanOrEqual(drawnHumidityRatioMax(LOWEST_ATMOSPHERIC_PRESSURE));
   });
 });

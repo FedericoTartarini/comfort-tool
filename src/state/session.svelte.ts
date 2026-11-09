@@ -346,8 +346,8 @@ export class Session {
    * the Standard page while Compare is on, and nowhere else (ADR-0002
    * decision 50). Asked here alone; each slot's appearance is given from it
    * (`state/compute.svelte.ts`). A slot not shown has no appearance, so the
-   * switch's dialog and the pressure's toast name a slot by position on their
-   * own rule (decision 84, rule 4).
+   * switch's dialog and the atmospheric pressure's toast name a slot by
+   * position on their own rule (decision 84, rule 4).
    */
   get slotsNamed(): boolean {
     return this.page === page.standard && this.#compare;
@@ -497,8 +497,9 @@ export class Session {
 
   /**
    * The verdict on entering `value` for `quantity` in the slot at `position`,
-   * which must hold values, under the session's model and pressure (ADR-0002
-   * decision 84, rule 2), writing nothing: what the box asks of a draft.
+   * which must hold values, under the session's model and atmospheric
+   * pressure (ADR-0002 decision 84, rule 2), writing nothing: what the box
+   * asks of a draft.
    */
   judgeEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict {
     return entryVerdict(this.#heldSlotAt(position), this.model, this.atmosphericPressure, quantity, value);
@@ -574,9 +575,10 @@ export class Session {
    * whatever was pending with a "No", as a landing does, even on the model
    * already current: the question was asked on a page the address has left.
    *
-   * It then cuts the pressure to its kind's bound, and every entry of every
-   * slot that holds values, compared or not, to its bound at the pressure as
-   * cut, as a switch's "Yes" cuts (decision 84, rule 4, as noted 2026-10-28).
+   * It then cuts the atmospheric pressure to its kind's bound, and every entry
+   * of every slot that holds values, compared or not, to its bound at the
+   * atmospheric pressure as cut, as a switch's "Yes" cuts (decision 84, rule
+   * 4, as noted 2026-10-28).
    * It lists nothing and holds nothing pending, and answers whether it cut
    * anything, for the page to say so.
    */
@@ -584,11 +586,11 @@ export class Session {
     this.pendingSwitch = null;
     this.page = address.page;
     this.setModel(address.model);
-    const pressureRow = atmosphericPressureRow(this.atmosphericPressure);
-    if (pressureRow) {
-      this.atmosphericPressure = nearestEnd(pressureRow.value, pressureRow.bound);
+    const outOfRangeRow = atmosphericPressureRow(this.atmosphericPressure);
+    if (outOfRangeRow) {
+      this.atmosphericPressure = nearestEnd(outOfRangeRow.value, outOfRangeRow.bound);
     }
-    let cut = pressureRow !== undefined;
+    let cut = outOfRangeRow !== undefined;
     for (const slot of this.#heldSlots()) {
       cut = this.#replaceCut(slot, slot) || cut;
     }
@@ -675,11 +677,11 @@ export class Session {
 
   /**
    * Replace what `slot` holds with `held`, every entry out of range cut to
-   * its bound at the session's model and pressure, read at the entries as
-   * cut (ADR-0002 decision 84, rules 4 and 5), and answer whether it cut
-   * anything. An arrival lands so, and an entry-mode switch, as a conversion
-   * can carry an entry past a bound the mode it left did not hold it to, and
-   * a slot first enabled, as a Slot offset can.
+   * its bound at the session's model and atmospheric pressure, read at the
+   * entries as cut (ADR-0002 decision 84, rules 4 and 5), and answer whether
+   * it cut anything. An arrival lands so, and an entry-mode switch, as a
+   * conversion can carry an entry past a bound the mode it left did not hold
+   * it to, and a slot first enabled, as a Slot offset can.
    */
   #replaceCut(slot: InputSlot, held: Slot): boolean {
     const rows = settledOutOfRangeRows(held, this.model, this.atmosphericPressure);

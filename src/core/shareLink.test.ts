@@ -43,8 +43,8 @@ import { defaultChartSettings, defaultSession, type ChartSettings, type WrittenS
 
 const q = quantities;
 const PREFIX = "v1.";
-/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** An atmospheric pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
+const ATMOSPHERIC_PRESSURE_OUT_OF_RANGE = 20000;
 
 /** `session` written out and read back, with the registry the app has. */
 function roundTrip(session: WrittenSession): WrittenSession | undefined {
@@ -64,10 +64,10 @@ const FAR_LABEL = "很冷 ❄️";
 /**
  * A session on PMV (ASHRAE 55) with three slots, slot 3 held and disabled,
  * Compare on, every entry group off its default mode, an option ticked, a
- * value of many decimals, a value and the pressure out of range, IP, and
- * edited chart settings on PMV (ASHRAE 55) and PMV (ISO 7730), the second
- * with a label outside Latin-1 and a band with no colour, beside Adaptive's
- * defaults.
+ * value of many decimals, a value and the atmospheric pressure out of range,
+ * IP, and edited chart settings on PMV (ASHRAE 55) and PMV (ISO 7730), the
+ * second with a label outside Latin-1 and a band with no colour, beside
+ * Adaptive's defaults.
  */
 function editedSession(): WrittenSession {
   const model = pmvPpdAshrae;
@@ -89,7 +89,7 @@ function editedSession(): WrittenSession {
   return {
     model,
     unitSystem: unitSystem.ip,
-    atmosphericPressure: PRESSURE_OUT_OF_RANGE,
+    atmosphericPressure: ATMOSPHERIC_PRESSURE_OUT_OF_RANGE,
     compare: true,
     enabled: [true, false],
     slots: [first, second, third],
@@ -113,7 +113,7 @@ describe("toText and toDecodedSession", () => {
     }
   });
 
-  it("are the identity on an edited session: three slots, every entry group's other mode, an option, values and the pressure out of range, two models' edited Band lists", () => {
+  it("are the identity on an edited session: three slots, every entry group's other mode, an option, values and the atmospheric pressure out of range, two models' edited Band lists", () => {
     const session = editedSession();
     const back = roundTrip(session);
     expect(back).toEqual(session);
@@ -287,7 +287,7 @@ describe("toDecodedSession", () => {
     expect(read(changed(changed(valid, ["slots", 2], null), ["enabled", 1], true))).toBeUndefined();
   });
 
-  it("takes a disabled slot nothing, an entered value outside its bound and a pressure out of range, as written", () => {
+  it("takes a disabled slot nothing, an entered value outside its bound and an atmospheric pressure out of range, as written", () => {
     expect(read(changed(valid, ["slots", 2], null))?.slots[2]).toBeNull();
     expect(read(changed(valid, [...values, q.met.key], 100))?.slots[0].values.get(q.met)).toBe(100);
     expect(read(changed(valid, [q.p_atm.key], 1))?.atmosphericPressure).toBe(1);

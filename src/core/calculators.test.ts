@@ -346,10 +346,8 @@ describe("panelCalculators", () => {
 });
 
 describe("shownRow", () => {
-  const P = DEFAULT_ATMOSPHERIC_PRESSURE;
-
   it("is the clothing insulation under clothing entry, the output after", () => {
-    const row = shownRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae, P);
+    const row = shownRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(row.quantity).toBe(q.clo);
     expect(row.before).toBe(room.values.get(q.clo));
     expect(row.after).toBeCloseTo(0.83, 2);
@@ -357,14 +355,14 @@ describe("shownRow", () => {
 
   it("is the dynamic clothing insulation under dynamic clothing entry, the standard's correction of the output after", () => {
     const dynamic = withClothingMode(room, clothingMode.dynamicClothingInsulation, pmvPpdAshrae);
-    const row = shownRow(dynamic, customEnsemble, clothing, pmvPpdAshrae, P);
+    const row = shownRow(dynamic, customEnsemble, clothing, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(row.quantity).toBe(q.clo_dynamic);
     expect(row.before).toBe(dynamic.values.get(q.clo_dynamic));
     expect(row.after).toBeCloseTo(clo_dynamic_ashrae(0.83, 1.5), 2);
   });
 
   it("is the mean radiant temperature under separate entry, raised by the increase after", () => {
-    const row = shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    const row = shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect([row.quantity, row.before]).toEqual([q.tr, 27]);
     expect(row.after).toBeCloseTo(27 + 4.2, 2);
   });
@@ -372,7 +370,7 @@ describe("shownRow", () => {
   it("is the operative temperature under operative entry, folded at the model's standard after", () => {
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
     const entered = operative.values.get(q.operative_tmp)!;
-    const row = shownRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    const row = shownRow(operative, solarGainOnOccupants, increase, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(row.quantity).toBe(q.operative_tmp);
     expect(row.before).toBe(entered);
     expect(row.after).toBeCloseTo(operative_tmp(entered, entered + 4.2, 0.3, "ashrae"), 2);
@@ -380,32 +378,32 @@ describe("shownRow", () => {
 
   it("is what the next Apply starts from once written: a second raise from the raised value", () => {
     const once = withCalculatorOutputs(room, solarGainOnOccupants, increase, pmvPpdAshrae);
-    const row = shownRow(once, solarGainOnOccupants, increase, pmvPpdAshrae, P);
+    const row = shownRow(once, solarGainOnOccupants, increase, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(row.before).toBeCloseTo(27 + 4.2, 2);
     expect(row.after).toBeCloseTo(27 + 2 * 4.2, 2);
   });
 
   it("has an after that is not a number while there are no outputs", () => {
-    const row = shownRow(room, solarGainOnOccupants, undefined, pmvPpdAshrae, P);
+    const row = shownRow(room, solarGainOnOccupants, undefined, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect([row.quantity, row.before, row.after]).toEqual([q.tr, 27, Number.NaN]);
     expect(row.cutTo).toBeUndefined();
   });
 
   it("is cut to the row's bound where the raise is past it, with the bound, as a typed value is; inside it, carries none", () => {
     const past = outputsOf(q.delta_mrt, 20);
-    const raised = shownRow(room, solarGainOnOccupants, past, pmvPpdAshrae, P);
-    const bound = enteredBound(pmvPpdAshrae, q.tr, room, P);
+    const raised = shownRow(room, solarGainOnOccupants, past, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+    const bound = enteredBound(pmvPpdAshrae, q.tr, room, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(raised.cutTo).toBeDefined();
     expect(raised.cutTo).toEqual(bound);
     expect(raised.after).toBe(bound?.max);
-    expect(shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, P).cutTo).toBeUndefined();
+    expect(shownRow(room, solarGainOnOccupants, increase, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE).cutTo).toBeUndefined();
   });
 
   it("is cut to the operative row's bound under operative entry, where the folded raise is past it", () => {
     // The fold weighs the raise by 0.4 at this air speed, so 20 K moves it 8 K and stays inside: 50 K is needed.
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
-    const raised = shownRow(operative, solarGainOnOccupants, outputsOf(q.delta_mrt, 50), pmvPpdAshrae, P);
-    const bound = enteredBound(pmvPpdAshrae, q.operative_tmp, operative, P);
+    const raised = shownRow(operative, solarGainOnOccupants, outputsOf(q.delta_mrt, 50), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+    const bound = enteredBound(pmvPpdAshrae, q.operative_tmp, operative, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(raised.cutTo).toBeDefined();
     expect(raised.cutTo).toEqual(bound);
     expect(raised.after).toBe(bound?.max);

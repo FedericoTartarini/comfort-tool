@@ -19,7 +19,7 @@ import { enterSlot1ValuesInOthers, heldSlot, sessionComparingThreeSlots, shapeOf
 const q = quantities;
 
 /** PMV (ASHRAE 55)'s dry-bulb temperature bound, [°C]. */
-const DRY_BULB_BOUND = { min: 10, max: 40 };
+const DRY_BULB_TEMPERATURE_BOUND = { min: 10, max: 40 };
 
 /** A humidity ratio at 25 °C, [kg/kg]: below saturation at 101 325 Pa (0.0201), above it at 110 000 Pa (0.0185). */
 const NEAR_SATURATION = 0.019;
@@ -52,10 +52,10 @@ describe("a slot's entry, committed", () => {
   it("past its bound, is cut to the bound's end and reported as cut", () => {
     const session = new Session(pmvPpdAshrae);
 
-    expect(session.commitEntry(0, q.tdb, 45)).toEqual({ kind: "cut", value: 40, bound: DRY_BULB_BOUND });
+    expect(session.commitEntry(0, q.tdb, 45)).toEqual({ kind: "cut", value: 40, bound: DRY_BULB_TEMPERATURE_BOUND });
     expect(session.slots[0].values.get(q.tdb)).toBe(40);
 
-    expect(session.commitEntry(0, q.tdb, 5)).toEqual({ kind: "cut", value: 10, bound: DRY_BULB_BOUND });
+    expect(session.commitEntry(0, q.tdb, 5)).toEqual({ kind: "cut", value: 10, bound: DRY_BULB_TEMPERATURE_BOUND });
     expect(session.slots[0].values.get(q.tdb)).toBe(10);
   });
 
@@ -93,27 +93,27 @@ describe("a slot's entry, committed", () => {
 
 /**
  * An `entered` air speed or clothing insulation of `value`, held at
- * `startMet`, where the model is given it within its row, and the metabolic
- * rate `met` that takes it past that row: the relative air speed's, or the
- * dynamic clothing insulation's.
+ * `startMetabolicRate`, where the model is given it within its row, and the
+ * metabolic rate `met` that takes it past that row: the relative air speed's,
+ * or the dynamic clothing insulation's.
  */
 interface PastTheRow {
   readonly model: ModelDeclaration;
   readonly entered: Quantity;
   readonly value: number;
-  readonly startMet: number;
+  readonly startMetabolicRate: number;
   readonly met: number;
 }
 
 const pastTheRow: readonly PastTheRow[] = [
   // 1.5 m/s at 3 met is a relative air speed of 2.1 m/s, over ASHRAE 55's 2.
-  { model: pmvPpdAshrae, entered: q.v, value: 1.5, startMet: 1.1, met: 3 },
+  { model: pmvPpdAshrae, entered: q.v, value: 1.5, startMetabolicRate: 1.1, met: 3 },
   // 0.8 m/s at 2 met is 1.1 m/s relative, over ISO 7730's 1.
-  { model: pmvPpdIso, entered: q.v, value: 0.8, startMet: 1.1, met: 2 },
+  { model: pmvPpdIso, entered: q.v, value: 0.8, startMetabolicRate: 1.1, met: 2 },
   // 1.8 clo is given as 1.44 at 2 met and as itself at 1.1, over ASHRAE 55's 1.5.
-  { model: pmvPpdAshrae, entered: q.clo, value: 1.8, startMet: 2, met: 1.1 },
+  { model: pmvPpdAshrae, entered: q.clo, value: 1.8, startMetabolicRate: 2, met: 1.1 },
   // 2.1 clo is given as about 1.74 at 2 met and 2.08 at 1.1, over ISO 7730's 2.
-  { model: pmvPpdIso, entered: q.clo, value: 2.1, startMet: 2, met: 1.1 },
+  { model: pmvPpdIso, entered: q.clo, value: 2.1, startMetabolicRate: 2, met: 1.1 },
 ];
 
 /** The row of `model`'s info that bounds what the model is given for an entered `entered`, and that quantity. */
@@ -126,10 +126,10 @@ function rowOf(model: ModelDeclaration, entered: Quantity) {
 describe("an air speed or a clothing insulation, committed", () => {
   it.each(pastTheRow)(
     "on $model.info.label, a metabolic rate that takes a held $entered.label past the model's row commits, and the run has a violation on the entered row",
-    ({ model, entered, value, startMet, met }) => {
+    ({ model, entered, value, startMetabolicRate, met }) => {
       const session = new Session(model);
       const computation = new Computation(session);
-      session.commitEntry(0, q.met, startMet);
+      session.commitEntry(0, q.met, startMetabolicRate);
       session.commitEntry(0, entered, value);
 
       expect(session.commitEntry(0, q.met, met)).toEqual({ kind: "written" });
@@ -219,7 +219,7 @@ describe("the verdict for a candidate", () => {
     const before = shapeOf(session.slots[0]);
 
     expect(session.judgeEntry(0, q.tdb, 16)).toEqual({ kind: "written" });
-    expect(session.judgeEntry(0, q.tdb, 45)).toEqual({ kind: "cut", value: 40, bound: DRY_BULB_BOUND });
+    expect(session.judgeEntry(0, q.tdb, 45)).toEqual({ kind: "cut", value: 40, bound: DRY_BULB_TEMPERATURE_BOUND });
     expect(session.judgeEntry(0, q.tdb, 12).kind).toBe("refused");
 
     expect(shapeOf(session.slots[0])).toEqual(before);

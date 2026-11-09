@@ -29,7 +29,7 @@ import { editBands, heldSlot, outputValueOf, sessionComparingThreeSlots, shapeOf
 
 const q = quantities;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
-const hrUnit = displayUnitFor(q.hr, unitSystem.si);
+const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 
 /** The positions of the slots whose markers `chart` draws, in slot order. */
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
@@ -139,7 +139,7 @@ describe("The page in the session", () => {
       expect(lines).toHaveLength(4 * computation.slots.length);
       computation.slots.forEach((slot, position) => {
         // Each zone is its own scan's traced, the humidity ratio shown in g/kg.
-        const shown = (piece: PathPiece) => ({ x: piece.x, y: piece.y.map((hr) => hrUnit.fromSi(hr)) });
+        const shown = (piece: PathPiece) => ({ x: piece.x, y: piece.y.map((hr) => humidityRatioUnit.fromSi(hr)) });
         const own = slot.scan.zones.map(traceRegion);
         expect(fills.slice(4 * position, 4 * position + 4).map((fill) => fill.pieces)).toEqual(own.map((zone) => zone.rings.map(shown)));
         expect(lines.slice(4 * position, 4 * position + 4).map((line) => line.pieces)).toEqual(own.map((zone) => zone.lines.map(shown)));

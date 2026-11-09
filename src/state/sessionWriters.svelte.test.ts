@@ -24,10 +24,10 @@ import { heldSlot, outOfRangeRowsOf, sessionComparingThreeSlots } from "./sessio
 const q = quantities;
 
 /** PMV (ASHRAE 55)'s row of the clothing insulation it takes, which an entered dynamic clothing insulation is held to. */
-const dynamicClothingBound = pmvPpdAshrae.info.inputs.clo!.applicability!;
+const dynamicClothingInsulationBound = pmvPpdAshrae.info.inputs.clo!.applicability!;
 
 /** A session on PMV (ASHRAE 55) under dynamic clothing entry, at its default metabolic rate. */
-function dynamicClothingSession(): Session {
+function dynamicClothingInsulationSession(): Session {
   const session = new Session(pmvPpdAshrae);
   session.setClothingMode(clothingMode.dynamicClothingInsulation);
   return session;
@@ -40,20 +40,20 @@ describe("an input calculator's Apply", () => {
       .slice(0, 4)
       .map(([garment]) => garment);
     const outputs = customEnsemble.compute(heaviest);
-    const session = dynamicClothingSession();
+    const session = dynamicClothingInsulationSession();
     const met = session.slots[0].values.get(q.met)!;
-    expect(clo_dynamic_ashrae(outputs.values.get(q.clo)!, met)).toBeGreaterThan(dynamicClothingBound.max!);
+    expect(clo_dynamic_ashrae(outputs.values.get(q.clo)!, met)).toBeGreaterThan(dynamicClothingInsulationBound.max!);
 
     const shown = shownRow(session.slots[0], customEnsemble, outputs, pmvPpdAshrae, session.atmosphericPressure);
-    expect([shown.after, shown.cutTo]).toEqual([dynamicClothingBound.max, dynamicClothingBound]);
+    expect([shown.after, shown.cutTo]).toEqual([dynamicClothingInsulationBound.max, dynamicClothingInsulationBound]);
     session.applyCalculator(0, customEnsemble, outputs);
 
-    expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingBound.max);
+    expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingInsulationBound.max);
   });
 
   it("of an ensemble within the bound writes the output", () => {
     const outputs = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
-    const session = dynamicClothingSession();
+    const session = dynamicClothingInsulationSession();
     const met = session.slots[0].values.get(q.met)!;
 
     expect(session.applyCalculator(0, customEnsemble, outputs)).toEqual({ kind: "written" });
@@ -167,7 +167,7 @@ describe("an entry-mode switch", () => {
     session.setClothingMode(clothingMode.dynamicClothingInsulation);
 
     expect(session.slots[0].values.get(q.vr)).toBe(pmvPpdAshrae.info.inputs.vr!.applicability!.max);
-    expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingBound.max);
+    expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingInsulationBound.max);
   });
 
   for (const model of registeredModels) {

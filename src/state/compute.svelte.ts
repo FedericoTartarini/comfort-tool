@@ -44,10 +44,11 @@ export interface DrawnAxes {
  *
  * Nothing is kept (ADR-0002 decision 84, rule 9): each run's outputs, the
  * violation rows and the chart are derived from the slots as they are, at the
- * session's pressure, in its unit system and chart settings. A committed value
- * is within its bounds; one a writer let through is run, and the library's rows show it
- * as a violation. The chart is of every compared slot (decision 50), its axes
- * resolved from the session's entry modes, which no slot decides (decision 51).
+ * session's atmospheric pressure, in its unit system and chart settings. A
+ * committed value is within its bounds; one a writer let through is run, and
+ * the library's rows show it as a violation. The chart is of every compared
+ * slot (decision 50), its axes resolved from the session's entry modes, which
+ * no slot decides (decision 51).
  */
 export class Computation {
   readonly #session: Session;
@@ -86,12 +87,12 @@ export class Computation {
    */
   readonly #scanFrame = $derived.by((): ScanFrame | null => {
     const session = this.#session;
-    const pressure = session.atmosphericPressure;
+    const atmosphericPressure = session.atmosphericPressure;
     const { type, axes } = session.chart;
     if (type === chartType.psychrometric) {
-      return psychrometricScanFrameFor(session.model, this.#entryModes, pressure);
+      return psychrometricScanFrameFor(session.model, this.#entryModes, atmosphericPressure);
     }
-    return type === chartType.dynamic && axes ? dynamicScanFrameFor(session.model, axes, this.#entryModes, pressure) : null;
+    return type === chartType.dynamic && axes ? dynamicScanFrameFor(session.model, axes, this.#entryModes, atmosphericPressure) : null;
   });
 
   readonly #chart = $derived.by((): ChartSpec | null => {

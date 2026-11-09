@@ -23,7 +23,7 @@ async function open(page: Page, address: string) {
   await expect(page.locator(".chart-plot svg").first()).toBeVisible();
 }
 
-const dryBulb = (page: Page) => page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ });
+const dryBulbTemperature = (page: Page) => page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ });
 
 /** The line under `box`: the description of the field that holds it alone. */
 function captionOf(box: Locator) {
@@ -66,7 +66,7 @@ async function openBands(page: Page) {
 test.describe("typing", () => {
   test("'e', '+', a letter and a second decimal point leave the text unchanged", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = dryBulb(page);
+    const box = dryBulbTemperature(page);
     const before = await box.inputValue();
 
     for (const key of ["e", "E", "+", "a"]) {
@@ -79,7 +79,7 @@ test.describe("typing", () => {
 
   test("a minus is not admitted where the lower end is at least 0", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    for (const box of [dryBulb(page), page.getByRole("spinbutton", { name: /^Air speed/ })]) {
+    for (const box of [dryBulbTemperature(page), page.getByRole("spinbutton", { name: /^Air speed/ })]) {
       const before = await box.inputValue();
       await typeAt(box, "start", "-");
       await expect(box).toHaveValue(before);
@@ -112,7 +112,7 @@ test.describe("typing", () => {
 test.describe("the arrow keys", () => {
   test("↑ and ↓ step by the unit's step, each a commit", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = dryBulb(page);
+    const box = dryBulbTemperature(page);
     await commit(box, "25");
 
     await box.press("ArrowUp");
@@ -129,7 +129,7 @@ test.describe("the arrow keys", () => {
 
   test("↑ at the bound's upper end and ↓ at its lower end leave the value there", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = dryBulb(page);
+    const box = dryBulbTemperature(page);
 
     await commit(box, "40");
     await box.press("ArrowUp");
@@ -153,7 +153,7 @@ function stepButtons(box: Locator) {
 test.describe("the step buttons", () => {
   test("a click steps by the unit's step, stops at the bound, and leaves the focus in the box", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = dryBulb(page);
+    const box = dryBulbTemperature(page);
     await commit(box, "39.9");
     await page.locator("body").click({ position: { x: 1, y: 1 } });
     const { up, down } = stepButtons(box);
@@ -238,9 +238,9 @@ test.describe("the line under the box", () => {
 
   test("under dry-bulb temperature it is the bound with '°C' in SI and '°F' in IP", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    await expect(captionOf(dryBulb(page))).toHaveText("10 – 40 °C");
+    await expect(captionOf(dryBulbTemperature(page))).toHaveText("10 – 40 °C");
     await page.getByRole("radio", { name: "IP" }).click();
-    await expect(captionOf(dryBulb(page))).toHaveText("50 – 104 °F");
+    await expect(captionOf(dryBulbTemperature(page))).toHaveText("50 – 104 °F");
   });
 
   test("under wet-bulb temperature it is the upper end, the library's wet bulb of 100 % at the dry bulb", async ({ page }) => {
@@ -248,10 +248,10 @@ test.describe("the line under the box", () => {
     await enterHumidityAs(page, /^Wet-bulb temperature/);
     const box = page.getByRole("spinbutton", { name: /^Wet-bulb temperature/ });
     // `psy_ta_rh(t, 100).wet_bulb_tmp` is 25.05 at 25 °C and 9.94 at 10 °C. The wet bulb is lowered first: a dry bulb under it is refused.
-    await commit(dryBulb(page), "25");
+    await commit(dryBulbTemperature(page), "25");
     await expect(captionOf(box)).toHaveText("≤ 25.05 °C");
     await commit(box, "5");
-    await commit(dryBulb(page), "10");
+    await commit(dryBulbTemperature(page), "10");
     await expect(captionOf(box)).toHaveText("≤ 9.94 °C");
   });
 });
@@ -282,7 +282,7 @@ function toasts(page: Page) {
   return page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
 }
 
-const pressure = (page: Page) => page.getByRole("spinbutton", { name: /^Atmospheric pressure/ });
+const atmosphericPressure = (page: Page) => page.getByRole("spinbutton", { name: /^Atmospheric pressure/ });
 
 /** The text the tab keeps, which is the link's, read as JSON: what the page holds, without a click on Share. */
 async function keptSession(page: Page): Promise<{ p_atm: number; slots: ({ values: Record<string, number> } | null)[] }> {
@@ -290,65 +290,65 @@ async function keptSession(page: Page): Promise<{ p_atm: number; slots: ({ value
   return JSON.parse(inflateRawSync(Buffer.from(kept.slice("v1.".length), "base64url")).toString());
 }
 
-/** The pressure the page holds, in pascals. */
-async function heldPressure(page: Page): Promise<number> {
+/** The atmospheric pressure the page holds, in pascals. */
+async function heldAtmosphericPressure(page: Page): Promise<number> {
   return (await keptSession(page)).p_atm;
 }
 
-// In SI the pressure is shown in kPa and held in pascals (ADR-0002 decision 87, rule 6).
+// In SI the atmospheric pressure is shown in kPa and held in pascals (ADR-0002 decision 87, rule 6).
 test.describe("the atmospheric pressure", () => {
   test("at the default reads 101.33 kPa within 30 – 110 kPa, a step up moves the held value by 100 Pa, and 101.325 typed holds 101 325 Pa", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = pressure(page);
+    const box = atmosphericPressure(page);
     await expect(page.getByText("Atmospheric pressure (kPa)", { exact: true })).toBeVisible();
     await expect(box).toHaveValue("101.33");
     await expect(captionOf(box)).toHaveText("30 – 110 kPa");
-    await expect.poll(() => heldPressure(page)).toBe(101325);
+    await expect.poll(() => heldAtmosphericPressure(page)).toBe(101325);
 
     // The box's last digit is the formatter's rounding of 101.425, so the held value is read, not the text.
     await stepButtons(box).up.click();
-    await expect.poll(() => heldPressure(page)).toBeCloseTo(101425, 6);
+    await expect.poll(() => heldAtmosphericPressure(page)).toBeCloseTo(101425, 6);
 
     await commit(box, "101.325");
-    await expect.poll(() => heldPressure(page)).toBe(101325);
+    await expect.poll(() => heldAtmosphericPressure(page)).toBe(101325);
   });
 
   test("a focus and a blur with nothing typed keep 101 325 Pa, not the 101 330 Pa the box shows", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = pressure(page);
+    const box = atmosphericPressure(page);
     await expect(box).toHaveValue("101.33");
 
     await box.focus();
     await box.blur();
     // A later commit writes the kept text, so it holds whatever the blur committed.
-    await commit(dryBulb(page), "26");
+    await commit(dryBulbTemperature(page), "26");
     await expect.poll(async () => (await keptSession(page)).slots[0]?.values.tdb).toBe(26);
 
-    expect(await heldPressure(page)).toBe(101325);
+    expect(await heldAtmosphericPressure(page)).toBe(101325);
   });
 
   test("101.43 typed over the 101 425 Pa a step holds commits 101 430 Pa, though the box shows 101.43", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    const box = pressure(page);
+    const box = atmosphericPressure(page);
     await stepButtons(box).up.click();
-    await expect.poll(() => heldPressure(page)).toBeCloseTo(101425, 6);
+    await expect.poll(() => heldAtmosphericPressure(page)).toBeCloseTo(101425, 6);
 
     await commit(box, "101.43");
 
-    await expect.poll(() => heldPressure(page)).toBe(101430);
+    await expect.poll(() => heldAtmosphericPressure(page)).toBe(101430);
   });
 
-  test("a pressure refused for a humidity ratio it would put out of range is written in kPa in the toast", async ({ page }) => {
+  test("an atmospheric pressure refused for a humidity ratio it would put out of range is written in kPa in the toast", async ({ page }) => {
     await open(page, PMV_ADDRESS);
-    await commit(dryBulb(page), "25");
+    await commit(dryBulbTemperature(page), "25");
     await enterHumidityAs(page, /^Humidity ratio/);
     // At 25 °C saturated air holds 20.08 g/kg at 101 325 Pa and 18.45 g/kg at 110 000 Pa.
     await commit(page.getByRole("spinbutton", { name: /^Humidity ratio/ }), "19.5");
 
-    await commit(pressure(page), "110");
+    await commit(atmosphericPressure(page), "110");
     await expect(toasts(page)).toHaveCount(1);
     await expect(toasts(page)).toContainText("Atmospheric pressure was not changed to 110 kPa");
-    await expect(pressure(page)).toHaveValue("101.33");
+    await expect(atmosphericPressure(page)).toHaveValue("101.33");
   });
 });
 
@@ -358,7 +358,7 @@ test.describe("a value changed while the box has the focus", () => {
     await page.getByRole("button", { name: "Model", exact: true }).click();
     await page.getByRole("option", { name: /^PMV \/ PPD \(ASHRAE 55/ }).click();
     await expect(page).toHaveURL(/pmv-ppd-ashrae/);
-    const box = dryBulb(page);
+    const box = dryBulbTemperature(page);
     await commit(box, "35");
     await expect(box).toHaveValue("35");
 

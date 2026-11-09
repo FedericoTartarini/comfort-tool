@@ -10,7 +10,7 @@ const isoSensation = classifierOf(PMV_PPD_ISO_INFO, quantities.tsv);
 const ashraeSensation = classifierOf(PMV_PPD_ASHRAE_INFO, quantities.tsv);
 const isoCategory = classifierOf(PMV_PPD_ISO_INFO, quantities.category);
 const heatIndexStress = classifierOf(HEAT_INDEX_ROTHFUSZ_INFO, quantities.stress_category);
-const utciStress = classifierOf(UTCI_INFO, quantities.stress_category);
+const utciThermalStressCategory = classifierOf(UTCI_INFO, quantities.stress_category);
 
 // ColorBrewer's RdBu-7, read cold to hot: the thermal-sensation scale's Cold … Hot.
 const rdBu7 = ["#2166ac", "#67a9cf", "#d1e5f0", "#f7f7f7", "#fddbc7", "#ef8a62", "#b2182b"];
@@ -37,7 +37,7 @@ describe("bandColors", () => {
 
   it("gives UTCI's ten stress categories five blues, RdBu-11's grey at the sixth position and four reds", () => {
     // RdBu-11 centred on "no thermal stress": the warm side's surplus, the red next to the grey, dropped.
-    expect(bandColors(utciStress)).toEqual([
+    expect(bandColors(utciThermalStressCategory)).toEqual([
       "#053061",
       "#2166ac",
       "#4393c3",

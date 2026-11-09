@@ -1391,11 +1391,11 @@ test.describe("controls by their question", () => {
   test("at 1440 px, the sidebar's settings are headed Settings, ruled off from Share and Reset", async ({ page }) => {
     await openStandard(page, 1440);
     const settings = page.getByRole("group", { name: "Settings" });
-    const pressure = await boxOf(settings.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
+    const atmosphericPressure = await boxOf(settings.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
     const rule = await boxOf(settings.locator('[data-slot="separator"]'));
     const share = await boxOf(settings.getByRole("button", { name: "Share" }));
 
-    expect(rule.y).toBeGreaterThan(pressure.y + pressure.height);
+    expect(rule.y).toBeGreaterThan(atmosphericPressure.y + atmosphericPressure.height);
     expect(share.y).toBeGreaterThan(rule.y);
   });
 
@@ -1530,7 +1530,7 @@ test.describe("the sidebar's headings and the one radius", () => {
  */
 test.describe("the header's mark", () => {
   const mark = (page: Page) => page.getByRole("banner").getByRole("link", { name: "Center for the Built Environment" });
-  const dryBulb = (page: Page) => page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ });
+  const dryBulbTemperature = (page: Page) => page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ });
   const metabolicRate = (page: Page) => page.getByRole("spinbutton", { name: /^Metabolic rate/ });
 
   test("links to the default model's address, and the footer's marks to their institutions", async ({ page }) => {
@@ -1550,12 +1550,12 @@ test.describe("the header's mark", () => {
 
   test("on PMV (ISO 7730), a click switches to the default model with a value inside both models' bounds kept", async ({ page }) => {
     await openStandard(page, 1440, ISO_ADDRESS);
-    await dryBulb(page).fill("26");
+    await dryBulbTemperature(page).fill("26");
 
     await mark(page).click();
 
     await expect(page).toHaveURL((url) => url.pathname === DEFAULT_ADDRESS);
-    await expect(dryBulb(page)).toHaveValue("26");
+    await expect(dryBulbTemperature(page)).toHaveValue("26");
   });
 
   test("on PMV (ISO 7730), with a metabolic rate below the default model's bound, a click asks, and No leaves everything as it was", async ({ page }) => {

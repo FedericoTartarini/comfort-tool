@@ -204,7 +204,7 @@ export function requireHumidity(slot: Slot): NonNullable<Slot["humidity"]> {
  * The slot's dry-bulb temperature: the entered `tdb`, or the operative entry
  * standing in for it under operative mode.
  */
-export function resolvedTdb(slot: Slot): number {
+export function dryBulbTemperatureOf(slot: Slot): number {
   return slot.values.get(q.tdb) ?? requireValue(slot.values, q.operative_tmp);
 }
 
@@ -217,7 +217,7 @@ export function resolvedTdb(slot: Slot): number {
  */
 export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): number {
   const { mode, value } = requireHumidity(slot);
-  return mode.toRelativeHumidity(value, resolvedTdb(slot), atmosphericPressure);
+  return mode.toRelativeHumidity(value, dryBulbTemperatureOf(slot), atmosphericPressure);
 }
 
 /**
@@ -655,7 +655,7 @@ export function withEntryModes(slot: Slot, modes: ValueEntryModes, model: ModelD
 
 /**
  * The same slot with its humidity entry re-expressed under `mode`, at the
- * slot's {@link resolvedTdb}: the entered dry-bulb temperature, or the
+ * slot's {@link dryBulbTemperatureOf}: the entered dry-bulb temperature, or the
  * operative temperature under operative entry, and at the session's
  * atmospheric pressure. Lossy and one-way, like {@link withTemperatureMode}.
  * Throws for a slot that holds no humidity: there is nothing to re-express.
@@ -664,7 +664,7 @@ export function withHumidityMode(slot: Slot, mode: HumidityMode, atmosphericPres
   if (mode === slot.humidity?.mode) {
     return slot;
   }
-  const tdb = resolvedTdb(slot);
+  const tdb = dryBulbTemperatureOf(slot);
   const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot, atmosphericPressure), tdb, atmosphericPressure) };
   return changedSlot(slot, { humidity });
 }

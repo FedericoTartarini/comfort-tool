@@ -20,8 +20,8 @@ import { heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestRead
 
 const q = quantities;
 /** Far above any model's `tdb` bound. */
-const OUT_OF_RANGE_TDB = 200;
-const LOWER_PRESSURE = 90_000;
+const DRY_BULB_TEMPERATURE_OUT_OF_RANGE = 200;
+const LOWER_ATMOSPHERIC_PRESSURE = 90_000;
 
 /** The line of `quantity` at the SI `value`, as the panel labels and shows it in SI. */
 function lineOf(quantity: Quantity, value: number): string {
@@ -39,7 +39,7 @@ function sessionWrittenOutOfRange() {
   const session = new Session(pmvPpdIso);
   const computation = new Computation(session);
   void computation.drawnRuns;
-  session.slots[0].setEntered(q.tdb, OUT_OF_RANGE_TDB);
+  session.slots[0].setEntered(q.tdb, DRY_BULB_TEMPERATURE_OUT_OF_RANGE);
   return { session, computation };
 }
 
@@ -57,7 +57,7 @@ describe("Computation.drawnRuns", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     expect(new Computation(session).drawnRuns.map((run) => run.label)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
-    heldSlot(session, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
+    heldSlot(session, 2).setEntered(q.tdb, DRY_BULB_TEMPERATURE_OUT_OF_RANGE);
     expect(new Computation(session).drawnRuns.map((run) => run.label)).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
@@ -86,14 +86,14 @@ describe("Computation.drawnRuns", () => {
   it("is the slot as it is, so the summary lists a value written out of range", () => {
     const { session, computation } = sessionWrittenOutOfRange();
     expect(computation.drawnRuns[0].slot).toEqual(shapeOf(session.slots[0]));
-    expect(summaryLinesOf(session, computation)).toContain(lineOf(q.tdb, OUT_OF_RANGE_TDB));
+    expect(summaryLinesOf(session, computation)).toContain(lineOf(q.tdb, DRY_BULB_TEMPERATURE_OUT_OF_RANGE));
   });
 
-  it("is at the session's pressure", () => {
+  it("is at the session's atmospheric pressure", () => {
     const { session, computation } = sessionWrittenOutOfRange();
-    session.atmosphericPressure = LOWER_PRESSURE;
-    expect(computation.drawnRuns[0].atmosphericPressure).toBe(LOWER_PRESSURE);
-    expect(summaryLinesOf(session, computation)).toContain(lineOf(q.p_atm, LOWER_PRESSURE));
+    session.atmosphericPressure = LOWER_ATMOSPHERIC_PRESSURE;
+    expect(computation.drawnRuns[0].atmosphericPressure).toBe(LOWER_ATMOSPHERIC_PRESSURE);
+    expect(summaryLinesOf(session, computation)).toContain(lineOf(q.p_atm, LOWER_ATMOSPHERIC_PRESSURE));
   });
 
   it("carries each compared slot's violation rows, none for a slot whose run broke nothing", () => {

@@ -1,11 +1,11 @@
 /**
  * An arrival by address (ADR-0002 decision 84, rule 4, and its note of
  * 2026-10-28): setting the session's address cuts every entry and the
- * pressure to their bounds, a dependent entry against the bound it has at the
- * entries it depends on as cut, lists nothing, holds nothing pending, and
- * answers whether it cut anything. Asserted at the seam the other session
- * tests use: a session in, its state out. The bounds expected are read from
- * the gate, so no bound is written here by hand.
+ * atmospheric pressure to their bounds, a dependent entry against the bound it
+ * has at the entries it depends on as cut, lists nothing, holds nothing
+ * pending, and answers whether it cut anything. Asserted at the seam the other
+ * session tests use: a session in, its state out. The bounds expected are read
+ * from the gate, so no bound is written here by hand.
  */
 import { describe, expect, it } from "vitest";
 import { atmosphericPressureRow, enteredBound, nearestEnd, outOfRangeRows } from "$lib/core/applicability";
@@ -21,8 +21,8 @@ import { Session } from "./session.svelte";
 import { addressOf, heldSlot, openedOn } from "./sessionTestReaders";
 
 const q = quantities;
-/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** An atmospheric pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
+const ATMOSPHERIC_PRESSURE_OUT_OF_RANGE = 20000;
 
 function standardAddress(model: ModelDeclaration): Address {
   return { page: page.standard, model };
@@ -75,15 +75,15 @@ function slotsInEveryEntryMode(model: ModelDeclaration): Slot[] {
 /**
  * A session built from a written session on `model` holding `slot` in all
  * three slots, every entry past its bound, slot 2 enabled with Compare off and
- * slot 3 disabled, and the pressure out of range: the worst a link or a kept
- * tab can carry.
+ * slot 3 disabled, and the atmospheric pressure out of range: the worst a link
+ * or a kept tab can carry.
  */
 function sessionPastEveryBound(model: ModelDeclaration, slot: Slot): Session {
   const past = pastEveryBound(slot, model);
   const written = new Session(model).toWrittenSession();
   return new Session({
     ...written,
-    atmosphericPressure: PRESSURE_OUT_OF_RANGE,
+    atmosphericPressure: ATMOSPHERIC_PRESSURE_OUT_OF_RANGE,
     compare: false,
     enabled: [true, false],
     slots: [past, past, past],
@@ -112,14 +112,14 @@ describe("an arrival by address", () => {
     expect(session.pendingSwitch).toBeNull();
   });
 
-  it("cuts the pressure to its bound, and answers that it cut", () => {
+  it("cuts the atmospheric pressure to its bound, and answers that it cut", () => {
     const session = new Session(pmvPpdIso);
-    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+    session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     const cut = session.setAddress(addressOf(session));
 
     expect(cut).toBe(true);
-    expect(session.atmosphericPressure).toBe(atmosphericPressureRow(PRESSURE_OUT_OF_RANGE)?.bound.min);
+    expect(session.atmosphericPressure).toBe(atmosphericPressureRow(ATMOSPHERIC_PRESSURE_OUT_OF_RANGE)?.bound.min);
   });
 
   it("with nothing to cut changes nothing, and answers that it cut nothing", () => {
@@ -147,7 +147,7 @@ describe("an arrival by address", () => {
     expect(session.pendingSwitch).toBeNull();
   });
 
-  it("settles every held slot and the pressure, with every entry past its bound, for every registered model and entry mode", () => {
+  it("settles every held slot and the atmospheric pressure, with every entry past its bound, for every registered model and entry mode", () => {
     for (const model of registeredModels) {
       for (const slot of slotsInEveryEntryMode(model)) {
         const session = sessionPastEveryBound(model, slot);

@@ -34,8 +34,8 @@ import {
 
 const q = quantities;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
-/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** An atmospheric pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
+const ATMOSPHERIC_PRESSURE_OUT_OF_RANGE = 20000;
 
 /** A new session built from what `session` reads itself out as. */
 function rebuilt(session: Session): Session {
@@ -76,9 +76,9 @@ function shownOf(computation: Computation) {
 
 /**
  * Three slots holding different values with Compare on, every entry group off
- * its default mode, an option ticked, an entered value and the pressure out
- * of range, IP, and the chart type, the axes and an edited Band list on PMV
- * (ASHRAE 55), left for PMV (ISO 7730), and on PMV (ISO 7730).
+ * its default mode, an option ticked, an entered value and the atmospheric
+ * pressure out of range, IP, and the chart type, the axes and an edited Band
+ * list on PMV (ASHRAE 55), left for PMV (ISO 7730), and on PMV (ISO 7730).
  */
 function editedSession(): Session {
   const session = sessionComparingThreeSlots(pmvPpdAshrae);
@@ -105,7 +105,7 @@ function editedSession(): Session {
   // Past PMV (ISO 7730)'s 30 °C, written past the commit's judgement.
   heldSlot(session, 2).setEntered(q.operative_tmp, 60);
   session.unitSystem = unitSystem.ip;
-  session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+  session.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
   return session;
 }
 
@@ -135,7 +135,7 @@ describe("a session read out and built again", () => {
     expect(stateOf(again)).toEqual(stateOf(session));
   });
 
-  it("gives the same outputs, with the pressure out of range and back in it", () => {
+  it("gives the same outputs, with the atmospheric pressure out of range and back in it", () => {
     const session = editedSession();
     const again = rebuilt(session);
     const computation = new Computation(session);

@@ -14,7 +14,7 @@ import { unitSystem } from "./unitSystem";
 const q = quantities;
 
 const atDefaults = (model: ModelDeclaration) => runOn(defaultSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
-const atTdb = (model: ModelDeclaration, tdb: number) =>
+const atDryBulbTemperature = (model: ModelDeclaration, tdb: number) =>
   runOn(withEnteredValues(defaultSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
 /** Outputs holding `values` and no `warnings` rows. */
@@ -45,7 +45,7 @@ describe("formatResultCell", () => {
   it("reads PMV (ASHRAE 55)'s compliance, a column of its table, as Yes inside the interval and No outside", () => {
     expect(pmvPpdAshrae.table).toContain(q.compliance);
     expect(formatResultCell(pmvPpdAshrae, atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si, noViolations)).toEqual(text("Yes"));
-    expect(formatResultCell(pmvPpdAshrae, atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si, noViolations)).toEqual(text("No"));
+    expect(formatResultCell(pmvPpdAshrae, atDryBulbTemperature(pmvPpdAshrae, 35), q.compliance, unitSystem.si, noViolations)).toEqual(text("No"));
   });
 
   it("shows every boolean output as a dash beside a violation row, whatever its value", () => {
@@ -117,7 +117,7 @@ describe("formatResultCell", () => {
 
   it("letters a dark band's badge in white, and gives a band its palette leaves unpainted no fill", () => {
     // A tdb of 5 °C puts PMV near -4.3: Cold, the first band, and past category IV, so "none".
-    const outputs = atTdb(pmvPpdIso, 5);
+    const outputs = atDryBulbTemperature(pmvPpdIso, 5);
     expect(formatResultCell(pmvPpdIso, outputs, q.tsv, unitSystem.si, noViolations)).toEqual({
       kind: "band",
       label: "Cold",

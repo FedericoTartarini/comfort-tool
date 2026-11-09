@@ -55,7 +55,7 @@ export function rehearseSwitch(slot: Slot, from: ModelDeclaration, to: ModelDecl
  * are no more passes than the slot has values. The cut then leaves nothing out
  * of range, except while `atmosphericPressure` is out of range: a
  * humidity-ratio entry has no bound then and is not listed, so it may be out
- * of range once the pressure returns (ADR-0002 decision 53).
+ * of range once the atmospheric pressure returns (ADR-0002 decision 53).
  */
 export function settledOutOfRangeRows(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): OutOfRangeRow[] {
   let rows = outOfRangeRows(slot, model, atmosphericPressure);

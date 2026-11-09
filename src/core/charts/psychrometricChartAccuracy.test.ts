@@ -34,9 +34,8 @@ import { psychrometricSpec } from "./psychrometricChart";
 import { comfortZonesOf } from "./scan";
 
 const q = quantities;
-const p = DEFAULT_ATMOSPHERIC_PRESSURE;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
-const hrUnit = displayUnitFor(q.hr, unitSystem.si);
+const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 
 /**
  * 3a's tolerance per model, in the model's scanned output: how far the
@@ -114,8 +113,8 @@ function zonesOf(model: ModelDeclaration, slot: Slot): { readonly limit: number;
     limit: limits[position],
     drawn: {
       temperatures: grid.x,
-      humidityRatios: grid.y.map((hr) => hrUnit.toSi(hr)),
-      rings: fill.pieces.map((ring) => ({ x: ring.x, y: ring.y.map((hr) => hrUnit.toSi(hr)) })),
+      humidityRatios: grid.y.map((hr) => humidityRatioUnit.toSi(hr)),
+      rings: fill.pieces.map((ring) => ({ x: ring.x, y: ring.y.map((hr) => humidityRatioUnit.toSi(hr)) })),
     },
   }));
 }
@@ -176,9 +175,9 @@ function verticesOnGridLines(zone: DrawnZone) {
 function runAt(model: ModelDeclaration, slot: Slot, temperature: number, hr: number) {
   const cell = withEnteredValues(slot, new Map([
     [slot.temperature.mode.axis, temperature],
-    [q.rh, hr_to_rh(hr, temperature, p)],
+    [q.rh, hr_to_rh(hr, temperature, DEFAULT_ATMOSPHERIC_PRESSURE)],
   ]));
-  return runOn(cell, model, p);
+  return runOn(cell, model, DEFAULT_ATMOSPHERIC_PRESSURE);
 }
 
 /** `model`'s own scanned number for `slot` at `temperature` and the humidity ratio `hr`, in SI. */
@@ -209,7 +208,7 @@ describe("criterion 3a: the psychrometric chart's zones against the library", ()
             // Above saturation the zone runs on under the cover, unseen, and
             // PMV (ASHRAE 55)'s cooling effect jumps there by up to 0.1 PMV
             // per 0.01 °C (measured 2026-10-02, from 105 %).
-            if (hr_to_rh(hr, temperature, p) > 100 || ends.some((end) => isOutsideApplicabilityAt(model, slot, end.temperature, end.hr))) {
+            if (hr_to_rh(hr, temperature, DEFAULT_ATMOSPHERIC_PRESSURE) > 100 || ends.some((end) => isOutsideApplicabilityAt(model, slot, end.temperature, end.hr))) {
               continue;
             }
             compared += 1;
@@ -245,7 +244,7 @@ describe("criterion 3b: the psychrometric chart's zones against the deployed too
       // Each side is the deployed tool's 0, 10, …, 100 % rows, so no
       // saturation-line vertex is compared: the cover's edge is the library's
       // saturation line.
-      expect(vertices.map((vertex) => Math.round(hr_to_rh(vertex.hr, vertex.db, p) / 10))).toEqual(Array.from({ length: SIDE_VERTICES }, (_, step) => step));
+      expect(vertices.map((vertex) => Math.round(hr_to_rh(vertex.hr, vertex.db, DEFAULT_ATMOSPHERIC_PRESSURE) / 10))).toEqual(Array.from({ length: SIDE_VERTICES }, (_, step) => step));
       const compared = vertices.filter((vertex) => !isOutsideApplicabilityAt(model, slot, vertex.db, vertex.hr));
       expect(compared.length).toBeGreaterThan(0);
       const off = compared.flatMap((expected) => {

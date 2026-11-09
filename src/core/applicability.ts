@@ -21,8 +21,8 @@ import { rangeRowsOf } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import {
+  dryBulbTemperatureOf,
   isHumidityQuantity,
-  resolvedTdb,
   valueEntryGroups,
   withEnteredValues,
   type EntryCorrection,
@@ -165,12 +165,12 @@ function isInverted(bound: Bound): boolean {
  * humidity ratio turns negative from 100 °C — so the converted ends come
  * out inverted there, and the entry has no bound at that temperature. The
  * mode says of itself which ends it is bounded at, both or the upper only,
- * and whether its bound reads the pressure, in which case it has none while
- * the pressure is out of range (decision 53).
+ * and whether its bound reads the atmospheric pressure, in which case it has
+ * none while the atmospheric pressure is out of range (decision 53).
  * `undefined` for a model without the humidity entry group.
  */
 function humidityEntryBoundFor(model: ModelDeclaration, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
-  if (mode.readsPressure && isAtmosphericPressureOutOfRange(atmosphericPressure)) {
+  if (mode.readsAtmosphericPressure && isAtmosphericPressureOutOfRange(atmosphericPressure)) {
     return undefined;
   }
   const relativeHumidity = intersect(everyBoundFor(model, q.rh));
@@ -178,7 +178,7 @@ function humidityEntryBoundFor(model: ModelDeclaration, mode: HumidityMode, slot
     return undefined;
   }
   const ends = mode.bounded === "upper" ? boundOf(undefined, relativeHumidity.max) : relativeHumidity;
-  const tdb = resolvedTdb(slot);
+  const tdb = dryBulbTemperatureOf(slot);
   return convertedBound(ends, (end) => mode.fromRelativeHumidity(end, tdb, atmosphericPressure));
 }
 
@@ -228,14 +228,14 @@ export function outOfRangeCalculatorInputs(calculator: FormCalculator, inputs: C
  * humidity's bound converted into its mode at the slot's dry-bulb
  * temperature and `atmosphericPressure`, so the bound moves with both, at
  * its upper end only in wet-bulb entry, and not at all in humidity-ratio entry
- * while the pressure is out of range ({@link humidityEntryBoundFor}); a slot that
- * holds no humidity has no humidity entry to bound. An entry of an
- * activity-adjusted group the model has is held to the model's row for what
- * it takes, `vr` or the dynamic clothing insulation the library calls `clo`,
- * when it is that quantity, and to its kind's bound alone when it is an
- * entered `v` or clothing insulation ({@link correctedEntryBoundFor}). In a
- * model without the group an entered `v` or `clo` is held to the model's own
- * row for it.
+ * while the atmospheric pressure is out of range
+ * ({@link humidityEntryBoundFor}); a slot that holds no humidity has no
+ * humidity entry to bound. An entry of an activity-adjusted group the model
+ * has is held to the model's row for what it takes, `vr` or the dynamic
+ * clothing insulation the library calls `clo`, when it is that quantity, and
+ * to its kind's bound alone when it is an entered `v` or clothing insulation
+ * ({@link correctedEntryBoundFor}). In a model without the group an entered
+ * `v` or `clo` is held to the model's own row for it.
  */
 export function enteredBound(
   model: ModelDeclaration,
@@ -273,11 +273,11 @@ function boundingQuantities(quantity: Quantity, slot: Slot): readonly Quantity[]
  * typed, not a derived value: a humidity entry is tested in its own mode,
  * against relative humidity's bound converted into it. It says nothing about
  * a quantity {@link enteredBound} leaves unbounded, as a humidity-ratio entry
- * while the pressure is out of range, nor about an end it leaves open, as a
- * wet-bulb entry's lower end. An entered `v` or clothing insulation is tested
- * against its kind's bound alone, so a run may give the model a relative air
- * speed or dynamic clothing insulation past its row, which
- * {@link violationRows} reports on the entered row.
+ * while the atmospheric pressure is out of range, nor about an end it leaves
+ * open, as a wet-bulb entry's lower end. An entered `v` or clothing
+ * insulation is tested against its kind's bound alone, so a run may give the
+ * model a relative air speed or dynamic clothing insulation past its row,
+ * which {@link violationRows} reports on the entered row.
  *
  * The bounds are read at `boundsAt`, the slot itself unless given: a bound may be
  * read at another entry, and `core/modelSwitch.ts` asks what the entries
@@ -367,7 +367,7 @@ export function entryVerdict(
  * The verdict on the atmospheric pressure `value` (ADR-0002 decisions 49 and
  * 84): its kind's bound, then the humidity entry of every slot in `slots`,
  * the session's every held slot, read at it, since that entry's bound alone
- * reads the pressure. A refusal's rows name their slot.
+ * reads the atmospheric pressure. A refusal's rows name their slot.
  */
 export function atmosphericPressureVerdict(
   slots: readonly { readonly position: SlotPosition; readonly slot: Slot }[],
@@ -397,10 +397,10 @@ export function nearestEnd(value: number, bound: Bound): number {
 /**
  * Whether the session's atmospheric pressure breaks its kind's bound. Judged
  * apart from {@link outOfRangeRows}: that list is what a model switch asks
- * about and cuts in the slot, and the pressure is neither held in a slot
- * nor dependent on the model (ADR-0002 decision 49). {@link enteredBound}
- * applies a kind's bound only to a quantity the model takes, so it never
- * reaches the pressure.
+ * about and cuts in the slot, and the atmospheric pressure is neither held in
+ * a slot nor dependent on the model (ADR-0002 decision 49).
+ * {@link enteredBound} applies a kind's bound only to a quantity the model
+ * takes, so it never reaches the atmospheric pressure.
  */
 export function isAtmosphericPressureOutOfRange(atmosphericPressure: number): boolean {
   return atmosphericPressureRow(atmosphericPressure) !== undefined;

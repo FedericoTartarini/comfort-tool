@@ -29,15 +29,15 @@
   let askingReset = $state(false);
 
   /**
-   * The slot a pressure's refusal names by its position, whether compared or
-   * not, while the session holds more than one: a slot not shown has no other
-   * label (ADR-0002 decision 84, rule 4).
+   * The slot an atmospheric pressure's refusal names by its position, whether
+   * compared or not, while the session holds more than one: a slot not shown
+   * has no other label (ADR-0002 decision 84, rule 4).
    */
   function slotLabelAt(position: SlotPosition): string | undefined {
     return session.slots.filter((slot) => slot !== null).length > 1 ? slotLabels[position] : undefined;
   }
 
-  function commitPressure(si: number) {
+  function commitAtmosphericPressure(si: number) {
     const verdict = session.commitAtmosphericPressure(si);
     raiseVerdict(verdict, { quantity: quantities.p_atm }, si, session.unitSystem, (row) => slotLabelAt(row.position));
   }
@@ -60,7 +60,7 @@
 -->
 <Stack gap="4">
   <UnitSystemControls {session} />
-  <!-- The session's pressure, not the slot's: outside the slot's rows and shown on every model (decision 49). -->
+  <!-- The session's atmospheric pressure, not the slot's: outside the slot's rows and shown on every model (decision 49). -->
   <QuantityInput
     quantity={quantities.p_atm}
     unitSystem={session.unitSystem}
@@ -69,7 +69,7 @@
         value: session.atmosphericPressure,
         bound: kindBounds[quantities.p_atm.kind],
         isWithinBounds: (si) => session.judgeAtmosphericPressure(si).kind === "written",
-        oncommit: commitPressure,
+        oncommit: commitAtmosphericPressure,
       },
     ]}
   />

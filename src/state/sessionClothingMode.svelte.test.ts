@@ -316,12 +316,12 @@ describe("a model switch under dynamic clothing entry", () => {
   const ashraeBound = pmvPpdAshrae.info.inputs.clo?.applicability;
 
   /** A session on PMV (ISO 7730) entering a dynamic clothing insulation ASHRAE 55 does not accept. */
-  function enteringDynamicClothing(): Session {
+  function enteringDynamicClothingInsulation(): Session {
     return enteringDynamic(pmvPpdIso, { v: 0.1, met: 1.1 }, 1.8);
   }
 
   it("asks about the dynamic clothing insulation by its own name, against the new model's bound for the clothing", () => {
-    const session = enteringDynamicClothing();
+    const session = enteringDynamicClothingInsulation();
 
     session.requestModel(pmvPpdAshrae);
 
@@ -330,7 +330,7 @@ describe("a model switch under dynamic clothing entry", () => {
   });
 
   it("leaves the slot untouched on a no, its entry mode included", () => {
-    const session = enteringDynamicClothing();
+    const session = enteringDynamicClothingInsulation();
     const before = shapeOf(session.slots[0]);
 
     session.requestModel(pmvPpdAshrae);
@@ -341,7 +341,7 @@ describe("a model switch under dynamic clothing entry", () => {
   });
 
   it("cuts the dynamic clothing insulation on a yes, and keeps the mode", () => {
-    const session = enteringDynamicClothing();
+    const session = enteringDynamicClothingInsulation();
 
     session.requestModel(pmvPpdAshrae);
     session.acceptSwitch();
@@ -353,7 +353,7 @@ describe("a model switch under dynamic clothing entry", () => {
   });
 
   it("keeps the mode and the number between the two PMV models, and cuts nothing when the model is set", () => {
-    const session = enteringDynamicClothing();
+    const session = enteringDynamicClothingInsulation();
 
     session.setModel(pmvPpdAshrae);
 

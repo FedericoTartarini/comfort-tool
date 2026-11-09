@@ -19,11 +19,11 @@
  * text, member order aside, something was filled or dropped, and the text is
  * refused. The comparison, not the reading, is what makes the codec strict.
  * A later change to a model's inputs therefore refuses the texts written
- * before it. An entered value outside its bound and a pressure out of range
- * are taken as written here; the first load cuts them in a kept text and
- * refuses a link that holds one (decision 84 rule 4, decision 88 rule 5).
- * Until the app is deployed the format may change, and a text an earlier
- * build wrote may be refused (rule 9).
+ * before it. An entered value outside its bound and an atmospheric pressure
+ * out of range are taken as written here; the first load cuts them in a kept
+ * text and refuses a link that holds one (decision 84 rule 4, decision 88
+ * rule 5). Until the app is deployed the format may change, and a text an
+ * earlier build wrote may be refused (rule 9).
  *
  * A share link is a session narrowed to what its page is computed from
  * (rule 5), written by the same encoder; the decoder does not know which it

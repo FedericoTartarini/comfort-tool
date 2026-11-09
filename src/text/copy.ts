@@ -77,8 +77,8 @@ export const copy = {
   entryModeDescriptions: {
     separate: "The operative temperature follows the air speed.",
     operative: "Held as the air speed changes; used as both the air and the mean radiant temperature.",
-    "relative-humidity": "Held as the temperature or the pressure changes; the humidity ratio follows.",
-    "humidity-ratio": "Held as the temperature or the pressure changes; the relative humidity follows.",
+    "relative-humidity": "Held as the temperature or the atmospheric pressure changes; the humidity ratio follows.",
+    "humidity-ratio": "Held as the temperature or the atmospheric pressure changes; the relative humidity follows.",
     "dew-point": "Held as the temperature changes; the relative humidity follows.",
     "wet-bulb": "Held as the temperature changes; the relative humidity follows.",
     "vapour-pressure": "Held as the temperature changes; the relative humidity follows.",
@@ -146,7 +146,7 @@ export const copy = {
   switchCutAllowedColumn: "Allowed range",
   // Reset and its question (ADR-0002 decision 63, rules 7 and 8).
   reset: "Reset",
-  resetQuestion: "This returns the page to what a new tab at this address shows: every input, the units, the pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
+  resetQuestion: "This returns the page to what a new tab at this address shows: every input, the units, the atmospheric pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
   resetAccept: "Yes, reset",
   resetDecline: "No, keep everything",
   // A share link's question in a tab that kept a session (ADR-0002 decision 63, rule 8).

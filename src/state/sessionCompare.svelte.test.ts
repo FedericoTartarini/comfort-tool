@@ -552,7 +552,7 @@ describe("the charts of the compared slots", () => {
 
     it("scan once per compared slot for an edit to the atmospheric pressure", () => {
       const { model, session, runs, readEverything } = twoSlotsOnTheDynamicChart();
-      const atPressure = onePassOf(model, runs, (alone) => {
+      const atAtmosphericPressure = onePassOf(model, runs, (alone) => {
         alone.atmosphericPressure = 90_000;
       });
       const before = runs();
@@ -560,7 +560,7 @@ describe("the charts of the compared slots", () => {
       session.atmosphericPressure = 90_000;
       readEverything();
 
-      expect(runs()).toBe(before + 2 * atPressure);
+      expect(runs()).toBe(before + 2 * atAtmosphericPressure);
     });
 
     it("scan nothing for a change of unit system", () => {
@@ -764,7 +764,7 @@ describe("the session's entry modes", () => {
 
 describe("the compared slots' scans", () => {
   /** The slot's scan in `frameOf`'s frame, of the slot as it is. */
-  function expectScansOf(session: Session, computation: Computation, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
+  function expectScansOf(session: Session, computation: Computation, frameOf: (modes: ValueEntryModes, atmosphericPressure: number) => ScanFrame): void {
     for (const slot of computation.slots) {
       const held = heldSlot(session, slot.position).toSlot();
       // The same scan, whose reader of a Band's region is its own.
@@ -779,7 +779,7 @@ describe("the compared slots' scans", () => {
     const computation = new Computation(session);
 
     expect(positionsAskedAbout(computation)).toEqual([0, 1, 2]);
-    expectScansOf(session, computation, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
+    expectScansOf(session, computation, (modes, atmosphericPressure) => psychrometricScanFrameFor(pmvPpdIso, modes, atmosphericPressure));
   });
 
   it("are each drawn slot's own of the dynamic chart while it is on screen", () => {
@@ -790,7 +790,7 @@ describe("the compared slots' scans", () => {
 
     const axes = session.chart.axes;
     if (!axes) throw new Error("PMV (ISO 7730) declares a dynamic chart");
-    expectScansOf(session, computation, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, pressure));
+    expectScansOf(session, computation, (modes, atmosphericPressure) => dynamicScanFrameFor(pmvPpdIso, axes, modes, atmosphericPressure));
   });
 
   it("are none while the adaptive chart is on screen", () => {

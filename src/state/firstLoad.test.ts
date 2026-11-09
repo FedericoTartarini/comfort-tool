@@ -36,10 +36,10 @@ import {
 } from "./sessionTestReaders";
 
 const q = quantities;
-/** A pressure inside the bound's 30 000 Pa and off the default. */
-const PRESSURE_IN_RANGE = 90000;
-/** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
-const PRESSURE_OUT_OF_RANGE = 20000;
+/** An atmospheric pressure inside the bound's 30 000 – 110 000 Pa and off the default. */
+const ATMOSPHERIC_PRESSURE_IN_RANGE = 90000;
+/** An atmospheric pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
+const ATMOSPHERIC_PRESSURE_OUT_OF_RANGE = 20000;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The text of a link copied from `session` on its page. */
@@ -50,8 +50,9 @@ function linkTextOf(session: Session): string {
 /**
  * A session on PMV (ASHRAE 55) comparing three slots of their own values with
  * slot 3 disabled, every entry group off its default mode, an option ticked,
- * a pressure off its default, IP, and edited chart settings on PMV (ISO 7730),
- * which it left, and on PMV (ASHRAE 55). Every value is within its bound.
+ * an atmospheric pressure off its default, IP, and edited chart settings on
+ * PMV (ISO 7730), which it left, and on PMV (ASHRAE 55). Every value is within
+ * its bound.
  */
 function editedSession(): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
@@ -69,7 +70,7 @@ function editedSession(): Session {
   heldSlot(session, 2).setEntered(q.operative_tmp, 22);
   session.setSlotEnabled(2, false);
   session.unitSystem = unitSystem.ip;
-  session.atmosphericPressure = PRESSURE_IN_RANGE;
+  session.atmosphericPressure = ATMOSPHERIC_PRESSURE_IN_RANGE;
   return session;
 }
 
@@ -212,9 +213,9 @@ describe("the first address's load with a link", () => {
     expect(waitingLink).toBeNull();
   });
 
-  it("with the pressure out of range and nothing kept is refused the same way", () => {
+  it("with the atmospheric pressure out of range and nothing kept is refused the same way", () => {
     const sender = onExplore();
-    sender.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+    sender.atmosphericPressure = ATMOSPHERIC_PRESSURE_OUT_OF_RANGE;
 
     const { session, toasts, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 

@@ -34,11 +34,11 @@ export type InputSummary = readonly (readonly string[])[];
  * legend (ADR-0002 decision 64, rule 3): the model's label and its standard;
  * then each run's group, headed by its slot's label where the run has one:
  * its rows as the input panel lists them for its slot, its options and its
- * pressure, and, where its run broke a bound, the bounds icon's heading and
- * one line per bound in its row's sentence (decision 84, rule 8); then, given
- * the Band list the chart paints, its Edges. No line names an entry mode: a
- * run's rows are those of its own modes, and their quantities say which. It
- * holds no outputs.
+ * atmospheric pressure, and, where its run broke a bound, the bounds icon's
+ * heading and one line per bound in its row's sentence (decision 84, rule
+ * 8); then, given the Band list the chart paints, its Edges. No line names an
+ * entry mode: a run's rows are those of its own modes, and their quantities
+ * say which. It holds no outputs.
  */
 export function inputSummary(parts: {
   model: ModelDeclaration;

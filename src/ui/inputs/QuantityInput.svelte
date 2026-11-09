@@ -3,9 +3,9 @@
   the label row, then per entry a box, with the row's menu of its presets
   inside it, and a caption line under it of the bound with its unit
   (ADR-0002 decision 84, rule 10); an entry is a slot's, or the session's
-  pressure. The row is the generated
-  field, and each entry's box and caption a field of their own, marked
-  invalid while the entry is out of range (the shell's spec, "The rows").
+  atmospheric pressure. The row is the generated field, and each entry's box
+  and caption a field of their own, marked invalid while the entry is out of
+  range (the shell's spec, "The rows").
   On Compare the label row stands over the three slot columns, so it names
   the first slot's box as a label does and each box is named for its slot as
   well.
@@ -13,7 +13,7 @@
 <script module lang="ts">
   import type { Bound } from "$lib/core/applicability";
 
-  /** One box in a row: a slot's, or the session's pressure. */
+  /** One box in a row: a slot's, or the session's atmospheric pressure. */
   export interface QuantityEntry {
     /** Canonical SI value. */
     value: number;

@@ -5,8 +5,8 @@ import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
 
-const tdbMin = HEAT_INDEX_ROTHFUSZ_INFO.inputs.tdb?.applicability?.min;
-if (tdbMin === undefined) {
+const dryBulbTemperatureMin = HEAT_INDEX_ROTHFUSZ_INFO.inputs.tdb?.applicability?.min;
+if (dryBulbTemperatureMin === undefined) {
   throw new Error("HEAT_INDEX_ROTHFUSZ_INFO no longer bounds tdb from below");
 }
 
@@ -31,7 +31,7 @@ export const heatIndexRothfusz = {
   // not hold: at 20 °C and 100 % it answers 15 °C, colder than the air, and
   // Explore would paint bands from it (ADR-0002 decision 77 rule 4).
   axisRanges: [
-    { quantity: q.tdb, min: tdbMin, max: 50 },
+    { quantity: q.tdb, min: dryBulbTemperatureMin, max: 50 },
     { quantity: q.rh, min: 0, max: 100 },
   ],
   table: [q.stress_category, q.hi],

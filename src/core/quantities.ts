@@ -99,9 +99,9 @@ export const quantities = {
   // entered vapour pressure is `rh / 100 × p_sat(tdb)`, the same quantity as
   // the derived one (ADR-0002 decision 16).
   pa: { key: "pa", kind: "pressure", label: "Water vapour partial pressure" },
-  // The session's pressure, not a slot's: no entry mode names it (ADR-0002
-  // decision 49). Six of the library's model infos name it, none a registered
-  // model's.
+  // The session's atmospheric pressure, not a slot's: no entry mode names it
+  // (ADR-0002 decision 49). Six of the library's model infos name it, none a
+  // registered model's.
   p_atm: { key: "p_atm", kind: "atmosphericPressure", label: "Atmospheric pressure" },
   met: { key: "met", kind: "metabolicRate", label: "Metabolic rate" },
   clo: { key: "clo", kind: "clothingInsulation", label: "Clothing insulation" },

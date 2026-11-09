@@ -34,7 +34,6 @@ import { BISECTIONS, comfortZonesOf, type ScanFrame } from "./scan";
 import { readoutLine } from "./specParts";
 
 const q = quantities;
-const P = DEFAULT_ATMOSPHERIC_PRESSURE;
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 const airSpeedAxes = { x: q.tdb, y: q.v };
 /** One bisection step, as a fraction of a cell: the last half the scan's bisection keeps (ADR-0002 decision 78). */
@@ -103,7 +102,7 @@ function indexOf(samples: readonly number[], value: number): number {
 
 /** `model` run on `slot` with `entered` over it, as a scan's cell is entered. */
 function runAt(model: ModelDeclaration, slot: Slot, entered: ReadonlyMap<Quantity, number>) {
-  return runOn(withEnteredValues(slot, entered), model, P);
+  return runOn(withEnteredValues(slot, entered), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 }
 
 /** Whether the run on `slot` with `entered` over it breaks a bound: its `warnings` has a range row. */
@@ -263,17 +262,17 @@ describe("PMV (ASHRAE 55)'s clothing axis", () => {
  */
 function psychrometricCells(model: ModelDeclaration, slot: Slot, spec: ChartSpec) {
   const { x, y } = samplesOf(spec);
-  const hrUnit = displayUnitFor(q.hr, unitSystem.si);
-  return y.flatMap((hrShown, yIndex) =>
+  const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
+  return y.flatMap((humidityRatioShown, yIndex) =>
     x.flatMap((tdb, xIndex) => {
-      const hr = hrUnit.toSi(hrShown);
-      const rh = hr_to_rh(hr, tdb, P);
+      const hr = humidityRatioUnit.toSi(humidityRatioShown);
+      const rh = hr_to_rh(hr, tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
       if (rh > 100) {
         return [];
       }
       const entered = new Map<Quantity, number>([[q.tdb, tdb], [q.hr, hr]]);
       const pmv = outputNumber(runAt(model, slot, entered), q.pmv);
-      return [{ xIndex, yIndex, tdb, pa: psy_ta_rh(tdb, rh, P).p_vap, pmv, outside: isOutsideApplicability(model, slot, entered) }];
+      return [{ xIndex, yIndex, tdb, pa: psy_ta_rh(tdb, rh, DEFAULT_ATMOSPHERIC_PRESSURE).p_vap, pmv, outside: isOutsideApplicability(model, slot, entered) }];
     }),
   );
 }
@@ -345,7 +344,7 @@ describe("PMV (ASHRAE 55)'s psychrometric zone", () => {
  */
 describe("the note of a slot whose Comfort zones are all empty", () => {
   const empty = { text: copy.noComfortZone };
-  const tdbAndRh = { x: q.tdb, y: q.rh };
+  const relativeHumidityAxes = { x: q.tdb, y: q.rh };
 
   it("stands on PMV (ASHRAE 55)'s psychrometric chart at 0.9 m/s without local control, and not at its defaults", () => {
     expect(psychrometricSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 }))).notes).toEqual([empty]);
@@ -371,13 +370,13 @@ describe("the note of a slot whose Comfort zones are all empty", () => {
   });
 
   it("stands on the dynamic chart alike where its zone empties", () => {
-    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 })), tdbAndRh).notes).toEqual([empty]);
-    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false)), tdbAndRh).notes).toEqual([]);
+    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false, { v: 0.9 })), relativeHumidityAxes).notes).toEqual([empty]);
+    expect(dynamicSpec(chartRequestFor(pmvPpdAshrae, ashraeSlot(false)), relativeHumidityAxes).notes).toEqual([]);
   });
 
   it("does not stand for a model that declares no Comfort zone, which has none to empty", () => {
     const zoneless = { ...pmvPpdAshrae, scan: { ...pmvPpdAshrae.scan, comfortZones: undefined } };
-    expect(dynamicSpec(chartRequestFor(zoneless, ashraeSlot(false, { v: 0.9 })), tdbAndRh).notes).toEqual([]);
+    expect(dynamicSpec(chartRequestFor(zoneless, ashraeSlot(false, { v: 0.9 })), relativeHumidityAxes).notes).toEqual([]);
   });
 });
 
@@ -408,7 +407,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         name: "PMV (ASHRAE 55)'s air-speed chart without local control",
         model: pmvPpdAshrae,
         slot,
-        frame: dynamicScanFrameFor(pmvPpdAshrae, airSpeedAxes, request.entryModes, P),
+        frame: dynamicScanFrameFor(pmvPpdAshrae, airSpeedAxes, request.entryModes, DEFAULT_ATMOSPHERIC_PRESSURE),
         spec: dynamicSpec(request, airSpeedAxes),
         limitTolerance: 0.01,
       };
@@ -420,7 +419,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         name: "PMV (ISO 7730)'s psychrometric chart drawn past its 30 °C bound",
         model: isoDrawnPastItsBound,
         slot,
-        frame: psychrometricScanFrameFor(isoDrawnPastItsBound, request.entryModes, P),
+        frame: psychrometricScanFrameFor(isoDrawnPastItsBound, request.entryModes, DEFAULT_ATMOSPHERIC_PRESSURE),
         spec: psychrometricSpec(request),
         limitTolerance: 0.005,
       };
@@ -433,7 +432,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         name: "PMV (ASHRAE 55)'s tdb × clo chart",
         model: pmvPpdAshrae,
         slot,
-        frame: dynamicScanFrameFor(pmvPpdAshrae, axes, request.entryModes, P),
+        frame: dynamicScanFrameFor(pmvPpdAshrae, axes, request.entryModes, DEFAULT_ATMOSPHERIC_PRESSURE),
         spec: dynamicSpec(request, axes),
         limitTolerance: 0.01,
       };

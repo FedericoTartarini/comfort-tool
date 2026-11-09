@@ -40,8 +40,7 @@ import { psychrometricScanFrameFor, psychrometricSpec } from "./psychrometricCha
 import { scannedField } from "./scan";
 
 const q = quantities;
-const hrUnit = displayUnitFor(q.hr, unitSystem.si);
-const p = DEFAULT_ATMOSPHERIC_PRESSURE;
+const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 
 const isoBands = bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands));
 
@@ -115,24 +114,24 @@ function coverOf(spec: ChartSpec): PathTrace {
   return trace;
 }
 
-/** Whether the cell of `scan` at (`xIndex`, `yIndex`) is supersaturated at `pressure`: its relative humidity above 100. */
-function isSupersaturated(scan: Scanned, xIndex: number, yIndex: number, pressure: number): boolean {
-  return hr_to_rh(hrUnit.toSi(scan.y[yIndex]), scan.x[xIndex], pressure) > 100;
+/** Whether the cell of `scan` at (`xIndex`, `yIndex`) is supersaturated at `atmosphericPressure`: its relative humidity above 100. */
+function isSupersaturated(scan: Scanned, xIndex: number, yIndex: number, atmosphericPressure: number): boolean {
+  return hr_to_rh(humidityRatioUnit.toSi(scan.y[yIndex]), scan.x[xIndex], atmosphericPressure) > 100;
 }
 
 /**
  * The model's own number at the cell whose temperature axis reads
  * `temperature` and whose humidity ratio reads `hr`, both in SI: the slot
  * with that temperature entered and the relative humidity the library gives
- * for `hr` at `pressure`.
+ * for `hr` at `atmosphericPressure`.
  */
-function numberAt(slot: Slot, temperature: number, hr: number, pressure: number): number {
+function numberAt(slot: Slot, temperature: number, hr: number, atmosphericPressure: number): number {
   const axis = slot.temperature.mode.axis;
   const cell = withEnteredValues(slot, new Map([
     [axis, temperature],
-    [q.rh, hr_to_rh(hr, temperature, pressure)],
+    [q.rh, hr_to_rh(hr, temperature, atmosphericPressure)],
   ]));
-  return outputNumber(runOn(cell, pmvPpdIso, pressure), q.pmv);
+  return outputNumber(runOn(cell, pmvPpdIso, atmosphericPressure), q.pmv);
 }
 
 describe("the psychrometric chart given a Band list", () => {
@@ -199,7 +198,7 @@ describe("the psychrometric chart given a Band list", () => {
     expect(cover.x[0]).toBe(xMin);
     expect(cover.x[along - 1]).toBe(xMax);
     for (let index = 0; index < along; index += 1) {
-      expect(cover.y[index]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(cover.x[index], 100, p).hr), 10);
+      expect(cover.y[index]).toBeCloseTo(humidityRatioUnit.fromSi(psy_ta_rh(cover.x[index], 100, DEFAULT_ATMOSPHERIC_PRESSURE).hr), 10);
     }
     expect(cover.y[along - 1]).toBeLessThan(top);
     // Then the top-right corner, then the top-left one.
@@ -216,23 +215,23 @@ describe("the psychrometric chart given a Band list", () => {
     const along = cover.x.length - 2;
     expect(cover.x[0]).toBe(xMin);
     for (let index = 0; index < along; index += 1) {
-      expect(cover.y[index]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(cover.x[index], 100, p).hr), 10);
+      expect(cover.y[index]).toBeCloseTo(humidityRatioUnit.fromSi(psy_ta_rh(cover.x[index], 100, DEFAULT_ATMOSPHERIC_PRESSURE).hr), 10);
     }
     // To where the line leaves the top of the drawn range, then the top-left corner.
     expect(cover.x[along]).toBeGreaterThan(cover.x[along - 1]);
     expect(cover.x[along]).toBeLessThan(xMax);
     expect(cover.y[along]).toBeCloseTo(top, 10);
-    expect(hrUnit.fromSi(psy_ta_rh(cover.x[along], 100, p).hr)).toBeCloseTo(top, 2);
+    expect(humidityRatioUnit.fromSi(psy_ta_rh(cover.x[along], 100, DEFAULT_ATMOSPHERIC_PRESSURE).hr)).toBeCloseTo(top, 2);
     expect([cover.x[along + 1], cover.y[along + 1]]).toEqual([xMin, top]);
   });
 
-  it("covers the taller range at a lower pressure, along that pressure's saturation line", () => {
-    const pressure = 80000;
-    const thin = bandedSpec(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure: pressure });
+  it("covers the taller range at a lower atmospheric pressure, along that atmospheric pressure's saturation line", () => {
+    const atmosphericPressure = 80000;
+    const thin = bandedSpec(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure });
     const cover = onlyPieceOf(coverOf(thin));
     const top = thin.layout.y.range[1];
     expect(top).toBeGreaterThan(spec.layout.y.range[1]);
-    expect(cover.y[1]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(cover.x[1], 100, pressure).hr), 10);
+    expect(cover.y[1]).toBeCloseTo(humidityRatioUnit.fromSi(psy_ta_rh(cover.x[1], 100, atmosphericPressure).hr), 10);
     expect([cover.x[cover.x.length - 1], cover.y[cover.y.length - 1]]).toEqual([thin.layout.x.range[0], top]);
   });
 
@@ -253,8 +252,8 @@ describe("the psychrometric chart given a Band list", () => {
   it("numbers every cell, the supersaturated ones too", () => {
     expect(trace.values.flat().every((value) => Number.isFinite(value))).toBe(true);
     // The top left is supersaturated, the bottom row dry.
-    expect(isSupersaturated(trace, 0, trace.values.length - 1, p)).toBe(true);
-    expect(trace.values[0].every((_, xIndex) => !isSupersaturated(trace, xIndex, 0, p))).toBe(true);
+    expect(isSupersaturated(trace, 0, trace.values.length - 1, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(true);
+    expect(trace.values[0].every((_, xIndex) => !isSupersaturated(trace, xIndex, 0, DEFAULT_ATMOSPHERIC_PRESSURE))).toBe(true);
   });
 
   it("numbers a cell with the model's own output at its temperature and the library's relative humidity", () => {
@@ -262,19 +261,19 @@ describe("the psychrometric chart given a Band list", () => {
     // The last cell is supersaturated, run at its true relative humidity above 100.
     for (const [yIndex, xIndex] of [[0, 0], [10, 25], [20, 40], [40, 50], [50, 0]]) {
       const temperature = trace.x[xIndex];
-      const hr = hrUnit.toSi(trace.y[yIndex]);
-      expect(trace.values[yIndex][xIndex]).toBe(numberAt(slot, temperature, hr, p));
+      const hr = humidityRatioUnit.toSi(trace.y[yIndex]);
+      expect(trace.values[yIndex][xIndex]).toBe(numberAt(slot, temperature, hr, DEFAULT_ATMOSPHERIC_PRESSURE));
     }
   });
 
   it("numbers a cell at the request's atmospheric pressure, on the taller axis it draws", () => {
-    const pressure = 80000;
-    const drawn = bandedSpec(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure: pressure });
-    const thin = scannedOf(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure: pressure });
+    const atmosphericPressure = 80000;
+    const drawn = bandedSpec(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure });
+    const thin = scannedOf(isoBands, defaultSlot(pmvPpdIso), { atmosphericPressure });
     expect(thin.y[thin.y.length - 1]).toBeGreaterThan(trace.y[trace.y.length - 1]);
     expect(thin.y[thin.y.length - 1]).toBeCloseTo(drawn.layout.y.range[1], 10);
     const [yIndex, xIndex] = [30, 30];
-    expect(thin.values[yIndex][xIndex]).toBe(numberAt(defaultSlot(pmvPpdIso), thin.x[xIndex], hrUnit.toSi(thin.y[yIndex]), pressure));
+    expect(thin.values[yIndex][xIndex]).toBe(numberAt(defaultSlot(pmvPpdIso), thin.x[xIndex], humidityRatioUnit.toSi(thin.y[yIndex]), atmosphericPressure));
   });
 
   it("scans the operative temperature under operative entry, with tr following it", () => {
@@ -283,7 +282,7 @@ describe("the psychrometric chart given a Band list", () => {
     const scanned = scannedOf(isoBands, operative);
     expect(drawn.layout.x.title).toContain(q.operative_tmp.label);
     const [yIndex, xIndex] = [10, 30];
-    expect(scanned.values[yIndex][xIndex]).toBe(numberAt(operative, scanned.x[xIndex], hrUnit.toSi(scanned.y[yIndex]), p));
+    expect(scanned.values[yIndex][xIndex]).toBe(numberAt(operative, scanned.x[xIndex], humidityRatioUnit.toSi(scanned.y[yIndex]), DEFAULT_ATMOSPHERIC_PRESSURE));
   });
 
   it("reads the temperature, the humidity ratio, the number and the band in every cell below saturation, off the hover grid alone", () => {
@@ -291,7 +290,7 @@ describe("the psychrometric chart given a Band list", () => {
     const { hoverText } = hoverGridOf(spec);
     trace.values.forEach((row, yIndex) =>
       row.forEach((value, xIndex) => {
-        const band = isSupersaturated(trace, xIndex, yIndex, p) ? Number.NaN : classifyFromBins(value, isoBands);
+        const band = isSupersaturated(trace, xIndex, yIndex, DEFAULT_ATMOSPHERIC_PRESSURE) ? Number.NaN : classifyFromBins(value, isoBands);
         expect(hoverText[yIndex][xIndex].slice(3)).toEqual(typeof band === "string" ? [band] : []);
       }),
     );
@@ -308,7 +307,7 @@ describe("the psychrometric chart given a Band list", () => {
     const { hoverText } = hoverGridOf(spec);
     trace.values.forEach((row, yIndex) =>
       row.forEach((_, xIndex) => {
-        if (isSupersaturated(trace, xIndex, yIndex, p)) {
+        if (isSupersaturated(trace, xIndex, yIndex, DEFAULT_ATMOSPHERIC_PRESSURE)) {
           expect(hoverText[yIndex][xIndex].slice(2)).toEqual(["PMV: —"]);
         }
       }),
@@ -333,7 +332,7 @@ describe("the psychrometric chart given a Band list", () => {
   it("paints the scan it is handed rather than scanning again", () => {
     // Every band handed as the whole field: each fill is the plot's frame, and no Edge is crossed.
     const everywhere = <Value>(value: Value) => trace.values.map((row) => row.map(() => value));
-    const [xSi, ySi] = [trace.x, trace.y.map((hr) => hrUnit.toSi(hr))];
+    const [xSi, ySi] = [trace.x, trace.y.map((hr) => humidityRatioUnit.toSi(hr))];
     const whole = { x: xSi, y: ySi, inside: everywhere(true), across: everywhere(undefined), up: everywhere(undefined), centre: everywhere(undefined) };
     const drawn = psychrometricSpec(
       { ...chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso)), bands: isoBands },

@@ -29,7 +29,7 @@ function runOf(slot: Slot, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): 
   return { slot, atmosphericPressure, violations: [] };
 }
 
-/** `slot` drawn unnamed at the default pressure, with the violation rows `model`'s run of it reports. */
+/** `slot` drawn unnamed at the default atmospheric pressure, with the violation rows `model`'s run of it reports. */
 function reportedRunOf(model: ModelDeclaration, slot: Slot): DrawnRun {
   const outputs = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
   return { ...runOf(slot), violations: violationRows(model, outputs, slot) };
@@ -60,20 +60,20 @@ function hasRowOf(lines: readonly string[], quantity: Quantity): boolean {
 }
 
 const [ashraeOption] = optionsOf(pmvPpdAshrae);
-const LOWER_PRESSURE = 90_000;
-/** The default and the lower pressure as a row shows them, in kPa. */
-const DEFAULT_PRESSURE_SHOWN = "101.33";
-const LOWER_PRESSURE_SHOWN = "90";
+const LOWER_ATMOSPHERIC_PRESSURE = 90_000;
+/** The default and the lower atmospheric pressure as a row shows them, in kPa. */
+const DEFAULT_ATMOSPHERIC_PRESSURE_SHOWN = "101.33";
+const LOWER_ATMOSPHERIC_PRESSURE_SHOWN = "90";
 
 describe("inputSummary", () => {
-  it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
+  it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the atmospheric pressure, with no slot heading", () => {
     const summary = summaryOf(pmvPpdAshrae, [runOf(defaultSlot(pmvPpdAshrae))]);
     expect(summary).toEqual([
       [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).label)],
       [
         ...declaredQuantitiesOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,
-        `${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`,
+        `${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE_SHOWN}`,
       ],
     ]);
   });
@@ -148,14 +148,14 @@ describe("inputSummary", () => {
     expect(metric).toContain(`${q.v.label} (m/s): 0.12`);
   });
 
-  it("lists each run's own option and its own pressure", () => {
+  it("lists each run's own option and its own atmospheric pressure", () => {
     const off = defaultSlot(pmvPpdAshrae);
     const on = withOption(off, ashraeOption, true);
-    const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off), runOf(on, LOWER_PRESSURE)]);
+    const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off), runOf(on, LOWER_ATMOSPHERIC_PRESSURE)]);
     expect(first).toContain(`${ashraeOption.label}: ${copy.no}`);
     expect(second).toContain(`${ashraeOption.label}: ${copy.yes}`);
-    expect(first).toContain(`${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`);
-    expect(second).toContain(`${rowOf(q.p_atm)}${LOWER_PRESSURE_SHOWN}`);
+    expect(first).toContain(`${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE_SHOWN}`);
+    expect(second).toContain(`${rowOf(q.p_atm)}${LOWER_ATMOSPHERIC_PRESSURE_SHOWN}`);
   });
 
   it("writes the bounds a run broke after its values, under the icon's heading, one line a bound", () => {
@@ -177,7 +177,7 @@ describe("inputSummary", () => {
     expect(run.violations).toEqual([]);
     const [, lines] = summaryOf(pmvPpdIso, [run]);
     expect(lines).not.toContain(copy.boundsBrokenHeading);
-    expect(lines[lines.length - 1]).toBe(`${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`);
+    expect(lines[lines.length - 1]).toBe(`${rowOf(q.p_atm)}${DEFAULT_ATMOSPHERIC_PRESSURE_SHOWN}`);
   });
 
   it("writes, under Compare, each run's own bounds after its own values", () => {
