@@ -43,7 +43,7 @@ interface Boxes {
   header: Box;
   sidebar: Box;
   inputs: Box;
-  results: Box;
+  resultsColumn: Box;
   footer: Box;
   plot: Box & { height: number };
   legend: Box & { height: number };
@@ -80,7 +80,7 @@ async function boxes(page: Page): Promise<Boxes> {
     sidebar: await region(page.locator('[data-slot="sidebar-content"]').locator("..")),
     inputs: await region(card(page, "Inputs")),
     // The results column: the Results card and the Chart card under it.
-    results: await region(card(page, "Results").locator("..")),
+    resultsColumn: await region(card(page, "Results").locator("..")),
     footer: await region(page.getByRole("contentinfo")),
     plot: await boundingBoxOf(page.locator(".chart-plot")),
     legend: await boundingBoxOf(page.locator(".chart-legend")),
@@ -95,12 +95,12 @@ async function boxes(page: Page): Promise<Boxes> {
  * Comments), and a chart with axes by its view row (decision 89, rule 6), so
  * their checks leave the plot's `y` out.
  */
-function inPlace({ header, sidebar, inputs, results, footer, plot }: Boxes, plotMayDrop = false) {
+function inPlace({ header, sidebar, inputs, resultsColumn, footer, plot }: Boxes, plotMayDrop = false) {
   return {
     header,
     sidebar,
     inputs,
-    results,
+    resultsColumn,
     footer: { x: footer.x, width: footer.width },
     plot: { x: plot.x, width: plot.width, height: plot.height, ...(plotMayDrop ? {} : { y: plot.y }) },
   };
@@ -154,7 +154,7 @@ async function holdBoxes(page: Page) {
  */
 const SCROLLBAR_GUTTER = 15;
 
-/** Whether the result and chart cards stand to the input card's right, their tops level, not under it. */
+/** Whether the result and chart cards stand to the input panel's right, their tops level, not under it. */
 async function isResultBesideInputs(page: Page) {
   const inputs = await boundingBoxOf(card(page, "Inputs"));
   const results = await boundingBoxOf(card(page, "Results"));
@@ -263,7 +263,7 @@ for (const width of [1440, 1280]) {
   });
 }
 
-test("at 1440 px, the switch question is titled by the new model's limits, and its yes cuts the value to them and switches", async ({ page }) => {
+test("at 1440 px, the switch question's title and yes say limits and cut, and the yes cuts the value to the new model's bound and switches", async ({ page }) => {
   await openStandard(page, 1440);
   // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
   const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
@@ -284,16 +284,16 @@ test("at 1440 px, the switch question is titled by the new model's limits, and i
 /**
  * A desktop keeps two columns at every width (decision 87, rule 3): on a
  * laptop with the sidebar open the result and chart cards stand beside the
- * input card, and Compare moves neither card sideways.
+ * input panel, and Compare moves none of them sideways.
  */
 for (const width of [1366, 1280]) {
-  test(`at ${width} px, the result card is beside the input card, nothing scrolls sideways, and Compare off and on move neither card sideways`, async ({ page }) => {
+  test(`at ${width} px, the result card is beside the input panel, nothing scrolls sideways, and Compare off and on move neither sideways`, async ({ page }) => {
     await openStandard(page, width);
     expect(await isResultBesideInputs(page)).toBe(true);
     expect(await scrollsSideways(page)).toBe(false);
     const horizontalBoxes = async () => {
-      const { inputs, results } = await boxes(page);
-      return { inputs: { x: inputs.x, width: inputs.width }, results: { x: results.x, width: results.width } };
+      const { inputs, resultsColumn } = await boxes(page);
+      return { inputs: { x: inputs.x, width: inputs.width }, resultsColumn: { x: resultsColumn.x, width: resultsColumn.width } };
     };
     const off = await horizontalBoxes();
 
@@ -313,8 +313,8 @@ test("at 1024 px, the page scrolls sideways and the result and chart column is 3
   expect(await isResultBesideInputs(page)).toBe(true);
   expect(await scrollsSideways(page)).toBe(true);
 
-  const { results, plot } = await boxes(page);
-  expect(results.width).toBe(33.5 * 16);
+  const { resultsColumn, plot } = await boxes(page);
+  expect(resultsColumn.width).toBe(33.5 * 16);
   // The column at its least, so the plot is at 4:3 and the cap, `24rem`, tall.
   expect({ width: plot.width, height: plot.height }).toEqual({ width: 32 * 16, height: 24 * 16 });
 });
@@ -558,13 +558,13 @@ for (const width of [767, 375]) {
 }
 
 /**
- * The input card has one width at every Compare state and window width, and
+ * The input panel has one width at every Compare state and window width, and
  * Compare moves nothing sideways (ADR-0002 decision 84, rule 12).
  */
-test.describe("the input card's width", () => {
+test.describe("the input panel's width", () => {
   // Playwright's headless Chromium hides its scrollbars, which then take no room (the gutter is still reserved), so
   // without the gutter Compare would move nothing there either; this test launches one that shows them.
-  test("at 1600 × 960, where Compare makes the page scroll, the input card's left edge and width are the same with Compare off and on", async ({ playwright, baseURL }) => {
+  test("at 1600 × 960, where Compare makes the page scroll, the input panel's left edge and width are the same with Compare off and on", async ({ playwright, baseURL }) => {
     const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
     try {
       // The page is about 930 px tall with Compare off and 990 px with it on, so 960 scrolls only under Compare.
@@ -933,7 +933,7 @@ test.describe("links to other sites", () => {
 test.describe("the sidebar's toggle", () => {
   const sidebar = (page: Page) => page.locator('[data-slot="sidebar-content"]');
 
-  test("at 1440 px, the header's first control collapses the sidebar, the input card at the gutter and the result and chart cards wider, and a second click restores the page", async ({ page }) => {
+  test("at 1440 px, the header's first control collapses the sidebar, the input panel at the gutter and the result and chart cards wider, and a second click restores the page", async ({ page }) => {
     await openStandard(page, 1440);
     const toggle = sidebarToggle(page);
     await page.keyboard.press("Tab");
@@ -944,9 +944,9 @@ test.describe("the sidebar's toggle", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(sidebar(page)).toHaveCount(0);
-    // The toggle stands at the header row's gutter; the input card is now as far in.
+    // The toggle stands at the header row's gutter; the input panel is now as far in.
     expect((await boundingBoxOf(card(page, "Inputs"))).x).toBe((await boundingBoxOf(toggle)).x);
-    expect((await boundingBoxOf(card(page, "Results").locator(".."))).width).toBeGreaterThan(before.results.width);
+    expect((await boundingBoxOf(card(page, "Results").locator(".."))).width).toBeGreaterThan(before.resultsColumn.width);
 
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -1207,7 +1207,7 @@ test.describe("controls by their question", () => {
     expect(places[2]).toEqual(places[0]);
   });
 
-  test("at 1440 px, the Inputs card reads Model, a rule, the rows and the Input calculators button, on Standard and Explore", async ({ page }) => {
+  test("at 1440 px, the input panel reads Model, a rule, the rows and the Input calculators button, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const inputs = card(page, "Inputs").locator('[data-slot="card-content"]');
@@ -1408,10 +1408,10 @@ test.describe("controls by their question", () => {
 
   test("at 1440 px, the sidebar's settings are headed Settings, ruled off from Share and Reset", async ({ page }) => {
     await openStandard(page, 1440);
-    const settings = page.getByRole("group", { name: "Settings" });
-    const atmosphericPressure = await boundingBoxOf(settings.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
-    const rule = await boundingBoxOf(settings.locator('[data-slot="separator"]'));
-    const share = await boundingBoxOf(settings.getByRole("button", { name: "Share" }));
+    const sessionControls = page.getByRole("group", { name: "Settings" });
+    const atmosphericPressure = await boundingBoxOf(sessionControls.getByRole("spinbutton", { name: /^Atmospheric pressure/ }));
+    const rule = await boundingBoxOf(sessionControls.locator('[data-slot="separator"]'));
+    const share = await boundingBoxOf(sessionControls.getByRole("button", { name: "Share" }));
 
     expect(rule.y).toBeGreaterThan(atmosphericPressure.y + atmosphericPressure.height);
     expect(share.y).toBeGreaterThan(rule.y);
@@ -1420,10 +1420,10 @@ test.describe("controls by their question", () => {
   test("the sidebar's Share puts the link to the page on the clipboard and says Link copied", async ({ page }) => {
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await openStandard(page, 1440);
-    const settings = page.getByRole("group", { name: "Settings" });
-    await settings.getByRole("button", { name: "Share" }).click();
+    const sessionControls = page.getByRole("group", { name: "Settings" });
+    await sessionControls.getByRole("button", { name: "Share" }).click();
 
-    await expect(settings.getByRole("button", { name: "Link copied" })).toBeVisible();
+    await expect(sessionControls.getByRole("button", { name: "Link copied" })).toBeVisible();
     const prefix = `${new URL(page.url()).origin}${PMV_ADDRESS}?share=v1.`;
     const link = await page.evaluate(() => navigator.clipboard.readText());
     expect(link.slice(0, prefix.length)).toBe(prefix);
@@ -1501,10 +1501,10 @@ test.describe("the sidebar's headings and the one radius", () => {
         await expect(sidebar.getByRole("group", { name: group, exact: true })).toHaveCount(1);
       }
 
-      const settings = sidebar.getByRole("group", { name: "Settings" });
+      const sessionControls = sidebar.getByRole("group", { name: "Settings" });
       const weightOf = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).fontWeight);
-      expect(await weightOf(settings.getByText("Units", { exact: true }))).toBe(
-        await weightOf(settings.locator('[data-slot="field-label"]').filter({ hasText: /^Atmospheric pressure/ })),
+      expect(await weightOf(sessionControls.getByText("Units", { exact: true }))).toBe(
+        await weightOf(sessionControls.locator('[data-slot="field-label"]').filter({ hasText: /^Atmospheric pressure/ })),
       );
     });
   }
@@ -1515,8 +1515,8 @@ test.describe("the sidebar's headings and the one radius", () => {
     const cardRadius = await radiusOf(card(page, "Inputs"));
     expect(cardRadius).toBe("6px");
 
-    const settings = page.getByRole("group", { name: "Settings" });
-    await settings.getByRole("button", { name: "Reset" }).click();
+    const sessionControls = page.getByRole("group", { name: "Settings" });
+    await sessionControls.getByRole("button", { name: "Reset" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     expect(await radiusOf(dialog)).toBe(cardRadius);
@@ -1527,7 +1527,7 @@ test.describe("the sidebar's headings and the one radius", () => {
     await page.evaluate(() => {
       navigator.clipboard.writeText = () => Promise.reject(new Error("Refused for the test"));
     });
-    await settings.getByRole("button", { name: "Share" }).click();
+    await sessionControls.getByRole("button", { name: "Share" }).click();
     const toast = page.getByRole("region", { name: /^Notifications/ }).getByRole("listitem");
     await expect(toast).toHaveCount(1);
     expect(await radiusOf(toast)).toBe(cardRadius);

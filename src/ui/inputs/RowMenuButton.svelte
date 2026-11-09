@@ -4,7 +4,7 @@
   rule 3, and decision 75, rule 6), so a box carries one control. A preset is
   committed as it is chosen; one its slot would cut or refuse is disabled, its
   number still shown (decision 84, rule 5). The button is the word with one
-  slot and with three, the input card being wide enough for it (decision 84,
+  slot and with three, the input panel being wide enough for it (decision 84,
   rule 12).
 -->
 <script lang="ts">

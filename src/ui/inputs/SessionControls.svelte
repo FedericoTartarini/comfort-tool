@@ -7,7 +7,7 @@
   import { raiseVerdict } from "$lib/ui/layout/toasts";
   import { Button } from "$lib/ui/primitives/button";
   import { Separator } from "$lib/ui/primitives/separator";
-  import CopyLinkButton from "./CopyLinkButton.svelte";
+  import ShareButton from "./ShareButton.svelte";
   import QuantityInput from "./QuantityInput.svelte";
   import QuestionDialog from "./QuestionDialog.svelte";
   import UnitSystemControls from "./UnitSystemControls.svelte";
@@ -20,10 +20,10 @@
     /** The share link to the page as it is now. */
     link: () => string;
     /** The clipboard refused the link. */
-    oncopyrefused: () => void;
+    onsharerefused: () => void;
   }
 
-  let { session, onreset, link, oncopyrefused }: Props = $props();
+  let { session, onreset, link, onsharerefused }: Props = $props();
 
   /** Whether Reset's question stands: the button's own, as nothing else reads it. */
   let askingReset = $state(false);
@@ -80,7 +80,7 @@
   -->
   <Separator />
   <Stack gap="2">
-    <CopyLinkButton {link} onrefused={oncopyrefused} />
+    <ShareButton {link} onrefused={onsharerefused} />
     <Button size="sm" variant="outline" onclick={() => (askingReset = true)}>{copy.reset}</Button>
   </Stack>
 </Stack>

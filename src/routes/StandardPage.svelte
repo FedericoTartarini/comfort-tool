@@ -65,7 +65,7 @@ import { palette } from "$lib/core/palette";
       {session}
       onreset={tab.reset}
       link={tab.link}
-      oncopyrefused={() => raiseToast("copyRefused")}
+      onsharerefused={() => raiseToast("copyRefused")}
     />
   {/snippet}
 

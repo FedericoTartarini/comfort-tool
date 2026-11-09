@@ -46,7 +46,7 @@
     navigation: Snippet;
     sessionControls: Snippet;
     inputs: Snippet;
-    /** The Inputs card's actions, at the right of its heading row as the chart card's are: Compare, on Standard. */
+    /** The input panel's actions, at the right of its heading row as the chart card's are: Compare, on Standard. */
     inputsActions?: Snippet;
     /** The Results card's content, given the heading's id, which names the result table's scroll region. */
     results: Snippet<[headingId: string]>;
@@ -102,10 +102,10 @@
     <AppSidebar open={sidebarOpen} {navigation} {sessionControls} />
     <!--
       The inset is the block's content area, the page's `main`, on the page background:
-      on a desktop two columns at every width, the input card and the results
+      on a desktop two columns at every width, the input panel and the results
       and the chart beside them, the latter alone shrinking as the window
       narrows, down to its least width (decision 87, rule 3); on a phone one column, the
-      input card above the others (rule 2). The input card is
+      input panel above the others (rule 2). The input panel is
       `28.75rem` at every width, the narrowest at which three slots show
       Presets beside a four-character value
       (`.scratch/input-gate/issues/04-…md` Comments); its column is `auto`,

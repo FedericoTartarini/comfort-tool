@@ -1,7 +1,7 @@
 <!--
   The input calculators' one button and their dialog (ADR-0002 decision 75,
-  rule 6 as noted 2026-10-15). The button stands full width at the Inputs
-  card's foot, "Input calculators" over the labels of the calculators the
+  rule 6 as noted 2026-10-15). The button stands full width at the input
+  panel's foot, "Input calculators" over the labels of the calculators the
   model's panel offers; there is none where it offers none. It opens one
   dialog of one width and one fixed height, a tab per calculator in the
   panel's row order: the tab's inputs, the one region that scrolls; the

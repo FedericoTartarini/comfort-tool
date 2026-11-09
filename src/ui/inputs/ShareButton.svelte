@@ -25,7 +25,7 @@
   let copied = $state(false);
   let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
-  async function copyLink() {
+  async function share() {
     const text = link();
     try {
       await navigator.clipboard.writeText(text);
@@ -42,4 +42,4 @@
   onDestroy(() => clearTimeout(copiedTimer));
 </script>
 
-<Button size="sm" variant="outline" onclick={copyLink}>{copied ? copy.linkCopied : copy.share}</Button>
+<Button size="sm" variant="outline" onclick={share}>{copied ? copy.linkCopied : copy.share}</Button>

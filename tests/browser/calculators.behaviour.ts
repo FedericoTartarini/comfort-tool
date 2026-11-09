@@ -3,7 +3,7 @@ import { CLO_INDIVIDUAL_GARMENT_GROUPS, CLO_TOUT_INFO, clo_dynamic_ashrae, clo_i
 import { formatNumber } from "../../src/core/numberFormat";
 
 /**
- * The input calculators enter by one button at the Inputs card's foot, which
+ * The input calculators enter by one button at the input panel's foot, which
  * opens one dialog with a tab per calculator the model's panel offers; Apply
  * writes slot 1, or under Compare the slots checked under "Apply to", as
  * decision 75 rule 3 converts it (ADR-0002 decision 75 rule 6 as noted
@@ -91,7 +91,7 @@ function increaseAt(sharp: number): number {
 }
 
 test.describe("the input calculators' button", () => {
-  test("on PMV (ASHRAE 55), the Inputs card ends with the button naming the three; the clothing box holds presets alone and the mean radiant temperature box no button", async ({ page }) => {
+  test("on PMV (ASHRAE 55), the input panel ends with the button naming the three; the clothing box holds presets alone and the mean radiant temperature box no button", async ({ page }) => {
     await open(page);
     const button = calculatorsButton(page);
     await expect(button).toContainText("Input calculators");

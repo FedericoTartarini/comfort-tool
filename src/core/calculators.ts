@@ -159,7 +159,7 @@ function requireGroup(heading: string): GarmentGroup {
 }
 
 /** The garments worn after `garment` is put on: it joins those worn once, and a chair takes the place of the chair worn. */
-export function wearGarment(calculator: GarmentCalculator, worn: readonly string[], garment: string): readonly string[] {
+export function addGarment(calculator: GarmentCalculator, worn: readonly string[], garment: string): readonly string[] {
   if (calculator.chairs.garments.includes(garment)) {
     return [...worn.filter((other) => !calculator.chairs.garments.includes(other)), garment];
   }
@@ -182,9 +182,9 @@ export function requireGarment(garment: string): number {
  * 20 °C, which no source gives: between the formula's two flat ends, so the
  * prediction moves as the box does.
  */
-export const clothingFromOutdoorTemperature: FormCalculator = {
+export const cloTout: FormCalculator = {
   label: CLO_TOUT_INFO.label,
-  method: copy.clothingFromOutdoorTemperatureMethod,
+  method: copy.cloToutMethod,
   meets: meeting.replaces,
   output: q.clo,
   info: CLO_TOUT_INFO,
@@ -205,7 +205,7 @@ export const clothingFromOutdoorTemperature: FormCalculator = {
  * (direct beam 900 W/m², where the deployed tool has 700), else the deployed
  * tool's (the rest).
  */
-export const solarGainOnOccupants: FormCalculator = {
+export const solarGain: FormCalculator = {
   label: SOLAR_GAIN_INFO.label,
   method: copy.solarGainMethod,
   meets: meeting.adds,

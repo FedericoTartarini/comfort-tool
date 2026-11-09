@@ -14,7 +14,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants, type Calculator } from "./calculators";
+import { cloTout, customEnsemble, solarGain, type Calculator } from "./calculators";
 import { chartType } from "./chartType";
 import { clothingCorrectionFor } from "./clothingCorrection";
 import { categoryZones } from "./comfortZones";
@@ -198,8 +198,8 @@ describe("calculators", () => {
       [
         pmvPpdAshrae,
         [
-          [q.tr, [solarGainOnOccupants]],
-          [q.clo, [customEnsemble, clothingFromOutdoorTemperature]],
+          [q.tr, [solarGain]],
+          [q.clo, [customEnsemble, cloTout]],
         ],
       ],
       [pmvPpdIso, [[q.clo, [customEnsemble]]]],
@@ -216,8 +216,8 @@ describe("calculators", () => {
   it("that write a clothing insulation stand only on clo rows, and Solar gain only on tr rows, for every registered model", () => {
     const rowOf = new Map<Calculator, Quantity>([
       [customEnsemble, q.clo],
-      [clothingFromOutdoorTemperature, q.clo],
-      [solarGainOnOccupants, q.tr],
+      [cloTout, q.clo],
+      [solarGain, q.tr],
     ]);
     for (const model of registeredModels) {
       for (const input of declaredQuantitiesOf(model)) {

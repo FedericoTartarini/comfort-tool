@@ -52,8 +52,8 @@
       {@render navigation()}
       <!-- The primitive's `w-auto` loses to the base separator's `data-horizontal:w-full`, which would push the inset line past the column. -->
       <Sidebar.Separator class="mx-4 data-horizontal:w-auto" />
-      <Sidebar.Group role="group" aria-labelledby="{id}-settings">
-        <Sidebar.GroupLabel id="{id}-settings" class="text-foreground"><h2>{copy.settings}</h2></Sidebar.GroupLabel>
+      <Sidebar.Group role="group" aria-labelledby="{id}-session-controls">
+        <Sidebar.GroupLabel id="{id}-session-controls" class="text-foreground"><h2>{copy.sessionControls}</h2></Sidebar.GroupLabel>
         <Sidebar.GroupContent class="px-2 pt-1">
           {@render sessionControls()}
         </Sidebar.GroupContent>

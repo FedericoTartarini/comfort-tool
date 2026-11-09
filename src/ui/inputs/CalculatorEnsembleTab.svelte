@@ -33,7 +33,7 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import XIcon from "@lucide/svelte/icons/x";
   import type { Snippet } from "svelte";
-  import { outputOf, requireGarment, wearGarment, type CalculatorOutputs, type GarmentGroup } from "$lib/core/calculators";
+  import { addGarment, outputOf, requireGarment, type CalculatorOutputs, type GarmentGroup } from "$lib/core/calculators";
   import { formatNumber } from "$lib/core/numberFormat";
   import { copy } from "$lib/text/copy";
   import Grid from "$lib/ui/layout/Grid.svelte";
@@ -66,11 +66,7 @@
   ]);
   const searching = $derived(query.trim() !== "");
 
-  function wear(garment: string) {
-    keptGarments.set(calculator, wearGarment(calculator, worn, garment));
-  }
-
-  function takeOff(garment: string) {
+  function removeGarment(garment: string) {
     keptGarments.set(calculator, worn.filter((other) => other !== garment));
   }
 
@@ -85,13 +81,13 @@
 
   /** A garment chosen from its row's list: worn, and the list closed. */
   function pick(garment: string) {
-    wear(garment);
+    keptGarments.set(calculator, addGarment(calculator, worn, garment));
     openGroup = null;
   }
 
   /** A garment chosen among the search's results: worn, and the query cleared, which hides them. */
   function pickFound(garment: string) {
-    wear(garment);
+    keptGarments.set(calculator, addGarment(calculator, worn, garment));
     query = "";
   }
 
@@ -156,14 +152,14 @@
     <Grid columns="10rem minmax(0, 1fr)" gap="2">
       <span id="{rowId}-label" class="garment-row-label">{group.group}</span>
       <Inline gap="1">
-        {@render garmentList(
+        {@render garmentMenu(
           group,
           rowId,
           isChairs && wornHere.length > 0 ? copy.ensembleChange : copy.ensembleAdd,
           group.garments.filter((garment) => !wornHere.includes(garment)),
         )}
         {#each wornHere as garment (garment)}
-          <Button variant="secondary" size="sm" aria-label={copy.ensembleRemove(garment)} onclick={() => takeOff(garment)}>
+          <Button variant="secondary" size="sm" aria-label={copy.ensembleRemove(garment)} onclick={() => removeGarment(garment)}>
             {garment}
             <XIcon />
           </Button>
@@ -173,8 +169,8 @@
   </div>
 {/snippet}
 
-<!-- The row's list button, named by its word and the group, "Add Footwear", opening the group's garments not worn. -->
-{#snippet garmentList(group: GarmentGroup, rowId: string, word: string, garments: readonly string[])}
+<!-- The row's menu: its button, named by its word and the group, "Add Footwear", opening the group's garments not worn. -->
+{#snippet garmentMenu(group: GarmentGroup, rowId: string, word: string, garments: readonly string[])}
   <Popover.Root bind:open={() => openGroup === group, (isOpen) => setListOpen(group, isOpen)}>
     <Popover.Trigger>
       {#snippet child({ props })}

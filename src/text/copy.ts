@@ -52,7 +52,7 @@ export const copy = {
   // The sidebar's group labels after Standard, which is the Standard page's label (decision 73, rule 6): the session
   // controls' group reads "Settings", the users' word, not the project's (rule 6 as revised 2026-10-15).
   tools: "Tools",
-  settings: "Settings",
+  sessionControls: "Settings",
   inputs: "Inputs",
   results: "Results",
   model: "Model",
@@ -89,7 +89,7 @@ export const copy = {
   } satisfies Record<EntryModeId, string>,
   // A row's menu button holds the row's presets alone (ADR-0002 decision 75, rule 6).
   presetTrigger: "Presets",
-  // The input calculators' button at the Inputs card's foot, its second line the calculators' labels, and the dialog's
+  // The input calculators' button at the input panel's foot, its second line the calculators' labels, and the dialog's
   // title (decision 75, rule 6 (a) and (b)).
   inputCalculators: "Input calculators",
   calculatorLabels: (labels: readonly string[]) => labels.join(" · "),
@@ -109,7 +109,7 @@ export const copy = {
   solarGainMethod: "The mean radiant temperature increase equivalent to the solar gain (ASHRAE 55 Normative Appendix C).",
   customEnsembleMethod:
     "The sum of the garments' insulation, plus a chair's for ensembles of 0.5 to 1.2 clo standing (ASHRAE 55 §5.2.2.2(c) and (d)).",
-  clothingFromOutdoorTemperatureMethod:
+  cloToutMethod:
     "The clothing of the day predicted from the outdoor air temperature at 6 a.m. (ASHRAE 55 §5.2.2.2(f)).",
   // The dock's line for a slot: the row's value before and after Apply, and an after outside the row's bound
   // with that bound named as its limit, "44.98 (limit 10 – 40)" (decision 75, rule 6 (d); worded by the user,

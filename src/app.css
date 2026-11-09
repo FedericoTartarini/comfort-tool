@@ -443,7 +443,7 @@
 	display: flex;
 	align-items: flex-end;
 }
-/* The input calculators' button at the Inputs card's foot: full width and on two lines, its title over the
+/* The input calculators' button at the input panel's foot: full width and on two lines, its title over the
    calculators' labels, the chevron muted at its end (decision 75, rule 6 (a)). */
 .calculator-button {
 	width: 100%;

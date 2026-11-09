@@ -1,5 +1,5 @@
 import { pmv_ppd_ashrae, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
-import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
+import { cloTout, customEnsemble, solarGain } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
 import type { ModelDeclaration, OptionSpec } from "$lib/core/modelDeclaration";
@@ -51,12 +51,12 @@ export const pmvPpdAshrae = {
     }),
   inputs: [
     { quantity: q.tdb, value: 25 },
-    { quantity: q.tr, value: 25, calculators: [solarGainOnOccupants] },
+    { quantity: q.tr, value: 25, calculators: [solarGain] },
     { quantity: q.v, value: 0.1 },
     { option: airSpeedControl },
     { quantity: q.rh, value: 50 },
     { quantity: q.met, value: 1.1 },
-    { quantity: q.clo, value: 0.5, calculators: [customEnsemble, clothingFromOutdoorTemperature] },
+    { quantity: q.clo, value: 0.5, calculators: [customEnsemble, cloTout] },
   ],
   // Demonstration ranges: the deployed tool's where it draws the quantity and
   // its range holds what may be entered (`rh`), else what the model is given
