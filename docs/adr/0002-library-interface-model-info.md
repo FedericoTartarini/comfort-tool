@@ -5071,6 +5071,39 @@ notes under decisions 51 and 53:
     app's invariant, B32 and B33 are bugs against it, and each is fixed at its source (the gate storing a NaN, `v`
     without an upper bound), never by a catch.
 
+91. **The GLOSSARY binds the app's own names, and a name is chosen by one precedence: a name another package or standard
+    defines, then the library's word, then the plainest conventional word.** Taken 2026-11-06 to 2026-11-09 with the
+    user in the naming grilling (`.scratch/naming/notes.md`, principles P1–P8 and its rounds), ahead of the code;
+    revises GLOSSARY.md's line 7, which bound prose and copy alone. The app and the library are two bounded contexts;
+    the boundary is `src/models/*.ts`, `core/libraryInputs.ts`, `core/modelRun.ts` and `core/applicability.ts`'s
+    reading of `warnings`. (1) A library concept the app uses as it is takes the library's word, in types and names
+    (`ModelOutputs`, inputs, `Bound`, range row, the output kinds `flag` and `label`). (2) An app concept that wraps or
+    presents a library concept takes the app's own word, and its GLOSSARY entry names the library's (Option and Switch,
+    Band and bin, Result table and outputs, Violation and range row). (3) One concept, one word; one word, one concept:
+    an app concept borrows no library word that means something else there, and no library concept gets a second app
+    word. (4) The temporary library is library-side code and follows the library's conventions, not the GLOSSARY.
+    (5) Screen text takes the users' and the standards' words and may differ from the code where the GLOSSARY says so
+    ("limits" on screen, bound in code). (6) Before the official release, a string written into a share link,
+    `sessionStorage`, a route or an id is a name like any other and changes in the same change as the code name it
+    stands for; what holds after the release is decided at the release. (7) The GLOSSARY's _Avoid_ lists bind the
+    app's own names: types, functions, variables, files and folders, CSS classes, copy keys, test titles, comments and
+    persisted strings. An avoided word marked "(in prose)" binds comments, test titles and prose alone; a name another
+    package owns, used as it is, is that package's. (8) Precedence: a name another package or standard defines
+    (WAI-ARIA, HTML, Bits UI and shadcn, Plotly, Sonner), or a convention it sets (`--warning`), is never changed; then
+    jsthermalcomfort's word; then a plain word, the industry's before one the app coins. Rules 1–7 are applied with that
+    judgement, not mechanically: a rename that swaps a plain, conventional word for a coined one to satisfy a rule is
+    wrong. (9) A name that is a quantity itself is the library's key as it is (`q.tdb`, a local `rh`); a compound name
+    spells the quantity as its label does (`relativeHumidityOf`, `atmosphericPressure`, `humidityRatioUnit`), the
+    acronym where the label is one (`pmvAt`), never the key (`pAtm`, `resolvedTdb`, `hrUnit`). Existing names that break these rules are renamed at once, by the tickets the grilling yields, not as
+    their files are touched; after that, new names follow. The list of renames is the notes', not this decision's.
+    Rejected: identifiers left free of the GLOSSARY, which leaves rules 1 and 3 unenforced; renaming as files are
+    touched, which keeps two words for one concept past the release and cannot keep a persisted string with its code
+    name; compound names on the key (`pAtm`), which neither greps as the key nor reads as words and gives a GLOSSARY
+    term a second spelling; a strict reading of rule 3 that renamed "model switch", the design's `palette`, `invalid`
+    and the app's defaults, withdrawn under rule 8. Upstream itself names compounds both ways (`clo_dynamic_ashrae`,
+    `v_relative` beside `dew_point_tmp`, `running_mean_outdoor_temperature`, pythermalcomfort 4.8.0), so rule 9 is the
+    app's, not the library's.
+
 ## Consequences
 
 - ADR-0001 §4.1.2's "the app never evaluates a row" holds again: a run's broken rows are the result's `warnings`

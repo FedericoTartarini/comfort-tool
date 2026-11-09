@@ -51,6 +51,13 @@ Read the diff once against each of these. They are judgement calls; none of them
   library's vocabulary, not ours. *(Google TS Style Guide: "Do not use abbreviations that are ambiguous or unfamiliar to
   readers outside your project, and do not abbreviate by deleting letters within a word.")*
 - A function that acts or answers a question starts with a verb; one that only returns a value is named for what it returns, a noun phrase (`violationRows`), with a preposition where the name must say what it is read from or made of (`…For`, `…Of`, `with…` or any other, as in `modelBySegment`); a conversion is `to…`, a callback `on…` after its event (ADR-0002 decision 41). No `engine` / `manager` / `helper` / `utils` as a file name.
+- GLOSSARY.md's _Avoid_ lists bind the app's names, not prose alone: a type, function, file, CSS class, copy key, test
+  title or persisted string uses the GLOSSARY's word for its concept (ADR-0002 decision 91, rule 7).
+- A name another package or standard defines (WAI-ARIA, HTML, Bits UI and shadcn, Plotly, Sonner) is kept as it is;
+  then jsthermalcomfort's word; then the plainest conventional word, before one the app coins (decision 91, rule 8).
+- A name that is a quantity itself is its library key (`tdb`, `rh`); a compound name spells the quantity as its label
+  does (`relativeHumidityOf`, `humidityRatioUnit`), the acronym where the label is one (`pmvAt`), never the key (`pAtm`,
+  `hrUnit`) (decision 91, rule 9).
 - Quantity display names come from `Quantity.label` — never written in the app. The one exception is the zone legend's `|PMV|` (ADR-0002 decision 44).
 
 **Single source of truth**
