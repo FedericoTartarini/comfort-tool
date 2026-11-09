@@ -9,11 +9,11 @@ import type { SlotHue } from "./slotAppearance";
  * colours come from its palette in {@link classifierPalettes}, keyed by the
  * library's classifier object, by identity, as the quantity table is, and read
  * by its palette's rule; they are assigned by position in its bins, never by
- * label text, so the library owns the bands and the app owns only the paint.
- * The result table's Band badges read their fill and lettering from here
+ * label text, so the library owns the bands and the app owns only the colours.
+ * The result table's Band badges read their fill and foreground from here
  * (`core/resultCell.ts`), as Explore's default Band list does its colours
- * (`core/bands.ts`), and both charts' chrome ink; a slot's own
- * ink is its hue (`core/slotAppearance.ts`).
+ * (`core/bands.ts`), and both charts' chrome colours; a slot's own
+ * colour is its hue (`core/slotAppearance.ts`).
  */
 
 /** Colours by count, first first, as its source lists them. */
@@ -167,46 +167,46 @@ function contrastRatio(one: string, other: string): number {
 }
 
 /**
- * The lettering of a Band badge filled with `fill` (ADR-0002 decision 85,
- * rule 3): the palette's ink or white, the paper's, whichever has the higher
- * contrast ratio with the fill; ink on a tie.
+ * The foreground of a Band badge filled with `fill` (ADR-0002 decision 85,
+ * rule 3): the palette's foreground or white, the background's, whichever has
+ * the higher contrast ratio with the fill; the foreground on a tie.
  */
-export function letteringOn(fill: string): string {
-  return contrastRatio(palette.paper, fill) > contrastRatio(palette.ink, fill) ? palette.paper : palette.ink;
+export function foregroundOn(fill: string): string {
+  return contrastRatio(palette.background, fill) > contrastRatio(palette.foreground, fill) ? palette.background : palette.foreground;
 }
 
 /**
- * Chart ink. Not bands — the Comfort zones and the markers are in their
+ * Chart colours. Not bands — the Comfort zones and the markers are in their
  * slot's hue (`core/slotAppearance.ts`), the isolines are neutral chrome, and a
  * Band's Edge is one neutral line whatever the band's own colour. The chrome
  * is the interface's slate (`core/palette.ts`), so the page is one palette.
  */
-export const chartInk = {
+export const chartColors = {
   /** A slot's marker: its hue. */
   marker: (hue: SlotHue): string => hue,
   /** A Comfort zone's outline: its slot's hue. */
   zoneLine: (hue: SlotHue): string => hue,
   zoneLineWidth: 1.5,
   /** A Band's Edge (ADR-0002 decision 62): darker than the isolines, so it reads over them, and thinner than a zone's outline. */
-  bandLine: palette.inkMuted,
+  bandLine: palette.mutedForeground,
   bandLineWidth: 1,
   /**
    * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost:
    * the slot's hue, its opacity rising evenly from 0.2 at the outermost, so
-   * every zone shows on the paper, to 0.4 at the innermost; a lone zone is
+   * every zone shows on the background, to 0.4 at the innermost; a lone zone is
    * 0.4 (ADR-0002 decision 71).
    */
   zoneFill: (hue: SlotHue, level: number, levels: number): string =>
     `rgba(${channelsOf(hue).join(", ")}, ${0.2 + 0.2 * (levels === 1 ? 1 : level / (levels - 1))})`,
-  /** The plot area's ground, which a band painted nowhere shows: the page's paper. */
-  ground: palette.paper,
+  /** The plot area's background, which a band painted nowhere shows: the palette's white `background`, as a card's. */
+  plotBackground: palette.background,
   isoline: palette.lineStrong,
   isolineWidth: 1,
   saturationLine: palette.lineHeavy,
   saturationLineWidth: 1.5,
-  markerEdge: palette.paper,
-  /** The hover readout on the pointer (ADR-0002 decision 67, rule 5): the page's text in its caption's size, on its paper, edged with a rule. */
-  readoutFont: { family: lettering.family, size: lettering.captionSize, color: palette.ink },
-  readoutGround: palette.paper,
-  readoutEdge: palette.line,
+  markerEdge: palette.background,
+  /** The hover readout on the pointer (ADR-0002 decision 67, rule 5): the page's text in its caption's size, on its background, bordered with a rule. */
+  readoutFont: { family: lettering.family, size: lettering.captionSize, color: palette.foreground },
+  readoutBackground: palette.background,
+  readoutBorder: palette.border,
 } as const;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { boundsBrokenLines } from "$lib/core/applicability";
-  import { chartInk } from "$lib/core/bandPalette";
+  import { chartColors } from "$lib/core/bandPalette";
   import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -30,16 +30,16 @@
 
 <!-- A slot's swatch is its chart marker's. -->
 {#snippet slotSwatch(row: SlotComputation)}
-  <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(row.appearance.hue)}></span>
+  <span class="swatch swatch-marker" style:--swatch-color={chartColors.marker(row.appearance.hue)}></span>
 {/snippet}
 
-<!-- A Band badge's fill and lettering are its band's, set here as a swatch's colour is; a band without a colour is
+<!-- A Band badge's fill and foreground are its band's, set here as a swatch's colour is; a band without a colour is
      outlined. -->
 {#snippet resultCell(cell: ResultCell)}
   {#if cell.kind === "text"}
     {cell.text}
-  {:else if cell.paint}
-    <Badge class="band-badge" style="--band-fill: {cell.paint.fill}; --band-lettering: {cell.paint.lettering}">{cell.label}</Badge>
+  {:else if cell.colors}
+    <Badge class="band-badge" style="--band-fill: {cell.colors.fill}; --band-foreground: {cell.colors.foreground}">{cell.label}</Badge>
   {:else}
     <Badge variant="outline">{cell.label}</Badge>
   {/if}

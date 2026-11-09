@@ -4,7 +4,7 @@
  * and the hover grid over the field, which the adaptive chart lays too.
  */
 import { classifyFromBins } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import type { BandList } from "$lib/core/bands";
 import { displayUnitFor } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
@@ -128,7 +128,7 @@ export function fieldPaintFor(
 function emptyZoneNoteFor(charted: ChartedSlot): ChartNote {
   return charted.label === undefined
     ? { text: copy.noComfortZone }
-    : { text: copy.slotNote(charted.label, copy.noComfortZone), color: chartInk.marker(charted.hue) };
+    : { text: copy.slotNote(charted.label, copy.noComfortZone), color: chartColors.marker(charted.hue) };
 }
 
 /** A region's line, and its fill where it is filled. */
@@ -248,7 +248,7 @@ function bandPathsFor(list: BandList, field: ScannedField, traced: (region: Regi
     const label = shownBandLabel(bandLabel);
     const color = list.colors[index];
     const { lines } = traced(field.regionWithin({ holds: inBands(0, index), upper: list.edges[index] }));
-    const line: PathTrace = { kind: "path", pieces: lines, color: chartInk.bandLine, width: chartInk.bandLineWidth, hover: "off", label };
+    const line: PathTrace = { kind: "path", pieces: lines, color: chartColors.bandLine, width: chartColors.bandLineWidth, hover: "off", label };
     if (color === undefined) {
       return { line };
     }

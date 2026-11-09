@@ -11,7 +11,7 @@
   Reset bands, Close and Apply (decision 73, rule 8).
 -->
 <script lang="ts">
-  import { chartInk } from "$lib/core/bandPalette";
+  import { chartColors } from "$lib/core/bandPalette";
   import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import { displayUnitFor, labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -72,10 +72,10 @@
           </Table.Cell>
           <Table.Cell>
             <Inline gap="2" align="center">
-              <!-- A colour input must hold a colour: a band painted nowhere shows the ground it leaves bare. -->
+              <!-- A colour input must hold a colour: a band painted nowhere shows the plot background it leaves bare. -->
               <Input
                 type="color"
-                value={color ?? chartInk.ground}
+                value={color ?? chartColors.plotBackground}
                 aria-label={copy.bandControl(copy.bandColorColumn, index)}
                 oninput={(event) => draft.setColor(index, event.currentTarget.value)}
               />

@@ -6,7 +6,7 @@
  * should hold, and its Edge's line by the number interpolated at its vertices;
  * and a path drawn in one piece by that piece.
  */
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import type { ChartSpec, HoverGridTrace, PathPiece, PathTrace } from "./chartSpec";
 
 /** `spec`'s filled paths that carry a label, in drawing order. The cover above saturation has none. */
@@ -34,7 +34,7 @@ export function bandFillsOf(spec: Pick<ChartSpec, "traces">): PathTrace[] {
 
 /** `spec`'s Band Edges, in drawing order: the paths stroked in the band line. */
 export function bandLinesOf(spec: Pick<ChartSpec, "traces">): PathTrace[] {
-  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined && trace.color === chartInk.bandLine);
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill === undefined && trace.color === chartColors.bandLine);
 }
 
 /** `trace`'s one piece; throws if there is no trace, or it has any other number of pieces. */

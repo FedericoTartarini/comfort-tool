@@ -1,5 +1,5 @@
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { resolveQuantities } from "$lib/core/libraryInputs";
 import { requireAxisRange, requireScan, type ModelDeclaration, type Range } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
@@ -122,9 +122,9 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       cover = {
         kind: "path",
         pieces: [{ x: boundary.map((point) => xUnit.fromSi(point.temperature)), y: boundary.map((point) => humidityRatioUnit.fromSi(point.hr)) }],
-        color: chartInk.ground,
+        color: chartColors.plotBackground,
         width: 0,
-        fill: chartInk.ground,
+        fill: chartColors.plotBackground,
         hover: "off",
       };
     }
@@ -132,8 +132,8 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const isoline: PathTrace = {
       kind: "path",
       pieces: [{ x: curve.map((point) => xUnit.fromSi(point.temperature)), y: curve.map((point) => humidityRatioUnit.fromSi(point.hr)) }],
-      color: saturation ? chartInk.saturationLine : chartInk.isoline,
-      width: saturation ? chartInk.saturationLineWidth : chartInk.isolineWidth,
+      color: saturation ? chartColors.saturationLine : chartColors.isoline,
+      width: saturation ? chartColors.saturationLineWidth : chartColors.isolineWidth,
       // Chrome: the isolines carry the humidity reading in their label, not on
       // the pointer (ADR §4.4).
       hover: "off",
@@ -162,7 +162,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
   }
 
   // Each slot's legend items, its zones then its marker, so the legend reads slot by slot.
-  const legend: LegendItem[] = [{ label: q.rh.label, swatch: "line", color: chartInk.isoline }, ...paint.bandLegend];
+  const legend: LegendItem[] = [{ label: q.rh.label, swatch: "line", color: chartColors.isoline }, ...paint.bandLegend];
   request.slots.forEach((charted, position) => {
     const resolved = resolveQuantities(withEntryModes(charted.slot, request.entryModes, model), model, atmosphericPressure);
     const tdb = requireValue(resolved, q.tdb);

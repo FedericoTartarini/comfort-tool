@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { clo_dynamic_iso, hr_to_rh, PMV_PPD_ASHRAE_INFO, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
@@ -100,9 +100,9 @@ const isoWithoutBounds: ModelDeclaration = {
   run: (inputs) => ({ ...pmvPpdIso.run(inputs), warnings: [] }),
 };
 
-/** The cover above the saturation line: the path filled in the plot's ground. */
+/** The cover above the saturation line: the path filled in the plot background. */
 function coverOf(spec: ChartSpec): PathTrace {
-  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartInk.ground);
+  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartColors.plotBackground);
   if (!trace) {
     throw new Error("spec has no cover");
   }
@@ -258,7 +258,7 @@ describe("psychrometricSpec", () => {
 
   it("fills them in the slot's hue, the opacity rising inwards", () => {
     const drawn = zoneFillsOf(spec);
-    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartInk.zoneFill(palette.slots[0], level, 4)));
+    expect(drawn.map((zone) => zone.color)).toEqual(drawn.map((_, level) => chartColors.zoneFill(palette.slots[0], level, 4)));
     expect(drawn.map((zone) => zone.fill)).toEqual(drawn.map((zone) => zone.color));
   });
 
@@ -273,7 +273,7 @@ describe("psychrometricSpec", () => {
       expect(line.pieces.length).toBeGreaterThan(0);
       expect(line.pieces.every((piece) => piece.x.every((x, index) => vertices.has(`${x} ${piece.y[index]}`)))).toBe(true);
     });
-    expect(lines.every((line) => line.color === chartInk.zoneLine(palette.slots[0]) && line.width === chartInk.zoneLineWidth)).toBe(true);
+    expect(lines.every((line) => line.color === chartColors.zoneLine(palette.slots[0]) && line.width === chartColors.zoneLineWidth)).toBe(true);
   });
 
   it("stands the humidity ratio on the plot's right (ADR-0002 decision 89, rule 7)", () => {
@@ -354,7 +354,7 @@ describe("psychrometricSpec", () => {
       const isolines = isolinesOf(drawn);
       const saturationLine = isolines[isolines.length - 1];
       expect(isolines).toHaveLength(10);
-      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartInk.isoline), chartInk.saturationLine]);
+      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartColors.isoline), chartColors.saturationLine]);
       expect(markersOf(drawn)).toHaveLength(count);
       expect(drawn.traces).toEqual([
         ...zoneFillsOf(drawn),

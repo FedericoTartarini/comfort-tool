@@ -10,7 +10,7 @@
   under a sticky one, not rendered at all while the header's toggle has
   collapsed it (decision 87, rule 1), as tall as
   the page beside it (`h-auto`, `self-stretch`), not shrunk by it,
-  transparent on the ground, and inset `p-1`, so with a group's own `p-2` its
+  transparent on the page background, and inset `p-1`, so with a group's own `p-2` its
   fills stand on the 12 px line the header's toggle and the footer's text stand
   on (decision 87, rule 1); no brand tile in a `Sidebar.Header` (the header
   holds the mark), no user menu in a `Sidebar.Footer` (the page's footer
@@ -18,7 +18,7 @@
   hands in, then a `Sidebar.Separator`, inset as far as the rule inside
   Settings (the group's `p-2` and its content's `px-2`), and the Settings
   group, which holds the session controls whole, inset as a menu item's text
-  is, its label an `h2` in ink as a `NavGroup`'s is (decision 87, rule 5).
+  is, its label an `h2` in the foreground colour as a `NavGroup`'s is (decision 87, rule 5).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -40,7 +40,7 @@
 </script>
 
 <!--
-  The sheet keeps the primitive's own ground and insets; the column's are the fixed sidebar's. The sheet's Close is
+  The sheet keeps the primitive's own background and insets; the column's are the fixed sidebar's. The sheet's Close is
   shown: `[&>button]:inline-flex`, the button's own display, replaces the primitive's `[&>button]:hidden` in its merge.
 -->
 {#if open || sidebar.isMobile}

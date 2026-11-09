@@ -29,13 +29,13 @@ describe("the stylesheet", () => {
   // The tokens the interface shares with the charts (ADR-0002 decision 66, rule 3).
   const shared = {
     "--brand": palette.brand,
-    "--ground": palette.ground,
-    "--background": palette.paper,
-    "--foreground": palette.ink,
-    "--muted-foreground": palette.inkMuted,
-    "--border": palette.line,
-    "--input": palette.line,
-    "--destructive": palette.alert,
+    "--page-background": palette.pageBackground,
+    "--background": palette.background,
+    "--foreground": palette.foreground,
+    "--muted-foreground": palette.mutedForeground,
+    "--border": palette.border,
+    "--input": palette.border,
+    "--destructive": palette.destructive,
     "--warning": palette.warning,
   };
 
@@ -50,10 +50,10 @@ describe("the stylesheet", () => {
     expect(declared("--ring")).toBe("var(--brand)");
   });
 
-  // The sidebar primitive's tokens, each another token's value, so no colour enters with them, its ground the ground
-  // (decision 73, rule 3).
+  // The sidebar primitive's tokens, each another token's value, so no colour enters with them, its background the
+  // page's (decision 73, rule 3).
   const sidebar = {
-    "--sidebar": "var(--ground)",
+    "--sidebar": "var(--page-background)",
     "--sidebar-foreground": "var(--foreground)",
     "--sidebar-primary": "var(--brand)",
     "--sidebar-primary-foreground": "var(--primary-foreground)",

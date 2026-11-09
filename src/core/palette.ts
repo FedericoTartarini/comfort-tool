@@ -1,11 +1,11 @@
 /**
  * The design's named colours (ADR-0002 decision 66). The charts read them as
- * values, through the chart ink (`core/bandPalette.ts`) and the slot
+ * values, through the chart colours (`core/bandPalette.ts`) and the slot
  * appearances (`core/slotAppearance.ts`); the interface reads the same hex
  * values as the stylesheet's tokens (`app.css`), and a test holds the two
  * files to one another. Hue is spent on data alone: the slots' hues here, the
  * bands' in the band palette; the interface itself is the brand blue and
- * slate, with red and amber for its two marks, `alert` and `warning`.
+ * slate, with red and amber for its two marks, `destructive` and `warning`.
  */
 export const palette = {
   /**
@@ -14,22 +14,22 @@ export const palette = {
    */
   brand: "#003262",
   /** Text. */
-  ink: "#0f172a",
+  foreground: "#0f172a",
   /** Captions, bound text, legend text, a Band's Edge line. */
-  inkMuted: "#64748b",
+  mutedForeground: "#64748b",
   /** Input borders, table row lines, the sidebar's separator. */
-  line: "#e2e8f0",
+  border: "#e2e8f0",
   /** The isolines. */
   lineStrong: "#cbd5e1",
   /** The saturation line. */
   lineHeavy: "#94a3b8",
-  /** The page's ground and a field's tint. */
-  ground: "#f8fafc",
-  /** A panel's and the plot's ground. */
-  paper: "#ffffff",
+  /** The page's background and a field's tint. */
+  pageBackground: "#f8fafc",
+  /** A panel's and the plot's background. */
+  background: "#ffffff",
   /** An entry out of range, a refused Edge. */
-  alert: "#dc2626",
-  /** A result row's violation icon (ADR-0002 decision 85, rule 5): the interface's second hue, beside `alert`. */
+  destructive: "#dc2626",
+  /** A result row's violation icon (ADR-0002 decision 85, rule 5): the interface's second hue, beside `destructive`. */
   warning: "#d97706",
   /**
    * One hue per slot, by position: Okabe–Ito's blue, bluish green and reddish

@@ -1140,15 +1140,15 @@ test.describe("the slots' labels", () => {
  * A control by the question it answers (ADR-0002 decision 76): a setting on
  * or off at once is a switch, Compare in the Inputs heading row and a model's
  * option under the row it qualifies; every checkbox's and switch's edge holds
- * 3:1 against the paper; the sidebar's settings are headed "Settings".
+ * 3:1 against the background; the sidebar's settings are headed "Settings".
  */
 test.describe("controls by their question", () => {
   const OPTION = "Occupants have local control of the air speed";
   const compareSwitch = (page: Page) => page.getByRole("switch", { name: "Compare", exact: true });
 
   /**
-   * WCAG 2.1's contrast ratio of an element's top border colour against white, the paper, the colour laid on the
-   * paper by its alpha first, so a transparent edge reads as the paper's and not as black.
+   * WCAG 2.1's contrast ratio of an element's top border colour against white, the background, the colour laid on the
+   * background by its alpha first, so a transparent edge reads as the background's and not as black.
    */
   async function edgeContrast(control: Locator) {
     return control.evaluate((element) => {
@@ -1353,7 +1353,7 @@ test.describe("controls by their question", () => {
     await expect(page.getByText(OPTION, { exact: true })).toHaveCount(1);
   });
 
-  test("at 1440 px, an off switch's and an unchecked checkbox's edge is 3:1 against the paper, a focused switch's and a checked checkbox's the primitive's own", async ({ page }) => {
+  test("at 1440 px, an off switch's and an unchecked checkbox's edge is 3:1 against the background, a focused switch's and a checked checkbox's the primitive's own", async ({ page }) => {
     await openStandard(page, 1440);
     expect(await edgeContrast(compareSwitch(page))).toBeGreaterThanOrEqual(3);
     expect(await edgeContrast(page.getByRole("switch", { name: OPTION, exact: true }))).toBeGreaterThanOrEqual(3);
@@ -1465,18 +1465,18 @@ test.describe("the sidebar's headings and the one radius", () => {
     ["Standard", PMV_ADDRESS],
     ["Explore", EXPLORE_ADDRESS],
   ]) {
-    test(`at 1440 px on ${name}, the sidebar's groups are level-two headings Standard, Tools and Settings, 14 px at 600 in ink, and the Units and Atmospheric pressure labels share one weight`, async ({ page }) => {
+    test(`at 1440 px on ${name}, the sidebar's groups are level-two headings Standard, Tools and Settings, 14 px at 600 in the foreground colour, and the Units and Atmospheric pressure labels share one weight`, async ({ page }) => {
       await openStandard(page, 1440, address);
       const sidebar = page.locator('[data-slot="sidebar-content"]');
       const headings = sidebar.getByRole("heading", { level: 2 });
 
       await expect(headings).toHaveText(["Standard", "Tools", "Settings"]);
-      const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+      const foreground = await page.evaluate(() => getComputedStyle(document.body).color);
       for (const heading of await headings.all()) {
         expect(await heading.evaluate((element) => {
           const { fontSize, fontWeight, color } = getComputedStyle(element);
           return { fontSize, fontWeight, color };
-        })).toEqual({ fontSize: "14px", fontWeight: "600", color: ink });
+        })).toEqual({ fontSize: "14px", fontWeight: "600", color: foreground });
       }
       // The groups keep their names.
       for (const group of ["Standard", "Tools", "Settings"]) {

@@ -7,7 +7,7 @@
  * written here.
  */
 import { describe, expect, it } from "vitest";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { adaptiveSpec } from "$lib/core/charts/adaptiveChart";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { PathTrace } from "$lib/core/charts/chartSpec";
@@ -79,9 +79,9 @@ describe("a session on Adaptive", () => {
         let drawn = 0;
         for (const { appearance } of computation.slots) {
           // Adaptive's two acceptability zones, in the slot's hue.
-          const zoneFills: readonly string[] = [0, 1].map((level) => chartInk.zoneFill(appearance.hue, level, 2));
+          const zoneFills: readonly string[] = [0, 1].map((level) => chartColors.zoneFill(appearance.hue, level, 2));
           const fills = paths.filter((path) => path.fill !== undefined && zoneFills.includes(path.fill));
-          const lines = paths.filter((path) => path.fill === undefined && path.color === chartInk.zoneLine(appearance.hue));
+          const lines = paths.filter((path) => path.fill === undefined && path.color === chartColors.zoneLine(appearance.hue));
           expect(fills).toHaveLength(2);
           expect(fills.map((fill) => fill.width)).toEqual(fills.map(() => 0));
           expect(lines).toHaveLength(4);

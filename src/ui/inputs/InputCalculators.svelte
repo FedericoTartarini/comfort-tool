@@ -38,7 +38,7 @@
 <script lang="ts">
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import { formatBound } from "$lib/core/applicability";
-  import { chartInk } from "$lib/core/bandPalette";
+  import { chartColors } from "$lib/core/bandPalette";
   import { panelCalculators, shownRow, type CalculatorOutputs } from "$lib/core/calculators";
   import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -201,7 +201,7 @@
             onCheckedChange={(isChecked) => check(computation.position, isChecked)}
           />
           <Label for="{prefix}-{computation.position}">
-            <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(computation.appearance.hue)}></span>
+            <span class="swatch swatch-marker" style:--swatch-color={chartColors.marker(computation.appearance.hue)}></span>
             {computation.appearance.label}
           </Label>
         </Inline>

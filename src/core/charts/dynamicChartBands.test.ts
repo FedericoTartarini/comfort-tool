@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyFromBins } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
@@ -109,7 +109,7 @@ function strokesOf(spec: ChartSpec) {
 
 /** Every band of `list`, painted or not, as a line in the band line. */
 function edgeLinesOf(list: BandList) {
-  return list.labels.map((label) => ({ label, color: chartInk.bandLine, width: chartInk.bandLineWidth, hover: "off" }));
+  return list.labels.map((label) => ({ label, color: chartColors.bandLine, width: chartColors.bandLineWidth, hover: "off" }));
 }
 
 /**
@@ -136,7 +136,7 @@ describe("the scanned dynamic chart given a Band list", () => {
 
   it("paints one fill per band of the list, holding the points from its lower Edge up to the last, and no Comfort zone", () => {
     expectFills(spec, contiguousFillsOf(isoBands), values, isoBands.right);
-    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(palette.slots[0]));
+    expect(linesOf(spec).map((line) => line.color)).not.toContain(chartColors.zoneLine(palette.slots[0]));
   });
 
   it("strokes every band's own upper Edge once, in the band line, read by nothing, where the number crosses it", () => {
@@ -164,7 +164,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   it("carries one legend: every band, then the slot", () => {
     expect(spec.legend).toEqual([
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: "Input", swatch: "marker", color: chartInk.marker(palette.slots[0]) },
+      { label: "Input", swatch: "marker", color: chartColors.marker(palette.slots[0]) },
     ]);
   });
 

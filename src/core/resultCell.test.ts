@@ -103,27 +103,27 @@ describe("formatResultCell", () => {
     }
   });
 
-  it("shows a classified output's category as a Band badge in its band's fill, lettered in ink on a pale one", () => {
+  it("shows a classified output's category as a Band badge in its band's fill, with the palette's foreground on a pale one", () => {
     // Neutral is the fourth of the seven sensation labels, II the second of I, II, III, IV, none.
-    const neutral: ResultCell = { kind: "band", label: "Neutral", paint: { fill: neutralFill, lettering: palette.ink } };
+    const neutral: ResultCell = { kind: "band", label: "Neutral", colors: { fill: neutralFill, foreground: palette.foreground } };
     expect(formatResultCell(pmvPpdIso, atDefaults(pmvPpdIso), q.tsv, unitSystem.si, noViolations)).toEqual(neutral);
     expect(formatResultCell(pmvPpdIso, atDefaults(pmvPpdIso), q.category, unitSystem.si, noViolations)).toEqual({
       kind: "band",
       label: "II",
-      paint: { fill: categoryIIFill, lettering: palette.ink },
+      colors: { fill: categoryIIFill, foreground: palette.foreground },
     });
     expect(formatResultCell(pmvPpdAshrae, atDefaults(pmvPpdAshrae), q.tsv, unitSystem.si, noViolations)).toEqual(neutral);
   });
 
-  it("letters a dark band's badge in white, and gives a band its palette leaves unpainted no fill", () => {
+  it("gives a dark band's badge a white foreground, and a band its palette leaves unpainted no fill", () => {
     // A tdb of 5 °C puts PMV near -4.3: Cold, the first band, and past category IV, so "none".
     const outputs = atDryBulbTemperature(pmvPpdIso, 5);
     expect(formatResultCell(pmvPpdIso, outputs, q.tsv, unitSystem.si, noViolations)).toEqual({
       kind: "band",
       label: "Cold",
-      paint: { fill: coldFill, lettering: white },
+      colors: { fill: coldFill, foreground: white },
     });
-    expect(formatResultCell(pmvPpdIso, outputs, q.category, unitSystem.si, noViolations)).toEqual({ kind: "band", label: "none", paint: undefined });
+    expect(formatResultCell(pmvPpdIso, outputs, q.category, unitSystem.si, noViolations)).toEqual({ kind: "band", label: "none", colors: undefined });
   });
 
   it("shows a dash for a NaN, a category its classifier does not name, and no outputs", () => {

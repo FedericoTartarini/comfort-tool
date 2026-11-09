@@ -101,7 +101,7 @@
   <div class="mx-auto flex w-full max-inline-(--frame-width) flex-1">
     <AppSidebar open={sidebarOpen} {navigation} {sessionControls} />
     <!--
-      The inset is the block's content area, the page's `main`, on the ground:
+      The inset is the block's content area, the page's `main`, on the page background:
       on a desktop two columns at every width, the input card and the results
       and the chart beside them, the latter alone shrinking as the window
       narrows, down to its least width (decision 87, rule 3); on a phone one column, the

@@ -1,28 +1,28 @@
 import type { ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { ViolationRow } from "./applicability";
-import { colorForBand, letteringOn } from "./bandPalette";
+import { colorForBand, foregroundOn } from "./bandPalette";
 import type { ModelDeclaration } from "./modelDeclaration";
 import { outputValue } from "./modelRun";
 import type { Quantity } from "./quantities";
 import { displayUnitFor, numberWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
-/** A Band badge's fill and the lettering that reads on it. */
-interface BandPaint {
+/** A Band badge's fill and the foreground that reads on it. */
+interface BadgeColors {
   readonly fill: string;
-  readonly lettering: string;
+  readonly foreground: string;
 }
 
 /**
  * One cell of the results table: text, or a Band badge (GLOSSARY.md) holding
- * its band's label as the library writes it, and its paint, `undefined` for a
+ * its band's label as the library writes it, and its colours, `undefined` for a
  * band its palette leaves unpainted, ISO 7730's "none", which the table
  * outlines.
  */
 export type ResultCell =
   | { readonly kind: "text"; readonly text: string }
-  | { readonly kind: "band"; readonly label: string; readonly paint: BandPaint | undefined };
+  | { readonly kind: "band"; readonly label: string; readonly colors: BadgeColors | undefined };
 
 /**
  * What the results table shows for `quantity`, one column of `model`'s table:
@@ -52,7 +52,7 @@ export function formatResultCell(
       return textCell(copy.notAvailable);
     }
     const fill = colorForBand(classifier, value);
-    return { kind: "band", label: value, paint: fill === undefined ? undefined : { fill, lettering: letteringOn(fill) } };
+    return { kind: "band", label: value, colors: fill === undefined ? undefined : { fill, foreground: foregroundOn(fill) } };
   }
   if (typeof value === "boolean") {
     if (violations.length > 0) {

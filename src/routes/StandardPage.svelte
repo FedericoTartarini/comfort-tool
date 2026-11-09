@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { chartInk } from "$lib/core/bandPalette";
+  import { chartColors } from "$lib/core/bandPalette";
   import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
   import { slotLabels } from "$lib/core/slotAppearance";
@@ -91,7 +91,7 @@ import { palette } from "$lib/core/palette";
               variant="outline"
               bind:pressed={() => session.isSlotEnabled(position), (pressed) => setSlotEnabled(position, pressed)}
             >
-              <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(palette.slots[position])}></span>
+              <span class="swatch swatch-marker" style:--swatch-color={chartColors.marker(palette.slots[position])}></span>
               {slotLabels[position]}
             </Toggle>
           {/each}

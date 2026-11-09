@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO, UTCI_INFO, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { bandColors, chartInk, colorForBand, letteringOn, palettes, type BandPalette } from "./bandPalette";
+import { bandColors, chartColors, colorForBand, foregroundOn, palettes, type BandPalette } from "./bandPalette";
 import { classifierOf } from "./modelDeclaration";
 import { palette } from "./palette";
 import { quantities } from "./quantities";
@@ -124,33 +124,33 @@ describe("colorForBand", () => {
   });
 });
 
-describe("letteringOn", () => {
+describe("foregroundOn", () => {
   // The pairs ADR-0002 decision 85's Facts computed by WCAG 2's contrast ratio.
-  it("letters a pale fill and #f03b20 in ink", () => {
+  it("picks the palette's foreground for a pale fill and #f03b20", () => {
     for (const fill of ["#f7f7f7", "#fddbc7", "#fecc5c", "#f03b20"]) {
-      expect(letteringOn(fill), fill).toBe(palette.ink);
+      expect(foregroundOn(fill), fill).toBe(palette.foreground);
     }
   });
 
-  it("letters a dark fill in white", () => {
+  it("picks white for a dark fill", () => {
     for (const fill of ["#b2182b", "#2166ac", "#bd0026"]) {
-      expect(letteringOn(fill), fill).toBe("#ffffff");
+      expect(foregroundOn(fill), fill).toBe("#ffffff");
     }
   });
 });
 
-describe("chartInk", () => {
+describe("chartColors", () => {
   /** A hex colour's lightness, the sum of its three channels. */
   const lightnessOf = (color: string) => [1, 3, 5].reduce((sum, start) => sum + Number.parseInt(color.slice(start, start + 2), 16), 0);
 
   it("draws a band's Edge in a neutral colour darker than the isolines, told from them and from the saturation line", () => {
-    expect(chartInk.bandLine).not.toBe(chartInk.isoline);
-    expect(chartInk.bandLine).not.toBe(chartInk.saturationLine);
-    expect(lightnessOf(chartInk.bandLine)).toBeLessThan(lightnessOf(chartInk.isoline));
+    expect(chartColors.bandLine).not.toBe(chartColors.isoline);
+    expect(chartColors.bandLine).not.toBe(chartColors.saturationLine);
+    expect(lightnessOf(chartColors.bandLine)).toBeLessThan(lightnessOf(chartColors.isoline));
   });
 
   it("draws a band's Edge at 1 px, thinner than a Comfort zone's outline", () => {
-    expect(chartInk.bandLineWidth).toBe(1);
-    expect(chartInk.bandLineWidth).toBeLessThan(chartInk.zoneLineWidth);
+    expect(chartColors.bandLineWidth).toBe(1);
+    expect(chartColors.bandLineWidth).toBeLessThan(chartColors.zoneLineWidth);
   });
 });

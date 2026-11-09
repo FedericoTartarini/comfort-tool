@@ -11,7 +11,7 @@
    it brings no colour of its own (ADR-0002 decision 73, rule 3). */
 :root {
 	--brand: #003262;
-	--ground: #f8fafc;
+	--page-background: #f8fafc;
 
 	/* The page's two spacing values and the header's height (ADR-0002 decision 73, rule 2): one between modules and
 	   rows, at the page's edge and inside a card; one within a field, between its label, box and caption. */
@@ -50,7 +50,7 @@
 	/* The one radius (decision 73, rule 2); `@theme` derives Nova's smaller and larger steps from it. */
 	--radius: 0.375rem;
 
-	--sidebar: var(--ground);
+	--sidebar: var(--page-background);
 	--sidebar-foreground: var(--foreground);
 	--sidebar-primary: var(--brand);
 	--sidebar-primary-foreground: var(--primary-foreground);
@@ -98,10 +98,10 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
-	/* The page stands on the ground; the modules, the cards, are the paper (decision 73, rule 4). */
+	/* The body takes the page background; the modules, the cards, stand on it in white (decision 73, rule 4). */
 	body {
 		@apply text-foreground;
-		background-color: var(--ground);
+		background-color: var(--page-background);
 		font-size: var(--font-size-body);
 		line-height: 1.5;
 	}
@@ -139,7 +139,7 @@
 		width: 0.75em;
 		height: 0.75em;
 	}
-	/* A fill: bordered, so a near-white colour shows on the paper. */
+	/* A fill: bordered, so a near-white colour shows on the background. */
 	.swatch-fill {
 		border: 1px solid var(--border);
 		background-color: var(--swatch-color);
@@ -220,7 +220,7 @@
 	}
 
 	/* A table's scroll region (decision 70): the table scrolls here, not the page, and the clipped right edge is
-	   shaded while there is more. The shade stays at the region's edge (`scroll`); a cover in the paper's colour sits
+	   shaded while there is more. The shade stays at the region's edge (`scroll`); a cover in the background colour sits
 	   at the content's end (`local`) and hides it once scrolled there, or when nothing overflows. */
 	.table-scroll {
 		overflow-x: auto;
@@ -230,7 +230,7 @@
 				100% no-repeat scroll;
 	}
 	/* The first column, the Input column, stays in view while the region scrolls (decision 70, rule 3), opaque so the
-	   columns under it do not show through: on the paper, or on the colour the row primitive's `hover:bg-muted/50`
+	   columns under it do not show through: on the background, or on the colour the row primitive's `hover:bg-muted/50`
 	   gives a hovered row, changing with the row's own `transition-colors` so the cell does not lead the row. */
 	.result-table tr > :first-child {
 		position: sticky;
@@ -303,7 +303,7 @@
 
 /* Adjustments to the generated primitives, selected by `data-slot` (ADR-0002 decision 65, rule 2, as decision 73
    revised it). Sizes, layout, and which token a slot reads, such as a chosen toggle's `var(--primary)` or a field's
-   `var(--ground)`; never a literal colour. Unlayered, so it wins over the primitives' utilities. */
+   `var(--page-background)`; never a literal colour. Unlayered, so it wins over the primitives' utilities. */
 /* A module, the generated card, has the one radius, where Nova rounds a card at the radius and 4 px, and the page's
    spacing as its padding and its gap between header and content (decision 73, rules 2 and 4). */
 [data-slot="card"] {
@@ -365,15 +365,15 @@
 [data-slot="input-group-addon"].box-end > button {
 	padding-inline: 0.5rem;
 }
-/* What one types into is tinted the ground, a box or the group a box stands in; what one chooses from, a select's
-   trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the group's tint
-   shows. */
+/* What one types into is tinted the page background, a box or the group a box stands in; what one chooses from, a
+   select's trigger or a colour input, is not (decision 73, rule 3). A box inside a group is transparent, so the
+   group's tint shows. */
 [data-slot="input"]:not([type="color"]),
 [data-slot="input-group"] {
-	background-color: var(--ground);
+	background-color: var(--page-background);
 }
-/* A box takes the other colour of the surface it stands on (decision 73, rule 6): in the sidebar, which is the ground,
-   the session's atmospheric pressure box is the paper. The sidebar's content is the slot both the column and the sheet carry. */
+/* A box takes the other colour of the surface it stands on (decision 73, rule 6): in the sidebar, which is the page
+   background, the session's atmospheric pressure box is the background. The sidebar's content is the slot both the column and the sheet carry. */
 [data-slot="sidebar-content"] :is([data-slot="input"]:not([type="color"]), [data-slot="input-group"]) {
 	background-color: var(--background);
 }
@@ -385,7 +385,7 @@
 	background-color: var(--primary);
 	color: var(--primary-foreground);
 }
-/* An unchecked checkbox's border and an off switch's track edge in the muted text colour, 4.76:1 on the paper, where
+/* An unchecked checkbox's border and an off switch's track edge in the muted text colour, 4.76:1 on the background, where
    the generated `border-input` is 1.23:1, under WCAG 2.1 SC 1.4.11's 3:1 for what identifies a control and its state
    (ADR-0002 decision 76, rule 3). Checked, focused or invalid, the primitives' own edge stands. */
 :is([data-slot="checkbox"], [data-slot="switch"])[data-state="unchecked"]:not(:focus-visible, [aria-invalid="true"]) {
@@ -495,7 +495,7 @@
 	z-index: 10;
 	max-height: 16rem;
 	padding: 0.25rem;
-	/* The generated popover's radius, ring at 10 % ink and theme shadow, as a row's list has them. */
+	/* The generated popover's radius, ring at 10 % foreground and theme shadow, as a row's list has them. */
 	border-radius: var(--radius-lg);
 	background: var(--popover);
 	box-shadow:
@@ -551,13 +551,13 @@
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
-/* A Band badge (decision 85, rule 3) in the fill and lettering the table sets on it, `--band-fill` and
-   `--band-lettering`, edged as a fill swatch is, so a near-white band shows on the paper. Unlayered, as the
+/* A Band badge (decision 85, rule 3) in the fill and foreground the table sets on it, `--band-fill` and
+   `--band-foreground`, edged as a fill swatch is, so a near-white band shows on the background. Unlayered, as the
    primitive's default fill is a utility. */
 .result-table .band-badge {
 	border-color: var(--border);
 	background-color: var(--band-fill);
-	color: var(--band-lettering);
+	color: var(--band-foreground);
 }
 /* A row's bounds icon (decision 85, rule 5), in the warning's amber, stands on the text's line at the text's size,
    first in the Input cell: before the swatch, spaced by the gap of the swatch's label, where the rows are named. */

@@ -4,7 +4,7 @@
   CLI 1.6.0, Nova), changed for the tool. Kept: a `Sidebar.Group` of a
   `Sidebar.Menu` whose items are `Sidebar.MenuButton`s with a link for their
   child. Changed: the group has a label, which names it (`role="group"`), an
-  `h2` inside it as a card title's is, in ink (decision 87, rule 5); no
+  `h2` inside it as a card title's is, in the foreground colour (decision 87, rule 5); no
   icons, the item's label alone; an in-app item carries `aria-current`, is
   drawn active while it has one, and hands its click to the caller, while a
   plain link, an external address, is neither and has no click of its own

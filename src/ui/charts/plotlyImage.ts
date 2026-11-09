@@ -10,7 +10,7 @@
  * tickets 06 and 07): an upgrade measures them again.
  */
 import type { PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import type { LegendItem } from "$lib/core/charts/chartSpec";
 import { imageFormat, type ImageDescription, type ImageFormat } from "$lib/core/image";
 import { sideMarginsOf, toPlotlyAnnotation, TRANSPARENT, toPlotlyAxis, toPlotlyData, toPlotlyYAxis } from "./plotlyFigure";
@@ -66,7 +66,7 @@ const LINE_HEIGHT = LETTERING.size * PLOTLY_LINE_SPACING;
 const LEGEND_MAX_HEIGHT = 100_000;
 const LEGEND_LINE_WIDTH = 2;
 const LEGEND_MARKER_SIZE = 8;
-/** The file's ground, where the page shows the chart over its own. */
+/** The file's background, where the page shows the chart over its own. */
 const PAPER = "#ffffff";
 
 /**
@@ -124,7 +124,7 @@ function figureOf(image: ImageDescription, legendHeight: number) {
     margin: { ...sides, t: plotTop, b: height - plotTop - plotHeight, pad: 0, autoexpand: false },
     font: LETTERING,
     paper_bgcolor: PAPER,
-    plot_bgcolor: chartInk.ground,
+    plot_bgcolor: chartColors.plotBackground,
     hovermode: false,
     showlegend: true,
     legend: {

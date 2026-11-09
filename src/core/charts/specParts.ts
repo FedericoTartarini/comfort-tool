@@ -5,7 +5,7 @@
  * psychrometric, the dynamic and the adaptive chart draw them alike; the scan
  * is `scan.ts`'s and its paint `fieldPaint.ts`'s.
  */
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import type { SlotAppearance } from "$lib/core/slotAppearance";
@@ -43,11 +43,11 @@ export interface ZoneInk {
  */
 export function zoneInkFor(charted: ChartedSlot, zoneLabel: string, level: number, levels: number): ZoneInk {
   const label = labelFor(charted, zoneLabel);
-  const fill = chartInk.zoneFill(charted.hue, level, levels);
+  const fill = chartColors.zoneFill(charted.hue, level, levels);
   return {
     fill,
-    line: chartInk.zoneLine(charted.hue),
-    lineWidth: chartInk.zoneLineWidth,
+    line: chartColors.zoneLine(charted.hue),
+    lineWidth: chartColors.zoneLineWidth,
     legendItem: { label, swatch: "fill", color: fill },
   };
 }
@@ -62,7 +62,7 @@ export function markerFor(
   x: number,
   y: number,
 ): { readonly trace: PointTrace; readonly legendItem: LegendItem } {
-  const color = chartInk.marker(appearance.hue);
+  const color = chartColors.marker(appearance.hue);
   const label = appearance.label ?? copy.unnamedMarker;
   return {
     trace: { kind: "point", x, y, color, hover: "off", label },

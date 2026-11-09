@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, type BandList } from "$lib/core/bands";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { outputNumber, runOn } from "$lib/core/modelRun";
@@ -105,9 +105,9 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
   return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && Boolean(trace.label?.startsWith(q.rh.label)));
 }
 
-/** The cover above the saturation line: the path filled in the plot's ground. */
+/** The cover above the saturation line: the path filled in the plot background. */
 function coverOf(spec: ChartSpec): PathTrace {
-  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartInk.ground);
+  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartColors.plotBackground);
   if (!trace) {
     throw new Error("spec has no cover");
   }
@@ -142,13 +142,13 @@ describe("the psychrometric chart given a Band list", () => {
 
   it("paints one fill per band of the list, holding the points from its lower Edge up to the last, and no Comfort zone", () => {
     expectFills(spec, isoBands, contiguous(isoBands), trace.values);
-    expect(zoneLinesOf(spec).map((line) => line.color)).not.toContain(chartInk.zoneLine(palette.slots[0]));
+    expect(zoneLinesOf(spec).map((line) => line.color)).not.toContain(chartColors.zoneLine(palette.slots[0]));
     expect(fillsOf(spec).map((fill) => fill.fill)).toEqual(isoBands.colors);
   });
 
   it("strokes every band's own upper Edge once, in the band line at 1 px, read by nothing, where the number crosses it", () => {
     expect(linesOf(spec).map(({ label, color, width, hover }) => ({ label, color, width, hover }))).toEqual(
-      isoBands.labels.map((label) => ({ label, color: chartInk.bandLine, width: chartInk.bandLineWidth, hover: "off" })),
+      isoBands.labels.map((label) => ({ label, color: chartColors.bandLine, width: chartColors.bandLineWidth, hover: "off" })),
     );
     expectEdgesCrossed(spec, isoBands, trace.values);
   });
@@ -169,7 +169,7 @@ describe("the psychrometric chart given a Band list", () => {
       const isolines = isolinesOf(drawn);
       const saturationLine = isolines[isolines.length - 1];
       const markers = drawn.traces.filter((trace) => trace.kind === "point");
-      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartInk.isoline), chartInk.saturationLine]);
+      expect(isolines.map((isoline) => isoline.color)).toEqual([...Array(9).fill(chartColors.isoline), chartColors.saturationLine]);
       expect(linesOf(drawn)).toHaveLength(isoBands.edges.length);
       expect(markers).toHaveLength(count);
       expect(drawn.traces).toEqual([
@@ -184,14 +184,14 @@ describe("the psychrometric chart given a Band list", () => {
     },
   );
 
-  it("covers the chart above the saturation line in the ground colour, read by nothing and named nowhere", () => {
+  it("covers the chart above the saturation line in the plot background, read by nothing and named nowhere", () => {
     const trace = coverOf(spec);
     const cover = onlyPieceOf(trace);
     const [xMin, xMax] = spec.layout.x.range;
     const top = spec.layout.y.range[1];
-    expect(trace).toMatchObject({ fill: chartInk.ground, color: chartInk.ground, hover: "off" });
+    expect(trace).toMatchObject({ fill: chartColors.plotBackground, color: chartColors.plotBackground, hover: "off" });
     expect(trace.label).toBeUndefined();
-    expect(spec.legend.map((item) => item.color)).not.toContain(chartInk.ground);
+    expect(spec.legend.map((item) => item.color)).not.toContain(chartColors.plotBackground);
     // Along the saturation line from the lowest temperature to the right edge,
     // every point on it: at 30 °C saturated air holds less than the top's 30 g/kg.
     const along = cover.x.length - 2;
@@ -237,9 +237,9 @@ describe("the psychrometric chart given a Band list", () => {
 
   it("carries one legend: humidity, every band, then the slot", () => {
     expect(spec.legend).toEqual([
-      { label: q.rh.label, swatch: "line", color: chartInk.isoline },
+      { label: q.rh.label, swatch: "line", color: chartColors.isoline },
       ...isoBands.labels.map((label, index) => ({ label, swatch: "fill", color: isoBands.colors[index] })),
-      { label: "Input", swatch: "marker", color: chartInk.marker(palette.slots[0]) },
+      { label: "Input", swatch: "marker", color: chartColors.marker(palette.slots[0]) },
     ]);
   });
 
@@ -351,7 +351,7 @@ describe("the psychrometric chart given a Band list", () => {
     const zones = zoneFillsOf(drawn);
     expect(zones.map((zone) => zone.label)).toEqual(zoneLabels);
     expect(zoneLinesOf(drawn).map((line) => line.label)).toEqual(zoneLabels);
-    expect(zoneLinesOf(drawn).map((line) => line.color)).not.toContain(chartInk.bandLine);
+    expect(zoneLinesOf(drawn).map((line) => line.color)).not.toContain(chartColors.bandLine);
     expect(linesOf(drawn)).toEqual([]);
     // Over the same scan: every grid point the zone holds has the scan's own number within the zone's limit.
     const [outermost] = zones;

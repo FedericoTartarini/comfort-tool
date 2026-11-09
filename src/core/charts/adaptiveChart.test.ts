@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, adaptive_ashrae, operative_tmp } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { inputsReader } from "$lib/core/libraryInputs";
@@ -366,7 +366,7 @@ describe("Adaptive's acceptability zones", () => {
   it("strokes the four limit lines in the psychrometric chart's zone line", () => {
     const line = { color: psychrometricLines[0]?.color, width: psychrometricLines[0]?.width };
     expect(lines.map((path) => ({ color: path.color, width: path.width }))).toEqual([line, line, line, line]);
-    expect(line.width).toBe(chartInk.zoneLineWidth);
+    expect(line.width).toBe(chartColors.zoneLineWidth);
   });
 
   it("gives each zone a legend swatch in its own fill, then the slot", () => {

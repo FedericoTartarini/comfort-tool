@@ -14,7 +14,7 @@ import type { SlotPosition } from "./writtenSession";
 /**
  * The one hex a slot is drawn in, the palette's for its position (ADR-0002
  * decision 66, rule 2). Its marker, its zones' outline and their fill are
- * derived from it by the chart ink (`chartInk` in `core/bandPalette.ts`).
+ * derived from it by the chart colours (`chartColors` in `core/bandPalette.ts`).
  */
 export type SlotHue = (typeof palette.slots)[number];
 

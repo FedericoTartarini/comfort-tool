@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { bandListOf, type BandList } from "$lib/core/bands";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import type { ChartSpec, PathPiece, PointTrace, Trace } from "$lib/core/charts/chartSpec";
 import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { traceRegion } from "$lib/core/charts/regionTracer";
@@ -34,7 +34,7 @@ const humidityRatioUnit = displayUnitFor(q.hr, unitSystem.si);
 /** The positions of the slots whose markers `chart` draws, in slot order. */
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   const markers = (chart?.traces ?? []).filter((trace): trace is PointTrace => trace.kind === "point");
-  return slotPositions.filter((position) => markers.some((marker) => marker.color === chartInk.marker(palette.slots[position])));
+  return slotPositions.filter((position) => markers.some((marker) => marker.color === chartColors.marker(palette.slots[position])));
 }
 
 /** A Band's fills among `traces`, in drawing order. */
@@ -81,13 +81,13 @@ function psychrometricLayersOf(traces: readonly Trace[]): string[] {
     if (trace.kind !== "path") {
       return trace.kind;
     }
-    if (trace.fill === chartInk.ground) {
+    if (trace.fill === chartColors.plotBackground) {
       return "cover";
     }
     if (!trace.label?.startsWith(q.rh.label)) {
       return trace.fill === undefined ? "line" : "fill";
     }
-    return trace.color === chartInk.saturationLine ? "saturationLine" : "isoline";
+    return trace.color === chartColors.saturationLine ? "saturationLine" : "isoline";
   };
   return traces.map(layerOf).filter((layer, index, layers) => layer !== layers[index - 1]);
 }
@@ -205,7 +205,7 @@ describe("The page in the session", () => {
       session.chart.type = chartType.psychrometric;
       const computation = new Computation(session);
       const zones = () => zoneLinesOf({ traces: computation.chart?.traces ?? [] });
-      const covers = () => (computation.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
+      const covers = () => (computation.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartColors.plotBackground);
       expect(zones()).toHaveLength(12);
       expect(covers()).toHaveLength(1);
       openAt(session, page.explore);

@@ -9,7 +9,7 @@
   `mode-watcher`, which wrote two entries to `localStorage` in Chromium, where
   the tool writes none. Both the user's choices,
   `.scratch/input-gate/issues/01-…md` Comments. Kept from the generated part:
-  the toast's ground, text and edge in the popover's and the border's tokens.
+  the toast's background, text and edge in the popover's and the border's tokens.
   Its radius is the one radius, where Sonner's is 8 px (decision 87, rule 10).
   The theme is the light, the app's one (ADR-0001 §1).
 -->

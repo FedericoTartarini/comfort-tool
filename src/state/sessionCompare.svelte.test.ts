@@ -10,7 +10,7 @@
  * alone gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { customEnsemble, shownRow } from "$lib/core/calculators";
 import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
@@ -366,7 +366,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
   return (chart?.traces ?? [])
     .filter(
       (trace): trace is PathTrace =>
-        trace.kind === "path" && trace.fill === undefined && trace.color === chartInk.zoneLine(palette.slots[position]),
+        trace.kind === "path" && trace.fill === undefined && trace.color === chartColors.zoneLine(palette.slots[position]),
     )
     .map((zone) => ({ pieces: zone.pieces }));
 }
@@ -374,7 +374,7 @@ function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
 /** Where slot `position`'s marker is on `chart`, or `undefined` for none. */
 function markerAt(chart: ChartSpec | null, position: SlotPosition) {
   const marker = chart?.traces.find(
-    (trace): trace is PointTrace => trace.kind === "point" && trace.color === chartInk.marker(palette.slots[position]),
+    (trace): trace is PointTrace => trace.kind === "point" && trace.color === chartColors.marker(palette.slots[position]),
   );
   return marker && { x: marker.x, y: marker.y };
 }

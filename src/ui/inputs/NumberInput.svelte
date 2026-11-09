@@ -232,7 +232,7 @@
   });
 </script>
 
-<!-- The group draws the border, and the alert colour while the box inside it is invalid. -->
+<!-- The group draws the border, and the destructive colour while the box inside it is invalid. -->
 <InputGroup.Root>
   <InputGroup.Input bind:ref={box} {...boxAttributes} aria-invalid={invalid || draftOutOfRange || undefined} />
   <InputGroup.Addon align="inline-end" class="box-end">

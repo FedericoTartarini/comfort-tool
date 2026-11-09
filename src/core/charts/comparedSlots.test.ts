@@ -6,7 +6,7 @@
  * gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
@@ -48,11 +48,11 @@ import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 
-/** The relative-humidity curves: the paths in the isolines' and the saturation line's ink. */
+/** The relative-humidity curves: the paths in the isolines' and the saturation line's colours. */
 function isolinesOf(spec: ChartSpec): PathTrace[] {
   return spec.traces.filter(
     (trace): trace is PathTrace =>
-      trace.kind === "path" && (trace.color === chartInk.isoline || trace.color === chartInk.saturationLine),
+      trace.kind === "path" && (trace.color === chartColors.isoline || trace.color === chartColors.saturationLine),
   );
 }
 
@@ -159,7 +159,7 @@ const drawings: readonly Drawing[] = [
 
 /** The legend's zone items: every item but the markers' and the relative-humidity curves'. */
 function zoneLegendOf(spec: ChartSpec) {
-  return spec.legend.filter((item) => item.swatch !== "marker" && item.color !== chartInk.isoline);
+  return spec.legend.filter((item) => item.swatch !== "marker" && item.color !== chartColors.isoline);
 }
 
 /** The slots' readout lines in every cell of `spec`'s hover grid, past the two axis lines each cell starts with. */
@@ -191,12 +191,12 @@ function expectNestedFills(spec: ChartSpec, count: number, zonesPerSlot: number)
     const alphas = zonesOfSlot.map((zone) => alphaOf(fillColorOf(zone)));
     expect(alphas).toEqual([...alphas].sort((a, b) => a - b));
     expect(new Set(alphas).size).toBe(zonesPerSlot);
-    expect(zonesOfSlot.map(fillColorOf)).toEqual(zonesOfSlot.map((_, level) => chartInk.zoneFill(hue, level, zonesPerSlot)));
+    expect(zonesOfSlot.map(fillColorOf)).toEqual(zonesOfSlot.map((_, level) => chartColors.zoneFill(hue, level, zonesPerSlot)));
     const outlinesPerSlot = outlinesOf(spec).length / count;
     const outlinesOfSlot = outlinesOf(spec).slice(position * outlinesPerSlot, (position + 1) * outlinesPerSlot);
     expect(outlinesOfSlot.length).toBeGreaterThanOrEqual(zonesPerSlot);
     expect(outlinesOfSlot.map((outline) => ({ color: outline.color, width: outline.width }))).toEqual(
-      outlinesOfSlot.map(() => ({ color: chartInk.zoneLine(hue), width: chartInk.zoneLineWidth })),
+      outlinesOfSlot.map(() => ({ color: chartColors.zoneLine(hue), width: chartColors.zoneLineWidth })),
     );
   });
   expect(zoneLegendOf(spec)).toEqual(zones.map((zone) => ({ label: zone.label, swatch: "fill", color: fillColorOf(zone) })));
@@ -214,7 +214,7 @@ describe.each(drawings)("$name, drawn of one slot while the slots are not named"
 
   it("draws its marker filled in its hue, Input in the legend", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual([
-      { label: "Input", color: chartInk.marker(palette.slots[0]) },
+      { label: "Input", color: chartColors.marker(palette.slots[0]) },
     ]);
     expect(markerItemsOf(spec)).toEqual(["Input"]);
   });
@@ -247,7 +247,7 @@ describe.each(drawings)("$name, drawn of two slots", ({ slots, draw, zonesPerSlo
   });
 
   it("draws two markers filled, each in its slot's hue", () => {
-    expect(markersOf(spec).map((marker) => marker.color)).toEqual(palette.slots.slice(0, 2).map(chartInk.marker));
+    expect(markersOf(spec).map((marker) => marker.color)).toEqual(palette.slots.slice(0, 2).map(chartColors.marker));
   });
 });
 
@@ -257,7 +257,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
 
   it("draws three markers and fills each slot's zones as one slot's, each named and coloured by its slot", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual(
-      slotLabels.map((label, position) => ({ label, color: chartInk.marker(palette.slots[position]) })),
+      slotLabels.map((label, position) => ({ label, color: chartColors.marker(palette.slots[position]) })),
     );
     expectNestedFills(spec, 3, zonesPerSlot);
     expect(outlinesOf(spec).every((outline) => slotLabels.some((slotLabel) => outline.label?.startsWith(slotLabel)))).toBe(true);
@@ -297,7 +297,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
       zoneLegendOf(drawAlone(slot)).map((item, level) => ({
         label: copy.withSlotLabel(slotLabels[position], item.label),
         swatch: "fill",
-        color: chartInk.zoneFill(palette.slots[position], level, zonesPerSlot),
+        color: chartColors.zoneFill(palette.slots[position], level, zonesPerSlot),
       })),
     );
     expect(zoneLegendOf(spec)).toEqual(expected);

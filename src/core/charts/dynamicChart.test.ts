@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import { inputsReader } from "$lib/core/libraryInputs";
 import {
@@ -172,9 +172,9 @@ describe("the scanned dynamic chart of one slot", () => {
     const fills = zoneFillsOf(spec);
     const lines = zoneLinesOf(spec);
     expect(spec.traces.slice(0, 2 * zones.length)).toEqual([...fills, ...lines]);
-    expect(fills.map((fill) => [fill.color, fill.fill])).toEqual(zones.map((_, level) => Array(2).fill(chartInk.zoneFill(hue, level, zones.length))));
+    expect(fills.map((fill) => [fill.color, fill.fill])).toEqual(zones.map((_, level) => Array(2).fill(chartColors.zoneFill(hue, level, zones.length))));
     expect(lines.map((line) => [line.label, line.color, line.width, line.fill])).toEqual(
-      zones.map((zone) => [copy.zoneLegend(zone), chartInk.zoneLine(hue), chartInk.zoneLineWidth, undefined]),
+      zones.map((zone) => [copy.zoneLegend(zone), chartColors.zoneLine(hue), chartColors.zoneLineWidth, undefined]),
     );
     lines.forEach((line, index) => {
       expect(line.pieces.length).toBeGreaterThan(0);

@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
+import { chartColors } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, optionsOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
@@ -366,7 +366,7 @@ describe("the note of a slot whose Comfort zones are all empty", () => {
 
   it("under Compare stands for the empty slot alone, named and with its swatch", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdAshrae, [ashraeSlot(false), ashraeSlot(false, { v: 0.9 })]));
-    expect(spec.notes).toEqual([{ text: copy.slotNote(copy.slotLabel(1), copy.noComfortZone), color: chartInk.marker(palette.slots[1]) }]);
+    expect(spec.notes).toEqual([{ text: copy.slotNote(copy.slotLabel(1), copy.noComfortZone), color: chartColors.marker(palette.slots[1]) }]);
   });
 
   it("stands on the dynamic chart alike where its zone empties", () => {

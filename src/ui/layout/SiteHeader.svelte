@@ -3,7 +3,7 @@
   block's `site-header.svelte` (`npx shadcn-svelte add sidebar-16`, CLI 1.6.0,
   Nova), changed for the tool. Kept: the header, its one row at
   `--header-height`, a toggle of the sidebar first, the vertical `Separator`.
-  Changed: a band of the brand, its text in the paper's white, with no rule
+  Changed: a band of the brand, its text in the background's white, with no rule
   under it and not sticky, so it scrolls away with the page; the row's inset
   and gap are the page's spacing token; the toggle stands at every width
   (decision 87, rule 1): the generated button, ghost at its small icon size
@@ -23,8 +23,8 @@
   Tools group (decision 87, rule 2), a link to another site that opens a new
   tab (decision 89, rule 2); the row stands in the page's frame,
   `--frame-width`, which `PageFrame` sets beside the sidebar's width, the
-  band's ground the window's width (rule 10 as revised again 2026-10-12).
-  The band's own links and the toggle ring in the paper's white on focus,
+  band's background the window's width (rule 10 as revised again 2026-10-12).
+  The band's own links and the toggle ring in the background's white on focus,
   where the brand's ring would not show.
 -->
 <script lang="ts">
