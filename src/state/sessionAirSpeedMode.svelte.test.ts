@@ -98,7 +98,7 @@ describe("the session's air-speed entry mode", () => {
     const before = outputsOfEachSlot(computation);
     expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
-    // A third round trip as the first: the number does not ratchet up by the activity's share.
+    // A third round trip as the first: the number does not ratchet up by the activity's part.
     for (const roundTrip of [1, 2, 3]) {
       session.setAirSpeedMode(airSpeedMode.relativeAirSpeed);
       expect(outputsOfEachSlot(computation), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
@@ -132,7 +132,7 @@ describe("the session's air-speed entry mode", () => {
     expect(session.slots[0].values.get(q.v)).toBe(restored);
   });
 
-  describe("a relative air speed below the activity's share, switched back", () => {
+  describe("a relative air speed below the activity's part, switched back", () => {
     /** Story 2's stationary equipment: 0.1 m/s at 2 met, which no air speed gives. */
     function switchedBack(model = pmvPpdIso): Session {
       const session = new Session(model);

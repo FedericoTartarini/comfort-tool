@@ -406,7 +406,7 @@ describe("withAirSpeedMode", () => {
   // The expected air speed is whatever `v_relative` turns back into the entry:
   // the inverse is pinned against the library's function, not against 0.3.
   it.each([
-    { name: "above 1 met takes the activity's share off", vr: 0.7, met: 2, v: 0.4 },
+    { name: "above 1 met takes the activity's part off", vr: 0.7, met: 2, v: 0.4 },
     { name: "at exactly 1 met keeps the number", vr: 0.7, met: 1, v: 0.7 },
     { name: "below 1 met keeps the number", vr: 0.7, met: 0.8, v: 0.7 },
   ])("inverts the correction going back: $name", ({ vr, met, v }) => {
@@ -418,7 +418,7 @@ describe("withAirSpeedMode", () => {
     expect(converted.values.has(q.vr)).toBe(false);
   });
 
-  it("gives a negative air speed back for a relative air speed below the activity's share", () => {
+  it("gives a negative air speed back for a relative air speed below the activity's part", () => {
     const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.airSpeed);
     expect(converted.values.get(q.v)).toBe(-0.2);
     expect(relativeAirSpeedOf(converted)).toBe(0.1);
@@ -429,7 +429,7 @@ describe("withAirSpeedMode", () => {
     return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.relativeAirSpeed), airSpeedMode.airSpeed);
   }
 
-  // `v_relative` rounds the activity's share to 0.001, so taking 0.3·(met − 1)
+  // `v_relative` rounds the activity's part to 0.001, so taking 0.3·(met − 1)
   // off still air's relative air speed leaves up to 0.0005 either side of 0
   // (-0.0002 at 1.004 met), and an air speed below 0 is one the gate stops.
   it("gives still air back as exactly 0 at every metabolic rate", () => {
@@ -442,7 +442,7 @@ describe("withAirSpeedMode", () => {
   // The tolerance is the library's: `v_relative` rounds to 0.001 above 1 met,
   // so an air speed cannot come back closer than that, and it need not, since
   // the model is given the relative air speed and that does not move. At
-  // 1.005 met the share, 0.0015, is half way between two steps of 0.001, where
+  // 1.005 met the part, 0.0015, is half way between two steps of 0.001, where
   // an inverse itself rounded to 0.001 would add 0.001 every round trip.
   it.each([
     { v: 0.1234, met: 2 },

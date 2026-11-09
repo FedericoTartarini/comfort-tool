@@ -373,7 +373,7 @@ export class Session {
   /**
    * Enable or disable the slot at `position`. A slot enabled for the first
    * time takes what slot 1 holds now, entry modes and options included, each
-   * value moved by its Slot offset, one share of its axis range per position
+   * value moved by its Slot offset, one part of its axis range per position
    * past slot 1, and is cut to its bounds as an arrival is (ADR-0002 decision
    * 89's revision of rule 8). It raises no toast for the cut, as an entry
    * cut raises none. A slot enabled again holds what it held.

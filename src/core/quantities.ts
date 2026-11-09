@@ -61,7 +61,7 @@ export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
   // Neither the library nor pythermalcomfort bounds `p_atm`; this is the
   // deployed tool's bound, one for every model (ADR-0002 decision 49).
   atmosphericPressure: { min: 30000, max: 110000 },
-  // A share of a whole, 0 to 1 by definition: `SOLAR_GAIN_INFO` bounds no
+  // A part of a whole, 0 to 1 by definition: `SOLAR_GAIN_INFO` bounds no
   // transmittance or view fraction, and bounds the absorptivity inside it.
   fraction: { min: 0, max: 1 },
 };

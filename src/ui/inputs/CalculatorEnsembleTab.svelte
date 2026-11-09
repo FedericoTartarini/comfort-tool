@@ -8,7 +8,7 @@
   is its group's label, a list button at one width in every row, the Presets
   list (`ValueList`) of the group's garments not yet worn, then the worn
   garments as chips, each taken off by one click. Chairs holds one, a chosen
-  chair replacing it. These settings are the one region that scrolls. The
+  chair replacing it. These inputs are the one region that scrolls. The
   dialog's dock and footer follow, handed the sum, which is none while
   nothing is worn; Clear, at the title's right, is drawn last, so the
   keyboard reaches it after Apply and before the dialog's Close.
@@ -110,7 +110,7 @@
   }
 </script>
 
-<div class="calculator-settings">
+<div class="calculator-inputs">
   <Stack gap="4">
     <p class="caption">{calculator.method}</p>
     <Command.Root class="garment-search" filter={scoreByName}>

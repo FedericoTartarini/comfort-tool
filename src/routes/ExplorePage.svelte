@@ -27,14 +27,14 @@
   import { raiseToast } from "$lib/ui/layout/toasts";
   import ResultTable from "$lib/ui/results/ResultTable.svelte";
   import { Separator } from "$lib/ui/primitives/separator";
-  import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
+  import { inAppLinkTo, inAppNavigation } from "./inAppNavigation";
   import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, computation } = getOpenSession();
   const tab = getTabControls();
-  const inApp = inAppSwitch(session);
+  const inApp = inAppNavigation(session);
 
   /** Explore compares slot 1 alone: its column, for the input panel and the input calculators. */
   const columns = $derived<readonly [ComparedSlot]>([{ inputSlot: session.slots[0], computation: computation.slots[0] }]);

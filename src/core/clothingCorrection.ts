@@ -43,7 +43,7 @@ const ashrae55: ClothingCorrection = {
  * insulation. Called at the relative air speed, which is what a slot resolves
  * to in either air-speed entry mode: the library's `clo_dynamic_iso(clo, met,
  * v)` is this function at `v_relative(v, met)`, and passing it a relative air
- * speed would add the activity's share twice.
+ * speed would add the activity's part twice.
  */
 const iso7730: ClothingCorrection = {
   correct: (clo, { met, vr }) => clo_dynamic_iso_vr(clo, met, vr),

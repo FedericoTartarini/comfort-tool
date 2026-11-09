@@ -25,8 +25,8 @@
 	--font-size-heading: 0.875rem;
 	--font-size-body: 0.875rem;
 	--font-size-caption: 0.75rem;
-	--chart-cap: 24rem;
-	--plot-width: calc(var(--chart-cap) * 4 / 3);
+	--plot-cap: 24rem;
+	--plot-width: calc(var(--plot-cap) * 4 / 3);
 
 	--background: #ffffff;
 	--foreground: #0f172a;
@@ -179,7 +179,7 @@
 		flex: none;
 		inline-size: 100%;
 		aspect-ratio: 4 / 3;
-		max-block-size: var(--chart-cap);
+		max-block-size: var(--plot-cap);
 		min-block-size: 0;
 	}
 	/* The chart's one legend, a row above the plot (decision 89, rule 3): its items from the plot's left edge,
@@ -251,16 +251,16 @@
 	.opens-in-new-tab {
 		@apply sr-only;
 	}
-	/* An input calculator's settings in its tab, the one region of the dialog that scrolls (decision 75, rule 6 (b)),
+	/* An input calculator's inputs in its tab, the one region of the dialog that scrolls (decision 75, rule 6 (b)),
 	   padded so focus rings are not clipped. */
-	.calculator-settings {
+	.calculator-inputs {
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
 		margin-inline: -4px;
 		padding: 4px;
 	}
-	/* The dock: a band across the dialog's width, tinted as the footer under it and ruled off from the settings
+	/* The dock: a band across the dialog's width, tinted as the footer under it and ruled off from the inputs
 	   above, so where the choosing ends and what Apply will write begins is drawn, not left to a gap. */
 	.dock {
 		margin: var(--space-page) -1rem 0;
@@ -406,8 +406,8 @@
 	}
 }
 /* The Input calculators dialog (decision 75, rule 6 (b)): centred like every dialog and of one height, so switching a
-   tab moves no control. The title and the tab list stand at the top; under them a tab's settings, the one region that
-   scrolls (`.calculator-settings`); then the dock and the footer, held at the bottom. Every tab is mounted, the
+   tab moves no control. The title and the tab list stand at the top; under them a tab's inputs, the one region that
+   scrolls (`.calculator-inputs`); then the dock and the footer, held at the bottom. Every tab is mounted, the
    inactive ones hidden by the primitive. */
 [data-slot="dialog-content"].dialog-fixed {
 	display: flex;
@@ -428,7 +428,7 @@
 .dock + [data-slot="dialog-footer"] {
 	margin-top: 0;
 }
-/* A tab's action on its settings, Restore defaults or Clear, stands at the title's right, before the close button, which
+/* A tab's action on its inputs, Restore defaults or Clear, stands at the title's right, before the close button, which
    the primitive puts at the corner (`top-2 right-2`, `icon-sm`); it is drawn after the footer, so the keyboard reaches
    it after Apply. */
 .dialog-fixed .dialog-title-action {
@@ -540,8 +540,8 @@
 }
 /* The Input column is as wide as what it holds, the value columns share the rest equally (decision 85, as amended
    2026-10-28). Chromium's auto layout, as measured, gives a table of percentage columns its spare width by their
-   percentages: a 0% column keeps its content's width, equal ones stay equal, and their sum, one share short of the
-   whole, leaves the Input column its room. A badge or a number wider than its share widens its column. The table
+   percentages: a 0% column keeps its content's width, equal ones stay equal, and their sum, one part short of the
+   whole, leaves the Input column its room. A badge or a number wider than its part widens its column. The table
    sets `--value-columns`. */
 .result-table tr > :first-child {
 	width: 0%;

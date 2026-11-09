@@ -32,7 +32,7 @@ import {
   openedOn,
   outOfRangeRowsOf,
   sessionComparingThreeSlots,
-  sharesAtDefaults,
+  slotOffsetAtDefaults,
 } from "./sessionTestReaders";
 import { Tab } from "./tab.svelte";
 
@@ -284,7 +284,7 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
       const session = openSessionOf(tab);
       session.setCompare(true);
 
-      expect(differenceFromSlot1(session, 1)).toEqual(sharesAtDefaults(model, 1));
+      expect(differenceFromSlot1(session, 1)).toEqual(slotOffsetAtDefaults(model, 1));
     },
   );
 });

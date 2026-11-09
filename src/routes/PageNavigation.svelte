@@ -16,7 +16,7 @@
   import { copy } from "$lib/text/copy";
   import NavGroup, { type InAppItem, type NavItem } from "$lib/ui/layout/NavGroup.svelte";
   import * as Sidebar from "$lib/ui/primitives/sidebar";
-  import { inAppLinkTo } from "./inAppSwitch";
+  import { inAppLinkTo } from "./inAppNavigation";
   import { ariaCurrentOf, standardLinks } from "./navigation";
 
   interface Props {

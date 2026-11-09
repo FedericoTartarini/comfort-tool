@@ -87,31 +87,34 @@ export function shownDifferences(...differences: readonly [Quantity, number][]):
 }
 
 /**
- * One share of each value a slot holds at `model`'s defaults, in the separate,
- * air speed and clothing insulation entry modes: one twentieth of the
- * quantity's axis range, written by hand from each model file's axis ranges
- * and, where it declares none, its library applicability bound. Slot 2 first
- * enabled is moved by one share, slot 3 by two (GLOSSARY.md, **Slot offset**).
+ * The Slot offset per position of each value a slot holds at `model`'s
+ * defaults, in the separate, air speed and clothing insulation entry modes:
+ * one twentieth of the quantity's axis range, written by hand from each model
+ * file's axis ranges and, where it declares none, its library applicability
+ * bound. Slot 2 first enabled is moved by it once, slot 3 twice (GLOSSARY.md,
+ * **Slot offset**).
  */
-const oneShareAtDefaults = new Map<ModelDeclaration, readonly [Quantity, number][]>([
+const slotOffsetPerPositionAtDefaults = new Map<ModelDeclaration, readonly [Quantity, number][]>([
   [pmvPpdAshrae, [[q.tdb, 1.5], [q.tr, 1.5], [q.v, 0.1], [q.met, 0.15], [q.clo, 0.11]]],
   [pmvPpdIso, [[q.tdb, 1], [q.tr, 1.5], [q.v, 0.05], [q.met, 0.16], [q.clo, 0.2]]],
   [adaptiveAshrae, [[q.tdb, 1.5], [q.tr, 1.5], [q.t_running_mean, 1.175], [q.v, 0.1]]],
 ]);
 
 /**
- * How far a slot first enabled with `shares` shares stands from slot 1 at
+ * How far the slot at `position`, first enabled, stands from slot 1 at
  * `model`'s defaults, as {@link differenceFromSlot1} is compared against;
  * `except` names the quantities the move leaves where slot 1 has them, as a
  * cut to a bound does.
  */
-export function sharesAtDefaults(model: ModelDeclaration, shares: number, except: readonly Quantity[] = []): Map<Quantity, unknown> {
-  const oneShare = oneShareAtDefaults.get(model);
-  if (!oneShare) {
-    throw new Error(`no share is written for ${model.info.label}`);
+export function slotOffsetAtDefaults(model: ModelDeclaration, position: number, except: readonly Quantity[] = []): Map<Quantity, unknown> {
+  const perPosition = slotOffsetPerPositionAtDefaults.get(model);
+  if (!perPosition) {
+    throw new Error(`no Slot offset is written for ${model.info.label}`);
   }
   return shownDifferences(
-    ...oneShare.flatMap(([quantity, share]): [Quantity, number][] => (except.includes(quantity) ? [] : [[quantity, share * shares]])),
+    ...perPosition.flatMap(([quantity, offsetPerPosition]): [Quantity, number][] =>
+      except.includes(quantity) ? [] : [[quantity, offsetPerPosition * position]],
+    ),
   );
 }
 

@@ -4,7 +4,7 @@ import type { InAppLink } from "$lib/ui/layout/NavGroup.svelte";
 import { addressFromRoute, interceptLinkClick, navigateTo, pathTo } from "./navigation";
 
 /** The app's own ways to an address: a navigation link, the header's mark and the model select follow one, the dialog's yes accepts. */
-export interface InAppSwitch {
+export interface InAppNavigation {
   follow(target: Address): void;
   accept(): void;
 }
@@ -27,19 +27,19 @@ export function inAppLinkTo(target: Address, onfollow: (target: Address) => void
 }
 
 /**
- * Switching from inside the app: the session is asked first and the address
- * is told after, which is the order ADR-0002 decision 32 needs. Navigating
- * first would make the address the thing that switches the model, leaving no
- * moment at which the session could ask about the switch. No effect follows
- * the session with the address, because the handlers that switch can say
- * both things themselves.
+ * Navigation from inside the app: the session is asked first and the address
+ * is told after, which is the order ADR-0002 decision 32 needs. Telling the
+ * address first would make the address the thing that switches the model,
+ * leaving no moment at which the session could ask about the switch. No effect
+ * follows the session with the address, because the handlers that switch can
+ * say both things themselves.
  *
  * The session asks as the page the person is on compares (ADR-0002 decision
  * 57), and the page asked for is held here until the question is answered: a
  * standard's link followed from Explore may ask, and its yes lands on the
  * Standard page.
  */
-export function inAppSwitch(session: Session): InAppSwitch {
+export function inAppNavigation(session: Session): InAppNavigation {
   let targetPage = session.page;
 
   /**

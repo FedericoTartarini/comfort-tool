@@ -4,9 +4,9 @@
   the posture, where it asks one, and each quantity it asks as the panel's
   row, one box, in the session's unit system, held to the calculator's bound
   and marked out of range outside it, the cells in two columns, a row's boxes
-  level. These settings are the one region that scrolls. The dialog's dock and
+  level. These inputs are the one region that scrolls. The dialog's dock and
   footer follow, handed the outputs, none while a box is out of range.
-  Restore defaults, at the title's right, is enabled once the settings differ
+  Restore defaults, at the title's right, is enabled once the inputs differ
   from where they start; it is drawn last, so the keyboard reaches it after
   Apply and before the dialog's Close.
 -->
@@ -25,7 +25,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { calculatorBound, outOfRangeCalculatorInputs } from "$lib/core/applicability";
-  import { defaultInputs, type CalculatorOutputs, type PostureOption } from "$lib/core/calculators";
+  import { defaultInputs, type CalculatorOutputs, type PostureChoice } from "$lib/core/calculators";
   import type { Quantity } from "$lib/core/quantities";
   import { requireValue } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -64,12 +64,12 @@
     keptInputs.set(calculator, { ...inputs, values: new Map([...inputs.values, [quantity, si]]) });
   }
 
-  function setPosture(posture: PostureOption["value"]) {
+  function setPosture(posture: PostureChoice["value"]) {
     keptInputs.set(calculator, { ...inputs, posture });
   }
 </script>
 
-<div class="calculator-settings">
+<div class="calculator-inputs">
   <Stack gap="4">
     <p class="caption">{calculator.method}</p>
     <!-- Every cell ends with its box and a caption line, so a row's boxes stand level under labels of one or two lines. -->
@@ -102,7 +102,7 @@
 </Button>
 
 <!-- The posture chosen by its position among the library's postures, in the Model row's select, a column wide. -->
-{#snippet postureSelect(postures: readonly PostureOption[])}
+{#snippet postureSelect(postures: readonly PostureChoice[])}
   {@const chosen = postures.find((posture) => posture.value === inputs.posture) ?? postures[0]}
   <Field.Field>
     <Field.Label for="{id}-posture">{copy.posture}</Field.Label>

@@ -181,10 +181,10 @@ test.describe("the dialog", () => {
     expect(await placesOnEveryTab(dialog)).toEqual([first, first, first]);
   });
 
-  test("reaches the tab list, the settings, Apply, Restore defaults and Close by the keyboard in that order", async ({ page }) => {
+  test("reaches the tab list, the inputs, Apply, Restore defaults and Close by the keyboard in that order", async ({ page }) => {
     await open(page);
     let dialog = await openDialog(page, CLOTHING);
-    // Restore defaults is enabled, and so reached, once a setting differs from its default.
+    // Restore defaults is enabled, and so reached, once an input differs from its default.
     await dialog.getByRole("spinbutton", { name: OUTDOOR_TEMPERATURE }).fill("10");
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
@@ -529,8 +529,8 @@ test.describe("Custom ensemble", () => {
     for (const { group, garments } of CLO_INDIVIDUAL_GARMENT_GROUPS) {
       await wearFromRow(page, panel, group, garments[0]);
     }
-    const settings = panel.locator(".calculator-settings");
-    expect(await settings.evaluate((region) => region.scrollHeight - region.clientHeight)).toBeLessThanOrEqual(0);
+    const inputs = panel.locator(".calculator-inputs");
+    expect(await inputs.evaluate((region) => region.scrollHeight - region.clientHeight)).toBeLessThanOrEqual(0);
   });
 
   test("keeps what is worn across models, and a reload starts it empty", async ({ page }) => {
@@ -666,7 +666,7 @@ test.describe("Apply to, under Compare", () => {
     await expect(panel.getByRole("button", { name: "Apply" })).toBeEnabled();
   });
 
-  test("is reached by the keyboard after the settings and before Apply", async ({ page }) => {
+  test("is reached by the keyboard after the inputs and before Apply", async ({ page }) => {
     await open(page);
     await page.getByRole("switch", { name: "Compare", exact: true }).click();
     const dialog = await openDialog(page, CLOTHING);

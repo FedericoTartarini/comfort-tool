@@ -4,7 +4,7 @@
   card's foot, "Input calculators" over the labels of the calculators the
   model's panel offers; there is none where it offers none. It opens one
   dialog of one width and one fixed height, a tab per calculator in the
-  panel's row order: the tab's settings, the one region that scrolls; the
+  panel's row order: the tab's inputs, the one region that scrolls; the
   dock, the outputs and, for each slot Apply writes, that slot's row
   before and after, cut to the row's bound with the bound beside it; and the
   footer with Apply, which commits each row as a typed value is committed,
@@ -124,7 +124,7 @@
       </Dialog.Header>
       <!--
         Every tab stays mounted, the inactive ones hidden, so a tab keeps its
-        scroll and the ensemble its search across a switch; its settings are
+        scroll and the ensemble its search across a switch; its inputs are
         kept by the tab's module. A tab's value is its calculator's position.
       -->
       <Tabs.Root bind:value={() => String(calculators.indexOf(current)), (value) => (lastUsed = calculators[Number(value)])}>
@@ -135,7 +135,7 @@
         </Tabs.List>
         {#each calculators as calculator, index (calculator)}
           <!--
-            The dock and the footer, drawn by the tab after its settings, which hands in its outputs and its lines.
+            The dock and the footer, drawn by the tab after its inputs, which hands in its outputs and its lines.
             The dock has a line per target, the row that slot shows in its own entry mode, named by the slot while
             the slots are named. The footer is drawn once per tab, every tab mounted, so its ids carry the tab's.
           -->

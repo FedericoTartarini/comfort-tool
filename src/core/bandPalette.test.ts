@@ -110,14 +110,14 @@ describe("bandColors", () => {
 });
 
 describe("colorForBand", () => {
-  it("colours a category as the table colours its band", () => {
+  it("colours a label as the table colours its band", () => {
     expect(colorForBand(isoSensation, "Cold")).toBe(rdBu7[0]);
     expect(colorForBand(isoSensation, "Neutral")).toBe(rdBu7[3]);
     expect(colorForBand(isoSensation, "Hot")).toBe(rdBu7[6]);
     expect(colorForBand(isoCategory, "II")).toBe("#feb24c");
   });
 
-  it("returns nothing for \"none\" and for a category past the last Edge or not named", () => {
+  it("returns nothing for \"none\" and for a label past the last Edge or not named", () => {
     expect(colorForBand(isoCategory, "none")).toBeUndefined();
     expect(colorForBand(isoCategory, Number.NaN)).toBeUndefined();
     expect(colorForBand(isoSensation, "Freezing")).toBeUndefined();

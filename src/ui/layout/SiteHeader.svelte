@@ -13,7 +13,7 @@
   desktop it collapses and reopens the sidebar's column, which `PageFrame`
   holds, and below `md` it opens and closes the primitive's sheet; the CBE
   mark follows it, a link to the default model's address
-  that the page follows as an in-app switch (rule 5 as revised again
+  that the page follows as in-app navigation (rule 5 as revised again
   2026-10-12), handed in as the navigation's items are; the separator stands
   after the mark, not the toggle, `h-6` in the band's white at 30 %; the
   breadcrumb is the title, the `h1`, which on a phone wraps to two lines; the

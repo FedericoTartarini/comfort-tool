@@ -38,8 +38,8 @@ import {
   outOfRangeQuantitiesAt,
   sessionComparingThreeSlots,
   shapeOf,
-  sharesAtDefaults,
   shownDifferences,
+  slotOffsetAtDefaults,
   withBounds,
 } from "./sessionTestReaders";
 
@@ -153,43 +153,44 @@ describe("Compare in the session", () => {
 
     session.setSlotEnabled(2, true);
 
-    // 27 °C moved by two shares of the 10–30 °C axis.
+    // 27 °C moved by the Slot offset of two positions, a twentieth of the 10–30 °C axis each.
     expect(heldSlot(session, 2).values.get(q.tdb)).toBeCloseTo(29, 9);
     expect(heldSlot(session, 1).values.get(q.tdb)).not.toBe(28);
   });
 });
 
-// A slot first enabled starts from slot 1's values, each moved up by a share
-// of its quantity's axis range: one share for slot 2, two for slot 3
-// (GLOSSARY.md, **Slot offset**; ADR-0002 decision 89's revision of rule 8).
-// The shares are written by hand from each model file's axis ranges.
+// A slot first enabled starts from slot 1's values, each moved up by a part
+// of its quantity's axis range per position past slot 1: one position for
+// slot 2, two for slot 3 (GLOSSARY.md, **Slot offset**; ADR-0002 decision
+// 89's revision of rule 8). The offsets per position are written by hand from
+// each model file's axis ranges.
 describe("the Slot offsets of a slot first enabled", () => {
   for (const model of [pmvPpdAshrae, pmvPpdIso, adaptiveAshrae]) {
-    it(`give slot 2, at the first switch-on, slot 1's values each moved by one share, the humidity, options and entry modes unchanged, on ${model.info.label}`, () => {
+    it(`give slot 2, at the first switch-on, slot 1's values each moved by the Slot offset of one position, the humidity, options and entry modes unchanged, on ${model.info.label}`, () => {
       const session = new Session(model);
 
       session.setCompare(true);
 
-      expect(differenceFromSlot1(session, 1)).toEqual(sharesAtDefaults(model, 1));
+      expect(differenceFromSlot1(session, 1)).toEqual(slotOffsetAtDefaults(model, 1));
     });
 
-    it(`give slot 3, enabled first, two shares, on ${model.info.label}`, () => {
+    it(`give slot 3, enabled first, the Slot offset of two positions, on ${model.info.label}`, () => {
       const session = new Session(model);
 
       session.setSlotEnabled(2, true);
 
       expect(session.slots[1]).toBeNull();
-      expect(differenceFromSlot1(session, 2)).toEqual(sharesAtDefaults(model, 2));
+      expect(differenceFromSlot1(session, 2)).toEqual(slotOffsetAtDefaults(model, 2));
     });
 
-    it(`give slot 3 two shares whatever slot 2 holds, on ${model.info.label}`, () => {
+    it(`give slot 3 the Slot offset of two positions whatever slot 2 holds, on ${model.info.label}`, () => {
       const session = new Session(model);
       session.setCompare(true);
       heldSlot(session, 1).setEntered(q.tdb, 12);
 
       session.setSlotEnabled(2, true);
 
-      expect(differenceFromSlot1(session, 2)).toEqual(sharesAtDefaults(model, 2));
+      expect(differenceFromSlot1(session, 2)).toEqual(slotOffsetAtDefaults(model, 2));
     });
 
     it(`add nothing to a slot disabled and enabled again, which holds what it held, on ${model.info.label}`, () => {
@@ -205,22 +206,22 @@ describe("the Slot offsets of a slot first enabled", () => {
     });
   }
 
-  // One share of each mode's quantity, from the model file's axis range for it.
+  // The Slot offset per position of each mode's quantity, from the model file's axis range for it.
   it.each([
-    { model: pmvPpdAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1.5 },
-    { model: pmvPpdIso, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1 },
-    { model: adaptiveAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, share: 1.5 },
-    { model: pmvPpdAshrae, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, share: 0.11 },
-    { model: pmvPpdIso, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, share: 0.2 },
-    { model: pmvPpdAshrae, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, share: 0.1 },
-    { model: pmvPpdIso, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, share: 0.05 },
-  ])("move the $mode entry mode's quantity of slot 3 by two shares, on $model.info.label", ({ model, set, quantity, share }) => {
+    { model: pmvPpdAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, perPosition: 1.5 },
+    { model: pmvPpdIso, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, perPosition: 1 },
+    { model: adaptiveAshrae, mode: "operative", set: (session: Session) => session.setTemperatureMode(temperatureMode.operative), quantity: q.operative_tmp, perPosition: 1.5 },
+    { model: pmvPpdAshrae, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, perPosition: 0.11 },
+    { model: pmvPpdIso, mode: "dynamic clothing", set: (session: Session) => session.setClothingMode(clothingMode.dynamicClothingInsulation), quantity: q.clo_dynamic, perPosition: 0.2 },
+    { model: pmvPpdAshrae, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, perPosition: 0.1 },
+    { model: pmvPpdIso, mode: "relative air speed", set: (session: Session) => session.setAirSpeedMode(airSpeedMode.relativeAirSpeed), quantity: q.vr, perPosition: 0.05 },
+  ])("move the $mode entry mode's quantity of slot 3 by the Slot offset of two positions, on $model.info.label", ({ model, set, quantity, perPosition }) => {
     const session = new Session(model);
     set(session);
 
     session.setSlotEnabled(2, true);
 
-    expect(differenceFromSlot1(session, 2).get(quantity)).toBeCloseTo(2 * share, 2);
+    expect(differenceFromSlot1(session, 2).get(quantity)).toBeCloseTo(2 * perPosition, 2);
   });
 
   // That the cut raises no toast is the browser's to show: nothing is raised
@@ -237,7 +238,7 @@ describe("the Slot offsets of a slot first enabled", () => {
       session.setSlotEnabled(2, true);
 
       expect(heldSlot(session, 2).values.get(q.met)).toBe(max);
-      expect(differenceFromSlot1(session, 2)).toEqual(sharesAtDefaults(model, 2, [q.met]));
+      expect(differenceFromSlot1(session, 2)).toEqual(slotOffsetAtDefaults(model, 2, [q.met]));
     });
 
     // A humidity entry's bound is relative humidity's converted at the dry
@@ -250,7 +251,7 @@ describe("the Slot offsets of a slot first enabled", () => {
       session.setSlotEnabled(2, true);
 
       expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-      expect(differenceFromSlot1(session, 2)).toEqual(sharesAtDefaults(model, 2));
+      expect(differenceFromSlot1(session, 2)).toEqual(slotOffsetAtDefaults(model, 2));
     });
 
     it(`add nothing at a model switch with Compare on: each slot keeps its own values, on ${model.info.label}`, () => {

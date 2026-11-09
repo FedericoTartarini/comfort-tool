@@ -79,7 +79,7 @@ async function boxes(page: Page): Promise<Boxes> {
     header: await region(page.getByRole("banner")),
     sidebar: await region(page.locator('[data-slot="sidebar-content"]').locator("..")),
     inputs: await region(card(page, "Inputs")),
-    // The result column: the Results card and the Chart card under it.
+    // The results column: the Results card and the Chart card under it.
     results: await region(card(page, "Results").locator("..")),
     footer: await region(page.getByRole("contentinfo")),
     plot: await boundingBoxOf(page.locator(".chart-plot")),
@@ -1524,7 +1524,7 @@ test.describe("the sidebar's headings and the one radius", () => {
 
 /**
  * The header's mark is a link to the default model's address, and a plain
- * click on it is an in-app switch as a Standard link's is (ADR-0002 decision
+ * click on it is in-app navigation as a Standard link's is (ADR-0002 decision
  * 73, rule 5): the values travel, and a value the default model cannot judge
  * is asked about.
  */
@@ -1660,7 +1660,7 @@ function markerPoints(page: Page): Promise<{ x: number; y: number }[]> {
 }
 
 /**
- * A slot first enabled starts from slot 1's values, each moved up by a share of its axis range, so its marker and its
+ * A slot first enabled starts from slot 1's values, each moved up by a part of its axis range, so its marker and its
  * Comfort zone do not lie on slot 1's, and a value the move carries past its bound is cut to it with no toast
  * (GLOSSARY.md, **Slot offset**; ADR-0002 decision 89's revision of rule 8).
  */

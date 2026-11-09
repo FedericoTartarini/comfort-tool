@@ -54,7 +54,7 @@ const addressFollowers = new Set<AddressFollower>();
  * back and forward, a link the router follows, and the app's own navigation —
  * and return the way to stop. This is the address's path, which never asks
  * (ADR-0002 decision 32), so the app hands over the session's `setAddress`,
- * and after an in-app switch the session finds the model already current.
+ * and after in-app navigation the session finds the model already current.
  * The app follows it from before the router loads the first address, so that
  * address is heard too, and heard before any page exists.
  *
@@ -116,8 +116,8 @@ export function shareLinkTo(address: Address, text: string): string {
 /**
  * Put `address` in the URL as a new history entry, which is what following a
  * link has always done: back returns to the page and model the person came
- * from. Every in-app switch goes through here, so how a person switched does
- * not change what back does.
+ * from. Every address `inAppNavigation` tells goes through here, so how a
+ * person navigated does not change what back does.
  */
 export function navigateTo(address: Address): void {
   moveTo(address, { replace: false });

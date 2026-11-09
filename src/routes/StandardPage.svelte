@@ -26,14 +26,14 @@ import { palette } from "$lib/core/palette";
   import { Separator } from "$lib/ui/primitives/separator";
   import { Switch } from "$lib/ui/primitives/switch";
   import { Toggle } from "$lib/ui/primitives/toggle";
-  import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
+  import { inAppLinkTo, inAppNavigation } from "./inAppNavigation";
   import { defaultModel, modelChoicesOn } from "./navigation";
   import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, computation } = getOpenSession();
   const tab = getTabControls();
-  const inApp = inAppSwitch(session);
+  const inApp = inAppNavigation(session);
   const id = $props.id();
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */

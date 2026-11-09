@@ -262,7 +262,7 @@ function verticesAt(path: PathTrace, x: number): number[] {
  * a running mean and an operative temperature, as its label: 90 % where it
  * accepts that, else 80 %, else none.
  */
-function libraryBandAt(airSpeed: number, runningMean: number, operative: number): string | undefined {
+function libraryZoneAt(airSpeed: number, runningMean: number, operative: number): string | undefined {
   const run = adaptive_ashrae({
     tdb: operative,
     tr: operative,
@@ -462,10 +462,10 @@ describe("the adaptive chart's hover grid", () => {
 });
 
 describe("Adaptive's chart against adaptive_ashrae", () => {
-  it.each([0.3, 0.6, 0.9, 1.2])("names, over every cell at %s m/s, the band the library answers for it", (airSpeed) => {
+  it.each([0.3, 0.6, 0.9, 1.2])("names, over every cell at %s m/s, the Comfort zone the library answers for it", (airSpeed) => {
     const grid = hoverGridOf(adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed))));
     const cells = grid.y.flatMap((y, row) => grid.x.map((x, column) => ({ x, y, named: grid.hoverText[row]?.[column]?.[2] })));
-    const mismatches = cells.filter((cell) => cell.named !== libraryBandAt(airSpeed, cell.x, cell.y));
+    const mismatches = cells.filter((cell) => cell.named !== libraryZoneAt(airSpeed, cell.x, cell.y));
     expect(mismatches).toEqual([]);
     expect(new Set(cells.map((cell) => cell.named))).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
   });
@@ -497,7 +497,7 @@ describe("Adaptive's chart against adaptive_ashrae", () => {
       grid.x.flatMap((x, column) => {
         const named = grid.hoverText[row]?.[column]?.slice(2);
         const expected = request.slots.flatMap((charted, position) => {
-          const label = libraryBandAt(airSpeeds[position]!, x, y);
+          const label = libraryZoneAt(airSpeeds[position]!, x, y);
           return label === undefined ? [] : [labelFor(charted, label)];
         });
         return JSON.stringify(named) === JSON.stringify(expected) ? [] : [{ x, y, named, expected }];

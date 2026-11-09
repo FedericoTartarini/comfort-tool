@@ -84,7 +84,7 @@
 
 <!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
      Addressed by its row's position: an option's key is the library's and the share link's string, not the markup's.
-     A setting on or off at once, so a switch (ADR-0002 decision 76, rule 1); under Compare each column's says its
+     An option on or off at once, so a switch (ADR-0002 decision 76, rule 1); under Compare each column's says its
      state beside it, its name already saying it to a screen reader (rule 2). -->
 {#snippet optionRow(option: OptionSpec, index: number)}
   {#if inColumns}

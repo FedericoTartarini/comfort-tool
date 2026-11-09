@@ -135,14 +135,14 @@ export function bandColors(
 }
 
 /**
- * Fill for `category`'s band in `bins`, as {@link bandColors} gives it;
- * `undefined` for a band left unpainted and for a category the classifier does
+ * Fill for the band labelled `label` in `bins`, as {@link bandColors} gives it;
+ * `undefined` for a band left unpainted and for a label the classifier does
  * not name (NaN included — the model's own way of saying "past the last
  * Edge"). The app never calls `classifyFromBins` here: the value is already
- * the category the model returned, not a number to re-classify.
+ * the label the model returned, not a number to re-classify.
  */
-export function colorForBand(bins: ClassifierBins, category: string | number): string | undefined {
-  const index = bins.labels.indexOf(category as string);
+export function colorForBand(bins: ClassifierBins, label: string | number): string | undefined {
+  const index = bins.labels.indexOf(label as string);
   return index === -1 ? undefined : bandColors(bins)[index];
 }
 

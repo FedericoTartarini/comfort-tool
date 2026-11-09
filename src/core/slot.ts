@@ -509,28 +509,28 @@ export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, n
 }
 
 /**
- * The share of a quantity's axis range a slot first enabled is moved by, per
+ * The part of a quantity's axis range a slot first enabled is moved by, per
  * position past slot 1: the app's policy, not a library constant
  * (GLOSSARY.md, **Slot offset**).
  */
-const SLOT_OFFSET_SHARE = 1 / 20;
+const SLOT_OFFSET_PER_POSITION = 1 / 20;
 
 /**
- * The same slot with each value it holds moved up by `shares` times
- * {@link SLOT_OFFSET_SHARE} of its quantity's axis range on `model`
+ * The same slot with each value it holds moved up by `position` times
+ * {@link SLOT_OFFSET_PER_POSITION} of its quantity's axis range on `model`
  * ({@link axisRangeFor}): the Slot offset (GLOSSARY.md) of a slot first
- * enabled, one share for slot 2 and two for slot 3 (ADR-0002 decision 89's
+ * enabled at `position`, 1 for slot 2 and 2 for slot 3 (ADR-0002 decision 89's
  * revision of rule 8). A value whose quantity has no axis range on `model`,
  * as one only another model names, is left. Humidity is held apart from the
- * values, so no share reaches it; nor the options or the entry modes. Nothing
+ * values, so no offset reaches it; nor the options or the entry modes. Nothing
  * is cut here; the session cuts the slot it lands.
  */
-export function withSlotOffset(slot: Slot, model: ModelDeclaration, shares: number): Slot {
+export function withSlotOffset(slot: Slot, model: ModelDeclaration, position: number): Slot {
   const values = new Map(slot.values);
   for (const [quantity, value] of slot.values) {
     const range = axisRangeFor(model, quantity);
     if (range) {
-      values.set(quantity, value + shares * SLOT_OFFSET_SHARE * (range.max - range.min));
+      values.set(quantity, value + position * SLOT_OFFSET_PER_POSITION * (range.max - range.min));
     }
   }
   return changedSlot(slot, { values });

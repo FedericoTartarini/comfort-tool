@@ -52,7 +52,7 @@ export interface CalculatorOutputs {
 type Posture = NonNullable<SolarGainInputs["posture"]>;
 
 /** A posture `solar_gain` takes, the library's value under the standard's word. */
-export interface PostureOption {
+export interface PostureChoice {
   readonly value: Posture;
   readonly label: string;
 }
@@ -65,10 +65,10 @@ const postureWords = {
 } as const satisfies Record<Posture, string>;
 
 /** The postures `SOLAR_GAIN_INFO` allows, its default first, then the rest in the library's order, each under its word. */
-function solarGainPostures(): [PostureOption, ...PostureOption[]] {
+function solarGainPostures(): [PostureChoice, ...PostureChoice[]] {
   const { allowed, default: libraryDefaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
-  const option = (value: Posture): PostureOption => ({ value, label: postureWords[value] });
-  return [option(libraryDefaultPosture), ...allowed.filter((value) => value !== libraryDefaultPosture).map(option)];
+  const choice = (value: Posture): PostureChoice => ({ value, label: postureWords[value] });
+  return [choice(libraryDefaultPosture), ...allowed.filter((value) => value !== libraryDefaultPosture).map(choice)];
 }
 
 /** What a form dialog holds: each asked quantity's SI value, and the posture where one is asked. */
@@ -100,7 +100,7 @@ export interface FormCalculator extends CommonCalculator {
   /** The quantities it asks, each with the SI value its dialog starts at, in dialog order. */
   readonly asks: readonly Pick<DeclaredQuantity, "quantity" | "value">[];
   /** The postures it offers, the first the default; absent for a calculator that asks none. */
-  readonly postures?: readonly [PostureOption, ...PostureOption[]];
+  readonly postures?: readonly [PostureChoice, ...PostureChoice[]];
   /** The quantities its outputs hold, in the order its dialog shows them, which it shows without outputs too. */
   readonly outputs: readonly [Quantity, ...Quantity[]];
   /** Its outputs, or `null` where the library gives no value for an output, which the dialog then shows as it shows no outputs. */

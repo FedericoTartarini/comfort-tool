@@ -86,7 +86,7 @@
 <!--
   The frame: the sidebar and the main area's `76rem`, the main area's width at
   1440 px, so a wide monitor keeps those proportions (decision 73, rule 10 as
-  revised again 2026-10-12). The result and chart column's least width is the
+  revised again 2026-10-12). The results column's least width is the
   plot at its cap with the chart card's padding on both sides (decision 87,
   rule 3). On a desktop the page is at least as wide as its content needs, so
   a narrower window scrolls it sideways and the header's and footer's bands
@@ -94,7 +94,7 @@
 -->
 <Sidebar.Provider
   class={["flex-col", !isMobile.current && "min-w-min"]}
-  style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem); --result-column-min: calc(var(--plot-width) + 2 * var(--space-page));"
+  style="--sidebar-width: 14rem; --frame-width: calc(var(--sidebar-width) + 76rem); --results-column-min: calc(var(--plot-width) + 2 * var(--space-page));"
 >
   <SiteHeader {mark} bind:sidebarOpen />
 
@@ -121,7 +121,7 @@
       <div
         class={[
           "grid items-start gap-(--space-page) p-(--space-page) pl-0",
-          isMobile.current ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[auto_minmax(var(--result-column-min),1fr)]",
+          isMobile.current ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[auto_minmax(var(--results-column-min),1fr)]",
         ]}
       >
         <Card.Root class="w-[28.75rem]">
