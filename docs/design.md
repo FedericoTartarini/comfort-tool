@@ -19,24 +19,24 @@ icons, cream grounds with warm accents, display fonts.
 
 ## Principles
 
-1. **Colour means data.** Hue appears where it carries information: a slot's zones and marker, a band's fill, a
-   category's Band badge. The interface is grey, white and black. The one blue, the brand, is spent on the current
+1. **Colour means data.** Hue appears where it carries information: a slot's zones and marker, a band's fill and its
+   Band badge. The interface is grey, white and black. The one blue, the brand, is spent on the current
    navigation item, the primary button, the focus ring, links, the header's and footer's bands, and every chosen or
    pressed toggle; red marks a box whose draft is past its bound or would be refused, once the typing pauses, and a
    refused Edge's reason; amber, the one other hue of the chrome, marks a violation by an icon on its result row, its
-   words in ink (decisions 84 and 85).
-2. **Structure is information.** The modules are white panels on a faint ground, each bounded by a ring at 10 % ink;
-   no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the Inputs card's under the
-   model), inside a dialog (the Input calculators' result dock) and in the sidebar (above Settings, and above
+   words in the foreground colour (decisions 84 and 85).
+2. **Structure is information.** The modules are white panels on a faint page background, each bounded by a ring at
+   10 % foreground; no shadows, no gradients; one radius. A rule is drawn only inside a panel (table rows, the input
+   panel's under the model), inside a dialog (the Input calculators' dock) and in the sidebar (above Settings, and above
    Share). The header and the footer are bands of the brand. A boundary encodes a boundary that exists.
 3. **Instrument density.** Body text at 14 px; numbers in tabular figures so decimals align; labels in sentence case,
    never upper case. Line length under 80 characters in any prose the page carries.
 4. **No motion that nobody asked for.** Dialogs and sheets keep the primitive's; nothing else animates.
 5. **Layout stability** (decision 67, rule 10). At one viewport no control changes a region's width; a control changes
-   content only inside its own region and below itself. Compare reflows inside a constant `28.75rem` input card, and
+   content only inside its own region and below itself. Compare reflows inside a constant `28.75rem` input panel, and
    the root reserves the scrollbar's gutter, so the scrollbar Compare adds moves nothing sideways (decision 84, rule
    12); no control moves the plot sideways or resizes it, and Compare's result rows, arriving above it, and the
-   legend's further lines, when Compare's entries wrap it, may move it down. Two exceptions, named (decisions 87 and
+   legend's further lines, when Compare's items wrap it, may move it down. Two exceptions, named (decisions 87 and
    89): the sidebar's toggle, which gives the main area the sidebar's room or takes it back, the plot widening or
    narrowing with it, and a switch between a chart with axis selects (Dynamic) and one without, whose view row moves
    the plot 40 px.
@@ -55,30 +55,30 @@ The named colours of `core/palette.ts` and the stylesheet's tokens, one set of h
 | Name | Hex | Used for |
 |---|---|---|
 | brand | `#003262` | the one blue, the Clima tool's and UC Berkeley's: current navigation item, primary button, focus ring, links, the header's and footer's bands, a chosen or pressed toggle |
-| ink | `#0f172a` | text |
-| inkMuted | `#64748b` | captions, bound text, legend text, a Band's Edge line |
-| line | `#e2e8f0` | input borders, table row lines, the sidebar's separator |
+| foreground | `#0f172a` | text |
+| mutedForeground | `#64748b` | captions, bound text, legend text, a Band's Edge line |
+| border | `#e2e8f0` | input borders, table row lines, the sidebar's separator |
 | lineStrong | `#cbd5e1` | isolines |
 | lineHeavy | `#94a3b8` | the saturation line |
-| paper | `#ffffff` | a panel's ground and the plot's ground; a box in the sidebar, which stands on the ground |
-| ground | `#f8fafc` | the page's ground and a field's tint, one value |
-| alert | `#dc2626` | a box marked at the pause (a draft past its bound or one that would be refused), a refused Edge's reason |
-| warning | `#d97706` | the violation icon on a result row (decision 85); 3.19:1 against `paper` |
+| background | `#ffffff` | a panel's background and the plot's; a box in the sidebar, which stands on the page background |
+| pageBackground | `#f8fafc` | the page's background and a field's tint, one value |
+| destructive | `#dc2626` | a box marked at the pause (a draft past its bound or one that would be refused), a refused Edge's reason |
+| warning | `#d97706` | the violation icon on a result row (decision 85); 3.19:1 against `background` |
 | slot 1, 2, 3 | `#0072b2`, `#009e73`, `#cc79a7` | Okabe–Ito's blue, bluish green and reddish purple: one hex per slot, from which the marker, the zone line and the zone fill are derived; safe for colour-blind readers and apart from RdBu's and YlOrRd's |
 
-A panel's ring is the ink at 10 %, the card primitive's own. The band families stay ColorBrewer's, read by decision
-66's rules. The sidebar primitive's eight tokens derive from these. The slot hues and the band colours are data and
-keep their colours whatever the chrome does.
+A panel's ring is the foreground at 10 %, the card primitive's own. The band families stay ColorBrewer's, read by
+decision 66's rules. The sidebar primitive's eight tokens derive from these. The slot hues and the band colours are
+data and keep their colours whatever the chrome does.
 
 ## Type
 
 Geist Variable, one family. Three sizes with one role each: the title at 18 px / 600; body, controls, labels and the
 headings at 14 px (400; 500 for a label and the current navigation item; 600 for a module's and a sidebar group's
 heading); a caption,
-a description and the range text at 12 px in `inkMuted`. Plus the generated components' own sizes: Nova's `sm` button
-and toggle letter at 12.8 px, kept because the default size costs about 4 px a labelled row and with it the one-screen
-fit. The result table's numbers in `tabular-nums`, right-aligned. Line height 1.5. Plotly's lettering is in px, by
-its API: tick labels 12 px, the hover readout at the caption's 12 px in Geist.
+a description and the bound's text at 12 px in `mutedForeground`. Plus the generated components' own sizes: Nova's
+`sm` button and toggle letter at 12.8 px, kept because the default size costs about 4 px a labelled row and with it the
+one-screen fit. The result table's numbers in `tabular-nums`, right-aligned. Line height 1.5. Plotly's lettering is in
+px, by its API: tick labels 12 px, the hover readout at the caption's 12 px in Geist.
 
 ## Spacing and radius
 
@@ -96,11 +96,11 @@ line swatch), the radius steps, values read off the DOM and Plotly's px API.
 ## The page at 1440 px
 
 The frame, the sidebar and the main area, is the page's whole width here: the window less the scrollbar's gutter the
-root reserves (`scrollbar-gutter: stable`). A fixed sidebar of `14rem` on the ground; beside it the main area, `0.75rem`
-gutter, with the input card at `28.75rem` and the result and chart cards taking the rest, `0.75rem` between them; the
-header and the footer bands full width above and below, neither resident. The sidebar's fills, the header's first
-control, the sidebar's toggle (decision 87, rule 1), and the footer's text share one 12 px line; the sidebar's first
-group label's top meets the cards' top.
+root reserves (`scrollbar-gutter: stable`). A fixed sidebar of `14rem` on the page background; beside it the main area,
+`0.75rem` gutter, with the input panel at `28.75rem` and the result and chart cards taking the rest, `0.75rem` between
+them; the header and the footer bands full width above and below, neither resident. The sidebar's fills, the header's
+first control, the sidebar's toggle (decision 87, rule 1), and the footer's text share one 12 px line; the sidebar's
+first group label's top meets the cards' top.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -138,41 +138,40 @@ group label's top meets the cards' top.
 
 **Header.** A band of the brand: first, at every width, the sidebar's toggle, the generated ghost `icon-sm` button with
 the `PanelLeft` icon, named "Sidebar" and carrying `aria-expanded` (decision 87, rule 1); the white CBE mark, a link to
-the default model's address, followed as an in-app switch that keeps the values and asks where one is out of range
+the default model's address, followed as in-app navigation that keeps the values and asks where one is out of range
 (decision 73, rule 5 as revised again 2026-10-12); a vertical separator; the title, an `h1`; the room between, empty,
-the header holding no notice (decision 84, rule 7); Documentation, which opens the user guide in a new tab and says so
-to a screen reader alone, as every link to another site does (decision 89, rule 2). Below `md` Documentation leaves the
-header for the sheet's Tools group, and the title wraps to two lines inside the band (decision 87, rule 2). Focus after
-Reset or a link's yes lands on the `h1`.
+the header holding none of the app's notifications, which are toasts (decision 84, rule 7); Documentation, which opens
+the user guide in a new tab and says so to a screen reader alone, as every link to another site does (decision 89, rule
+2). Below `md` Documentation leaves the header for the sheet's Tools group, and the title wraps to two lines inside the
+band (decision 87, rule 2). Focus after Reset or a link's yes lands on the `h1`.
 
-**Sidebar.** The `sidebar-16` block's menu on the ground, no icons, items `gap-1`. Open on every load; only its toggle
-collapses it, never the window's width on a desktop, and collapsed it gives its room to the main area; a page switch
-keeps it as it is (decision 87, rule 1). Each group's label is a heading, the module heading's `h2` at 14 px and 600 in
-ink (rule 5). Groups: Standard, one item per
-standard, named with its year, "ASHRAE 55:2023" (decision 86); Tools, Explore (Time-series joins as one item when it
-exists, no placeholder; below `md`, Documentation after it); a separator; Settings, the unit system as a
-toggle-group, the atmospheric pressure's input in kPa in SI, `30 – 110 kPa` under it, the default reading 101.33
-(decision 87, rule 6), a separator, Share and Reset, standing on the group labels' line, 20 px in, text against text;
-the pressure's box is the paper, since a box takes the other colour of the surface it stands on. The current address
-is drawn as current; a standard's link on another of its models too (decision 67, rule 2).
+**Sidebar.** The `sidebar-16` block's menu on the page background, no icons, items `gap-1`. Open on every load; only its
+toggle collapses it, never the window's width on a desktop, and collapsed it gives its room to the main area; a page
+switch keeps it as it is (decision 87, rule 1). Each group's label is a heading, the module heading's `h2` at 14 px and
+600 in the foreground colour (rule 5). Groups: Standard, one item per standard, named with its year, "ASHRAE 55:2023"
+(decision 86); Tools, Explore (Time-series joins as one item when it exists, no placeholder; below `md`, Documentation
+after it); a separator; Settings, the unit system as a toggle-group, the atmospheric pressure's input in kPa in SI, `30
+– 110 kPa` under it, the default reading 101.33 (decision 87, rule 6), a separator, Share and Reset, standing on the
+group labels' line, 20 px in, text against text; the atmospheric pressure's box is the background, since a box takes the
+other colour of the surface it stands on. The current address is drawn as current; a standard's link on another of its
+models too (decision 67, rule 2).
 
-**Inputs.** A card: Compare, a switch with its label, at the heading row's right end on Standard (decision 76); the
-model select, a rule, the quantity rows, and the Input calculators button. A row is a label with its unit, the entry
-group's menu button beside it where the row belongs to a group (decision 72), reading "Change" and named "Change" and
-the group, "Change air speed" (decision 87, rule 7), the box with its Presets menu button
-inside it where the row has presets (decision 67, rule 3), and the line under it, the bound with its unit
-(`10 – 40 °C`), which changes neither colour nor words. The box is a text input that takes only a number; at its right end stand
-its two step buttons, chevron up over chevron down, and after them, flush with its edge, the Presets button (decision
-84, rule 10 and its note of 2026-10-27). The Presets button reads "Presets" at every Compare state, `0.5rem` of room
-each side of the word; its list's values end at one x, and a preset past the bound, or one that would put another value
-out of range, is dimmed and disabled, its number shown. A draft past its bound, or one that would be refused, turns the
-box's edge red once the typing pauses, never while it is typed. An option is a switch with its label, tucked under the
-row it qualifies at the field gap, PMV (ASHRAE 55)'s under the air speed (decision 36); with Compare on, one switch per
-slot column, "On" or "Off" beside it. The box is tinted `ground`; a select's trigger is not. With Compare on, the three
-slot buttons head three columns of the same `28.75rem` (decision 50); every pressed toggle is filled with the brand. The
-card ends with the Input calculators button, full width, outline, "Input calculators" over the names of the calculators
-the model declares, which opens one tabbed dialog of one fixed height (decision 75); a model that declares none has no
-button.
+**Inputs.** The input panel, a card: Compare, a switch with its label, at the heading row's right end on Standard
+(decision 76); the model select, a rule, the quantity rows, and the Input calculators button. A row is a label with its
+unit, the entry group's menu button beside it where the row belongs to a group (decision 72), reading "Change" and named
+"Change" and the group, "Change air speed" (decision 87, rule 7), the box with its Presets menu button inside it where
+the row has presets (decision 67, rule 3), and the line under it, the bound with its unit (`10 – 40 °C`), which changes
+neither colour nor words. The box is a text input that takes only a number; at its right end stand its two step buttons,
+chevron up over chevron down, and after them, flush with its edge, the Presets button (decision 84, rule 10 and its note
+of 2026-10-27). The Presets button reads "Presets" at every Compare state, `0.5rem` of room each side of the word; its
+list's values end at one x, and a preset past the bound, or one that would put another value out of range, is dimmed and
+disabled, its number shown. A draft past its bound, or one that would be refused, turns the box's edge red once the
+typing pauses, never while it is typed. An option is a switch with its label, tucked under the row it qualifies at the
+field gap, PMV (ASHRAE 55)'s under the air speed (decision 36); with Compare on, one switch per slot column, "On" or
+"Off" beside it. The box is tinted `pageBackground`; a select's trigger is not. With Compare on, the three slot buttons
+head three columns of the same `28.75rem` (decision 50); every pressed toggle is filled with the brand. The card ends
+with the Input calculators button, full width, outline, "Input calculators" over the labels of the calculators the model
+declares, which opens one tabbed dialog of one fixed height (decision 75); a model that declares none has no button.
 
 **Results.** A card: the Results heading, nothing at its right, the room a toast stands over (decision 87, rule
 11); the table (decision 70: headings wrap, numbers right-aligned, the region scrolls sideways with its clipped edge faded; the Input column first and sticky in both
@@ -180,47 +179,48 @@ Compare states, unheaded while the slots are not named; the value columns share 
 2026-10-28 amendment), ending at its last row, with no line under it naming the standard (decision 86, rule 4). The
 columns are the model's `table`, its classified outputs first, each cell of theirs a Band badge: the generated Badge
 filled with the band's colour and edged in the border token as a fill swatch is, so Neutral's near white shows, lettered
-in ink or white by contrast, outlined for a band without a colour, its label as the library writes it, "Slightly Cool"
-(decision 85). Headings are the quantities' labels, "PMV", "PPD", "Compliance", so PMV's fit one line. A row whose run
-broke a limit carries the triangle-alert icon in `warning`, in its Input cell, before the slot's swatch where there is
-one; every row's Input cell keeps the icon's room, the icon hidden where the row broke none, so no value column moves
-when one does (decision 87, rule 9). It is no control; its `title` holds "Calculated, but outside these limits:" over
-the limits in their bound sentences (decision 85, rule 5). A "—" a violation causes has no icon of its own.
+in the foreground colour or white by contrast, outlined for a band without a colour, its label as the library writes it,
+"Slightly Cool" (decision 85). Headings are the quantities' labels, "PMV", "PPD", "Compliance", so PMV's fit one line. A
+row whose run broke a bound carries the triangle-alert icon in `warning`, in its Input cell, before the slot's swatch
+where there is one; every row's Input cell keeps the icon's room, the icon hidden where the row broke none, so no value
+column moves when one does (decision 87, rule 9). It is no control; its `title` holds "Calculated, but outside these
+limits:" over the bounds broken, in their bound sentences (decision 85, rule 5). A "—" a violation causes has no icon of
+its own.
 
 **Chart.** A card: the heading row carries Chart, then the chart type, the `ChoiceSelect` at the row's small size, named
 "Chart type" by a label only a screen reader reads, then at the right, on Explore, the Bands button, and Export image,
 the row wrapping where it does not fit; under it a view row holds the axis selects, left-aligned, only on a chart that
-has them, Dynamic, so a psychrometric chart has none (decision 89, rule 6). Then the legend, a row of entries from the
+has them, Dynamic, so a psychrometric chart has none (decision 89, rule 6). Then the legend, a row of items from the
 plot's left edge, no wider than the plot, wrapping to further lines; then the plot, the card's full width and
 `min(width × 3/4, 24rem)` tall, so wider than 4:3 on a desktop and 4:3 where the card is narrower than the cap's 4:3
 width (rules 3 and 4). The psychrometric chart draws its humidity ratio on the right, the other charts their y axis on
 the left (rule 7). The page shows no proportion of the exported Image's, whose plot area is 4:3 in a single column and
 16:9 in a double one (rule 5). Content above the chart card may move the plot down (Compare's rows). On Standard, a slot
 whose Comfort zones are all empty has a caption under the plot, "No comfort zone at these inputs.", named with its
-swatch under Compare; the legend keeps the zones' entries (decision 83, rule 1). Bands is a dialog, `40rem` as every
+swatch under Compare; the legend keeps the zones' items (decision 83, rule 1). Bands is a dialog, `40rem` as every
 dialog (decision 67, rule 9), opened from the heading row. It edits a draft of the Band list, which the chart does not
 draw: its footer holds Reset bands at the left and Apply, the primary button, at the right, and the corner's X and
 Escape discard the draft. An Edge typed out of order is refused when it is committed, its reason in red under its box
 until that box is typed in again; the box is not marked, as it shows the Edge as it was (decision 84, rule 6). The
 readout stays on the pointer, lettered at the caption's size.
 
-**Toasts.** Every notice is a toast, `svelte-sonner`'s, at the window's top right at Sonner's own offset (24 px, 16
-px under 600 px), over the header's right end while the page is at its top: at 1440 px it covers Documentation and
-the right end of the Results card's heading row, a stack of three reaches the table's head, and a hovered stack the
-table's right side (decision 87, rule 11); the one radius, on the popover's ground with the border's
-edge, kept until its close button, "Close", closes it, Sonner showing three at once (decision 84, rule 7, and its notes
-of 2026-10-28). The notices: a link refused (decision 88), values cut by an arrival, a copy refused, an Image that failed,
-a value refused with its reason, and a slot's run breaking a limit it did not break before. A typed value's cut and an
-input calculator's Apply raise none. Reset closes the toasts standing; a link's yes closes none.
+**Toasts.** Every notification of the app's is a toast, `svelte-sonner`'s, at the window's top right at Sonner's own
+offset (24 px, 16 px under 600 px), over the header's right end while the page is at its top: at 1440 px it covers
+Documentation and the right end of the Results card's heading row, a stack of three reaches the table's head, and a
+hovered stack the table's right side (decision 87, rule 11); the one radius, on the popover's background with the
+border's edge, kept until its close button, "Close", closes it, Sonner showing three at once (decision 84, rule 7, and
+its notes of 2026-10-28). The toasts: a link refused (decision 88), values cut by an arrival, a copy refused, an Image
+that failed, a value refused with its reason, and a slot's run breaking a bound it did not break before. A typed value's
+cut and an input calculator's Apply raise none. Reset closes the toasts standing; a link's yes closes none.
 
 **Footer.** A band of the brand: the tool's name and version, the library and its version, Licence and Code on one line,
 the citation on the next, at the left; the white CBE and UC Berkeley marks at the right, links to cbe.berkeley.edu and
 berkeley.edu, wrapping under the text where the window is too narrow for both (decision 87, rule 8). Each link, Licence,
 Code, the citation and the two marks, opens in a new tab (decision 89, rule 2). No date.
 
-**One screen.** At the values above and 1440 × 780, every model's result and chart cards are in view, and the input card
-is not on the two PMV pages: measured 2026-11-02, PMV (ASHRAE 55)'s input card ends at 856 px and PMV (ISO 7730)'s at
-817, as on 2026-10-28, Adaptive's at 543, while Adaptive's chart card, the lowest, ends at 734
+**One screen.** At the values above and 1440 × 780, every model's result and chart cards are in view, and the input
+panel is not on the two PMV pages: measured 2026-11-02, PMV (ASHRAE 55)'s input panel ends at 856 px and PMV (ISO
+7730)'s at 817, as on 2026-10-28, Adaptive's at 543, while Adaptive's chart card, the lowest, ends at 734
 (`.scratch/frontend-review-round-2/08-walk/one-screen.txt`). A taller plot only lengthens the page, so the cap is the
 largest plot that keeps the chart cards in view at that floor.
 
@@ -230,9 +230,9 @@ The layout is intrinsic (Every Layout's Sidebar; MDN's "change the design at the
 bad"): the page's layout writes no `@media` breakpoint of its own, reading the sidebar primitive's mobile check alone
 (the stylesheet's one `@media` is the dialog footer's, at the primitive's `sm`), so at one viewport no control moves
 anything but what principle 5 names. In the chart card the legend and the plot are one column, each the card's content
-width: the legend's entries wrap to further lines, and the plot is `aspect-ratio: 4 / 3` under `max-block-size` at the
+width: the legend's items wrap to further lines, and the plot is `aspect-ratio: 4 / 3` under `max-block-size` at the
 cap, so the cap sets its height wherever the card is at least the cap's 4:3 width, `32rem`, and the ratio below it
-(decision 89, rule 4). A desktop keeps two columns at every width (decision 87, rule 3): the input card at its
+(decision 89, rule 4). A desktop keeps two columns at every width (decision 87, rule 3): the input panel at its
 `28.75rem` (decision 84, rule 12), and beside it the result and chart cards, one column of one width, `minmax(33.5rem,
 1fr)`, `33.5rem` being the plot at its cap with the chart card's padding, so a desktop never draws the plot below the
 cap's height; a narrower window scrolls the page sideways, below 1259 px of window with the sidebar and 1047 px with it
@@ -245,14 +245,14 @@ stand in one column (decision 87, rule 2). Compare's three slot columns stay sid
 Wider than the content needs, the page stops growing: the sidebar and the main area are one frame, the sidebar's `14rem`
 and the main area's `76rem`, its width at 1440 px, centred in the window, so the chart card and the table's columns keep
 the 1440 px proportions on a wide monitor; the header's and footer's contents stand in the same frame, their bands'
-ground full width, as the deployed tool's are (decision 73, rule 10 as revised again 2026-10-12). Verified by a
+background full width, as the deployed tool's are (decision 73, rule 10 as revised again 2026-10-12). Verified by a
 screenshot walk at 2560, 1920, 1440, 1366, 1280, 1024, 768, 767 and 375 px, the sidebar open and collapsed
 (`.scratch/shell-review/09-walk/`, 2026-10-29), and at 1440 and 375 px after decision 89
 (`.scratch/frontend-review-round-2/08-walk/`, 2026-11-02), and held by the layout's browser test
 (`tests/browser/layout.behaviour.ts`). Dynamic's view row, the axis selects alone, is 411.3 px at the default axes, on
 one line at every desktop width, so a switch to or from Dynamic moves the plot 40 px at every width (principle 5's named
 exception). At 1300 px and narrower with the sidebar and at 1024 px collapsed (measured), PMV's "Thermal sensation"
-heading wraps to two lines and the Results card is 20 px taller. A phone, 375 px, is one column, but the input card's
+heading wraps to two lines and the Results card is 20 px taller. A phone, 375 px, is one column, but the input panel's
 `28.75rem` still overflows it; the phone is a later pass.
 
 ## Self-check against the generic

@@ -58,7 +58,7 @@ Read the diff once against each of these. They are judgement calls; none of them
 - A name that is a quantity itself is its library key (`tdb`, `rh`); a compound name spells the quantity as its label
   does (`relativeHumidityOf`, `humidityRatioUnit`), the acronym where the label is one (`pmvAt`), never the key (`pAtm`,
   `hrUnit`) (decision 91, rule 9).
-- Quantity display names come from `Quantity.label` — never written in the app. The one exception is the zone legend's `|PMV|` (ADR-0002 decision 44).
+- A quantity's label comes from `Quantity.label` — never written in the app. The one exception is the zone legend's `|PMV|` (ADR-0002 decision 44).
 
 **Single source of truth**
 
@@ -72,15 +72,15 @@ Read the diff once against each of these. They are judgement calls; none of them
 
 - Is a type annotation adding meaning, or restating what inference already knows? *(Google TS Style Guide: rely on
   inference; annotate where it aids readability.)*
-- Do mapped and conditional types still read plainly? `Omit<RegisteredModel, "run">` in `defineModel`, the three
-  `Extract<DeclaredChart, …>` aliases and `RegisteredModel`'s union over the scan are the current ones. *("A little bit of repetition or verbosity is often much
+- Do mapped and conditional types still read plainly? The three `Extract<DeclaredChart, …>` aliases and
+  `ModelDeclaration`'s union over the scan are the current ones. *("A little bit of repetition or verbosity is often much
   cheaper than the long term cost of complex type expressions.")*
 - Callbacks whose return value is ignored are typed `void`, not `any`.
 
 **Precision**
 
 - Does a test of a number a person can see assert at the shown precision in SI (`toBeCloseTo(x, 2)`, or `formatNumber` equality)? Only a test of the app's own arithmetic (`core/units.ts`, `src/temporary-library/`) pins tighter, because it verifies a formula, not a precision (ADR-0002 decision 56).
-- Is anything rounded on its way into a slot, or compared against a bound exactly? A slot holds full-precision SI; the gate and the range text judge and read at the formatter's constant, through `isShownBeyond`, and nowhere else is a precision written. An exact comparison that picks a direction for a row the gate already listed, as a "Yes" picks its end, is not a verdict and stands.
+- Is anything rounded on its way into a slot, or compared against a bound exactly? A slot holds full-precision SI; the gate and the bound's text judge and read at the formatter's constant, through `isShownBeyond`, and nowhere else is a precision written. An exact comparison that picks a direction for a row the gate already listed, as a "Yes" picks its end, is not a verdict and stands.
 
 **Svelte**
 

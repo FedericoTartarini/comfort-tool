@@ -5117,6 +5117,40 @@ notes under decisions 51 and 53:
     "Yes, cut and switch" and its column "Limits" (open points D23 and D24 closed); its "Input" column, which lists
     quantities, stays. An input calculator's constant is its library function's name in camelCase, as a declaration's
     is (`solarGain`, `cloTout`).
+    **Noted 2026-11-10 (close-out; `.scratch/naming/` ticket 16).** Built in `2a6ec12` (the share link's golden text,
+    written by the code before any rename; ticket 01), `6d9c09e` (outputs; 02), `c74bed8` (inputs, and the kinds `flag`
+    and `label`; 03), `9f1405e` (`ModelDeclaration`; 04), `57cd535` (toasts and the unsupported-browser message; 05),
+    `a1c5ac6` (`Computation`, `ComparedSlot`, `SlotAppearance`; 06), `22d2a40` (bounds, violation sentences, cuts and
+    the gate's `"written"`; 07), `d36b502` (labels; 08), `72c413d` (entry modes; 09), `7752dad` (defaults; 10),
+    `b5d4936` (quantity names and the atmospheric pressure, Q18's three sentences among them; 11), `a24b6be` (boxes,
+    items and the Bands table; 12), `c55cc5f` (colours; 13), `49ac5b9` (in-app navigation, the Slot offset per position
+    and the smaller names; 14), `f43634e` (the amendment's screen text) and `fea9431` (its names for the elements'
+    roles; 17), and `d9d85cd` (`lastBandUncoloured` and `edgeLinesOf`, which ticket 15 carried until the comment pass
+    replaced it, Q76). `npm test` passes at 1282 tests, as before the rename, and `npm run test:browser` at 177. Held as
+    built: the golden text decodes to the session it was written from and is written back byte for byte, its literal
+    unchanged since `2a6ec12`, so no persisted string moved; of the 194 old names the notes decide, a grep of `src/`,
+    `tests/`, `index.html` and `vite.config.js` finds none but words in another sense (`Values` and `Outputs` as
+    English, `boxOf` for a box that is no bounding box, `sessionWrittenOutOfRange`, which Q60 keeps), and every name the
+    notes and the tickets' rulings keep is there (ticket 16's Comments list both). `CODING_STANDARDS.md`, which took
+    `.claude/rules/architecture.md` and `.claude/rules/svelte-conventions.md` in `46d0d84`, `docs/design.md` and the
+    code-quality checklist cite the new names; ADR-0001's and this ADR's decision texts, `docs/rewrite-plan.md`'s done
+    phases and `docs/specs/` keep the old ones as history, read through the notes' list. Left to the user, as the
+    tickets' Comments raised them. (1) Names no decision covers: the input panel's `copy.inputs`, the pages'
+    `inputsActions` and the layout test's `Boxes.inputs` and `isResultBesideInputs`, where GLOSSARY.md's **Input panel**
+    avoids "inputs"; the unit system's `copy.units`, `{id}-units` and `.units-label`, named for its screen word as
+    `settings` was before Q82; and the layout test's title "the result card" over a measure of the results column. Names
+    a decision chose or kept that its tickets' reviews still question: `defaultInputs` (Q46), "inputs" being what a
+    model takes; "navigation" in three senses in `routes/` (Q39's `inAppNavigation`); "the activity's part" for an added
+    amount, and "one part of its axis range" for the GLOSSARY's twentieth (Q47); `Toast` (R4), which holds a toast's id;
+    `ATMOSPHERIC_PRESSURE_ABOVE_RANGE` and `_BELOW_RANGE` (Q18, Q60), "range" for a bound; `switchCutAllowedColumn`
+    (N8), whose text is "Limits"; the toast `copyRefused` (Q84), raised by `onsharerefused`; core's `addGarment` (Q88),
+    which only returns a list where decision 41 asks a noun phrase; `chartColors` (Q66), which holds line widths and a
+    font as well; `palette.background` (Q66), the white surface, where shadcn's `--background` is usually the page's.
+    (2) Text outside the rename: `docs/rewrite-plan.md:1872-1873`, "Until then no expected text is written as a
+    literal", which ticket 01's literal contradicts; GLOSSARY.md's **Violation**, "ASHRAE 55's air-speed limit", and
+    **Slot**, "has no name", where the code says bound and label. (3) `ui/inputs/QuantityInput.svelte:85` keys its
+    `{#each}` by index, which the checklist's Svelte row forbids. Structural finds went to `.scratch/tidy-later.md`
+    (T68, T69, T70 and T10's additions); T9 and T50, whose names this rename covered, are gone from it.
 
 ## Consequences
 
