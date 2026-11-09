@@ -5103,6 +5103,20 @@ notes under decisions 51 and 53:
     and the app's defaults, withdrawn under rule 8. Upstream itself names compounds both ways (`clo_dynamic_ashrae`,
     `v_relative` beside `dew_point_tmp`, `running_mean_outdoor_temperature`, pythermalcomfort 4.8.0), so rule 9 is the
     app's, not the library's.
+    **Amended 2026-11-09 (the naming grilling's rounds 8 and 9; `.scratch/naming/notes.md` Q79–Q88).** Rule 8's third
+    tier is the GLOSSARY's term for an app concept: the GLOSSARY, not the screen, is the source of words, and the screen
+    shows the term or a word the term's entry records for it ("On screen: limits", "On screen: Settings"), such words kept
+    rare; changing a word on screen is a GLOSSARY decision, which screen and code then follow. Rule 5 is read so. Copy
+    keys, components, CSS classes and DOM ids name an element's role in GLOSSARY words, never its current text, so a
+    rewording changes copy values only (i18next's best practices, "name keys semantically"; its FAQ: with the text as the
+    key, "changing the source wording changes the key"). The first draft of this amendment, that the screen's own words
+    rank as a tier, was withdrawn before any code followed it, since a screen word may itself change. Ruled on the screen
+    words the GLOSSARY did not record: the Session controls read "Settings" and the unit system "Units" on screen, and
+    the Input panel "Inputs" (a new GLOSSARY entry); the model-switch dialog says limits and cut on screen, its title
+    "Values outside the new model's limits", its question "Cut these values to their limits and switch?", its yes
+    "Yes, cut and switch" and its column "Limits" (open points D23 and D24 closed); its "Input" column, which lists
+    quantities, stays. An input calculator's constant is its library function's name in camelCase, as a declaration's
+    is (`solarGain`, `cloTout`).
 
 ## Consequences
 

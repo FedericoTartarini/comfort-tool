@@ -70,6 +70,10 @@ _Avoid_: derived input, self-generated air speed, activity-generated air speed, 
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
 _Avoid_: default, option, template
 
+**Input panel**:
+The card in which a person enters what the slots hold: the model, Compare and the slot buttons, one row per quantity the declaration lists, in the entry mode of its entry group, and the options; with Compare on, a column per compared slot. Its input calculators open from it. On screen: Inputs.
+_Avoid_: input card, form, inputs (those are what a model takes)
+
 **Input calculator**:
 A one-shot helper on one input row: from inputs of its own it computes a value for that row and, on Apply, writes it into the slots chosen for it, converted into the entry mode each slot is in and cut to the row's bound. Those a model declares are offered together, apart from the rows they write, each in its own tab of one dialog. Three exist: the clothing ensemble summed from garments, the clothing predicted from the outdoor temperature at 6 a.m., and the solar gain that raises the mean radiant temperature. Its own inputs belong to nothing: not the slot, not the session, not the share link.
 _Avoid_: modifier, tool, wizard, helper
@@ -83,7 +87,7 @@ A change the person has made that has not yet taken effect, from which nothing i
 _Avoid_: pending value, uncommitted input
 
 **Slot**:
-One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds, moved by its Slot offset. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
+One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three. They are named by position, "Input 1" to "Input 3", while Compare is on; otherwise the one slot has no name, and reads "Input" where a word is needed. A slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds, moved by its Slot offset. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's. The model-switch dialog's "Input" column lists quantities, not slots.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Compare**:
@@ -155,7 +159,7 @@ The small colour sample that stands for one thing on the page: a slot or a band,
 _Avoid_: dot, chip, colour key (a key is a quantity's library name), marker (that is the slot's point on the chart, Plotly's word; a swatch drawn like it has the marker's shape, but is not one)
 
 **Session controls**:
-The settings that apply to every slot and every page: the unit system, the atmospheric pressure, Share (the button that copies the share link) and Reset. They stand together under the navigation in the left column, or beside it in the row a narrower page puts under the header.
+The settings that apply to every slot and every page: the unit system, the atmospheric pressure, Share (the button that copies the share link) and Reset. They stand together under the navigation in the left column, or beside it in the row a narrower page puts under the header. On screen: Settings, and the unit system Units.
 _Avoid_: global settings, toolbar, header controls
 
 **Temporary library**:
