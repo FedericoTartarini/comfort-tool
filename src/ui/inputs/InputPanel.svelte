@@ -66,13 +66,13 @@
   function entryOf(slot: ComparedSlot, quantity: Quantity): QuantityEntry {
     const { inputSlot, computation } = slot;
     const { position } = computation;
-    const slotName = computation.appearance.name;
+    const slotLabel = computation.appearance.label;
     return {
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
-      slotName,
+      slotLabel,
       isWithinBounds: (si) => entryWriter.judgeEntry(position, quantity, si).kind === "written",
-      oncommit: (si) => raiseVerdict(entryWriter.commitEntry(position, quantity, si), { quantity, slotName }, si, unitSystem),
+      oncommit: (si) => raiseVerdict(entryWriter.commitEntry(position, quantity, si), { quantity, slotLabel }, si, unitSystem),
     };
   }
 
@@ -98,7 +98,7 @@
               <Inline gap="2" align="center">
                 <Switch
                   id="{id}-option-{index}-{position}"
-                  aria-label={slot.computation.appearance.name && copy.slotControl(option.label, slot.computation.appearance.name)}
+                  aria-label={slot.computation.appearance.label && copy.slotControl(option.label, slot.computation.appearance.label)}
                   checked={isOn}
                   onCheckedChange={(checked) => slot.inputSlot.setOption(option, checked)}
                 />

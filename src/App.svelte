@@ -63,7 +63,7 @@
     }
     for (const slot of opened.computation.slots) {
       if (breaksNewBound(brokenBefore.get(slot.position) ?? [], slot.violations)) {
-        raiseBoundsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.appearance.name);
+        raiseBoundsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.appearance.label);
       }
     }
     brokenBefore = new Map([...brokenBefore, ...opened.computation.slots.map((slot) => [slot.position, slot.violations] as const)]);

@@ -83,7 +83,7 @@ describe("the first address's load", () => {
       for (const onPage of [page.standard, page.explore]) {
         const { session } = firstLoadAt({ page: onPage, model }, { link: undefined, kept: undefined }, registeredModels);
 
-        expect(openedOn(session), `${model.info.label} on ${onPage.title}`).toEqual({
+        expect(openedOn(session), `${model.info.label} on ${onPage.label}`).toEqual({
           written: startingSession(model),
           page: onPage,
           pendingSwitch: null,

@@ -122,14 +122,14 @@ export class Computation {
 
   /**
    * The runs {@link chart} is drawn of, in slot order, each with its slot's
-   * name where its appearance carries one and the violation rows of its run:
+   * label where its appearance carries one and the violation rows of its run:
    * what an Image's Input summary lists (ADR-0002 decision 64, rule 3;
    * decision 84, rule 8). Read at the click, each slot a copy no later edit
    * reaches, so nothing is kept of it.
    */
   get drawnRuns(): readonly DrawnRun[] {
     return this.#compared.map((computation) => ({
-      name: computation.appearance.name,
+      label: computation.appearance.label,
       slot: computation.slot.toSlot(),
       atmosphericPressure: this.#session.atmosphericPressure,
       violations: computation.violations,
@@ -209,7 +209,7 @@ export class SlotComputation {
     this.#scanFrame = scanFrame;
   }
 
-  /** The hue {@link position} gives the slot, and its name while the session names its slots. */
+  /** The hue {@link position} gives the slot, and its label while the session names its slots. */
   get appearance(): SlotAppearance {
     return this.#appearance;
   }

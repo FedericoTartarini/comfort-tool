@@ -13,7 +13,7 @@
   interface Props {
     model: ModelDeclaration;
     /**
-     * One row per compared slot, in slot order. While their appearances carry names, the Input column names each row
+     * One row per compared slot, in slot order. While their appearances carry labels, the Input column names each row
      * beside its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's bounds icon
      * alone, hidden where the row broke no bound.
      */
@@ -25,7 +25,7 @@
 
   let { model, rows, unitSystem, labelledby }: Props = $props();
 
-  const namesRows = $derived(rows.some((row) => row.appearance.name !== undefined));
+  const namesRows = $derived(rows.some((row) => row.appearance.label !== undefined));
 </script>
 
 <!-- A slot's swatch is its chart marker's. -->
@@ -85,7 +85,7 @@
               <span class="swatch-label">
                 {@render boundsIcon(row)}
                 {@render slotSwatch(row)}
-                {row.appearance.name}
+                {row.appearance.label}
               </span>
             {:else}
               {@render boundsIcon(row)}

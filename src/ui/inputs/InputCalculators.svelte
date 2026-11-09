@@ -1,7 +1,7 @@
 <!--
   The input calculators' one entry and their dialog (ADR-0002 decision 75,
   rule 6 as noted 2026-10-15). The entry is a full-width button at the Inputs
-  card's foot, "Input calculators" over the names of the calculators the
+  card's foot, "Input calculators" over the labels of the calculators the
   model's panel offers; there is none where it offers none. It opens one
   dialog of one width and one fixed height, a tab per calculator in the
   panel's row order: the tab's settings, the one region that scrolls; the
@@ -20,10 +20,10 @@
   import type { Calculator } from "$lib/core/calculators";
   import type { Quantity } from "$lib/core/quantities";
 
-  /** One line of a calculator's outputs in the dock: its name, and its SI value, not a number while there is none. */
+  /** One line of a calculator's outputs in the dock: its label, and its SI value, not a number while there is none. */
   export interface DockLine {
     readonly quantity: Quantity;
-    readonly name: string;
+    readonly label: string;
     readonly value: number;
   }
 
@@ -42,7 +42,7 @@
   import { panelCalculators, shownRow, type CalculatorOutputs } from "$lib/core/calculators";
   import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
-  import { displayUnitFor, nameWithUnit, numberInUnit } from "$lib/core/units";
+  import { displayUnitFor, numberInUnit, textWithUnit } from "$lib/core/units";
   import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
@@ -76,8 +76,8 @@
   const current = $derived(lastUsed && calculators.includes(lastUsed) ? lastUsed : calculators[0]);
 
   const compared = $derived(columns.filter((slot) => slot !== null));
-  /** Whether the slots carry names, Standard with Compare on (decision 50): only then does the footer ask which Apply writes. */
-  const named = $derived(columns[0].computation.appearance.name !== undefined);
+  /** Whether the slots carry labels, Standard with Compare on (decision 50): only then does the footer ask which Apply writes. */
+  const named = $derived(columns[0].computation.appearance.label !== undefined);
   /** The slots "Apply to" has checked, by position, slot 1 alone each time the dialog opens. */
   let checked: readonly SlotPosition[] = $state.raw([0]);
   /** The slots Apply writes, in slot order: the checked ones while the slots are named, and slot 1 otherwise. */
@@ -112,7 +112,7 @@
         <Button {...props} variant="outline" class="calculator-entry">
           <span class="calculator-entry-text">
             <span>{copy.inputCalculators}</span>
-            <span class="caption calculator-entry-names">{copy.calculatorNames(calculators.map((calculator) => calculator.label))}</span>
+            <span class="caption calculator-entry-labels">{copy.calculatorLabels(calculators.map((calculator) => calculator.label))}</span>
           </span>
           <ChevronRightIcon />
         </Button>
@@ -144,7 +144,7 @@
               <Stack gap="1">
                 {#each lines as line (line.quantity)}
                   {@const lineUnit = displayUnitFor(line.quantity, unitSystem)}
-                  {@render dockLine(`${index}-${line.quantity.key}`, nameWithUnit(line.name, lineUnit), numberInUnit(line.value, lineUnit))}
+                  {@render dockLine(`${index}-${line.quantity.key}`, textWithUnit(line.label, lineUnit), numberInUnit(line.value, lineUnit))}
                 {/each}
                 {#each targets as { inputSlot, computation } (computation.position)}
                   {@const row = shownRow(inputSlot, calculator, calculatorOutputs ?? undefined, model, atmosphericPressure)}
@@ -152,7 +152,7 @@
                   {@const after = numberInUnit(row.after, unit)}
                   {@render dockLine(
                     `${index}-row-${computation.position}`,
-                    nameWithUnit(computation.appearance.name ? copy.slotControl(row.quantity.label, computation.appearance.name) : row.quantity.label, unit),
+                    textWithUnit(computation.appearance.label ? copy.slotControl(row.quantity.label, computation.appearance.label) : row.quantity.label, unit),
                     numberInUnit(row.before, unit),
                     row.cutTo ? copy.calculatorCutTo(after, formatBound(row.cutTo, row.quantity, unitSystem)) : after,
                   )}
@@ -186,7 +186,8 @@
 
 <!--
   The footer's "Apply to": a checkbox per enabled slot, any number of them checked, which Apply confirms (decision 76,
-  rule 1), each labelled by the slot's swatch and name as its slot button is. `prefix` is the tab's, keeping ids unique.
+  rule 1), each labelled by the slot's swatch and label as its slot button is. `prefix` is the tab's, keeping ids
+  unique.
 -->
 {#snippet applyTo(prefix: string)}
   <div class="apply-to" role="group" aria-labelledby="{prefix}-heading">
@@ -201,7 +202,7 @@
           />
           <Label for="{prefix}-{computation.position}">
             <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(computation.appearance.hue)}></span>
-            {computation.appearance.name}
+            {computation.appearance.label}
           </Label>
         </Inline>
       {/each}

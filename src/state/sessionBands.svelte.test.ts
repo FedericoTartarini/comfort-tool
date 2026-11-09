@@ -97,7 +97,7 @@ const edits: readonly { name: string; edit: (draft: BandListDraft) => void; expe
 describe("The Bands dialog's edits through a draft of the Band list", () => {
   for (const type of [chartType.dynamic, chartType.psychrometric]) {
     for (const { name, edit, expected } of edits) {
-      it(`${name} in the draft alone, and Apply writes it to the current model's Band list and the ${type.title} chart's spec, rescanning nothing`, () => {
+      it(`${name} in the draft alone, and Apply writes it to the current model's Band list and the ${type.label} chart's spec, rescanning nothing`, () => {
         const { session, computation } = exploreSession(type);
         expect(paintedFills(computation)).toEqual(fillsOf(defaultList, computation));
         expect(strokedEdges(computation, defaultList)).toEqual(edgesOf(defaultList));

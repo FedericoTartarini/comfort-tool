@@ -17,7 +17,7 @@
   // Options are addressed by position in this list rather than by any string id: a select's value is text, and a
   // chart type is compared by identity.
   const types: readonly ChartType[] = $derived(model.charts.map((declaredChart) => declaredChart.type));
-  const typeGroups = $derived([{ options: types.map((type, index) => ({ key: String(index), label: type.title })) }]);
+  const typeGroups = $derived([{ options: types.map((type, index) => ({ key: String(index), label: type.label })) }]);
 </script>
 
 <!--

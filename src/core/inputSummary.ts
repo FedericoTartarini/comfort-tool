@@ -13,10 +13,10 @@ import type { UnitSystem } from "./unitSystem";
 /**
  * A slot the chart draws, as it is: the slot as it was entered, the
  * atmospheric pressure it ran at and the violation rows its run reported,
- * with its slot's name where the slot has one.
+ * with its slot's label where the slot has one.
  */
 export interface DrawnRun {
-  readonly name?: string;
+  readonly label?: string;
   readonly slot: Slot;
   readonly atmosphericPressure: number;
   readonly violations: readonly ViolationRow[];
@@ -31,8 +31,8 @@ export type InputSummary = readonly (readonly string[])[];
 
 /**
  * What the chart of `runs` is computed from, as an Image writes it under its
- * legend (ADR-0002 decision 64, rule 3): the model's name and its standard;
- * then each run's group, headed by its slot's name where the run has one:
+ * legend (ADR-0002 decision 64, rule 3): the model's label and its standard;
+ * then each run's group, headed by its slot's label where the run has one:
  * its rows as the input panel lists them for its slot, its options and its
  * pressure, and, where its run broke a bound, the bounds icon's heading and
  * one line per bound in its row's sentence (decision 84, rule 8); then, given
@@ -48,7 +48,7 @@ export function inputSummary(parts: {
 }): InputSummary {
   const { model, runs, unitSystem, bands } = parts;
   const standard = standardOf(model);
-  const modelLine = standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardEntryFor(standard).name);
+  const modelLine = standard === undefined ? model.info.label : copy.summaryModel(model.info.label, standardEntryFor(standard).label);
   const edges = bands && model.scan ? [[edgesLine(model.scan.output, bands, unitSystem)]] : [];
   return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem)), ...edges];
 }
@@ -57,7 +57,7 @@ function runLines(model: ModelDeclaration, run: DrawnRun, unitSystem: UnitSystem
   const { slot, atmosphericPressure, violations } = run;
   const options = optionsReader(slot.options);
   return [
-    ...(run.name === undefined ? [] : [run.name]),
+    ...(run.label === undefined ? [] : [run.label]),
     ...panelQuantities(model, slot).map((quantity) =>
       valueLine(quantity, enteredValue(slot, quantity, model, atmosphericPressure), unitSystem),
     ),

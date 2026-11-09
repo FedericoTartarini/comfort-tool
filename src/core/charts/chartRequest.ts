@@ -5,7 +5,7 @@ import type { SlotAppearance } from "$lib/core/slotAppearance";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
 /**
- * One slot the chart is drawn of: its inputs, and the name and hue its
+ * One slot the chart is drawn of: its inputs, and the label and hue its
  * position gives it.
  */
 export interface ChartedSlot extends SlotAppearance {

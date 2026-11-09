@@ -117,7 +117,7 @@
   by identity. A click on the chosen item asks for none (an empty value), which
   the setter ignores, so one member is always chosen.
 -->
-{#snippet choice<T extends { title: string }>(
+{#snippet choice<T extends { label: string }>(
   idSuffix: string,
   label: string,
   members: readonly T[],
@@ -141,7 +141,7 @@
       }
     >
       {#each members as member, index (member)}
-        <ToggleGroup.Item value={String(index)}>{member.title}</ToggleGroup.Item>
+        <ToggleGroup.Item value={String(index)}>{member.label}</ToggleGroup.Item>
       {/each}
     </ToggleGroup.Root>
   </Inline>

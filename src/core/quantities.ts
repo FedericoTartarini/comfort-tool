@@ -81,7 +81,7 @@ export interface Quantity {
    */
   readonly key: string;
   readonly kind: QuantityKind;
-  /** Human-readable name, e.g. `"Dry-bulb air temperature"`. */
+  /** Its text on screen, e.g. `"Dry-bulb air temperature"`. */
   readonly label: string;
 }
 

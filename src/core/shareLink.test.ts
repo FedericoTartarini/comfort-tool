@@ -436,7 +436,7 @@ describe("narrowedToPage", () => {
     for (const model of registeredModels) {
       for (const onPage of pagesOf(model).filter((candidate) => candidate !== page.timeSeries)) {
         const narrowed = narrowedToPage(switchedTo(model), onPage);
-        expect(roundTrip(narrowed), `${model.info.label} on ${onPage.title}`).toEqual(readBack(narrowed, onPage));
+        expect(roundTrip(narrowed), `${model.info.label} on ${onPage.label}`).toEqual(readBack(narrowed, onPage));
       }
     }
     // Heat Index has no Standard page: its link is Explore's alone.

@@ -28,8 +28,8 @@
 
   let { group, setters }: Props = $props();
 
-  /** The group's name, read into the button's accessible name (decision 72, rule 1, as decision 87 rule 7 revised it). */
-  const groupNames = {
+  /** The group's label, read into the button's accessible name (decision 72, rule 1, as decision 87 rule 7 revised it). */
+  const groupLabels = {
     temperature: copy.temperatureGroup,
     humidity: copy.humidityGroup,
     airSpeed: copy.airSpeedGroup,
@@ -62,7 +62,7 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
-      <Button {...props} variant="outline" size="sm" aria-label={copy.entryGroupButtonName(groupNames[group.field])}>
+      <Button {...props} variant="outline" size="sm" aria-label={copy.entryGroupButtonName(groupLabels[group.field])}>
         {copy.entryGroupButton}
         <ChevronDownIcon data-icon="inline-end" />
       </Button>
@@ -72,10 +72,10 @@
     <!-- A function binding, as the model select's: the session, not the menu, decides which mode is current. -->
     <DropdownMenu.RadioGroup bind:value={() => String(currentIndex), (value) => choose(Number(value))}>
       {#each choices as choice, index (choice.id)}
-        {@const name = copy.entryModeChoice(choice.quantities.map((quantity) => quantity.label))}
-        <DropdownMenu.RadioItem value={String(index)} textValue={name} closeOnSelect>
+        {@const label = copy.entryModeChoice(choice.quantities.map((quantity) => quantity.label))}
+        <DropdownMenu.RadioItem value={String(index)} textValue={label} closeOnSelect>
           <Stack gap="1">
-            <span>{name}</span>
+            <span>{label}</span>
             <!-- A mode's `id` is typed `string` on its interface; every mode a group lists is from core's mode
                  tables, whose ids `EntryModeId` is the union of. -->
             <span class="caption">{copy.entryModeDescriptions[choice.id as EntryModeId]}</span>

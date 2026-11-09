@@ -49,7 +49,7 @@ export interface WrittenSession {
   readonly charts: ReadonlyMap<ModelDeclaration, ChartSettings>;
 }
 
-/** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
+/** A slot's place in the session, from 0: its label and hue follow it (ADR-0002 decision 50). */
 export type SlotPosition = 0 | 1 | 2;
 
 /** Every position, in slot order. */

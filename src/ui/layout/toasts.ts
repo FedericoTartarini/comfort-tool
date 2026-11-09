@@ -24,10 +24,10 @@ export function raiseToast(id: Toast): void {
   toast(toastText[id], { id });
 }
 
-/** The box a value was committed in: its quantity, and its slot's name while the slots are named. */
+/** The box a value was committed in: its quantity, and its slot's label while the slots are named. */
 export interface CommittedBox {
   readonly quantity: Quantity;
-  readonly slotName?: string;
+  readonly slotLabel?: string;
 }
 
 /**
@@ -35,7 +35,7 @@ export interface CommittedBox {
  * `verdict` (ADR-0002 decision 84, rules 2 and 7, and its note of
  * 2026-10-28): nothing for a value written as it is, nor for a cut, which
  * the box shows at the bound's end over the bound; for a refusal, the bound
- * each row would break at it, under `slotNameOf` its slot's name. Each toast
+ * each row would break at it, under `slotLabelOf` its slot's label. Each toast
  * stands until it is closed, a later commit's beside it.
  */
 export function raiseVerdict<Row extends OutOfRangeRow>(
@@ -43,17 +43,17 @@ export function raiseVerdict<Row extends OutOfRangeRow>(
   box: CommittedBox,
   value: number,
   unitSystem: UnitSystem,
-  slotNameOf: (row: Row) => string | undefined = () => undefined,
+  slotLabelOf: (row: Row) => string | undefined = () => undefined,
 ): void {
   if (verdict.kind !== "refused") {
     return;
   }
-  const subject = box.slotName ? copy.slotControl(box.quantity.label, box.slotName) : box.quantity.label;
+  const subject = box.slotLabel ? copy.slotControl(box.quantity.label, box.slotLabel) : box.quantity.label;
   const unit = displayUnitFor(box.quantity, unitSystem);
   const reasons = verdict.rows.map((row) => {
     const sentence = boundSentence(row.quantity, row.bound, unitSystem);
-    const slotName = slotNameOf(row);
-    return slotName ? copy.slotNote(slotName, sentence) : sentence;
+    const slotLabel = slotLabelOf(row);
+    return slotLabel ? copy.slotNote(slotLabel, sentence) : sentence;
   });
   toast(copy.refusedToast(subject, numberWithUnit(value, unit), reasons));
 }
@@ -61,17 +61,17 @@ export function raiseVerdict<Row extends OutOfRangeRow>(
 /**
  * Tell the person that the run of the slot at `position` broke a bound it did
  * not break before (ADR-0002 decision 84, rule 8): every bound it breaks now,
- * `rows`, under `slotName` its slot's name. The slot's toast replaces its
+ * `rows`, under `slotLabel` its slot's label. The slot's toast replaces its
  * earlier one, which named fewer.
  */
 export function raiseBoundsBroken(
   position: SlotPosition,
   rows: readonly ViolationRow[],
   unitSystem: UnitSystem,
-  slotName?: string,
+  slotLabel?: string,
 ): void {
   const text = copy.boundsBrokenToast(rows.map((row) => violationSentence(row, unitSystem)));
-  toast(slotName ? copy.slotNote(slotName, text) : text, { id: `bounds-broken-${position}` });
+  toast(slotLabel ? copy.slotNote(slotLabel, text) : text, { id: `bounds-broken-${position}` });
 }
 
 /** Close every toast standing, as the session they speak of is replaced. */

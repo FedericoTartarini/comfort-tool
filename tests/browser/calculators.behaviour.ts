@@ -19,7 +19,7 @@ const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 const SOLAR = SOLAR_GAIN_INFO.label;
 const ENSEMBLE = "Custom ensemble";
 const CLOTHING = CLO_TOUT_INFO.label;
-const ALL_NAMES = `${SOLAR} · ${ENSEMBLE} · ${CLOTHING}`;
+const ALL_LABELS = `${SOLAR} · ${ENSEMBLE} · ${CLOTHING}`;
 const OUTDOOR_TEMPERATURE = /^Outdoor air temperature at 6 a\.m\./;
 const DASH = "—";
 const MRT_LINE = "Mean radiant temperature (°C)";
@@ -61,9 +61,9 @@ async function compareThreeSlots(page: Page) {
   await expect(mrtOf(page, "Input 3")).toBeVisible();
 }
 
-/** The mean radiant temperature box of the slot named `slotName`, under Compare. */
-function mrtOf(page: Page, slotName: string) {
-  return page.getByRole("spinbutton", { name: new RegExp(`^Mean radiant temperature.*, ${slotName}$`) });
+/** The mean radiant temperature box of the slot labelled `slotLabel`, under Compare. */
+function mrtOf(page: Page, slotLabel: string) {
+  return page.getByRole("spinbutton", { name: new RegExp(`^Mean radiant temperature.*, ${slotLabel}$`) });
 }
 
 /** The predicted clo at `tout` °C, as a row shows it. */
@@ -95,7 +95,7 @@ test.describe("the entry", () => {
     await open(page);
     const entry = entryOf(page);
     await expect(entry).toContainText("Input calculators");
-    await expect(entry).toContainText(ALL_NAMES);
+    await expect(entry).toContainText(ALL_LABELS);
 
     const presets = boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" });
     await expect(presets).toHaveText("Presets");
@@ -125,7 +125,7 @@ test.describe("the entry", () => {
 
   test("on Explore, the button and the dialog are the Standard page's", async ({ page }) => {
     await open(page, EXPLORE_ADDRESS);
-    await expect(entryOf(page)).toContainText(ALL_NAMES);
+    await expect(entryOf(page)).toContainText(ALL_LABELS);
     const dialog = await openDialog(page);
     await expect(dialog.getByRole("tab")).toHaveText([SOLAR, ENSEMBLE, CLOTHING]);
     await expect(dialog.getByText("Apply to")).toHaveCount(0);
@@ -604,7 +604,7 @@ test.describe("the dock's row under the entry modes", () => {
 
 test.describe("Apply to, under Compare", () => {
   const increase = increaseAt(0);
-  const mrtLine = (slotName: string) => `Mean radiant temperature, ${slotName} (°C)`;
+  const mrtLine = (slotLabel: string) => `Mean radiant temperature, ${slotLabel} (°C)`;
 
   test("lists the enabled slots with Input 1 checked, a dock line per checked slot read from that slot, and is not remembered", async ({ page }) => {
     await open(page);

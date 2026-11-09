@@ -27,7 +27,7 @@
   interface Props {
     /**
      * What the select lists, in its order: each group under its standard's
-     * name, or the copy's heading for the models with none; one group under
+     * label, or the copy's heading for the models with none; one group under
      * no heading.
      */
     choices: readonly ModelGroup[];
@@ -45,7 +45,7 @@
 
   const groups = $derived(
     choices.map((group) => ({
-      heading: choices.length > 1 ? (group.standard?.name ?? copy.otherModels) : undefined,
+      heading: choices.length > 1 ? (group.standard?.label ?? copy.otherModels) : undefined,
       options: group.models.map((choice) => ({ key: String(models.indexOf(choice)), label: choice.info.label })),
     })),
   );

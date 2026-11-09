@@ -9,7 +9,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * step by the unit's step and stop at the bound, and so do the box's own two
  * step buttons (decision 84's note of 2026-10-27); a numeric keypad where the
  * lower end is at least 0. The line under a quantity's box is its bound with
- * the display unit, and no preset's name. A preset the slot would not take as
+ * the display unit, and no preset's label. A preset the slot would not take as
  * it is is disabled in the row's menu, its number still shown (rule 5).
  */
 
@@ -228,10 +228,10 @@ test.describe("the box's attributes", () => {
 });
 
 test.describe("the line under the box", () => {
-  test("under metabolic rate it is the bound with 'met' and no preset's name", async ({ page }) => {
+  test("under metabolic rate it is the bound with 'met' and no preset's label", async ({ page }) => {
     await open(page, PMV_ADDRESS);
     const box = page.getByRole("spinbutton", { name: /^Metabolic rate/ });
-    // A preset's value: its name stood on this line before.
+    // A preset's value: its label stood on this line before.
     await box.fill("1");
     await expect(captionOf(box)).toHaveText("1 – 4 met");
   });

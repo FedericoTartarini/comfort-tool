@@ -3,14 +3,14 @@ import type { StandardId } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 
 /**
- * Name and route segment for a library `Standard`, its year included, derived
+ * Label and route segment for a library `Standard`, its year included, derived
  * from its key rather than written down per standard (ADR-0002 decisions 6 and 86):
  * `iso_7730_2005` → "ISO 7730:2005", `iso-7730-2005`.
  */
 export interface StandardEntry {
   readonly id: StandardId;
   /** As the sidebar, the Explore select's group heading and the Input summary write it. */
-  readonly name: string;
+  readonly label: string;
   readonly routeSegment: string;
 }
 
@@ -28,7 +28,7 @@ export function parseStandardKey(key: string): Omit<StandardEntry, "id"> {
   }
   const [, body, number, part, year] = match;
   const fullNumber = part === undefined ? number : `${number}-${part}`;
-  return { name: copy.standardName(`${body.toUpperCase()} ${fullNumber}`, year), routeSegment: `${body}-${fullNumber}-${year}` };
+  return { label: copy.standardLabel(`${body.toUpperCase()} ${fullNumber}`, year), routeSegment: `${body}-${fullNumber}-${year}` };
 }
 
 /** Every standard the library names, in `Standard`'s own key order. */

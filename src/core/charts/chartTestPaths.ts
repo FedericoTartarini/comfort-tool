@@ -9,7 +9,7 @@
 import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, HoverGridTrace, PathPiece, PathTrace } from "./chartSpec";
 
-/** `spec`'s filled paths that carry a name, in drawing order. The cover above saturation has none. */
+/** `spec`'s filled paths that carry a label, in drawing order. The cover above saturation has none. */
 function namedFillsOf(spec: Pick<ChartSpec, "traces">): PathTrace[] {
   return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.label !== undefined);
 }

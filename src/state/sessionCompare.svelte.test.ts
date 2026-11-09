@@ -389,9 +389,9 @@ function chartAlone(entries: ReadonlyMap<Quantity, number>): ChartSpec | null {
 }
 
 describe("the compared slots' appearances", () => {
-  /** The name each compared slot's appearance carries, in slot order: `undefined` for a slot not named. */
-  function appearanceNamesOf(computation: Computation): (string | undefined)[] {
-    return computation.slots.map((slot) => slot.appearance.name);
+  /** The label each compared slot's appearance carries, in slot order: `undefined` for a slot not named. */
+  function appearanceLabelsOf(computation: Computation): (string | undefined)[] {
+    return computation.slots.map((slot) => slot.appearance.label);
   }
 
   /** The labels of the chart's marker entries in its legend, in slot order. */
@@ -401,19 +401,19 @@ describe("the compared slots' appearances", () => {
 
   it("names no slot on the Standard page with Compare off, and the marker reads Input", () => {
     const computation = new Computation(new Session(pmvPpdIso));
-    expect(appearanceNamesOf(computation)).toEqual([undefined]);
+    expect(appearanceLabelsOf(computation)).toEqual([undefined]);
     expect(markerEntriesOf(computation)).toEqual(["Input"]);
   });
 
   it("names every compared slot by position while Compare is on, slots 2 and 3 disabled or not", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     const computation = new Computation(session);
-    expect(appearanceNamesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(appearanceLabelsOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
     expect(markerEntriesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
     session.setSlotEnabled(1, false);
     session.setSlotEnabled(2, false);
-    expect(appearanceNamesOf(computation)).toEqual(["Input 1"]);
+    expect(appearanceLabelsOf(computation)).toEqual(["Input 1"]);
     expect(markerEntriesOf(computation)).toEqual(["Input 1"]);
   });
 
@@ -421,9 +421,9 @@ describe("the compared slots' appearances", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     const computation = new Computation(session);
     session.setCompare(false);
-    expect(appearanceNamesOf(computation)).toEqual([undefined]);
+    expect(appearanceLabelsOf(computation)).toEqual([undefined]);
     session.setCompare(true);
-    expect(appearanceNamesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(appearanceLabelsOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("names no slot on Explore, whatever Compare holds", () => {
@@ -431,7 +431,7 @@ describe("the compared slots' appearances", () => {
     session.setAddress({ page: page.explore, model: pmvPpdIso });
     const computation = new Computation(session);
     expect(session.compare).toBe(true);
-    expect(appearanceNamesOf(computation)).toEqual([undefined]);
+    expect(appearanceLabelsOf(computation)).toEqual([undefined]);
     expect(markerEntriesOf(computation)).toEqual(["Input"]);
   });
 

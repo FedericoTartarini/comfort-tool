@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { chartInk } from "./bandPalette";
 import { palette } from "./palette";
-import { slotAppearance, slotNames } from "./slotAppearance";
+import { slotAppearance, slotLabels } from "./slotAppearance";
 import { slotPositions } from "./writtenSession";
 
 describe("a slot's appearance", () => {
   it("names position n Input n while the slots are named, in the position's hue", () => {
     expect(slotPositions.map((position) => slotAppearance(position, true))).toEqual([
-      { name: "Input 1", hue: palette.slots[0] },
-      { name: "Input 2", hue: palette.slots[1] },
-      { name: "Input 3", hue: palette.slots[2] },
+      { label: "Input 1", hue: palette.slots[0] },
+      { label: "Input 2", hue: palette.slots[1] },
+      { label: "Input 3", hue: palette.slots[2] },
     ]);
   });
 
@@ -18,7 +18,7 @@ describe("a slot's appearance", () => {
   });
 
   it("keeps the named texts by position, Input 1 to Input 3, for the slot buttons", () => {
-    expect(slotNames).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(slotLabels).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 });
 

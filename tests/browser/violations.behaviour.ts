@@ -39,9 +39,9 @@ function toasts(page: Page) {
   return page.getByRole("region", { name: /^Notifications/ }).locator('li[data-sonner-toast]:not([data-removed="true"])');
 }
 
-/** The air speed's box, of `slotName`'s slot under Compare. */
-function airSpeedOf(page: Page, slotName?: string) {
-  return page.getByRole("spinbutton", { name: slotName ? new RegExp(`^Air speed.*, ${slotName}$`) : /^Air speed/ });
+/** The air speed's box, of `slotLabel`'s slot under Compare. */
+function airSpeedOf(page: Page, slotLabel?: string) {
+  return page.getByRole("spinbutton", { name: slotLabel ? new RegExp(`^Air speed.*, ${slotLabel}$`) : /^Air speed/ });
 }
 
 /** Types `text` over `box`'s and commits it at once, as Enter does. */

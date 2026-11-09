@@ -3,7 +3,7 @@ import { copy } from "$lib/text/copy";
 import { humidityMode } from "./entryModes";
 import { formatNumber } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
-import { displayUnitFor, labelWithUnit, nameWithUnit, numberInUnit, numberWithUnit, valueWithUnit } from "./units";
+import { displayUnitFor, labelWithUnit, numberInUnit, numberWithUnit, textWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
 
 describe("displayUnitFor", () => {
@@ -113,10 +113,10 @@ describe("labelWithUnit", () => {
   });
 });
 
-describe("nameWithUnit", () => {
-  it("puts the unit in brackets after a name that is no quantity's label, and leaves it bare without a symbol", () => {
-    expect(nameWithUnit("Mean radiant temperature before", displayUnitFor(quantities.tr, unitSystem.ip))).toBe("Mean radiant temperature before (°F)");
-    expect(nameWithUnit("Fraction", displayUnitFor(quantities.f_svv, unitSystem.si))).toBe("Fraction");
+describe("textWithUnit", () => {
+  it("puts the unit in brackets after text that is no quantity's label, and leaves it bare without a symbol", () => {
+    expect(textWithUnit("Mean radiant temperature before", displayUnitFor(quantities.tr, unitSystem.ip))).toBe("Mean radiant temperature before (°F)");
+    expect(textWithUnit("Fraction", displayUnitFor(quantities.f_svv, unitSystem.si))).toBe("Fraction");
   });
 });
 

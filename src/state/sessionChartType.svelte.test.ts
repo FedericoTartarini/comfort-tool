@@ -52,7 +52,7 @@ function pickedAxesOf(session: Session): ChartAxes {
 describe("a session on Adaptive", () => {
   for (const target of [page.standard, page.explore]) {
     for (const compare of [false, true]) {
-      it(`gives the adaptive chart on ${target.title}, Compare ${compare ? "on" : "off"}, scanning nothing and offering no axes`, () => {
+      it(`gives the adaptive chart on ${target.label}, Compare ${compare ? "on" : "off"}, scanning nothing and offering no axes`, () => {
         const session = sessionComparingThreeSlots(adaptiveAshrae);
         heldSlot(session, 1).setEntered(q.v, 0.9);
         session.setCompare(compare);
@@ -68,7 +68,7 @@ describe("a session on Adaptive", () => {
         expect(computation.drawnAxes).toBeNull();
       });
 
-      it(`draws each Comfort zone as a fill and two lines in its slot's hue on ${target.title}, Compare ${compare ? "on" : "off"}`, () => {
+      it(`draws each Comfort zone as a fill and two lines in its slot's hue on ${target.label}, Compare ${compare ? "on" : "off"}`, () => {
         const session = sessionComparingThreeSlots(adaptiveAshrae);
         heldSlot(session, 1).setEntered(q.v, 0.9);
         session.setCompare(compare);

@@ -76,7 +76,7 @@ function drawChart(session: Session, computation: Computation, chart: DeclaredCh
   }
   const spec = computation.chart;
   if (!spec) {
-    throw new Error(`${session.model.info.label} draws no ${chart.type.title} chart`);
+    throw new Error(`${session.model.info.label} draws no ${chart.type.label} chart`);
   }
   return spec;
 }
@@ -97,7 +97,7 @@ function markersTooClose(model: ModelDeclaration, modeCase: ModeCase): string[] 
   session.setSlotEnabled(2, true);
   return model.charts.flatMap((chart) => {
     const spec = drawChart(session, computation, chart);
-    const where = `${model.info.label}, ${modeCase.name}, ${chart.type.title} chart`;
+    const where = `${model.info.label}, ${modeCase.name}, ${chart.type.label} chart`;
     const markers = markersOf(spec);
     if (markers.length !== 3) {
       return [`${where}: ${markers.length} markers drawn`];

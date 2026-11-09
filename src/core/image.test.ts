@@ -25,10 +25,10 @@ describe("imageSize", () => {
 });
 
 describe("defaultImageTitle", () => {
-  it("is the model's name as the model select shows it and the chart type's title, for every registered model and each chart it declares", () => {
+  it("is the model's label as the model select shows it and the chart type's label, for every registered model and each chart it declares", () => {
     for (const model of registeredModels) {
       for (const declared of model.charts) {
-        expect(defaultImageTitle(model, declared.type)).toBe(`${model.info.label} · ${declared.type.title}`);
+        expect(defaultImageTitle(model, declared.type)).toBe(`${model.info.label} · ${declared.type.label}`);
       }
     }
   });

@@ -13,27 +13,27 @@ import type { ModelDeclaration } from "./modelDeclaration";
  * spells one.
  */
 export interface ImageSize {
-  readonly title: string;
+  readonly label: string;
   readonly widthMm: number;
   /** The plot area's width over its height. */
   readonly plotAspectRatio: number;
 }
 
 export const imageSize = {
-  singleColumn: { title: "Single column", widthMm: 90, plotAspectRatio: 4 / 3 },
-  doubleColumn: { title: "Double column", widthMm: 190, plotAspectRatio: 16 / 9 },
+  singleColumn: { label: "Single column", widthMm: 90, plotAspectRatio: 4 / 3 },
+  doubleColumn: { label: "Double column", widthMm: 190, plotAspectRatio: 16 / 9 },
 } as const satisfies Record<string, ImageSize>;
 
 /** The file formats of an Image (decision 64, rule 5), with no `id`, as {@link ImageSize} has none. */
 export interface ImageFormat {
-  readonly title: string;
+  readonly label: string;
   /** The file name's, without its dot. */
   readonly extension: string;
 }
 
 export const imageFormat = {
-  png: { title: "PNG", extension: "png" },
-  svg: { title: "SVG", extension: "svg" },
+  png: { label: "PNG", extension: "png" },
+  svg: { label: "SVG", extension: "svg" },
 } as const satisfies Record<string, ImageFormat>;
 
 /**
@@ -87,11 +87,11 @@ export function imageFooter(madeAt: Date): readonly string[] {
 }
 
 /**
- * The title an Image starts with (decision 64, rule 2): the model's name as
+ * The title an Image starts with (decision 64, rule 2): the model's label as
  * the model select shows it and the chart's, as `PMV / PPD (ASHRAE 55) · Psychrometric`.
  */
 export function defaultImageTitle(model: ModelDeclaration, type: ChartType): string {
-  return `${model.info.label} · ${type.title}`;
+  return `${model.info.label} · ${type.label}`;
 }
 
 /** The file's name where its title leaves nothing to write (decision 64, rule 8). */
@@ -99,12 +99,12 @@ const FALLBACK_FILE_NAME = "thermal-comfort-chart";
 
 /**
  * The downloaded file's name (decision 64, rule 8): the title, then the
- * size's title, each in lower case with every run of characters outside
+ * size's label, each in lower case with every run of characters outside
  * `a-z` and `0-9` one hyphen, then the format's extension. A title that
  * leaves nothing, an empty one included, is {@link FALLBACK_FILE_NAME}.
  */
 export function imageFileName(title: string, size: ImageSize, format: ImageFormat): string {
-  return `${toFileNamePart(title) || FALLBACK_FILE_NAME}-${toFileNamePart(size.title)}.${format.extension}`;
+  return `${toFileNamePart(title) || FALLBACK_FILE_NAME}-${toFileNamePart(size.label)}.${format.extension}`;
 }
 
 function toFileNamePart(text: string): string {

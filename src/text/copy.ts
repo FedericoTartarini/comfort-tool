@@ -17,7 +17,7 @@ const LIBRARY_NAME = "jsthermalcomfort";
 const CHANGE = "Change";
 
 /**
- * UI copy, English only in v1 (ADR §2). Quantity names never appear here:
+ * UI copy, English only in v1 (ADR §2). Quantity labels never appear here:
  * they come from `Quantity.label`. The one exception is `zoneLegend`'s |PMV|
  * (ADR-0002 decision 44).
  */
@@ -49,7 +49,7 @@ export const copy = {
   cbeAddress: "https://cbe.berkeley.edu/",
   berkeleyName: "University of California, Berkeley",
   berkeleyAddress: "https://www.berkeley.edu/",
-  // The sidebar's group labels after Standard, which is the Standard page's title (decision 73, rule 6): the session
+  // The sidebar's group labels after Standard, which is the Standard page's label (decision 73, rule 6): the session
   // controls' group reads "Settings", the users' word, not the project's (rule 6 as revised 2026-10-15).
   tools: "Tools",
   settings: "Settings",
@@ -59,8 +59,8 @@ export const copy = {
   units: "Units",
   // The Explore model select's heading over the models with no standard (ADR-0002 decision 74, rule 4).
   otherModels: "Other",
-  // The entry groups' names, each read into its menu button's name (ADR-0002 decision 72, rule 1, as decision 87
-  // rule 7 revised it).
+  // The entry groups' labels, each read into its menu button's accessible name (ADR-0002 decision 72, rule 1, as
+  // decision 87 rule 7 revised it).
   temperatureGroup: "Temperature",
   humidityGroup: "Humidity",
   airSpeedGroup: "Air speed",
@@ -68,12 +68,12 @@ export const copy = {
   // An entry group's menu button: "Change" on every group, named "Change air speed" so the visible word is in the name
   // (WCAG 2.5.3).
   entryGroupButton: CHANGE,
-  entryGroupButtonName: (groupName: string) => `${CHANGE} ${groupName.toLowerCase()}`,
+  entryGroupButtonName: (groupLabel: string) => `${CHANGE} ${groupLabel.toLowerCase()}`,
   // An entry mode in its group's menu, by the quantities it enters: "Dry-bulb air temperature and mean radiant temperature".
   entryModeChoice: (labels: readonly string[]) =>
     labels.map((label, index) => (index === 0 ? label : label.charAt(0).toLowerCase() + label.slice(1))).join(" and "),
   // The line under an entry mode in its menu: what is held or what follows when another input changes, never
-  // the mode's name again (decision 72, rule 3).
+  // the mode's label again (decision 72, rule 3).
   entryModeDescriptions: {
     separate: "The operative temperature follows the air speed.",
     operative: "Held as the air speed changes; used as both the air and the mean radiant temperature.",
@@ -89,15 +89,15 @@ export const copy = {
   } satisfies Record<EntryModeId, string>,
   // A row's menu button holds the row's presets alone (ADR-0002 decision 75, rule 6).
   presetTrigger: "Presets",
-  // The input calculators' entry at the Inputs card's foot, its second line the calculators' names, and the dialog's
+  // The input calculators' entry at the Inputs card's foot, its second line the calculators' labels, and the dialog's
   // title (decision 75, rule 6 (a) and (b)).
   inputCalculators: "Input calculators",
-  calculatorNames: (labels: readonly string[]) => labels.join(" · "),
+  calculatorLabels: (labels: readonly string[]) => labels.join(" · "),
   calculatorApply: "Apply",
   // The footer's slot checkboxes while the slots are named (decision 75, rule 6 (c)).
   calculatorApplyTo: "Apply to",
   restoreDefaults: "Restore defaults",
-  // Custom ensemble's tab name, the other calculators being named by their model infos, and Solar gain's postures in
+  // Custom ensemble's tab label, the other calculators being named by their model infos, and Solar gain's postures in
   // the standard's words (ADR-0002 decision 75).
   customEnsemble: "Custom ensemble",
   postureSeated: "Seated",
@@ -134,7 +134,7 @@ export const copy = {
   // One broken applicability row: `bound` already carries its unit.
   boundSentence: (label: string, bound: string) => `${label} must be ${bound}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
-  // headings: "Input" heads quantity names here and slot names in the result
+  // headings: "Input" heads quantity labels here and slot labels in the result
   // table, so the two are not one string.
   switchCutTitle: "Boundary Range Warning",
   switchCutIntro: (modelLabel: string) => `${modelLabel} does not accept every value you entered.`,
@@ -179,9 +179,9 @@ export const copy = {
   imageDownload: "Download",
   imageFailedToast: "The image could not be made.",
   imageIncludesSummaryAndFooter: "Include input summary and footer",
-  // A standard's name, `ASHRAE 55:2023`, as the sidebar, the Explore select's group heading and the Input summary write
-  // it (decision 86, rule 2): the colon for every body.
-  standardName: (bodyAndNumber: string, year: string) => `${bodyAndNumber}:${year}`,
+  // A standard's label, `ASHRAE 55:2023`, as the sidebar, the Explore select's group heading and the Input summary
+  // write it (decision 86, rule 2): the colon for every body.
+  standardLabel: (bodyAndNumber: string, year: string) => `${bodyAndNumber}:${year}`,
   // The Input summary's lines (decision 64, rule 3): `label` is a quantity's with its unit, or an option's.
   summaryModel: (model: string, standard: string) => `${model} · ${standard}`,
   summaryValue: (label: string, value: string) => `${label}: ${value}`,
@@ -194,21 +194,22 @@ export const copy = {
   // A yes-or-no result cell (`acceptability_80`, `compliance`).
   yes: "Yes",
   no: "No",
-  slotName: (index: number) => `Input ${index + 1}`,
-  // The chart marker's legend entry while its slot has no name: the one slot of a page that compares nothing. Its
+  slotLabel: (index: number) => `Input ${index + 1}`,
+  // The chart marker's legend entry while its slot has no label: the one slot of a page that compares nothing. Its
   // own string beside the two "Input" column headings, three places that say the word.
   unnamedMarker: "Input",
-  // The accessible name of one slot's control in a row that stands over several slots, on Compare.
-  slotControl: (control: string, slotName: string) => `${control}, ${slotName}`,
+  // One slot's control or quantity while the slots are named: a control's accessible name in a row that stands over
+  // several slots, on Compare, and a dock line's label or a refused value's subject.
+  slotControl: (control: string, slotLabel: string) => `${control}, ${slotLabel}`,
   compare: "Compare",
   // A switch's state beside it, under Compare, where its label stands above the slot columns (ADR-0002 decision 76,
   // rule 2).
   on: "On",
   off: "Off",
   // A caption line about one row of the result table, while Compare is on.
-  slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,
+  slotNote: (slotLabel: string, note: string) => `${slotLabel}: ${note}`,
   // A chart's legend entry or readout line of one slot, while the slots are named.
-  slotEntry: (slotName: string, entry: string) => `${slotName} · ${entry}`,
+  withSlotLabel: (label: string, text: string) => `${label} · ${text}`,
   chart: "Chart",
   // The chart type select's name, in the chart card's heading row with no visible label (ADR-0002 decision 87, rule 4,
   // as revised by decision 89, rule 6).

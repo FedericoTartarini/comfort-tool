@@ -3,24 +3,24 @@ import { Standard } from "jsthermalcomfort";
 import { isAshraeStandard, parseStandardKey, standardEntryFor, standards } from "./standard";
 
 describe("standards", () => {
-  it("derives a name and a route segment, each with the year, from each Standard key", () => {
-    expect(standards).toContainEqual({ id: Standard.ashrae_55_2023, name: "ASHRAE 55:2023", routeSegment: "ashrae-55-2023" });
-    expect(standards).toContainEqual({ id: Standard.iso_7730_2005, name: "ISO 7730:2005", routeSegment: "iso-7730-2005" });
-    expect(standards).toContainEqual({ id: Standard.iso_7730_2025, name: "ISO 7730:2025", routeSegment: "iso-7730-2025" });
-    expect(standards).toContainEqual({ id: Standard.iso_9920_2007, name: "ISO 9920:2007", routeSegment: "iso-9920-2007" });
-    expect(standards).toContainEqual({ id: Standard.iso_7933_2004, name: "ISO 7933:2004", routeSegment: "iso-7933-2004" });
-    expect(standards).toContainEqual({ id: Standard.iso_7933_2023, name: "ISO 7933:2023", routeSegment: "iso-7933-2023" });
-    expect(standards).toContainEqual({ id: Standard.iso_7243_2017, name: "ISO 7243:2017", routeSegment: "iso-7243-2017" });
-    expect(standards).toContainEqual({ id: Standard.iso_11079_2007, name: "ISO 11079:2007", routeSegment: "iso-11079-2007" });
-    expect(standards).toContainEqual({ id: Standard.en_16798_1_2019, name: "EN 16798-1:2019", routeSegment: "en-16798-1-2019" });
+  it("derives a label and a route segment, each with the year, from each Standard key", () => {
+    expect(standards).toContainEqual({ id: Standard.ashrae_55_2023, label: "ASHRAE 55:2023", routeSegment: "ashrae-55-2023" });
+    expect(standards).toContainEqual({ id: Standard.iso_7730_2005, label: "ISO 7730:2005", routeSegment: "iso-7730-2005" });
+    expect(standards).toContainEqual({ id: Standard.iso_7730_2025, label: "ISO 7730:2025", routeSegment: "iso-7730-2025" });
+    expect(standards).toContainEqual({ id: Standard.iso_9920_2007, label: "ISO 9920:2007", routeSegment: "iso-9920-2007" });
+    expect(standards).toContainEqual({ id: Standard.iso_7933_2004, label: "ISO 7933:2004", routeSegment: "iso-7933-2004" });
+    expect(standards).toContainEqual({ id: Standard.iso_7933_2023, label: "ISO 7933:2023", routeSegment: "iso-7933-2023" });
+    expect(standards).toContainEqual({ id: Standard.iso_7243_2017, label: "ISO 7243:2017", routeSegment: "iso-7243-2017" });
+    expect(standards).toContainEqual({ id: Standard.iso_11079_2007, label: "ISO 11079:2007", routeSegment: "iso-11079-2007" });
+    expect(standards).toContainEqual({ id: Standard.en_16798_1_2019, label: "EN 16798-1:2019", routeSegment: "en-16798-1-2019" });
     expect(standards).toHaveLength(Object.keys(Standard).length);
   });
 
-  it("names every Standard key with its year, in its name and in its route segment", () => {
+  it("names every Standard key with its year, in its label and in its route segment", () => {
     for (const key of Object.keys(Standard) as (keyof typeof Standard)[]) {
       const year = key.slice(-4);
-      const { name, routeSegment } = standardEntryFor(Standard[key]);
-      expect(name, key).toMatch(new RegExp(`^[A-Z]+ \\d+(-\\d+)?:${year}$`));
+      const { label, routeSegment } = standardEntryFor(Standard[key]);
+      expect(label, key).toMatch(new RegExp(`^[A-Z]+ \\d+(-\\d+)?:${year}$`));
       expect(routeSegment, key).toBe(key.replace(/_/g, "-"));
     }
   });
@@ -45,12 +45,12 @@ describe("isAshraeStandard", () => {
 });
 
 describe("parseStandardKey", () => {
-  it("joins a part to the number with a hyphen, in the name and in the route segment", () => {
-    expect(parseStandardKey("en_16798_1_2019")).toEqual({ name: "EN 16798-1:2019", routeSegment: "en-16798-1-2019" });
+  it("joins a part to the number with a hyphen, in the label and in the route segment", () => {
+    expect(parseStandardKey("en_16798_1_2019")).toEqual({ label: "EN 16798-1:2019", routeSegment: "en-16798-1-2019" });
   });
 
   it("reads a key with no part as before", () => {
-    expect(parseStandardKey("iso_7933_2023")).toEqual({ name: "ISO 7933:2023", routeSegment: "iso-7933-2023" });
+    expect(parseStandardKey("iso_7933_2023")).toEqual({ label: "ISO 7933:2023", routeSegment: "iso-7933-2023" });
   });
 
   it.each(["iso_7730", "ISO_7730_2005", "iso_7730_2005_extra", "iso__2005", "7730_2005"])("throws on %s, naming it", (key) => {

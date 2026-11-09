@@ -5,7 +5,7 @@
   `Sidebar.Menu` whose items are `Sidebar.MenuButton`s with a link for their
   child. Changed: the group has a label, which names it (`role="group"`), an
   `h2` inside it as a card title's is, in ink (decision 87, rule 5); no
-  icons, the item's name alone; an in-app item carries `aria-current`, is
+  icons, the item's label alone; an in-app item carries `aria-current`, is
   drawn active while it has one, and hands its click to the caller, while a
   plain link, an external address, is neither and has no click of its own
   (decision 87, rule 2), and one that leaves the app opens a new tab and says
@@ -22,13 +22,13 @@
     onclick: (event: MouseEvent) => void;
   }
 
-  /** A menu item that is an in-app link: its name, its link, and whether it is current. */
+  /** A menu item that is an in-app link: its label, its link, and whether it is current. */
   export interface InAppItem extends InAppLink {
     label: string;
     current: HTMLAnchorAttributes["aria-current"];
   }
 
-  /** A menu item that is a plain link, whose click the browser follows: its name, its address, and whether it leaves the app. */
+  /** A menu item that is a plain link, whose click the browser follows: its label, its address, and whether it leaves the app. */
   export interface PlainItem {
     label: string;
     href: string;

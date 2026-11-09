@@ -20,8 +20,8 @@
     /** Allowed bound in SI; shown converted, a step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
     bound?: Bound;
     outOfRange?: boolean;
-    /** The name the slot's appearance carries while the slots are named: the box and its menu are named for it. */
-    slotName?: string;
+    /** The label the slot's appearance carries while the slots are named: the box and its menu are named for it. */
+    slotLabel?: string;
     /**
      * Whether an SI value is taken as it is: a typed one may commit on a pause in the typing, and a preset may be
      * picked (ADR-0002 decision 84, rules 2 and 5); every one, without it.
@@ -72,7 +72,7 @@
 
   /** `control`'s accessible name with the entry's slot in it, while the slots are named. */
   function controlNameFor(control: string, entry: QuantityEntry): string | undefined {
-    return entry.slotName && copy.slotControl(control, entry.slotName);
+    return entry.slotLabel && copy.slotControl(control, entry.slotLabel);
   }
 </script>
 
@@ -85,7 +85,7 @@
     {#each entries as entry, index (index)}
       {#if entry}
         {#snippet rowMenu()}
-          <RowMenuButton {presets} {unit} slotName={entry.slotName} isWithinBounds={entry.isWithinBounds} oncommit={entry.oncommit} />
+          <RowMenuButton {presets} {unit} slotLabel={entry.slotLabel} isWithinBounds={entry.isWithinBounds} oncommit={entry.oncommit} />
         {/snippet}
         <Field.Field data-invalid={entry.outOfRange || undefined}>
           <NumberInput

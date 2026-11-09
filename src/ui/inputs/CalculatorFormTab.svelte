@@ -54,7 +54,7 @@
   const outOfRange = $derived(outOfRangeCalculatorInputs(calculator, inputs));
   const outputs = $derived(outOfRange.length > 0 ? null : calculator.compute(inputs));
   const lines = $derived(
-    calculator.outputs.map((quantity) => ({ quantity, name: quantity.label, value: outputs?.values.get(quantity) ?? Number.NaN })),
+    calculator.outputs.map((quantity) => ({ quantity, label: quantity.label, value: outputs?.values.get(quantity) ?? Number.NaN })),
   );
   const changed = $derived(
     inputs.posture !== starting.posture || [...inputs.values].some(([quantity, value]) => starting.values.get(quantity) !== value),

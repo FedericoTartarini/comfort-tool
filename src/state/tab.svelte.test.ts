@@ -251,7 +251,7 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
 
       const address = addressOf(before);
       expect(openSessionOf(tab)).not.toBe(replaced);
-      expect(openedOn(openSessionOf(tab)), `${address.model.info.label} on ${address.page.title}`).toEqual({
+      expect(openedOn(openSessionOf(tab)), `${address.model.info.label} on ${address.page.label}`).toEqual({
         written: startingSession(address.model),
         page: address.page,
         pendingSwitch: null,

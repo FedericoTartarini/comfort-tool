@@ -7,13 +7,13 @@ import { standardOf, type ModelDeclaration } from "./modelDeclaration";
  */
 export interface Page {
   readonly id: string;
-  readonly title: string;
+  readonly label: string;
 }
 
 export const page = {
-  standard: { id: "standard", title: "Standard" },
-  explore: { id: "explore", title: "Explore" },
-  timeSeries: { id: "time-series", title: "Time-series" },
+  standard: { id: "standard", label: "Standard" },
+  explore: { id: "explore", label: "Explore" },
+  timeSeries: { id: "time-series", label: "Time-series" },
 } as const satisfies Record<string, Page>;
 
 /**

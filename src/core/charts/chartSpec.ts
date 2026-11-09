@@ -32,7 +32,7 @@ export interface LegendEntry {
 }
 
 export interface AxisSpec {
-  /** Already includes the unit symbol; the name itself comes from `Quantity.label`. */
+  /** Already includes the unit symbol; the label itself comes from `Quantity.label`. */
   readonly title: string;
   readonly range: readonly [number, number];
 }
@@ -67,7 +67,7 @@ export interface PathTrace {
   readonly fill?: string;
   readonly hover: HoverMode;
   /**
-   * The path's name (a zone's, a Band's or an isoline's), handed to Plotly as
+   * The path's label (a zone's, a Band's or an isoline's), handed to Plotly as
    * its trace name; no path takes the pointer today, so nothing shows it.
    */
   readonly label?: string;

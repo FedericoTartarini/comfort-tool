@@ -48,39 +48,39 @@ describe("Computation.drawnRuns", () => {
     const session = new Session(pmvPpdIso);
     const runs = new Computation(session).drawnRuns;
     expect(runs).toHaveLength(1);
-    expect(runs[0].name).toBeUndefined();
+    expect(runs[0].label).toBeUndefined();
     expect(runs[0].slot).toEqual(shapeOf(session.slots[0]));
     expect(runs[0].atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
   });
 
   it("is each of three compared slots' run in slot order, one written out of range too", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
-    expect(new Computation(session).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(new Computation(session).drawnRuns.map((run) => run.label)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
     heldSlot(session, 2).setEntered(q.tdb, OUT_OF_RANGE_TDB);
-    expect(new Computation(session).drawnRuns.map((run) => run.name)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(new Computation(session).drawnRuns.map((run) => run.label)).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("names each run as its slot's appearance does: unnamed with Compare off, named with it on whatever is drawn", () => {
     const session = new Session(pmvPpdIso);
     const computation = new Computation(session);
-    const namesOf = () => computation.drawnRuns.map((run) => run.name);
-    const appearanceNames = () => computation.slots.map((slot) => slot.appearance.name);
+    const labelsOf = () => computation.drawnRuns.map((run) => run.label);
+    const appearanceLabels = () => computation.slots.map((slot) => slot.appearance.label);
 
     session.setCompare(true);
     session.setSlotEnabled(1, false);
-    expect(namesOf()).toEqual(["Input 1"]);
-    expect(namesOf()).toEqual(appearanceNames());
+    expect(labelsOf()).toEqual(["Input 1"]);
+    expect(labelsOf()).toEqual(appearanceLabels());
 
     session.setCompare(false);
-    expect(namesOf()).toEqual([undefined]);
-    expect(namesOf()).toEqual(appearanceNames());
+    expect(labelsOf()).toEqual([undefined]);
+    expect(labelsOf()).toEqual(appearanceLabels());
   });
 
   it("names no run on Explore, whatever Compare holds", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     session.setAddress({ page: page.explore, model: pmvPpdIso });
-    expect(new Computation(session).drawnRuns.map((run) => run.name)).toEqual([undefined]);
+    expect(new Computation(session).drawnRuns.map((run) => run.label)).toEqual([undefined]);
   });
 
   it("is the slot as it is, so the summary lists a value written out of range", () => {

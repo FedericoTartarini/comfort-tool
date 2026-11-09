@@ -281,16 +281,16 @@
 		font-size: var(--font-size-body);
 		font-weight: 500;
 	}
-	/* The input calculators' entry: its title over the calculators' names, a caption at the text's regular weight. */
+	/* The input calculators' entry: its title over the calculators' labels, a caption at the text's regular weight. */
 	.calculator-entry-text {
 		display: grid;
 		gap: 0.125rem;
 	}
-	.calculator-entry-names {
+	.calculator-entry-labels {
 		font-weight: 400;
 	}
-	/* A garment row's name labels it as the panel's labels do, the label's weight, level with the row's list button. */
-	.garment-row-name {
+	/* A garment row's label, at the panel's labels' weight, level with the row's list button. */
+	.garment-row-label {
 		line-height: 1.75rem;
 		font-weight: 500;
 	}
@@ -444,7 +444,7 @@
 	align-items: flex-end;
 }
 /* The input calculators' entry at the Inputs card's foot: one full-width button on two lines, its title over the
-   calculators' names, the chevron muted at its end (decision 75, rule 6 (a)). */
+   calculators' labels, the chevron muted at its end (decision 75, rule 6 (a)). */
 .calculator-entry {
 	width: 100%;
 	height: auto;
@@ -468,7 +468,7 @@
 }
 /* An item that ends in a value, in such a list: the generated item's check mark goes, since no entry is ever checked.
    Hidden, it still took its width and an auto margin, so the values ended short of the right edge, each at an x of its
-   own, and stood further from it than the names from the left. */
+   own, and stood further from it than the labels from the left. */
 .list-popover [data-slot="command-item"]:has(> .item-value) > svg {
 	display: none;
 }
@@ -517,7 +517,7 @@
 .garment-list-trigger svg {
 	color: var(--muted-foreground);
 }
-/* A menu is as wide as its items, not its button: an entry group's lists its modes' names and descriptions
+/* A menu is as wide as its items, not its button: an entry group's lists its modes' labels and descriptions
    (decision 72, rule 2), which wrap at 24rem. */
 [data-slot="dropdown-menu-content"] {
 	width: max-content;

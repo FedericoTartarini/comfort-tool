@@ -2,7 +2,7 @@
   import { chartInk } from "$lib/core/bandPalette";
   import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
-  import { slotNames } from "$lib/core/slotAppearance";
+  import { slotLabels } from "$lib/core/slotAppearance";
   import { getOpenSession, getTabControls } from "$lib/state/openSession";
   import { slotPositions, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -92,7 +92,7 @@ import { palette } from "$lib/core/palette";
               bind:pressed={() => session.isSlotEnabled(position), (pressed) => setSlotEnabled(position, pressed)}
             >
               <span class="swatch swatch-marker" style:--swatch-color={chartInk.marker(palette.slots[position])}></span>
-              {slotNames[position]}
+              {slotLabels[position]}
             </Toggle>
           {/each}
         </SlotColumns>
@@ -123,7 +123,7 @@ import { palette } from "$lib/core/palette";
 
   <!--
     Compare is a setting on or off that takes effect at once, so a switch with its label (ADR-0002 decision 76,
-    rule 1), at the Inputs heading row's right end, where no model's name can move it (decision 73, rule 8).
+    rule 1), at the Inputs heading row's right end, where no model's label can move it (decision 73, rule 8).
   -->
   {#snippet inputsActions()}
     <Inline gap="2" align="center">

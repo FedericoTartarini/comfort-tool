@@ -116,7 +116,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const saturation = rh === 100;
     if (saturation) {
       const boundary = coverFor(sampled, xRange, hrRange);
-      // Chrome with no name and no legend entry: it reads nothing, so the
+      // Chrome with no label and no legend entry: it reads nothing, so the
       // hover grid under it reads for the cell, "—" as it does above the line.
       cover = {
         kind: "path",

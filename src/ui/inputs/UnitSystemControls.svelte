@@ -38,7 +38,7 @@
     }
   >
     {#each systems as system, index (system)}
-      <ToggleGroup.Item value={String(index)}>{system.title}</ToggleGroup.Item>
+      <ToggleGroup.Item value={String(index)}>{system.label}</ToggleGroup.Item>
     {/each}
   </ToggleGroup.Root>
 </Inline>

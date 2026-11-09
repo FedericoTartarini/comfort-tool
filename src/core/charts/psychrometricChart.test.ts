@@ -500,7 +500,7 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
     expect(spec.traces.filter((trace) => trace.hover !== "off").map((trace) => trace.kind)).toEqual(["hoverGrid"]);
   });
 
-  it("reads the temperature, the humidity ratio and the slot's number, no relative humidity and no zone name", () => {
+  it("reads the temperature, the humidity ratio and the slot's number, no relative humidity and no zone label", () => {
     // Cell (row 10, column 30) at PMV (ISO 7730)'s defaults: 22 °C, 6 g/kg, about 37 %, tr 25 °C.
     expect(hoverText[10][30]).toEqual([
       "Dry-bulb air temperature: 22 °C",
@@ -538,7 +538,7 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
     const alone = slots.map((entered) => hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, entered))).hoverText);
     expect(compared[10][30]).toEqual([
       ...hoverText[10][30].slice(0, 2),
-      ...alone.map((field, position) => copy.slotEntry(`Input ${position + 1}`, field[10][30][2])),
+      ...alone.map((field, position) => copy.withSlotLabel(`Input ${position + 1}`, field[10][30][2])),
     ]);
     expect(new Set(alone.map((field) => field[10][30][2])).size).toBe(3);
   });

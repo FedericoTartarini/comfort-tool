@@ -4,10 +4,10 @@
   values are listed is the pre-call gate's answer for every slot the session
   holds, compared or not, carried on the pending switch, and both buttons hand
   the answer straight back to the session. While the session holds more than
-  one slot, the rows are grouped by slot with the slot's position name, "Input
-  1" to "Input 3", in a column of its own, Compare on or off, as a slot not
-  shown has no other name (decision 84, rule 4); otherwise the dialog has no
-  such column.
+  one slot, the rows are grouped by slot with the label its position gives
+  the slot, "Input 1" to "Input 3", in a column of its own, Compare on or off,
+  as a slot not shown has no other label (decision 84, rule 4); otherwise the
+  dialog has no such column.
 
   Its look is the generated dialog and table primitives', at the one width
   every dialog has (ADR-0002 decision 67, rule 9); it adds no styling of its
@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { slotNames } from "$lib/core/slotAppearance";
+  import { slotLabels } from "$lib/core/slotAppearance";
   import { displayUnitFor, numberWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { PendingSwitch } from "$lib/state/session.svelte";
@@ -45,7 +45,7 @@
       .filter(({ listedRows }) => listedRows.length > 0)
       .map(({ position, listedRows }) => ({
         position,
-        name: slotNames[position],
+        label: slotLabels[position],
         rows: listedRows.map((row) => {
           const unit = displayUnitFor(row.quantity, unitSystem);
           return {
@@ -90,7 +90,7 @@
             {#each group.rows as row, index (row.quantity)}
               <Table.Row>
                 {#if namesGroups && index === 0}
-                  <Table.Cell rowspan={group.rows.length}>{group.name}</Table.Cell>
+                  <Table.Cell rowspan={group.rows.length}>{group.label}</Table.Cell>
                 {/if}
                 <Table.Cell>{row.quantity.label}</Table.Cell>
                 <Table.Cell>{row.current}</Table.Cell>

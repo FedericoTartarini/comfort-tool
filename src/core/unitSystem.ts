@@ -5,10 +5,10 @@
  */
 export interface UnitSystem {
   readonly id: string;
-  readonly title: string;
+  readonly label: string;
 }
 
 export const unitSystem = {
-  si: { id: "si", title: "SI" },
-  ip: { id: "ip", title: "IP" },
+  si: { id: "si", label: "SI" },
+  ip: { id: "ip", label: "IP" },
 } as const satisfies Record<string, UnitSystem>;

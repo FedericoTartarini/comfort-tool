@@ -16,11 +16,11 @@ import type { AxisSpec, LegendEntry, PointTrace } from "./chartSpec";
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for
- * `charted`: prefixed with the slot's name where the slot has one, and as it
+ * `charted`: prefixed with the slot's label where the slot has one, and as it
  * is otherwise.
  */
 export function labelFor(charted: ChartedSlot, label: string): string {
-  return charted.name === undefined ? label : copy.slotEntry(charted.name, label);
+  return charted.label === undefined ? label : copy.withSlotLabel(charted.label, label);
 }
 
 /** A Comfort zone's paint: its fill's colour, its line's colour and width, and its legend entry. */
@@ -55,7 +55,7 @@ export function zoneInkFor(charted: ChartedSlot, zoneLabel: string, level: numbe
 /**
  * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
  * and the legend entry that names it by the slot, or as the one input where
- * the slot has no name. Chrome, so it never captures the pointer.
+ * the slot has no label. Chrome, so it never captures the pointer.
  */
 export function markerFor(
   appearance: SlotAppearance,
@@ -63,7 +63,7 @@ export function markerFor(
   y: number,
 ): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
   const color = chartInk.marker(appearance.hue);
-  const label = appearance.name ?? copy.unnamedMarker;
+  const label = appearance.label ?? copy.unnamedMarker;
   return {
     trace: { kind: "point", x, y, color, hover: "off", label },
     legendEntry: { label, swatch: "marker", color },

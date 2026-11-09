@@ -20,18 +20,18 @@
     presets: readonly Preset[];
     /** The unit the list shows each preset's value in: the box's. */
     unit: DisplayUnit;
-    /** The name the slot's appearance carries while the slots are named: the button is named for it. */
-    slotName?: string;
+    /** The label the slot's appearance carries while the slots are named: the button is named for it. */
+    slotLabel?: string;
     /** Whether the slot takes an SI value as it is, as the box judges a typed value; every one, without it. */
     isWithinBounds?: (si: number) => boolean;
     oncommit: (si: number) => void;
   }
 
-  let { presets, unit, slotName, isWithinBounds, oncommit }: Props = $props();
+  let { presets, unit, slotLabel, isWithinBounds, oncommit }: Props = $props();
 
   let open = $state(false);
 
-  const name = $derived(slotName ? copy.slotControl(copy.presetTrigger, slotName) : copy.presetTrigger);
+  const name = $derived(slotLabel ? copy.slotControl(copy.presetTrigger, slotLabel) : copy.presetTrigger);
 
   // An entry's key is its position among the presets.
   const listGroups = $derived([

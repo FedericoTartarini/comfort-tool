@@ -122,13 +122,13 @@ export function fieldPaintFor(
 /**
  * The note of `charted`, whose Comfort zones are all empty: one sentence,
  * whatever emptied them, named and with the slot's swatch while the slot has
- * a name, as a caption about one slot is (ADR-0002 decision 83 rule 1, as
+ * a label, as a caption about one slot is (ADR-0002 decision 83 rule 1, as
  * noted 2026-10-22). The legend keeps the zones' entries.
  */
 function emptyZoneNoteFor(charted: ChartedSlot): ChartNote {
-  return charted.name === undefined
+  return charted.label === undefined
     ? { text: copy.noComfortZone }
-    : { text: copy.slotNote(charted.name, copy.noComfortZone), color: chartInk.marker(charted.hue) };
+    : { text: copy.slotNote(charted.label, copy.noComfortZone), color: chartInk.marker(charted.hue) };
 }
 
 /** A region's line, and its fill where it is filled. */
@@ -244,8 +244,8 @@ function bandPathsFor(list: BandList, field: ScannedField, traced: (region: Regi
     const index = indexOf(value);
     return index !== undefined && first <= index && index <= last;
   };
-  return list.labels.map((name, index) => {
-    const label = shownBandLabel(name);
+  return list.labels.map((bandLabel, index) => {
+    const label = shownBandLabel(bandLabel);
     const color = list.colors[index];
     const { lines } = traced(field.regionWithin({ holds: inBands(0, index), upper: list.edges[index] }));
     const line: PathTrace = { kind: "path", pieces: lines, color: chartInk.bandLine, width: chartInk.bandLineWidth, hover: "off", label };

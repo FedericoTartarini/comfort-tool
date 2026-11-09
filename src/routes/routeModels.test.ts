@@ -162,7 +162,7 @@ describe("modelByExploreSegment", () => {
 
 describe("standardLinks", () => {
   it("gives each standard with a model one link, in the registry's order, to its first registered model on the Standard page", () => {
-    expect(standardLinks().map(({ standard, address }) => [standard.name, address.page, address.model])).toEqual([
+    expect(standardLinks().map(({ standard, address }) => [standard.label, address.page, address.model])).toEqual([
       ["ASHRAE 55:2023", page.standard, pmvPpdAshrae],
       ["ISO 7730:2025", page.standard, pmvPpdIso],
     ]);
@@ -181,7 +181,7 @@ describe("standardLinks", () => {
 
   it("gives two years of one body and number two links, each named with its own year", () => {
     expect(
-      standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.name, address.model]),
+      standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ standard, address }) => [standard.label, address.model]),
     ).toEqual([
       ["ISO 7730:2005", fixtureIso2005],
       ["ISO 7730:2025", pmvPpdIso],
@@ -190,7 +190,7 @@ describe("standardLinks", () => {
   });
 
   it("gives a standard no other model has its own link", () => {
-    expect(standardLinks([pmvPpdAshrae, fixtureIso7933]).map(({ standard, address }) => [standard.name, address.model])).toEqual([
+    expect(standardLinks([pmvPpdAshrae, fixtureIso7933]).map(({ standard, address }) => [standard.label, address.model])).toEqual([
       ["ASHRAE 55:2023", pmvPpdAshrae],
       ["ISO 7933:2023", fixtureIso7933],
     ]);
@@ -235,7 +235,7 @@ describe("modelChoicesOn", () => {
 
   it("heads the groups of two years of one body and number on Explore each with its own year", () => {
     const groups = modelChoicesOn({ page: page.explore, model: pmvPpdIso }, fixtures);
-    expect(groups.map(({ standard }) => standard?.name)).toEqual(["ISO 7730:2025", "ISO 7730:2005", undefined]);
+    expect(groups.map(({ standard }) => standard?.label)).toEqual(["ISO 7730:2025", "ISO 7730:2005", undefined]);
   });
 
   it("offers on Explore no standard-less group when every model has a standard", () => {
@@ -247,7 +247,7 @@ describe("modelChoicesOn", () => {
   it("offers on Explore ASHRAE 55:2023, ISO 7730:2025 and then Heat Index alone, every registered model once in registry order", () => {
     for (const model of registeredModels) {
       const groups = modelChoicesOn({ page: page.explore, model });
-      expect(groups.map(({ standard }) => standard?.name)).toEqual(["ASHRAE 55:2023", "ISO 7730:2025", undefined]);
+      expect(groups.map(({ standard }) => standard?.label)).toEqual(["ASHRAE 55:2023", "ISO 7730:2025", undefined]);
       expect(groups[groups.length - 1].models).toEqual([heatIndexRothfusz]);
       expect(groups.flatMap(({ models }) => models)).toEqual(registeredModels);
     }

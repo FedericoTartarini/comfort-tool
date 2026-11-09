@@ -34,14 +34,14 @@
     return { label, current: ariaCurrentOf(target, session), ...inAppLinkTo(target, onfollow) };
   }
 
-  const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.name)));
+  const standardItems = $derived(standardLinks().map(({ standard, address }) => itemTo(address, standard.label)));
   const toolItems: NavItem[] = $derived([
-    itemTo({ page: page.explore, model: session.model }, page.explore.title),
+    itemTo({ page: page.explore, model: session.model }, page.explore.label),
     ...(sidebar.isMobile ? [{ label: copy.documentation, href: copy.documentationAddress, leavesApp: true }] : []),
   ]);
 </script>
 
 <nav>
-  <NavGroup label={page.standard.title} items={standardItems} />
+  <NavGroup label={page.standard.label} items={standardItems} />
   <NavGroup label={copy.tools} items={toolItems} />
 </nav>

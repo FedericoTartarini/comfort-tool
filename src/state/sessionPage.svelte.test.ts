@@ -270,7 +270,7 @@ describe("The page in the session", () => {
     });
 
     for (const type of [chartType.psychrometric, chartType.dynamic]) {
-      it(`asks about slot 1 alone and draws its ${type.title.toLowerCase()} chart alone, with Compare on or off`, () => {
+      it(`asks about slot 1 alone and draws its ${type.label.toLowerCase()} chart alone, with Compare on or off`, () => {
         const session = sessionComparingThreeSlots(pmvPpdIso);
         heldSlot(session, 1).setEntered(q.tdb, 28);
         session.chart.type = type;

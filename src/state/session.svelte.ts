@@ -341,7 +341,7 @@ export class Session {
   }
 
   /**
-   * Whether each compared slot's appearance carries its position name: on
+   * Whether each compared slot's appearance carries its position's label: on
    * the Standard page while Compare is on, and nowhere else (ADR-0002
    * decision 50). Asked here alone; each slot's appearance is given from it
    * (`state/compute.svelte.ts`). A slot not shown has no appearance, so the

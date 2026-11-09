@@ -173,8 +173,8 @@ function markerEntriesOf(spec: ChartSpec): string[] {
   return spec.legend.filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
 }
 
-/** The three slots' names while they are named. */
-const namedSlots = ["Input 1", "Input 2", "Input 3"];
+/** The three slots' labels while they are named. */
+const slotLabels = ["Input 1", "Input 2", "Input 3"];
 
 /**
  * Asserts that each of the first `count` slots' zones in `spec` are painted as
@@ -232,9 +232,9 @@ describe.each(drawings)("$name, drawn of one slot while the slots are named", ({
 
   it("prefixes each zone entry and readout line with Input 1, and names its marker Input 1", () => {
     expect(zoneLegendOf(spec).map((entry) => entry.label)).toEqual(
-      zoneLegendOf(unnamed).map((entry) => copy.slotEntry("Input 1", entry.label)),
+      zoneLegendOf(unnamed).map((entry) => copy.withSlotLabel("Input 1", entry.label)),
     );
-    expect(slotReadoutsOf(spec)).toEqual(slotReadoutsOf(unnamed).map((line) => copy.slotEntry("Input 1", line)));
+    expect(slotReadoutsOf(spec)).toEqual(slotReadoutsOf(unnamed).map((line) => copy.withSlotLabel("Input 1", line)));
     expect(markerEntriesOf(spec)).toEqual(["Input 1"]);
   });
 });
@@ -257,10 +257,10 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
 
   it("draws three markers and fills each slot's zones as one slot's, each named and coloured by its slot", () => {
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual(
-      namedSlots.map((name, position) => ({ label: name, color: chartInk.marker(palette.slots[position]) })),
+      slotLabels.map((label, position) => ({ label, color: chartInk.marker(palette.slots[position]) })),
     );
     expectNestedFills(spec, 3, zonesPerSlot);
-    expect(outlinesOf(spec).every((outline) => namedSlots.some((name) => outline.label?.startsWith(name)))).toBe(true);
+    expect(outlinesOf(spec).every((outline) => slotLabels.some((slotLabel) => outline.label?.startsWith(slotLabel)))).toBe(true);
   });
 
   it("draws each slot's zones, outlines and marker as a list holding that slot alone draws them", () => {
@@ -295,14 +295,14 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
   it("has a fill legend entry per slot per zone, in the slot's hue, and one marker entry per slot", () => {
     const expected = slots.flatMap((slot, position) =>
       zoneLegendOf(drawAlone(slot)).map((entry, level) => ({
-        label: copy.slotEntry(namedSlots[position], entry.label),
+        label: copy.withSlotLabel(slotLabels[position], entry.label),
         swatch: "fill",
         color: chartInk.zoneFill(palette.slots[position], level, zonesPerSlot),
       })),
     );
     expect(zoneLegendOf(spec)).toEqual(expected);
     expect(expected).toHaveLength(3 * zonesPerSlot);
-    expect(markerEntriesOf(spec)).toEqual(namedSlots);
+    expect(markerEntriesOf(spec)).toEqual(slotLabels);
   });
 });
 
@@ -322,7 +322,7 @@ describe("PMV (ISO 7730) drawn of three slots", () => {
   it("names each zone by its slot and by the zone", () => {
     const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, threeSlots(pmvPpdIso)));
     const largest = [...declaredZonesOf(pmvPpdIso)].sort((a, b) => b.limit - a.limit)[0];
-    const label = copy.slotEntry("Input 2", copy.zoneLegend(largest));
+    const label = copy.withSlotLabel("Input 2", copy.zoneLegend(largest));
     expect(zoneFillsOf(spec)[4].label).toBe(label);
     expect(outlinesOf(spec)[4].label).toBe(label);
   });
@@ -351,7 +351,7 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
 
   it("paints no band, every fill and line being a slot's zone", () => {
     const regions = [...zoneFillsOf(spec), ...outlinesOf(spec)];
-    expect(regions.every((region) => namedSlots.some((name) => region.label?.startsWith(name)))).toBe(true);
+    expect(regions.every((region) => slotLabels.some((slotLabel) => region.label?.startsWith(slotLabel)))).toBe(true);
   });
 
   it("cuts each slot's zones from the field the slot alone is scanned on", () => {
@@ -369,7 +369,7 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
     const alone = slots.map((slot) => hoverGridOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart.axes)));
     expect(grid.hoverText[2][26]).toEqual([
       ...alone[0].hoverText[2][26].slice(0, 2),
-      ...alone.map((field, position) => copy.slotEntry(namedSlots[position], field.hoverText[2][26][2])),
+      ...alone.map((field, position) => copy.withSlotLabel(slotLabels[position], field.hoverText[2][26][2])),
     ]);
   });
 });

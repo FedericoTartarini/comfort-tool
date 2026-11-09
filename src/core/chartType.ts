@@ -5,11 +5,11 @@
  */
 export interface ChartType {
   readonly id: string;
-  readonly title: string;
+  readonly label: string;
 }
 
 export const chartType = {
-  psychrometric: { id: "psychrometric", title: "Psychrometric" },
-  dynamic: { id: "dynamic", title: "Dynamic" },
-  adaptive: { id: "adaptive", title: "Adaptive" },
+  psychrometric: { id: "psychrometric", label: "Psychrometric" },
+  dynamic: { id: "dynamic", label: "Dynamic" },
+  adaptive: { id: "adaptive", label: "Adaptive" },
 } as const satisfies Record<string, ChartType>;

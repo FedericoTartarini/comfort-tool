@@ -1042,12 +1042,12 @@ test("at 1440 px, the Standard page's model select lists its models under no hea
 
 /**
  * A slot is named only on the Standard page while Compare is on (ADR-0002
- * decision 50): the result table's Input heading's word and each row's name and
- * swatch, the legend's marker entries by name, and the switch question's slot
- * column come and go together. The Input column itself stays, its heading
+ * decision 50): the result table's Input heading's word and each row's label
+ * and swatch, the legend's marker entries by label, and the switch question's
+ * slot column come and go together. The Input column itself stays, its heading
  * named for a screen reader alone (decision 85, as amended 2026-10-28).
  */
-test.describe("the slots' names", () => {
+test.describe("the slots' labels", () => {
   const resultTable = (page: Page) => card(page, "Results").getByRole("table");
   const inputColumn = (page: Page) => resultTable(page).getByRole("columnheader", { name: "Input", exact: true });
   const markerEntries = (page: Page) => page.locator(".chart-legend li").filter({ has: page.locator(".swatch-marker") });
@@ -1421,7 +1421,7 @@ test.describe("controls by their question", () => {
   });
 });
 
-test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the names from the left", async ({ page }) => {
+test("a row's Presets is the word at the box's end, and its list's values end at one x, as far from the right edge as the labels from the left", async ({ page }) => {
   await openStandard(page, 1440);
   const box = page
     .locator('[data-slot="input-group"]')
@@ -1438,7 +1438,7 @@ test("a row's Presets is the word at the box's end, and its list's values end at
   await list.evaluate((element) =>
     Promise.all(element.closest('[data-slot="popover-content"]')!.getAnimations().map((animation) => animation.finished)),
   );
-  // Each item's name and value as far from its two edges, read off their text, not their boxes: a box may run past
+  // Each item's label and value as far from its two edges, read off their text, not their boxes: a box may run past
   // its text.
   const insets = await list.getByRole("option").evaluateAll((items) =>
     items.map((item) => {
@@ -1448,8 +1448,8 @@ test("a row's Presets is the word at the box's end, and its list's values end at
         return text.getBoundingClientRect();
       };
       const edges = item.getBoundingClientRect();
-      const [name, value] = item.querySelectorAll("span");
-      return [Math.round(textOf(name).left - edges.left), Math.round(edges.right - textOf(value).right)];
+      const [label, value] = item.querySelectorAll("span");
+      return [Math.round(textOf(label).left - edges.left), Math.round(edges.right - textOf(value).right)];
     }),
   );
   expect(insets.length).toBeGreaterThan(1);

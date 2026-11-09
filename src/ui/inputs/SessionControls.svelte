@@ -1,6 +1,6 @@
 <script lang="ts">
   import { kindBounds, quantities } from "$lib/core/quantities";
-  import { slotNames } from "$lib/core/slotAppearance";
+  import { slotLabels } from "$lib/core/slotAppearance";
   import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -31,15 +31,15 @@
   /**
    * The slot a pressure's refusal names by its position, whether compared or
    * not, while the session holds more than one: a slot not shown has no other
-   * name (ADR-0002 decision 84, rule 4).
+   * label (ADR-0002 decision 84, rule 4).
    */
-  function slotNameAt(position: SlotPosition): string | undefined {
-    return session.slots.filter((slot) => slot !== null).length > 1 ? slotNames[position] : undefined;
+  function slotLabelAt(position: SlotPosition): string | undefined {
+    return session.slots.filter((slot) => slot !== null).length > 1 ? slotLabels[position] : undefined;
   }
 
   function commitPressure(si: number) {
     const verdict = session.commitAtmosphericPressure(si);
-    raiseVerdict(verdict, { quantity: quantities.p_atm }, si, session.unitSystem, (row) => slotNameAt(row.position));
+    raiseVerdict(verdict, { quantity: quantities.p_atm }, si, session.unitSystem, (row) => slotLabelAt(row.position));
   }
 
   // The question is closed before the session is replaced, which builds the

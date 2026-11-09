@@ -79,7 +79,7 @@ export interface CalculatorInputs {
 
 /** What every calculator says of itself, whatever its dialog asks. */
 interface CommonCalculator {
-  /** Its tab's name in the dialog, and its name on the entry. */
+  /** Its tab's label in the dialog, and its label on the entry. */
   readonly label: string;
   /** The line its tab opens with, naming the standard's method. */
   readonly method: string;

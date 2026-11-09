@@ -15,7 +15,7 @@ import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
-import { slotNames } from "./slotAppearance";
+import { slotLabels } from "./slotAppearance";
 import { standardEntryFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -42,7 +42,7 @@ function boundLinesOf(run: DrawnRun): string[] {
 
 /** `slot` drawn as the slot at `position` while the slots are named. */
 function namedRunOf(slot: Slot, position: SlotPosition): DrawnRun {
-  return { ...runOf(slot), name: slotNames[position] };
+  return { ...runOf(slot), label: slotLabels[position] };
 }
 
 /** The summary of `runs` on Standard: no Band list. */
@@ -69,7 +69,7 @@ describe("inputSummary", () => {
   it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
     const summary = summaryOf(pmvPpdAshrae, [runOf(startingSlot(pmvPpdAshrae))]);
     expect(summary).toEqual([
-      [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).name)],
+      [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).label)],
       [
         ...declaredQuantitiesOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,
@@ -89,21 +89,21 @@ describe("inputSummary", () => {
     }
   });
 
-  it("gives a model with no standard its name alone", () => {
+  it("gives a model with no standard its label alone", () => {
     const [chart] = summaryOf(heatIndexRothfusz, [runOf(startingSlot(heatIndexRothfusz))]);
     expect(chart).toEqual([heatIndexRothfusz.info.label]);
   });
 
-  it("gives three named runs three groups in slot order, each headed by its slot's name", () => {
+  it("gives three named runs three groups in slot order, each headed by its slot's label", () => {
     const runs = ([0, 1, 2] as const).map((position) => namedRunOf(startingSlot(pmvPpdIso), position));
     const [, ...slots] = summaryOf(pmvPpdIso, runs);
     expect(slots.map((lines) => lines[0])).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
-  it("heads each run by its name when the runs are named, whatever their count", () => {
+  it("heads each run by its label when the runs are named, whatever their count", () => {
     for (const positions of [[0], [1], [0, 2]] as const) {
       const [, ...slots] = summaryOf(pmvPpdIso, positions.map((position) => namedRunOf(startingSlot(pmvPpdIso), position)));
-      expect(slots.map((lines) => lines[0])).toEqual(positions.map((position) => slotNames[position]));
+      expect(slots.map((lines) => lines[0])).toEqual(positions.map((position) => slotLabels[position]));
     }
   });
 
@@ -183,9 +183,9 @@ describe("inputSummary", () => {
   it("writes, under Compare, each run's own bounds after its own values", () => {
     const unbrokenSlot = startingSlot(pmvPpdIso);
     const runs = [
-      { ...reportedRunOf(pmvPpdIso, unbrokenSlot), name: slotNames[0] },
-      { ...reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 40, met: 2, clo: 1 })), name: slotNames[1] },
-      { ...reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 1.5 })), name: slotNames[2] },
+      { ...reportedRunOf(pmvPpdIso, unbrokenSlot), label: slotLabels[0] },
+      { ...reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 40, met: 2, clo: 1 })), label: slotLabels[1] },
+      { ...reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 1.5 })), label: slotLabels[2] },
     ];
     const [, first, second, third] = summaryOf(pmvPpdIso, runs);
     const [, unbroken] = summaryOf(pmvPpdIso, [namedRunOf(unbrokenSlot, 0)]);
