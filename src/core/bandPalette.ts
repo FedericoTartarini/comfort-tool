@@ -51,7 +51,7 @@ export type BandPalette =
       readonly kind: "sequential";
       readonly family: ColorFamily;
       /** The last band is outside every category, as ISO 7730's "none" is, and has no colour. */
-      readonly lastBandUnpainted?: true;
+      readonly lastBandUncoloured?: true;
     }
   | {
       readonly kind: "diverging";
@@ -69,7 +69,7 @@ export const palettes = {
   /** A one-sided scale, safe to dangerous. */
   sequential: { kind: "sequential", family: ylOrRd },
   /** A one-sided scale of categories, whose last band, "none", is in none of them. */
-  sequentialCategories: { kind: "sequential", family: ylOrRd, lastBandUnpainted: true },
+  sequentialCategories: { kind: "sequential", family: ylOrRd, lastBandUncoloured: true },
 } as const satisfies Record<string, BandPalette | ((neutral: number) => BandPalette)>;
 
 /**
@@ -117,7 +117,7 @@ export function bandColors(
   };
   if (bandPalette.kind === "sequential") {
     const ordered: (string | undefined)[] = colorsAt(count + 1).slice(1);
-    if (bandPalette.lastBandUnpainted) {
+    if (bandPalette.lastBandUncoloured) {
       ordered[count - 1] = undefined;
     }
     return ordered;

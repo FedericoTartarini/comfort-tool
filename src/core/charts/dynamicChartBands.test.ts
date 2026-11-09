@@ -22,7 +22,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, HoverGridTrace, HoverReadout, PathTrace } from "./chartSpec";
-import { bandFillsOf as fillsOf, bandLinesOf as linesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
+import { bandFillsOf as fillsOf, edgeLinesOf as linesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "./chartTestPaths";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicScanFrameFor, dynamicSpec } from "./dynamicChart";
 import { scannedField } from "./scan";
@@ -108,7 +108,7 @@ function strokesOf(spec: ChartSpec) {
 }
 
 /** Every band of `list`, painted or not, as a line in the band line. */
-function edgeLinesOf(list: BandList) {
+function edgeStrokesOf(list: BandList) {
   return list.labels.map((label) => ({ label, color: chartColors.bandLine, width: chartColors.bandLineWidth, hover: "off" }));
 }
 
@@ -140,7 +140,7 @@ describe("the scanned dynamic chart given a Band list", () => {
   });
 
   it("strokes every band's own upper Edge once, in the band line, read by nothing, where the number crosses it", () => {
-    expect(strokesOf(spec)).toEqual(edgeLinesOf(isoBands));
+    expect(strokesOf(spec)).toEqual(edgeStrokesOf(isoBands));
     expectEdgesCrossed(spec, isoBands, values);
     // The Edges the field reaches are drawn: Neutral's two among them.
     expect(linesOf(spec)[2].pieces.length).toBeGreaterThan(0);
@@ -190,7 +190,7 @@ describe("the scanned dynamic chart given a Band list", () => {
     const edited = setLabel(moveEdge(isoBands, 2, -0.1), 3, "Comfortable");
     const drawn = bandedSpec(edited);
     expectFills(drawn, contiguousFillsOf(edited), values, edited.right);
-    expect(strokesOf(drawn)).toEqual(edgeLinesOf(edited));
+    expect(strokesOf(drawn)).toEqual(edgeStrokesOf(edited));
     expectEdgesCrossed(drawn, edited, values);
     // -0.15 is below the moved Edge now, so in "Slightly Cool".
     expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Slightly Cool");
@@ -208,7 +208,7 @@ describe("the scanned dynamic chart given a Band list", () => {
       values,
       hidden.right,
     );
-    expect(strokesOf(drawn)).toEqual(edgeLinesOf(hidden));
+    expect(strokesOf(drawn)).toEqual(edgeStrokesOf(hidden));
     expectEdgesCrossed(drawn, hidden, values);
     expect(drawn.legend.map((item) => item.label)).not.toContain("Neutral");
     expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Neutral");

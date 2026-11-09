@@ -26,7 +26,7 @@ import type { ChartRequest } from "./chartRequest";
 import type { ChartSpec, HoverGridTrace, PathTrace } from "./chartSpec";
 import {
   bandFillsOf as fillsOf,
-  bandLinesOf as linesOf,
+  edgeLinesOf as linesOf,
   heldBetween,
   insideAtSamples,
   numbersAlong,

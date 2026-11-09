@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { bandListOf, type BandList } from "$lib/core/bands";
 import { chartColors } from "$lib/core/bandPalette";
 import type { ChartSpec, PathPiece, PointTrace, Trace } from "$lib/core/charts/chartSpec";
-import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
+import { bandFillsOf, edgeLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { traceRegion } from "$lib/core/charts/regionTracer";
 import { chartType } from "$lib/core/chartType";
 import { classifierOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
@@ -44,7 +44,7 @@ function fillsOf(traces: readonly Trace[]) {
 
 /** A Band's Edges among `traces`, in drawing order. */
 function linesOf(traces: readonly Trace[]) {
-  return bandLinesOf({ traces });
+  return edgeLinesOf({ traces });
 }
 
 /**

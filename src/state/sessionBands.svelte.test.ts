@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
-import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
+import { bandFillsOf, edgeLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { chartType, type ChartType } from "$lib/core/chartType";
 import { classifierOf } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
@@ -38,7 +38,7 @@ function exploreSession(type: ChartType = chartType.dynamic): { session: Session
  */
 function strokedEdges(computation: Computation, list: BandList) {
   const spec = { traces: computation.chart?.traces ?? [] };
-  return bandLinesOf(spec).map((line, index) => ({
+  return edgeLinesOf(spec).map((line, index) => ({
     label: line.label,
     onEdge: numbersAlong(spec, line, computation.slots[0].scan.values).every((number) => Math.abs(number - list.edges[index]) < 1e-9),
   }));
