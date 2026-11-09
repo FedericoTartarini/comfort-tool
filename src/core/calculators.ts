@@ -3,7 +3,7 @@
  * prediction and Solar gain on people, each an object
  * referred to by identity, as an option is (decision 36), and declared on the
  * row it writes (`DeclaredQuantity.calculators`); and the one rule by which
- * a result is written into a slot. Each computes by calling the library in
+ * an output is written into a slot. Each computes by calling the library in
  * SI, except for the ensemble's plain sum of the library's garment values
  * (ASHRAE 55 §5.2.2.2(c)), which no library function takes garment names
  * for. A dialog's bounds are `core/applicability.ts`'s `calculatorBound`: the
@@ -28,14 +28,14 @@ import { defaultEntryModes, enteredValue, panelRows, requireValue, valueEntryGro
 
 const q = quantities;
 
-/** How a calculator's result meets the value its row holds: the row's value after Apply. */
-export type Meeting = (held: number, result: number) => number;
+/** How the value a calculator computes meets the value its row holds: the row's value after Apply. */
+export type Meeting = (held: number, computed: number) => number;
 
 export const meeting = {
-  /** The result is the row's new value: a clothing insulation. */
-  replaces: (held, result) => result,
-  /** The result is added to the row's value: a mean radiant temperature increase. */
-  adds: (held, result) => held + result,
+  /** The computed value is the row's new value: a clothing insulation. */
+  replaces: (held, computed) => computed,
+  /** The computed value is added to the row's value: a mean radiant temperature increase. */
+  adds: (held, computed) => held + computed,
 } as const satisfies Record<string, Meeting>;
 
 /**
@@ -43,8 +43,8 @@ export const meeting = {
  * SI, and the rows of its model info the inputs broke, as the library reports
  * them on `warnings`; none for a calculation the library bounds nothing of.
  */
-export interface CalculatorResult {
-  readonly outputs: ReadonlyMap<Quantity, number>;
+export interface CalculatorOutputs {
+  readonly values: ReadonlyMap<Quantity, number>;
   readonly warnings: readonly ModelWarning[];
 }
 
@@ -83,9 +83,9 @@ interface CommonCalculator {
   readonly label: string;
   /** The line its tab opens with, naming the standard's method. */
   readonly method: string;
-  /** How its result meets the row it is declared on. */
+  /** How its output meets the row it is declared on. */
   readonly meets: Meeting;
-  /** The output of its result that meets the row. */
+  /** The quantity among its outputs that meets the row. */
   readonly output: Quantity;
 }
 
@@ -101,10 +101,10 @@ export interface FormCalculator extends CommonCalculator {
   readonly asks: readonly Pick<DeclaredQuantity, "quantity" | "value">[];
   /** The postures it offers, the first the default; absent for a calculator that asks none. */
   readonly postures?: readonly [PostureOption, ...PostureOption[]];
-  /** The outputs its result holds, in the order its dialog shows them, which it shows without a result too. */
+  /** The quantities its outputs hold, in the order its dialog shows them, which it shows without outputs too. */
   readonly outputs: readonly [Quantity, ...Quantity[]];
-  /** Its result, or `null` where the library gives no value for an output, which the dialog then shows as it shows no result. */
-  readonly compute: (inputs: CalculatorInputs) => CalculatorResult | null;
+  /** Its outputs, or `null` where the library gives no value for an output, which the dialog then shows as it shows no outputs. */
+  readonly compute: (inputs: CalculatorInputs) => CalculatorOutputs | null;
   readonly groups?: never;
   readonly garments?: never;
 }
@@ -118,7 +118,7 @@ export interface GarmentCalculator extends CommonCalculator {
   /** Each garment's insulation in clo, by key. */
   readonly garments: typeof clo_individual_garments;
   /** The ensemble of the chosen garment keys. */
-  readonly compute: (garments: readonly string[]) => CalculatorResult;
+  readonly compute: (garments: readonly string[]) => CalculatorOutputs;
   readonly info?: never;
   readonly asks?: never;
   readonly postures?: never;
@@ -145,7 +145,7 @@ export const customEnsemble: GarmentCalculator = {
   garments: clo_individual_garments,
   compute: (garments) => {
     const sum = garments.reduce((total, garment) => total + requireGarment(garment), 0);
-    return { outputs: new Map([[q.clo, sum]]), warnings: [] };
+    return { values: new Map([[q.clo, sum]]), warnings: [] };
   },
 };
 
@@ -191,7 +191,7 @@ export const clothingFromOutdoorTemperature: FormCalculator = {
   asks: [{ quantity: q.tout, value: 20 }],
   outputs: [q.clo],
   compute: ({ values }) => ({
-    outputs: new Map([[q.clo, clo_tout({ tout: requireValue(values, q.tout) }).clo_tout]]),
+    values: new Map([[q.clo, clo_tout({ tout: requireValue(values, q.tout) }).clo_tout]]),
     warnings: [],
   }),
 };
@@ -239,7 +239,7 @@ export const solarGainOnOccupants: FormCalculator = {
       return null;
     }
     return {
-      outputs: new Map<Quantity, number>([
+      values: new Map<Quantity, number>([
         [q.erf, erf],
         [q.delta_mrt, delta_mrt],
       ]),
@@ -254,9 +254,9 @@ export function startingInputs(calculator: FormCalculator): CalculatorInputs {
   return calculator.postures ? { values, posture: calculator.postures[0].value } : { values };
 }
 
-/** The output of `result` that meets `calculator`'s row. */
-export function outputOf(calculator: Calculator, result: CalculatorResult): number {
-  return requireValue(result.outputs, calculator.output);
+/** The value among `outputs` that meets `calculator`'s row. */
+export function outputOf(calculator: Calculator, outputs: CalculatorOutputs): number {
+  return requireValue(outputs.values, calculator.output);
 }
 
 /**
@@ -274,21 +274,21 @@ export function panelCalculators(model: RegisteredModel, slot: Slot): Calculator
 export interface ShownRow {
   readonly quantity: Quantity;
   readonly before: number;
-  /** What Apply commits, cut to the row's bound; not a number while there is no result. */
+  /** What Apply commits, cut to the row's bound; not a number while there are no outputs. */
   readonly after: number;
-  /** The row's bound where the result met with the row is past it, and the after is its end; absent otherwise. */
+  /** The row's bound where the output met with the row is past it, and the after is its end; absent otherwise. */
   readonly cutTo?: Bound;
 }
 
 /**
  * The row `slot`'s panel shows for `calculator` under `model`, in the slot's
- * own entry modes, with what it holds before and after Apply of `result`
- * ({@link withCalculatorResult}), each read as the panel reads it
+ * own entry modes, with what it holds before and after Apply of `outputs`
+ * ({@link withCalculatorOutputs}), each read as the panel reads it
  * (`enteredValue`) (ADR-0002 decision 75 rule 6 (d)). So under dynamic
  * clothing entry it is the dynamic clothing insulation, the standard's
- * correction of the result after, and under operative entry the operative
+ * correction of the output after, and under operative entry the operative
  * temperature, folded from the raised mean radiant temperature after. With no
- * result the after is not a number. The after is judged as a typed value of
+ * outputs the after is not a number. The after is judged as a typed value of
  * the row is, by the gate's `entryVerdict`, and is the bound's end where the
  * written value is past it, which Apply then commits (ADR-0002 decision 84,
  * rule 5): the dock shows what Apply writes.
@@ -296,7 +296,7 @@ export interface ShownRow {
 export function shownRow(
   slot: Slot,
   calculator: Calculator,
-  result: CalculatorResult | undefined,
+  outputs: CalculatorOutputs | undefined,
   model: RegisteredModel,
   atmosphericPressure: number,
 ): ShownRow {
@@ -313,18 +313,18 @@ export function shownRow(
     return value;
   };
   const before = valueIn(slot);
-  if (!result) {
+  if (!outputs) {
     return { quantity, before, after: Number.NaN };
   }
-  const after = valueIn(withCalculatorResult(slot, calculator, result, model));
+  const after = valueIn(withCalculatorOutputs(slot, calculator, outputs, model));
   const verdict = entryVerdict(slot, model, atmosphericPressure, quantity, after);
   return verdict.kind === "cut" ? { quantity, before, after: verdict.value, cutTo: verdict.bound } : { quantity, before, after };
 }
 
 /**
- * `slot` after Apply of `calculator`'s `result`, on the row of `model` that
+ * `slot` after Apply of `calculator`'s `outputs`, on the row of `model` that
  * declares it (decision 75 rule 3): the slot is put into its entry group's
- * first mode, the one the declaration writes its inputs in, the result meets
+ * first mode, the one the declaration writes its inputs in, the output meets
  * the row there, and the slot is put back into its own mode by the same
  * conversion. So under dynamic clothing entry the written clothing insulation
  * becomes the standard's correction of it, and under operative entry the
@@ -333,7 +333,7 @@ export function shownRow(
  * the first mode is written and left. The value is not gated here: Apply
  * commits the row's value as a typed value is committed ({@link shownRow}).
  */
-export function withCalculatorResult(slot: Slot, calculator: Calculator, result: CalculatorResult, model: RegisteredModel): Slot {
+export function withCalculatorOutputs(slot: Slot, calculator: Calculator, outputs: CalculatorOutputs, model: RegisteredModel): Slot {
   const row = inputsOf(model).find((entry) => entry.calculators?.includes(calculator));
   if (!row) {
     throw new Error(`${model.info.label} declares ${calculator.label} on no row`);
@@ -341,7 +341,7 @@ export function withCalculatorResult(slot: Slot, calculator: Calculator, result:
   const { quantity } = row;
   const group = valueEntryGroups.find((candidate) => candidate.modes.some((mode) => mode.panel.includes(quantity)));
   const entered = group ? group.convert(slot, group.modeOf(defaultEntryModes), model) : slot;
-  const after = calculator.meets(requireValue(entered.values, quantity), outputOf(calculator, result));
+  const after = calculator.meets(requireValue(entered.values, quantity), outputOf(calculator, outputs));
   const written = withEnteredValues(entered, new Map([[quantity, after]]));
   return group ? group.convert(written, group.modeOf(slot), model) : written;
 }

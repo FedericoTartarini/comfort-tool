@@ -13,7 +13,7 @@ import { bandListOf, moveEdge, setColor, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, runOn } from "$lib/core/modelRun";
+import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
@@ -132,7 +132,7 @@ function numberAt(slot: Slot, temperature: number, hr: number, pressure: number)
     [axis, temperature],
     [q.rh, hr_to_rh(hr, temperature, pressure)],
   ]));
-  return resultNumber(runOn(cell, pmvPpdIso, pressure), q.pmv);
+  return outputNumber(runOn(cell, pmvPpdIso, pressure), q.pmv);
 }
 
 describe("the psychrometric chart given a Band list", () => {

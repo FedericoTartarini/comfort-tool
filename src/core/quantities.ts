@@ -143,9 +143,9 @@ const byKey: Readonly<Record<string, Quantity>> = quantities;
 
 /**
  * The table's row for a key the library hands over: a model's `_INFO` keys its
- * rows, and a result its `warnings`, by plain string, so a caller reconciling
- * either with this table looks the key up here and goes back to comparing by
- * identity. `undefined` for a key the table has no row for.
+ * rows, and a run's outputs their `warnings`, by plain string, so a caller
+ * reconciling either with this table looks the key up here and goes back to
+ * comparing by identity. `undefined` for a key the table has no row for.
  */
 export function quantityFor(key: string): Quantity | undefined {
   return byKey[key];

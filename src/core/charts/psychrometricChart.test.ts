@@ -16,7 +16,7 @@ import { temperatureMode } from "$lib/core/entryModes";
 import { imageSize, type ImageSize } from "$lib/core/image";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { classifierOf, psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, runOn } from "$lib/core/modelRun";
+import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
@@ -130,7 +130,7 @@ function numberAt(entered: Slot, temperature: number, hr: number): number {
     [entered.temperature.mode.axis, temperature],
     [q.rh, hr_to_rh(hr, temperature, p)],
   ]));
-  return resultNumber(runOn(cell, pmvPpdIso, p), q.pmv);
+  return outputNumber(runOn(cell, pmvPpdIso, p), q.pmv);
 }
 
 /**

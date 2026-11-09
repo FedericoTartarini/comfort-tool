@@ -114,10 +114,10 @@ describe("resolveQuantities", () => {
 });
 
 describe("toLibraryInputs", () => {
-  it("feeds the declared model a finite result end to end", () => {
-    const result = pmvPpdIso.run(toLibraryInputs(startingSlot(pmvPpdIso), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE));
-    expect(Number.isFinite(result.pmv)).toBe(true);
-    expect(result.tsv).toBeDefined();
+  it("runs the declared model to finite outputs end to end", () => {
+    const outputs = pmvPpdIso.run(toLibraryInputs(startingSlot(pmvPpdIso), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE));
+    expect(Number.isFinite(outputs.pmv)).toBe(true);
+    expect(outputs.tsv).toBeDefined();
   });
 });
 

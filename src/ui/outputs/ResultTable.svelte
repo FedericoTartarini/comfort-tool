@@ -93,7 +93,7 @@
           {#each model.table as quantity (quantity)}
             <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
             <Table.Cell class="value">
-              {@render resultCell(formatResultCell(model, row.result, quantity, unitSystem, row.violations))}
+              {@render resultCell(formatResultCell(model, row.outputs, quantity, unitSystem, row.violations))}
             </Table.Cell>
           {/each}
         </Table.Row>

@@ -70,7 +70,7 @@ export const pmvPpdIso = {
   // The zones are cut from a scan of `run` itself: Fanger unmodified at this edition.
   // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
   // Categories I to IV, read off the bins the library classifies `category`
-  // with: the category on the result is the library's, strict at both ends,
+  // with: the category among the outputs is the library's, strict at both ends,
   // so a PMV of exactly 0.5 is III. The deployed tool's `≤` is a difference
   // not ported.
   scan: {

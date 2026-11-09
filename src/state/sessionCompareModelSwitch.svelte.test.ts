@@ -236,11 +236,11 @@ describe("Session.requestModel while Compare is on", () => {
   it("leaves every compared slot's outputs the current model's while the question is pending", () => {
     const session = comparingSlotsEntered(entriesBreaking([0, 2]));
     const outputs = new Outputs(session);
-    const before = outputs.slots.map((slot) => slot.result);
+    const before = outputs.slots.map((slot) => slot.outputs);
 
     session.requestModel(coolerAndTakesWork);
 
-    outputs.slots.forEach((slot, index) => expect(slot.result).toBe(before[index]));
+    outputs.slots.forEach((slot, index) => expect(slot.outputs).toBe(before[index]));
     expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], [], []]);
   });
 });

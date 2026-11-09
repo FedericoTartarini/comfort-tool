@@ -5,7 +5,7 @@
   row, one box, in the session's unit system, held to the calculator's bound
   and marked out of range outside it, the cells in two columns, a row's boxes
   level. These settings are the one region that scrolls. The dialog's dock and
-  footer follow, handed the result, which is none while a box is out of range.
+  footer follow, handed the outputs, none while a box is out of range.
   Restore defaults, at the title's right, is enabled once the settings differ
   from where they start; it is drawn last, so the keyboard reaches it after
   Apply and before the dialog's Close.
@@ -25,7 +25,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { calculatorBound, outOfRangeCalculatorInputs } from "$lib/core/applicability";
-  import { startingInputs, type CalculatorResult, type PostureOption } from "$lib/core/calculators";
+  import { startingInputs, type CalculatorOutputs, type PostureOption } from "$lib/core/calculators";
   import type { Quantity } from "$lib/core/quantities";
   import { requireValue } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -35,14 +35,14 @@
   import { Button } from "$lib/ui/primitives/button";
   import * as Field from "$lib/ui/primitives/field";
   import ChoiceSelect from "./ChoiceSelect.svelte";
-  import type { ResultLine } from "./InputCalculators.svelte";
+  import type { DockLine } from "./InputCalculators.svelte";
   import QuantityInput from "./QuantityInput.svelte";
 
   interface Props {
     calculator: FormCalculator;
     unitSystem: UnitSystem;
-    /** The dialog's dock and footer, for the result, none while a box is out of range, and its lines. */
-    dock: Snippet<[result: CalculatorResult | null, lines: readonly ResultLine[]]>;
+    /** The dialog's dock and footer, for the outputs, none while a box is out of range, and its lines. */
+    dock: Snippet<[outputs: CalculatorOutputs | null, lines: readonly DockLine[]]>;
   }
 
   let { calculator, unitSystem, dock }: Props = $props();
@@ -52,9 +52,9 @@
   const starting = $derived(startingInputs(calculator));
   const inputs = $derived(keptInputs.get(calculator) ?? starting);
   const outOfRange = $derived(outOfRangeCalculatorInputs(calculator, inputs));
-  const result = $derived(outOfRange.length > 0 ? null : calculator.compute(inputs));
+  const outputs = $derived(outOfRange.length > 0 ? null : calculator.compute(inputs));
   const lines = $derived(
-    calculator.outputs.map((quantity) => ({ quantity, name: quantity.label, value: result?.outputs.get(quantity) ?? Number.NaN })),
+    calculator.outputs.map((quantity) => ({ quantity, name: quantity.label, value: outputs?.values.get(quantity) ?? Number.NaN })),
   );
   const changed = $derived(
     inputs.posture !== starting.posture || [...inputs.values].some(([quantity, value]) => starting.values.get(quantity) !== value),
@@ -96,7 +96,7 @@
     </div>
   </Stack>
 </div>
-{@render dock(result, lines)}
+{@render dock(outputs, lines)}
 <Button variant="ghost" size="sm" class="dialog-title-action" disabled={!changed} onclick={() => keptInputs.delete(calculator)}>
   {copy.restoreDefaults}
 </Button>

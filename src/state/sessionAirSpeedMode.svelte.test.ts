@@ -27,7 +27,7 @@ import {
   heldSlot,
   listedRowsOf,
   outOfRangeQuantitiesAt,
-  resultValueOf,
+  outputValueOf,
   sessionComparingThreeSlots,
   shapeOf,
   shownDifferences,
@@ -76,36 +76,36 @@ describe("the session's air-speed entry mode", () => {
     });
   });
 
-  it("moves no result on the switch into relative air speed entry: the entry shows what the model was given", () => {
+  it("moves no output on the switch into relative air speed entry: the entry shows what the model was given", () => {
     const session = threeDifferentSlots();
     const outputs = new Outputs(session);
-    const before = outputs.slots.map((slot) => resultValueOf(slot.result, q.pmv));
+    const before = outputs.slots.map((slot) => outputValueOf(slot.outputs, q.pmv));
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
-    expect(outputs.slots.map((slot) => resultValueOf(slot.result, q.pmv))).toEqual(before);
+    expect(outputs.slots.map((slot) => outputValueOf(slot.outputs, q.pmv))).toEqual(before);
   });
 
   /** What the model returned for each slot: equal before and after only if it was given the same values. */
-  function resultsOf(outputs: Outputs) {
-    return outputs.slots.map((slot) => slot.result);
+  function outputsOfEachSlot(outputs: Outputs) {
+    return outputs.slots.map((slot) => slot.outputs);
   }
 
   it("gives the air speed back on the switch back, the model given the same relative air speed throughout", () => {
     const session = threeDifferentSlots();
     const outputs = new Outputs(session);
     const entered = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
-    const before = resultsOf(outputs);
-    expect(before.every((result) => result !== null)).toBe(true);
+    const before = outputsOfEachSlot(outputs);
+    expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
     // A third round trip as the first: the number does not ratchet up by the activity's share.
     for (const roundTrip of [1, 2, 3]) {
       session.setAirSpeedMode(airSpeedMode.corrected);
-      expect(resultsOf(outputs), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
+      expect(outputsOfEachSlot(outputs), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
 
       session.setAirSpeedMode(airSpeedMode.uncorrected);
       expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
-      expect(resultsOf(outputs), `back in air speed entry, round ${roundTrip}`).toEqual(before);
+      expect(outputsOfEachSlot(outputs), `back in air speed entry, round ${roundTrip}`).toEqual(before);
     }
   });
 
@@ -117,14 +117,14 @@ describe("the session's air-speed entry mode", () => {
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 2);
     session.slots[0].setEntered(q.v, 0.1234);
-    const before = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
 
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
     const restored = session.slots[0].values.get(q.v);
     expect(restored).toBeCloseTo(0.123, 2);
-    expect(outputs.slots[0].result).toEqual(before);
+    expect(outputs.slots[0].outputs).toEqual(before);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
@@ -150,7 +150,7 @@ describe("the session's air-speed entry mode", () => {
       expect(session.slots[0].values.get(q.v)).toBe(0);
       expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
       expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-      expect(outputs.slots[0].result).not.toBeNull();
+      expect(outputs.slots[0].outputs).not.toBeNull();
     });
   });
 
@@ -164,7 +164,7 @@ describe("the session's air-speed entry mode", () => {
     derived.slots[0].setEntered(q.met, met);
     derived.slots[0].setEntered(q.v, v);
 
-    expect(new Outputs(entered).slots[0].result).toEqual(new Outputs(derived).slots[0].result);
+    expect(new Outputs(entered).slots[0].outputs).toEqual(new Outputs(derived).slots[0].outputs);
   });
 
   it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode", () => {
@@ -224,7 +224,7 @@ describe("the session's air-speed entry mode", () => {
     session.slots[0].setEntered(q.v, 0.8);
 
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].outputs).not.toBeNull();
     expect(outputs.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({ bounded: q.vr, bound });
 
     session.setAirSpeedMode(airSpeedMode.corrected);
@@ -232,7 +232,7 @@ describe("the session's air-speed entry mode", () => {
     expect(enteredBound(pmvPpdIso, q.vr, session.slots[0], session.atmosphericPressure)).toEqual(bound);
     expect(session.slots[0].values.get(q.vr)).toBe(bound?.max);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].outputs).not.toBeNull();
   });
 });
 
@@ -322,7 +322,7 @@ describe("a model switch under relative air speed entry", () => {
     expect(listedRowsOf(session)).toBeUndefined();
     expect(session.model).toBe(pmvPpdIso);
     expect(session.slots[0].values.get(q.v)).toBe(1.5);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].outputs).not.toBeNull();
     expect(outputs.slots[0].violations.find((row) => row.quantity === q.v)).toMatchObject({
       bounded: q.vr,
       bound: pmvPpdIso.info.inputs.vr?.applicability,
@@ -338,7 +338,7 @@ describe("a model switch under relative air speed entry", () => {
     session.slots[0].setEntered(q.met, 2);
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.slots[0].setEntered(q.vr, 1.9);
-    const before = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
     expect(before).not.toBeNull();
 
     session.setModel(adaptiveAshrae);
@@ -351,6 +351,6 @@ describe("a model switch under relative air speed entry", () => {
 
     expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
     expect(v_relative(1.6, 2)).toBe(1.9);
-    expect(outputs.slots[0].result).toEqual(before);
+    expect(outputs.slots[0].outputs).toEqual(before);
   });
 });

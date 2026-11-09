@@ -1762,7 +1762,7 @@ test.describe("the result table's columns", () => {
   }
 });
 
-/** The Results card holds results only: no line under the table names the standard (ADR-0002 decision 86, rule 4). */
+/** The Results card holds the result table only: no line under the table names the standard (ADR-0002 decision 86, rule 4). */
 test("at 1440 px, PMV (ASHRAE 55)'s Results card names no standard and ends at the table's last row, Compare off and on", async ({ page }) => {
   await openStandard(page, 1440, PMV_ADDRESS);
   const results = card(page, "Results");

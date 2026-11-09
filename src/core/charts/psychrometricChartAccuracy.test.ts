@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 import { hr_to_rh } from "jsthermalcomfort";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { optionsOf, psychrometricChartOf, requireScan, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
+import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { withEnteredValues, withOption, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
@@ -183,12 +183,12 @@ function runAt(model: RegisteredModel, slot: Slot, temperature: number, hr: numb
 
 /** `model`'s own scanned number for `slot` at `temperature` and the humidity ratio `hr`, in SI. */
 function numberAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): number {
-  return resultNumber(runAt(model, slot, temperature, hr), requireScan(model).output);
+  return outputNumber(runAt(model, slot, temperature, hr), requireScan(model).output);
 }
 
-/** Whether `model`'s run on `slot` at `temperature` and the humidity ratio `hr` breaks a bound: its `warnings` has a row. */
+/** Whether `model`'s run on `slot` at `temperature` and the humidity ratio `hr` breaks a bound: its `warnings` has a range row. */
 function isOutsideApplicabilityAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): boolean {
-  return resultWarnings(runAt(model, slot, temperature, hr)).length > 0;
+  return rangeRowsOf(runAt(model, slot, temperature, hr)).length > 0;
 }
 
 describe("criterion 3a: the psychrometric chart's zones against the library", () => {

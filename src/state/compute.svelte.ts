@@ -1,3 +1,4 @@
+import type { ModelOutputs } from "jsthermalcomfort";
 import { violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { BandList } from "$lib/core/bands";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
@@ -8,7 +9,7 @@ import { psychrometricScanFrameFor, psychrometricSpec } from "$lib/core/charts/p
 import { scannedField, type ScanFrame, type ScannedField } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import type { DrawnRun } from "$lib/core/inputSummary";
-import type { ChartAxes, ModelResult } from "$lib/core/modelDeclaration";
+import type { ChartAxes } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { paintsBandsOn } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
@@ -31,7 +32,7 @@ export interface DrawnAxes {
  *
  * Compute is synchronous on the main thread (ADR-0002 decision 29): at the
  * 51×51 grid the slowest v1 model scans in 88 ms, so v1 has no Worker and no
- * stale-result stamp. The decision reopens if a v1 model's scan is ever
+ * stale-outputs stamp. The decision reopens if a v1 model's scan is ever
  * measured past 300 ms.
  *
  * Each compared slot has its own {@link SlotOutputs} (ADR-0002 decision 52),
@@ -41,10 +42,10 @@ export interface DrawnAxes {
  * not read, and a derivation not read does not run. What every slot shares is
  * built here once: the frame every slot is scanned in.
  *
- * Nothing is kept (ADR-0002 decision 84, rule 9): the result, the violation
- * rows and the chart are derived from the slots as they are, at the session's
- * pressure, in its unit system and chart settings. A committed value is within
- * its bounds; one a writer let through is run, and the library's rows show it
+ * Nothing is kept (ADR-0002 decision 84, rule 9): each run's outputs, the
+ * violation rows and the chart are derived from the slots as they are, at the
+ * session's pressure, in its unit system and chart settings. A committed value
+ * is within its bounds; one a writer let through is run, and the library's rows show it
  * as a violation. The chart is of every compared slot (decision 50), its axes
  * resolved from the session's entry modes, which no slot decides (decision 51).
  */
@@ -178,15 +179,15 @@ export class SlotOutputs {
   readonly #badge = $derived.by((): SlotBadge => slotBadge(this.position, this.#session.slotsNamed));
 
   // No `$state.raw` guard is needed on what comes out: `$derived` leaves an
-  // object as it is rather than wrapping it in a deep proxy, so the results,
+  // object as it is rather than wrapping it in a deep proxy, so the outputs,
   // the chart spec and the Quantity objects keep the identity the library and
   // `core/quantities.ts` gave them.
-  readonly #result = $derived.by((): ModelResult =>
+  readonly #outputs = $derived.by((): ModelOutputs =>
     runOn(this.#slot, this.#session.model, this.#session.atmosphericPressure),
   );
 
   readonly #violations = $derived.by((): readonly ViolationRow[] =>
-    violationRows(this.#session.model, this.#result, this.#session.entryModes),
+    violationRows(this.#session.model, this.#outputs, this.#session.entryModes),
   );
 
   // Of a detached copy of the slot: a region's boundary runs the scanned slot
@@ -218,9 +219,9 @@ export class SlotOutputs {
     return this.#slot;
   }
 
-  /** The model's result on the slot as it is. */
-  get result(): ModelResult {
-    return this.#result;
+  /** The model's outputs on the slot as it is. */
+  get outputs(): ModelOutputs {
+    return this.#outputs;
   }
 
   /**

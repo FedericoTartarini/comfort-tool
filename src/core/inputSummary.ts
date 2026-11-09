@@ -38,7 +38,7 @@ export type InputSummary = readonly (readonly string[])[];
  * one line per limit in its row's sentence (decision 84, rule 8); then, given
  * the Band list the chart paints, its Edges. No line names an entry mode: a
  * run's rows are those of its own modes, and their quantities say which. It
- * holds no result.
+ * holds no outputs.
  */
 export function inputSummary(parts: {
   model: RegisteredModel;

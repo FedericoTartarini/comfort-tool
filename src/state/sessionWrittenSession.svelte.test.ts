@@ -62,12 +62,12 @@ function stateOf(session: Session) {
   };
 }
 
-/** What the page shows of the outputs: each compared slot's result and rows, and the chart. */
+/** What the page shows of the outputs: each compared slot's outputs and rows, and the chart. */
 function shownOf(outputs: Outputs) {
   return {
     slots: outputs.slots.map((slot) => ({
       position: slot.position,
-      result: slot.result,
+      outputs: slot.outputs,
       violations: slot.violations,
     })),
     chart: outputs.chart,

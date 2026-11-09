@@ -6,7 +6,7 @@
  * component and no router — and nothing flushes, for the reason
  * `compute.svelte.test.ts` gives.
  *
- * A compared slot's expected result is the one a session holding that slot
+ * A compared slot's expected outputs are the ones a session holding that slot
  * alone gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
@@ -50,13 +50,13 @@ function positionsAskedAbout(outputs: Outputs): SlotPosition[] {
   return outputs.slots.map((slot) => slot.position);
 }
 
-/** The result a session holding only a slot entered with `entries` gives. */
-function resultAlone(entries: ReadonlyMap<Quantity, number>) {
+/** The outputs a session holding only a slot entered with `entries` gives slot 1. */
+function outputsAlone(entries: ReadonlyMap<Quantity, number>) {
   const session = new Session(pmvPpdIso);
   for (const [quantity, value] of entries) {
     session.slots[0].setEntered(quantity, value);
   }
-  return new Outputs(session).slots[0].result;
+  return new Outputs(session).slots[0].outputs;
 }
 
 /** `pmvPpdIso`, counting every call the outputs make of it. */
@@ -81,7 +81,7 @@ describe("Compare in the session", () => {
     expect(session.slots[1]).toBeNull();
     expect(session.slots[2]).toBeNull();
     expect(positionsAskedAbout(outputs)).toEqual([0]);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].outputs).not.toBeNull();
   });
 
   it("enables slots 1 and 2 at the first switch-on, slot 2 holding what slot 1 holds, entry modes and options included, moved by its Slot offset", () => {
@@ -269,11 +269,11 @@ describe("the Slot offsets of a slot first enabled", () => {
     it(`add nothing at a change of unit system or an Apply, which writes its own row alone, on ${model.info.label}`, () => {
       const session = sessionComparingThreeSlots(model);
       const before = session.slots.map((slot) => (slot ? shapeOf(slot) : null));
-      const result = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
-      const row = shownRow(heldSlot(session, 1), customEnsemble, result, model, session.atmosphericPressure);
+      const outputs = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
+      const row = shownRow(heldSlot(session, 1), customEnsemble, outputs, model, session.atmosphericPressure);
 
       session.unitSystem = unitSystem.ip;
-      session.applyCalculator(1, customEnsemble, result);
+      session.applyCalculator(1, customEnsemble, outputs);
 
       const applied = new Map(before[1]!.values).set(row.quantity, row.after);
       expect(session.slots.map((slot) => (slot ? shapeOf(slot) : null))).toEqual([before[0], { ...before[1], values: applied }, before[2]]);
@@ -282,30 +282,30 @@ describe("the Slot offsets of a slot first enabled", () => {
 });
 
 describe("the outputs of the compared slots", () => {
-  it("give each compared slot its own result, the one a session holding that slot alone gives", () => {
+  it("give each compared slot its own outputs, the ones a session holding that slot alone gives", () => {
     const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(pmvPpdIso));
     const outputs = new Outputs(session);
     heldSlot(session, 1).setEntered(q.tdb, 22);
     heldSlot(session, 2).setEntered(q.clo, 1);
 
     expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
-    expect(outputs.slots[0].result).toEqual(resultAlone(new Map<Quantity, number>()));
-    expect(outputs.slots[1].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 22]])));
-    expect(outputs.slots[2].result).toEqual(resultAlone(new Map<Quantity, number>([[q.clo, 1]])));
-    expect(outputs.slots[1].result).not.toEqual(outputs.slots[0].result);
+    expect(outputs.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>()));
+    expect(outputs.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 22]])));
+    expect(outputs.slots[2].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.clo, 1]])));
+    expect(outputs.slots[1].outputs).not.toEqual(outputs.slots[0].outputs);
   });
 
-  it("give a slot that is not compared no result, and do not run the model for it", () => {
+  it("give a slot that is not compared no outputs, and do not run the model for it", () => {
     const { model, runs } = modelCountingRuns();
     const session = new Session(model);
     const outputs = new Outputs(session);
     session.setCompare(true);
     session.setSlotEnabled(1, false);
-    void outputs.slots.map((slot) => slot.result);
+    void outputs.slots.map((slot) => slot.outputs);
     const before = runs();
 
     heldSlot(session, 1).setEntered(q.tdb, 22);
-    void outputs.slots.map((slot) => slot.result);
+    void outputs.slots.map((slot) => slot.outputs);
 
     expect(positionsAskedAbout(outputs)).toEqual([0]);
     expect(runs()).toBe(before);
@@ -322,9 +322,9 @@ describe("the outputs of the compared slots", () => {
     session.slots[0].setEntered(q.tdb, 24);
 
     expect(outOfRangeQuantitiesAt(session, 1)).toEqual([q.tdb]);
-    expect(outputs.slots[1].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 35]])));
+    expect(outputs.slots[1].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 35]])));
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].result).toEqual(resultAlone(new Map<Quantity, number>([[q.tdb, 24]])));
+    expect(outputs.slots[0].outputs).toEqual(outputsAlone(new Map<Quantity, number>([[q.tdb, 24]])));
   });
 
   it("run the model once for an edit to one slot, for that slot", () => {
@@ -333,17 +333,17 @@ describe("the outputs of the compared slots", () => {
     const outputs = new Outputs(session);
     session.setCompare(true);
     session.setSlotEnabled(2, true);
-    void outputs.slots.map((slot) => slot.result);
-    const first = outputs.slots[0].result;
-    const third = outputs.slots[2].result;
+    void outputs.slots.map((slot) => slot.outputs);
+    const first = outputs.slots[0].outputs;
+    const third = outputs.slots[2].outputs;
     const before = runs();
 
     heldSlot(session, 1).setEntered(q.tdb, 22);
-    void outputs.slots.map((slot) => slot.result);
+    void outputs.slots.map((slot) => slot.outputs);
 
     expect(runs()).toBe(before + 1);
-    expect(outputs.slots[0].result).toBe(first);
-    expect(outputs.slots[2].result).toBe(third);
+    expect(outputs.slots[0].outputs).toBe(first);
+    expect(outputs.slots[2].outputs).toBe(third);
   });
 
   // A switch seeds every slot that holds values, so a compared slot holds
@@ -357,7 +357,7 @@ describe("the outputs of the compared slots", () => {
     session.setModel(pmvPpdAshrae);
 
     expect(session.comparedPositions.map((position) => outOfRangeQuantitiesAt(session, position))).toEqual([[], []]);
-    expect(outputs.slots[1].result).toEqual(outputs.slots[0].result);
+    expect(outputs.slots[1].outputs).toEqual(outputs.slots[0].outputs);
   });
 });
 
@@ -487,7 +487,7 @@ describe("the charts of the compared slots", () => {
 
   describe("on the dynamic chart", () => {
     /**
-     * The model runs a session on `model` makes to show one slot, its result
+     * The model runs a session on `model` makes to show one slot, its outputs
      * and its scan, from nothing, after `prepare` has set it up. A scan's
      * runs depend on its slot, the zones' boundaries asking for more runs
      * where a bound ends them, so a pass is counted of the slot it is for.
@@ -498,7 +498,7 @@ describe("the charts of the compared slots", () => {
       prepare(session);
       const before = runs();
       const outputs = new Outputs(session);
-      void outputs.slots[0].result;
+      void outputs.slots[0].outputs;
       void outputs.chart;
       return runs() - before;
     }
@@ -511,7 +511,7 @@ describe("the charts of the compared slots", () => {
       enterSlot1ValuesInOthers(session);
       const outputs = new Outputs(session);
       const readEverything = () => {
-        void outputs.slots.map((slot) => slot.result);
+        void outputs.slots.map((slot) => slot.outputs);
         void outputs.chart;
       };
       readEverything();

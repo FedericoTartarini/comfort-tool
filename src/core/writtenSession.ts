@@ -28,7 +28,7 @@ export interface ChartSettings {
 
 /**
  * Everything a session holds that is not derived and not a question left
- * standing: never the page, which the address names, nor a result.
+ * standing: never the page, which the address names, nor the outputs.
  *
  * Every slot it holds is in slot 1's entry modes, humidity's included, as
  * every slot of a session is (ADR-0002 decision 51); a session built from one

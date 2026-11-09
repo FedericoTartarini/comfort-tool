@@ -5,7 +5,7 @@
   model's panel offers; there is none where it offers none. It opens one
   dialog of one width and one fixed height, a tab per calculator in the
   panel's row order: the tab's settings, the one region that scrolls; the
-  result dock, the result and, for each slot Apply writes, that slot's row
+  dock, the outputs and, for each slot Apply writes, that slot's row
   before and after, cut to the row's bound with the bound beside it; and the
   footer with Apply, which commits each row as a typed value is committed,
   with no toast, and closes (ADR-0002 decision 84, rule 5). While
@@ -14,14 +14,14 @@
   any other way changes nothing.
 
   Its look is the generated dialog's and tabs' (the `line` variant), with the
-  shared `.calculator-entry`, `.dialog-fixed` and `.result-dock` rules.
+  shared `.calculator-entry`, `.dialog-fixed` and `.dock` rules.
 -->
 <script module lang="ts">
   import type { Calculator } from "$lib/core/calculators";
   import type { Quantity } from "$lib/core/quantities";
 
-  /** One line of a calculator's result in the dock: its name, and its SI value, not a number while there is none. */
-  export interface ResultLine {
+  /** One line of a calculator's outputs in the dock: its name, and its SI value, not a number while there is none. */
+  export interface DockLine {
     readonly quantity: Quantity;
     readonly name: string;
     readonly value: number;
@@ -39,7 +39,7 @@
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import { formatBound } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
-  import { panelCalculators, shownRow, type CalculatorResult } from "$lib/core/calculators";
+  import { panelCalculators, shownRow, type CalculatorOutputs } from "$lib/core/calculators";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { displayUnitFor, nameWithUnit, numberInUnit } from "$lib/core/units";
@@ -96,9 +96,9 @@
   }
 
   /** Apply: each target's row committed as the dock shows it, cut to the row's bound. */
-  function apply(calculator: Calculator, result: CalculatorResult) {
+  function apply(calculator: Calculator, calculatorOutputs: CalculatorOutputs) {
     for (const { outputs } of targets) {
-      calculatorWriter.applyCalculator(outputs.position, calculator, result);
+      calculatorWriter.applyCalculator(outputs.position, calculator, calculatorOutputs);
     }
     open = false;
   }
@@ -135,19 +135,19 @@
         </Tabs.List>
         {#each calculators as calculator, index (calculator)}
           <!--
-            The dock and the footer, drawn by the tab after its settings, which hands in its result and its lines.
+            The dock and the footer, drawn by the tab after its settings, which hands in its outputs and its lines.
             The dock has a line per target, the row that slot shows in its own entry mode, named by the slot while
             the slots are named. The footer is drawn once per tab, every tab mounted, so its ids carry the tab's.
           -->
-          {#snippet dock(result: CalculatorResult | null, lines: readonly ResultLine[])}
-            <div class="result-dock">
+          {#snippet dock(calculatorOutputs: CalculatorOutputs | null, lines: readonly DockLine[])}
+            <div class="dock">
               <Stack gap="1">
                 {#each lines as line (line.quantity)}
                   {@const lineUnit = displayUnitFor(line.quantity, unitSystem)}
                   {@render dockLine(`${index}-${line.quantity.key}`, nameWithUnit(line.name, lineUnit), numberInUnit(line.value, lineUnit))}
                 {/each}
                 {#each targets as { inputSlot, outputs } (outputs.position)}
-                  {@const row = shownRow(inputSlot, calculator, result ?? undefined, model, atmosphericPressure)}
+                  {@const row = shownRow(inputSlot, calculator, calculatorOutputs ?? undefined, model, atmosphericPressure)}
                   {@const unit = displayUnitFor(row.quantity, unitSystem)}
                   {@const after = numberInUnit(row.after, unit)}
                   {@render dockLine(
@@ -163,7 +163,10 @@
               {#if named}
                 {@render applyTo(`${id}-${index}-apply-to`)}
               {/if}
-              <Button disabled={result === null || targets.length === 0} onclick={() => result && apply(calculator, result)}>
+              <Button
+                disabled={calculatorOutputs === null || targets.length === 0}
+                onclick={() => calculatorOutputs && apply(calculator, calculatorOutputs)}
+              >
                 {copy.calculatorApply}
               </Button>
             </Dialog.Footer>
@@ -208,7 +211,7 @@
 
 <!--
   A line of the dock, named by its label, so the value is announced with what it is; a slot's row line has its value
-  after Apply too, with the row's bound beside it where the result was cut to it.
+  after Apply too, with the row's bound beside it where the value after was cut to it.
 -->
 {#snippet dockLine(key: string, label: string, value: string, after?: string)}
   <Inline gap="2" justify="between">

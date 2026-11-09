@@ -1,7 +1,7 @@
 /**
  * A Comfort zone is what the standard accepts (ADR-0002 decisions 77 and 78):
  * on the Standard page every chart's zones leave out wherever a run breaks a
- * bound, any row of the result's `warnings`, while the cell keeps its number
+ * bound, any row of the outputs' `warnings`, while the cell keeps its number
  * on the hover grid and Explore's Bands paint over it, and a zone's boundary
  * lies on the bound to one bisection step. Each expectation is checked
  * against the library's own `warnings` on the inputs, and every region is
@@ -16,7 +16,7 @@ import { chartInk } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
+import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, withEntryModes, withOption, type Slot } from "$lib/core/slot";
@@ -106,9 +106,9 @@ function runAt(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity
   return runOn(withEnteredValues(slot, entered), model, P);
 }
 
-/** Whether the run on `slot` with `entered` over it breaks a bound: its `warnings` has a row. */
+/** Whether the run on `slot` with `entered` over it breaks a bound: its `warnings` has a range row. */
 function isOutsideApplicability(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity, number>): boolean {
-  return resultWarnings(runAt(model, slot, entered)).length > 0;
+  return rangeRowsOf(runAt(model, slot, entered)).length > 0;
 }
 
 /** The limit of the zone drawn `position`-th among one slot's zones, largest first, as the chart draws them. */
@@ -213,7 +213,7 @@ describe("PMV (ASHRAE 55)'s air-speed chart", () => {
     const yIndex = indexOf(speeds, 1.2);
     expect(regionOf(off, zoneOf(off))[yIndex][column]).toBe(false);
     expect(regionOf(on, zoneOf(on))[yIndex][column]).toBe(true);
-    const pmv = resultNumber(runAt(pmvPpdAshrae, inScope(false), new Map<Quantity, number>([[q.operative_tmp, 28], [q.v, 1.2]])), q.pmv);
+    const pmv = outputNumber(runAt(pmvPpdAshrae, inScope(false), new Map<Quantity, number>([[q.operative_tmp, 28], [q.v, 1.2]])), q.pmv);
     expect(hoverGridOf(off).hoverText[yIndex][column]).toContain(readoutLine(q.pmv, displayUnitFor(q.pmv, unitSystem.si), pmv));
   });
 
@@ -241,7 +241,7 @@ describe("PMV (ASHRAE 55)'s clothing axis", () => {
     y.forEach((clo, yIndex) => {
       x.forEach((tdb, xIndex) => {
         const entered = new Map<Quantity, number>([[q.tdb, tdb], [q.clo, clo]]);
-        const pmv = resultNumber(runAt(pmvPpdAshrae, slot, entered), q.pmv);
+        const pmv = outputNumber(runAt(pmvPpdAshrae, slot, entered), q.pmv);
         const kept = Math.abs(pmv) < limit && !isOutsideApplicability(pmvPpdAshrae, slot, entered);
         expect(region[yIndex][xIndex], `${tdb} °C, ${clo} clo`).toBe(kept);
         if (Math.abs(pmv) < limit && !kept) {
@@ -272,7 +272,7 @@ function psychrometricCells(model: RegisteredModel, slot: Slot, spec: ChartSpec)
         return [];
       }
       const entered = new Map<Quantity, number>([[q.tdb, tdb], [q.hr, hr]]);
-      const pmv = resultNumber(runAt(model, slot, entered), q.pmv);
+      const pmv = outputNumber(runAt(model, slot, entered), q.pmv);
       return [{ xIndex, yIndex, tdb, pa: psy_ta_rh(tdb, rh, P).p_vap, pmv, outside: isOutsideApplicability(model, slot, entered) }];
     }),
   );
@@ -467,11 +467,11 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
           const pointAt = (offset: number): [number, number] => (onColumn ? [vertexX, vertexY + offset] : [vertexX + offset, vertexY]);
           const [inside, outside] = isInsideFill(fill, ...pointAt(-step)) ? [pointAt(-step), pointAt(step)] : [pointAt(step), pointAt(-step)];
           expect(isInsideFill(fill, ...inside), label).toBe(true);
-          expect(resultWarnings(runAtPoint(...inside)), label).toEqual([]);
-          if (Math.abs(Math.abs(resultNumber(runAtPoint(vertexX, vertexY), q.pmv)) - limit) <= limitBound) {
+          expect(rangeRowsOf(runAtPoint(...inside)), label).toEqual([]);
+          if (Math.abs(Math.abs(outputNumber(runAtPoint(vertexX, vertexY), q.pmv)) - limit) <= limitBound) {
             return; // On the limit.
           }
-          expect(resultWarnings(runAtPoint(...outside)).length, label).toBeGreaterThan(0);
+          expect(rangeRowsOf(runAtPoint(...outside)).length, label).toBeGreaterThan(0);
           onBounds += 1;
         });
       }

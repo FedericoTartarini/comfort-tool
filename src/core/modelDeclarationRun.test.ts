@@ -25,7 +25,7 @@ import {
   type RegisteredModel,
   type Values,
 } from "./modelDeclaration";
-import { resultValue, runOn } from "./modelRun";
+import { outputValue, runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { startingSlot, withEnteredValues, type Slot } from "./slot";
 
@@ -59,7 +59,7 @@ function alongTheXAxis(model: RegisteredModel, axes: ChartAxes) {
     range: requireAxisRange(model, axis),
     at,
     valueAt: (position: number, quantity: Quantity) => {
-      return resultValue(runOn(at(position), model, DEFAULT_ATMOSPHERIC_PRESSURE), quantity);
+      return outputValue(runOn(at(position), model, DEFAULT_ATMOSPHERIC_PRESSURE), quantity);
     },
   };
 }
@@ -119,11 +119,11 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
   for (const slot of probes) {
-    const result = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
-    const value = resultValue(result, scan.output);
+    const outputs = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
+    const value = outputValue(outputs, scan.output);
     expect(typeof value, `${model.info.label} ${scan.output.label}`).toBe("number");
     expect(classifyFromBins(Number(value), classifier), `${model.info.label} at ${scan.output.label} ${String(value)}`).toBe(
-      resultValue(result, scan.bands),
+      outputValue(outputs, scan.bands),
     );
   }
 }
@@ -160,7 +160,7 @@ const ROUNDED_GRID_PER_UNIT = 100;
 const SAMPLES_ALONG_THE_AXIS = 25;
 
 /**
- * The first column of `model`'s table whose result is a number: a classified
+ * The first column of `model`'s table whose output is a number: a classified
  * output's category leads the table (ADR-0002 decision 85, rule 1), and a
  * category or a yes or no has no decimals to round.
  */
@@ -216,7 +216,7 @@ function unroundedSampleCount(
 /**
  * The ISO declaration with its rounding switch under the test's control. The
  * call is written out rather than wrapped, because rounding cannot be added to
- * `run`'s result after the fact; only the switch differs between the two halves
+ * `run`'s outputs after the fact; only the switch differs between the two halves
  * of the proof below.
  */
 function isoRounding(round_output: boolean) {

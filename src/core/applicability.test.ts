@@ -38,7 +38,7 @@ function vrWarning(bound: string, system: UnitSystem): string {
   return copy.applicabilityWarning(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
 }
 
-/** A `range` row of a result's `warnings`; its unit is the library's and is not read here. */
+/** A `range` row of a run's outputs' `warnings`; its unit is the library's and is not read here. */
 function rangeRow(key: string, role: "input" | "derived" | "output", value: number, bound: Bound): ModelWarning {
   return { kind: "range", key, role, value, unit: null, bound };
 }
@@ -446,7 +446,7 @@ describe("violationRows", () => {
   });
 
   it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {
-    const result = {
+    const outputs = {
       warnings: [
         rangeRow("vr", "input", 0.5, { max: 0.2 }),
         rangeRow("clo", "input", 2.5, { max: 2 }),
@@ -454,7 +454,7 @@ describe("violationRows", () => {
         rangeRow("pmv", "output", 3, { min: -2, max: 2 }),
       ],
     };
-    expect(violationRows(pmvPpdIso, result, defaultEntryModes).map(({ quantity, role }) => [quantity, role])).toEqual([
+    expect(violationRows(pmvPpdIso, outputs, defaultEntryModes).map(({ quantity, role }) => [quantity, role])).toEqual([
       [q.v, "input"],
       [q.clo, "input"],
       [q.pmv, "input"],
@@ -483,8 +483,8 @@ describe("violationRows", () => {
   });
 
   it("drops a key the quantity table lacks", () => {
-    const result = { warnings: [rangeRow("not_a_quantity", "input", 1, { max: 0.8 })] };
-    expect(violationRows(pmvPpdIso, result, defaultEntryModes)).toEqual([]);
+    const outputs = { warnings: [rangeRow("not_a_quantity", "input", 1, { max: 0.8 })] };
+    expect(violationRows(pmvPpdIso, outputs, defaultEntryModes)).toEqual([]);
   });
 
   it("reads no notice row as a Violation, only the range rows beside it", () => {

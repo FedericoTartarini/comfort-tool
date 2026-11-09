@@ -136,7 +136,7 @@ describe("an air speed or a clothing insulation, committed", () => {
 
       expect(session.slots[0].values.get(q.met)).toBe(met);
       expect(session.slots[0].values.get(entered)).toBe(value);
-      expect(outputs.slots[0].result).not.toBeNull();
+      expect(outputs.slots[0].outputs).not.toBeNull();
       expect(outputs.slots[0].violations.find((row) => row.quantity === entered)).toMatchObject({ quantity: entered, ...rowOf(model, entered) });
     },
   );

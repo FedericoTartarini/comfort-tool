@@ -88,8 +88,8 @@ describe("the session's clothing entry mode", () => {
       slotPositions.forEach((position) => {
         const entries = entriesOfSlot[position];
         const given = new Outputs(enteringDynamic(model, entries, dynamic(entries)));
-        expect(outputs.slots[position].result, `slot ${position + 1}`).not.toBeNull();
-        expect(outputs.slots[position].result, `slot ${position + 1}`).toEqual(given.slots[0].result);
+        expect(outputs.slots[position].outputs, `slot ${position + 1}`).not.toBeNull();
+        expect(outputs.slots[position].outputs, `slot ${position + 1}`).toEqual(given.slots[0].outputs);
       });
     });
 
@@ -106,15 +106,15 @@ describe("the session's clothing entry mode", () => {
       });
     });
 
-    it("moves no result on the switch into dynamic clothing entry: the entry shows what the model was given", () => {
+    it("moves no output on the switch into dynamic clothing entry: the entry shows what the model was given", () => {
       const session = threeDifferentSlots(model);
       const outputs = new Outputs(session);
-      const before = outputs.slots.map((slot) => slot.result);
-      expect(before.every((result) => result !== null)).toBe(true);
+      const before = outputs.slots.map((slot) => slot.outputs);
+      expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
       session.setClothingMode(clothingMode.corrected);
 
-      expect(outputs.slots.map((slot) => slot.result)).toEqual(before);
+      expect(outputs.slots.map((slot) => slot.outputs)).toEqual(before);
     });
 
     // Back inverts the standard's rule (ADR-0002 decision 54 as revised a
@@ -123,8 +123,8 @@ describe("the session's clothing entry mode", () => {
       const session = threeDifferentSlots(model);
       const outputs = new Outputs(session);
       const entered = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
-      const before = outputs.slots.map((slot) => slot.result);
-      expect(before.every((result) => result !== null)).toBe(true);
+      const before = outputs.slots.map((slot) => slot.outputs);
+      expect(before.every((ofSlot) => ofSlot !== null)).toBe(true);
 
       // A third round trip as the first: the clothing does not ratchet down.
       for (const roundTrip of [1, 2, 3]) {
@@ -132,12 +132,12 @@ describe("the session's clothing entry mode", () => {
         slotPositions.forEach((position) => {
           expect(heldSlot(session, position).values.get(q.clo_dynamic), `round ${roundTrip}`).toBe(dynamic(entriesOfSlot[position]));
         });
-        expect(outputs.slots.map((slot) => slot.result), `into dynamic clothing entry, round ${roundTrip}`).toEqual(before);
+        expect(outputs.slots.map((slot) => slot.outputs), `into dynamic clothing entry, round ${roundTrip}`).toEqual(before);
 
         session.setClothingMode(clothingMode.uncorrected);
         expect(session.clothingMode).toBe(clothingMode.uncorrected);
         expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
-        expect(outputs.slots.map((slot) => slot.result), `back in clothing insulation entry, round ${roundTrip}`).toEqual(before);
+        expect(outputs.slots.map((slot) => slot.outputs), `back in clothing insulation entry, round ${roundTrip}`).toEqual(before);
       }
     });
 
@@ -152,11 +152,11 @@ describe("the session's clothing entry mode", () => {
       corrected.slots[0].setEntered(q.met, 3);
       corrected.slots[0].setEntered(q.clo, 0.7);
 
-      const given = new Outputs(entered).slots[0].result;
+      const given = new Outputs(entered).slots[0].outputs;
 
       expect(given).not.toBeNull();
-      expect(given).toEqual(new Outputs(passedThrough).slots[0].result);
-      expect(given).not.toEqual(new Outputs(corrected).slots[0].result);
+      expect(given).toEqual(new Outputs(passedThrough).slots[0].outputs);
+      expect(given).not.toEqual(new Outputs(corrected).slots[0].outputs);
     });
   });
 
@@ -164,16 +164,16 @@ describe("the session's clothing entry mode", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 1.2);
-    const before = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
 
     session.setClothingMode(clothingMode.corrected);
 
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(0.5);
-    expect(outputs.slots[0].result).toEqual(before);
+    expect(outputs.slots[0].outputs).toEqual(before);
 
     session.setClothingMode(clothingMode.uncorrected);
 
-    expect(outputs.slots[0].result).toEqual(before);
+    expect(outputs.slots[0].outputs).toEqual(before);
   });
 
   it("converts by the session's model's standard: one entry is two dynamic clothing insulations under the two", () => {
@@ -234,7 +234,7 @@ describe("the session's clothing entry mode", () => {
 
       expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
       expect(enteredBound(model, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
-      expect(outputs.slots[0].result).not.toBeNull();
+      expect(outputs.slots[0].outputs).not.toBeNull();
       expect(outputs.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({ bounded: q.clo_dynamic, value: dynamic, bound });
 
       session.setClothingMode(clothingMode.corrected);
@@ -242,7 +242,7 @@ describe("the session's clothing entry mode", () => {
       expect(enteredBound(model, q.clo_dynamic, session.slots[0], session.atmosphericPressure)).toEqual(bound);
       expect(session.slots[0].values.get(q.clo_dynamic)).toBe(bound?.max);
       expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-      expect(outputs.slots[0].result).not.toBeNull();
+      expect(outputs.slots[0].outputs).not.toBeNull();
     },
   );
 
@@ -255,8 +255,8 @@ describe("the session's clothing entry mode", () => {
 
     expect(clo_dynamic_ashrae(1.6, 2)).toBe(1.28);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(outputs.slots[0].result).not.toBeNull();
-    expect(outputs.slots[0].result).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, 1.28)).slots[0].result);
+    expect(outputs.slots[0].outputs).not.toBeNull();
+    expect(outputs.slots[0].outputs).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, 1.28)).slots[0].outputs);
     expect(outputs.slots[0].violations).toEqual([]);
   });
 });
@@ -275,7 +275,7 @@ describe("a model switch under clothing insulation entry", () => {
     expect(session.model).toBe(pmvPpdAshrae);
     expect(session.clothingMode).toBe(clothingMode.uncorrected);
     expect(session.slots[0].values.get(q.clo)).toBe(1.9);
-    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].outputs).not.toBeNull();
     expect(outputs.slots[0].violations.find((row) => row.quantity === q.clo)).toMatchObject({
       bounded: q.clo_dynamic,
       value: clo_dynamic_ashrae(1.9, 2),
@@ -373,7 +373,7 @@ describe("a model switch under dynamic clothing entry", () => {
     expect(session.model).toBe(pmvPpdAshrae);
     expect(session.clothingMode).toBe(clothingMode.uncorrected);
     expect(session.slots[0].values.get(q.clo)).toBe(1);
-    expect(outputs.slots[0].result).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, clo_dynamic_ashrae(1, 2))).slots[0].result);
+    expect(outputs.slots[0].outputs).toEqual(new Outputs(enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, clo_dynamic_ashrae(1, 2))).slots[0].outputs);
   });
 
   // Adaptive (ASHRAE 55) takes no clothing, so it has no clothing group and
@@ -388,7 +388,7 @@ describe("a model switch under dynamic clothing entry", () => {
     ({ model, dynamic }) => {
       const session = enteringDynamic(model, { v: 0.1, met: 2 }, dynamic);
       const outputs = new Outputs(session);
-      const before = outputs.slots[0].result;
+      const before = outputs.slots[0].outputs;
       expect(before).not.toBeNull();
 
       session.setModel(adaptiveAshrae);
@@ -401,7 +401,7 @@ describe("a model switch under dynamic clothing entry", () => {
 
       expect(session.clothingMode).toBe(clothingMode.uncorrected);
       expect(session.slots[0].values.get(q.clo)).toBe(1);
-      expect(outputs.slots[0].result).toEqual(before);
+      expect(outputs.slots[0].outputs).toEqual(before);
     },
   );
 });

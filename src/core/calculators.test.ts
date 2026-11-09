@@ -24,10 +24,10 @@ import {
   solarGainOnOccupants,
   startingInputs,
   wearGarment,
-  withCalculatorResult,
+  withCalculatorOutputs,
   type Calculator,
   type CalculatorInputs,
-  type CalculatorResult,
+  type CalculatorOutputs,
   type FormCalculator,
 } from "./calculators";
 import { enteredSlotFor, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
@@ -54,9 +54,9 @@ describe("customEnsemble", () => {
   });
 
   it("sums nothing to 0 and reports no warnings", () => {
-    const result = customEnsemble.compute([]);
-    expect(outputOf(customEnsemble, result)).toBe(0);
-    expect(result.warnings).toEqual([]);
+    const outputs = customEnsemble.compute([]);
+    expect(outputOf(customEnsemble, outputs)).toBe(0);
+    expect(outputs.warnings).toEqual([]);
   });
 
   it("throws naming a garment the library's table lacks", () => {
@@ -96,10 +96,10 @@ describe("clothingFromOutdoorTemperature", () => {
 
   it("is the library's clo_tout in SI, below, between and above the formula's flat ends", () => {
     for (const tout of [-10, 20, 30]) {
-      const result = resultFor(clothingFromOutdoorTemperature, { values: new Map([[q.tout, tout]]) });
-      expect([...result.outputs.keys()]).toEqual(clothingFromOutdoorTemperature.outputs);
-      expect(outputOf(clothingFromOutdoorTemperature, result), `${tout} °C`).toBe(clo_tout({ tout }).clo_tout);
-      expect(result.warnings).toEqual([]);
+      const outputs = outputsFor(clothingFromOutdoorTemperature, { values: new Map([[q.tout, tout]]) });
+      expect([...outputs.values.keys()]).toEqual(clothingFromOutdoorTemperature.outputs);
+      expect(outputOf(clothingFromOutdoorTemperature, outputs), `${tout} °C`).toBe(clo_tout({ tout }).clo_tout);
+      expect(outputs.warnings).toEqual([]);
     }
   });
 });
@@ -159,27 +159,27 @@ describe("solarGainOnOccupants", () => {
     });
 
   it("is the library's solar_gain unrounded at the defaults, its warnings carried", () => {
-    const result = resultFor(solarGainOnOccupants, defaults);
+    const outputs = outputsFor(solarGainOnOccupants, defaults);
     const library = libraryAt("sitting");
-    expect(result.outputs).toEqual(new Map<Quantity, number | null>([[q.erf, library.erf], [q.delta_mrt, library.delta_mrt]]));
-    expect([...result.outputs.keys()]).toEqual(solarGainOnOccupants.outputs);
-    expect(outputOf(solarGainOnOccupants, result)).toBe(library.delta_mrt);
-    expect(result.warnings).toEqual(library.warnings);
+    expect(outputs.values).toEqual(new Map<Quantity, number | null>([[q.erf, library.erf], [q.delta_mrt, library.delta_mrt]]));
+    expect([...outputs.values.keys()]).toEqual(solarGainOnOccupants.outputs);
+    expect(outputOf(solarGainOnOccupants, outputs)).toBe(library.delta_mrt);
+    expect(outputs.warnings).toEqual(library.warnings);
   });
 
   it("is the library's solar_gain at Standing", () => {
-    const result = resultFor(solarGainOnOccupants, { ...defaults, posture: "standing" });
-    expect(outputOf(solarGainOnOccupants, result)).toBe(libraryAt("standing").delta_mrt);
-    expect(outputOf(solarGainOnOccupants, result)).not.toBe(libraryAt("sitting").delta_mrt);
+    const outputs = outputsFor(solarGainOnOccupants, { ...defaults, posture: "standing" });
+    expect(outputOf(solarGainOnOccupants, outputs)).toBe(libraryAt("standing").delta_mrt);
+    expect(outputOf(solarGainOnOccupants, outputs)).not.toBe(libraryAt("sitting").delta_mrt);
   });
 
   it("carries the library's warnings row for an input out of its range", () => {
     const values = new Map(defaults.values).set(q.sol_radiation_dir, 1200);
-    const [warning] = resultFor(solarGainOnOccupants, { ...defaults, values }).warnings;
+    const [warning] = outputsFor(solarGainOnOccupants, { ...defaults, values }).warnings;
     expect(warning).toMatchObject({ value: 1200, bound: SOLAR_GAIN_INFO.inputs.sol_radiation_dir.applicability });
   });
 
-  it("has no result where the library gives no value, at a solar altitude past its bound", () => {
+  it("has no outputs where the library gives no value, at a solar altitude past its bound", () => {
     const values = new Map(defaults.values).set(q.sol_altitude, 95);
     expect(libraryAt("sitting", 95).delta_mrt).toBeNull();
     expect(solarGainOnOccupants.compute({ ...defaults, values })).toBeNull();
@@ -231,13 +231,13 @@ describe("outOfRangeCalculatorInputs", () => {
     expect(outOfRangeCalculatorInputs(solarGainOnOccupants, withValue(q.sol_altitude, 90.001))).toEqual([]);
   });
 
-  it("passes nothing the library warns of: at every end of every bound, Solar gain's result carries no warnings", () => {
+  it("passes nothing the library warns of: at every end of every bound, Solar gain's outputs carry no warnings", () => {
     for (const { quantity } of solarGainOnOccupants.asks) {
       const bound = calculatorBound(solarGainOnOccupants, quantity)!;
       for (const end of [bound.min, bound.max]) {
         const inputs = withValue(quantity, end!);
         expect(outOfRangeCalculatorInputs(solarGainOnOccupants, inputs), `${quantity.key} ${end}`).toEqual([]);
-        expect(resultFor(solarGainOnOccupants, inputs).warnings, `${quantity.key} ${end}`).toEqual([]);
+        expect(outputsFor(solarGainOnOccupants, inputs).warnings, `${quantity.key} ${end}`).toEqual([]);
       }
     }
   });
@@ -248,19 +248,19 @@ describe("outOfRangeCalculatorInputs", () => {
   });
 });
 
-/** `calculator`'s result for `inputs`; fails the test where it has none. */
-function resultFor(calculator: FormCalculator, inputs: CalculatorInputs): CalculatorResult {
-  const result = calculator.compute(inputs);
-  if (result === null) {
-    throw new Error(`${calculator.label} gives no result`);
+/** `calculator`'s outputs for `inputs`; fails the test where it has none. */
+function outputsFor(calculator: FormCalculator, inputs: CalculatorInputs): CalculatorOutputs {
+  const outputs = calculator.compute(inputs);
+  if (outputs === null) {
+    throw new Error(`${calculator.label} gives no outputs`);
   }
-  return result;
+  return outputs;
 }
 
-/** A result whose output is `value`, as a calculator's compute gives it. */
-const resultOf = (output: Quantity, value: number): CalculatorResult => ({ outputs: new Map([[output, value]]), warnings: [] });
-const clothing = resultOf(q.clo, 0.83);
-const increase = resultOf(q.delta_mrt, 4.2);
+/** Outputs holding `value` for `output` alone, as a calculator's compute gives them. */
+const outputsOf = (output: Quantity, value: number): CalculatorOutputs => ({ values: new Map([[output, value]]), warnings: [] });
+const clothing = outputsOf(q.clo, 0.83);
+const increase = outputsOf(q.delta_mrt, 4.2);
 
 // Not the declaration's defaults where it matters: 1.5 met, above the 1.2 met
 // ASHRAE 55 corrects from, and a mean radiant temperature apart from the air.
@@ -270,7 +270,7 @@ const room = withOption(
   true,
 );
 
-describe("withCalculatorResult", () => {
+describe("withCalculatorOutputs", () => {
   /** What a write must leave as it was: the humidity entry, the air speed and the options. */
   function expectUntouched(written: Slot, slot: Slot) {
     expect(written.humidity).toEqual(slot.humidity);
@@ -280,15 +280,15 @@ describe("withCalculatorResult", () => {
   }
 
   it("replaces the clothing insulation under clothing entry", () => {
-    const written = withCalculatorResult(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae);
+    const written = withCalculatorOutputs(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae);
     expect(written.values.get(q.clo)).toBeCloseTo(0.83, 2);
     expect(written.clothing).toBe(room.clothing);
     expectUntouched(written, room);
   });
 
-  it("writes the standard's correction of the result under dynamic clothing entry", () => {
+  it("writes the standard's correction of the output under dynamic clothing entry", () => {
     const dynamic = withClothingMode(room, clothingMode.corrected, pmvPpdAshrae);
-    const written = withCalculatorResult(dynamic, customEnsemble, clothing, pmvPpdAshrae);
+    const written = withCalculatorOutputs(dynamic, customEnsemble, clothing, pmvPpdAshrae);
     expect(written.values.get(q.clo_dynamic)).toBeCloseTo(clo_dynamic_ashrae(0.83, 1.5), 2);
     expect(written.values.has(q.clo)).toBe(false);
     expect(written.clothing.mode).toBe(clothingMode.corrected);
@@ -296,15 +296,15 @@ describe("withCalculatorResult", () => {
   });
 
   it("raises the mean radiant temperature by the increase under separate entry, leaving the air's", () => {
-    const written = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const written = withCalculatorOutputs(room, solarGainOnOccupants, increase, pmvPpdAshrae);
     expect(written.values.get(q.tr)).toBeCloseTo(27 + 4.2, 2);
     expect(written.values.get(q.tdb)).toBeCloseTo(24, 2);
     expectUntouched(written, room);
   });
 
   it("raises again on a second write", () => {
-    const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
-    const twice = withCalculatorResult(once, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const once = withCalculatorOutputs(room, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const twice = withCalculatorOutputs(once, solarGainOnOccupants, increase, pmvPpdAshrae);
     expect(twice.values.get(q.tr)).toBeCloseTo(27 + 2 * 4.2, 2);
     expectUntouched(twice, room);
   });
@@ -312,7 +312,7 @@ describe("withCalculatorResult", () => {
   it("folds the raised mean radiant temperature and the expanded air temperature into the operative one at the model's standard", () => {
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
     const entered = operative.values.get(q.operative_tmp)!;
-    const written = withCalculatorResult(operative, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const written = withCalculatorOutputs(operative, solarGainOnOccupants, increase, pmvPpdAshrae);
     expect(written.values.get(q.operative_tmp)).toBeCloseTo(operative_tmp(entered, entered + 4.2, 0.3, "ashrae"), 2);
     expect(written.values.has(q.tdb)).toBe(false);
     expect(written.values.has(q.tr)).toBe(false);
@@ -321,7 +321,7 @@ describe("withCalculatorResult", () => {
   });
 
   it("throws naming a calculator the model does not declare", () => {
-    expect(() => withCalculatorResult(startingSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
+    expect(() => withCalculatorOutputs(startingSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
       "Solar gain on people",
     );
   });
@@ -348,14 +348,14 @@ describe("panelCalculators", () => {
 describe("shownRow", () => {
   const P = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-  it("is the clothing insulation under clothing entry, the result after", () => {
+  it("is the clothing insulation under clothing entry, the output after", () => {
     const row = shownRow(room, clothingFromOutdoorTemperature, clothing, pmvPpdAshrae, P);
     expect(row.quantity).toBe(q.clo);
     expect(row.before).toBe(room.values.get(q.clo));
     expect(row.after).toBeCloseTo(0.83, 2);
   });
 
-  it("is the dynamic clothing insulation under dynamic clothing entry, the standard's correction of the result after", () => {
+  it("is the dynamic clothing insulation under dynamic clothing entry, the standard's correction of the output after", () => {
     const dynamic = withClothingMode(room, clothingMode.corrected, pmvPpdAshrae);
     const row = shownRow(dynamic, customEnsemble, clothing, pmvPpdAshrae, P);
     expect(row.quantity).toBe(q.clo_dynamic);
@@ -379,20 +379,20 @@ describe("shownRow", () => {
   });
 
   it("is what the next Apply starts from once written: a second raise from the raised value", () => {
-    const once = withCalculatorResult(room, solarGainOnOccupants, increase, pmvPpdAshrae);
+    const once = withCalculatorOutputs(room, solarGainOnOccupants, increase, pmvPpdAshrae);
     const row = shownRow(once, solarGainOnOccupants, increase, pmvPpdAshrae, P);
     expect(row.before).toBeCloseTo(27 + 4.2, 2);
     expect(row.after).toBeCloseTo(27 + 2 * 4.2, 2);
   });
 
-  it("has an after that is not a number while there is no result", () => {
+  it("has an after that is not a number while there are no outputs", () => {
     const row = shownRow(room, solarGainOnOccupants, undefined, pmvPpdAshrae, P);
     expect([row.quantity, row.before, row.after]).toEqual([q.tr, 27, Number.NaN]);
     expect(row.cutTo).toBeUndefined();
   });
 
   it("is cut to the row's bound where the raise is past it, with the bound, as a typed value is; inside it, carries none", () => {
-    const past = resultOf(q.delta_mrt, 20);
+    const past = outputsOf(q.delta_mrt, 20);
     const raised = shownRow(room, solarGainOnOccupants, past, pmvPpdAshrae, P);
     const bound = enteredBound(pmvPpdAshrae, q.tr, room, P);
     expect(raised.cutTo).toBeDefined();
@@ -404,7 +404,7 @@ describe("shownRow", () => {
   it("is cut to the operative row's bound under operative entry, where the folded raise is past it", () => {
     // The fold weighs the raise by 0.4 at this air speed, so 20 K moves it 8 K and stays inside: 50 K is needed.
     const operative = withTemperatureMode(room, temperatureMode.operative, pmvPpdAshrae);
-    const raised = shownRow(operative, solarGainOnOccupants, resultOf(q.delta_mrt, 50), pmvPpdAshrae, P);
+    const raised = shownRow(operative, solarGainOnOccupants, outputsOf(q.delta_mrt, 50), pmvPpdAshrae, P);
     const bound = enteredBound(pmvPpdAshrae, q.operative_tmp, operative, P);
     expect(raised.cutTo).toBeDefined();
     expect(raised.cutTo).toEqual(bound);

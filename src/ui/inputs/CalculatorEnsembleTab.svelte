@@ -33,7 +33,7 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import XIcon from "@lucide/svelte/icons/x";
   import type { Snippet } from "svelte";
-  import { outputOf, requireGarment, wearGarment, type CalculatorResult, type GarmentGroup } from "$lib/core/calculators";
+  import { outputOf, requireGarment, wearGarment, type CalculatorOutputs, type GarmentGroup } from "$lib/core/calculators";
   import { formatNumber } from "$lib/core/numberFormat";
   import { copy } from "$lib/text/copy";
   import Grid from "$lib/ui/layout/Grid.svelte";
@@ -42,13 +42,13 @@
   import { Button } from "$lib/ui/primitives/button";
   import * as Command from "$lib/ui/primitives/command";
   import * as Popover from "$lib/ui/primitives/popover";
-  import type { ResultLine } from "./InputCalculators.svelte";
+  import type { DockLine } from "./InputCalculators.svelte";
   import ValueList from "./ValueList.svelte";
 
   interface Props {
     calculator: GarmentCalculator;
     /** The dialog's dock and footer, for the sum, none while nothing is worn, and its line. */
-    dock: Snippet<[result: CalculatorResult | null, lines: readonly ResultLine[]]>;
+    dock: Snippet<[outputs: CalculatorOutputs | null, lines: readonly DockLine[]]>;
   }
 
   let { calculator, dock }: Props = $props();
@@ -60,9 +60,9 @@
   let openGroup: GarmentGroup | null = $state.raw(null);
 
   const worn = $derived(keptGarments.get(calculator) ?? []);
-  const result = $derived(worn.length > 0 ? calculator.compute(worn) : null);
+  const outputs = $derived(worn.length > 0 ? calculator.compute(worn) : null);
   const lines = $derived([
-    { quantity: calculator.output, name: copy.ensembleInsulation, value: result ? outputOf(calculator, result) : Number.NaN },
+    { quantity: calculator.output, name: copy.ensembleInsulation, value: outputs ? outputOf(calculator, outputs) : Number.NaN },
   ]);
   const searching = $derived(query.trim() !== "");
 
@@ -139,7 +139,7 @@
     </Stack>
   </Stack>
 </div>
-{@render dock(result, lines)}
+{@render dock(outputs, lines)}
 <Button variant="ghost" size="sm" class="dialog-title-action" disabled={worn.length === 0} onclick={() => keptGarments.delete(calculator)}>
   {copy.ensembleClear}
 </Button>

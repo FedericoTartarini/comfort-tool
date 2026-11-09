@@ -85,7 +85,7 @@ async function recordTexts(table: Locator): Promise<() => Promise<(string | null
 }
 
 test.describe("a legal draft", () => {
-  test("typing 16 over 19, under 400 ms between keystrokes, commits 16 once, and the result does not change before the pause ends", async ({ page }) => {
+  test("typing 16 over 19, under 400 ms between keystrokes, commits 16 once, and the result table does not change before the pause ends", async ({ page }) => {
     await open(page);
     const box = dryBulb(page);
     const table = resultTable(page);
@@ -152,7 +152,7 @@ test.describe("a legal draft", () => {
 });
 
 test.describe("a draft past its bound", () => {
-  test("of 10 – 40 °C, 45 is not marked while it is typed and is marked once the typing pauses, the line under it and the result unchanged; a further keystroke takes the mark away until the next pause", async ({ page }) => {
+  test("of 10 – 40 °C, 45 is not marked while it is typed and is marked once the typing pauses, the line under it and the result table unchanged; a further keystroke takes the mark away until the next pause", async ({ page }) => {
     await open(page);
     const box = dryBulb(page);
     const table = resultTable(page);
@@ -181,7 +181,7 @@ test.describe("a draft past its bound", () => {
     await expectText(table, before);
   });
 
-  test("leaving the box with 45 cuts it to 40: the box shows 40 over the bound, the result is for 40, and no toast is raised", async ({ page }) => {
+  test("leaving the box with 45 cuts it to 40: the box shows 40 over the bound, the result table is for 40, and no toast is raised", async ({ page }) => {
     await open(page);
     const box = dryBulb(page);
     const table = resultTable(page);

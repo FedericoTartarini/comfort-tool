@@ -1,7 +1,7 @@
 /**
  * Every writer of a slot other than a typed value keeps the input gate's rule
  * (ADR-0002 decision 84, rule 5): an input calculator's Apply commits its
- * result as a typed value commits, cut to the row's bound; a preset is judged
+ * output as a typed value commits, cut to the row's bound; a preset is judged
  * as a typed value is; and an entry-mode switch, the unit switch and Reset
  * leave no entry out of range, a switch cutting what its conversion puts past
  * a bound as an arrival cuts. Asserted at the seam the other session tests
@@ -39,26 +39,26 @@ describe("an input calculator's Apply", () => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 4)
       .map(([garment]) => garment);
-    const result = customEnsemble.compute(heaviest);
+    const outputs = customEnsemble.compute(heaviest);
     const session = dynamicClothingSession();
     const met = session.slots[0].values.get(q.met)!;
-    expect(clo_dynamic_ashrae(result.outputs.get(q.clo)!, met)).toBeGreaterThan(dynamicClothingBound.max!);
+    expect(clo_dynamic_ashrae(outputs.values.get(q.clo)!, met)).toBeGreaterThan(dynamicClothingBound.max!);
 
-    const shown = shownRow(session.slots[0], customEnsemble, result, pmvPpdAshrae, session.atmosphericPressure);
+    const shown = shownRow(session.slots[0], customEnsemble, outputs, pmvPpdAshrae, session.atmosphericPressure);
     expect([shown.after, shown.cutTo]).toEqual([dynamicClothingBound.max, dynamicClothingBound]);
-    session.applyCalculator(0, customEnsemble, result);
+    session.applyCalculator(0, customEnsemble, outputs);
 
     expect(session.slots[0].values.get(q.clo_dynamic)).toBe(dynamicClothingBound.max);
   });
 
-  it("of an ensemble within the bound writes the result", () => {
-    const result = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
+  it("of an ensemble within the bound writes the output", () => {
+    const outputs = customEnsemble.compute(["Men's underwear", "Long-sleeve dress shirt", "Thick trousers"]);
     const session = dynamicClothingSession();
     const met = session.slots[0].values.get(q.met)!;
 
-    expect(session.applyCalculator(0, customEnsemble, result)).toEqual({ kind: "legal" });
+    expect(session.applyCalculator(0, customEnsemble, outputs)).toEqual({ kind: "legal" });
 
-    expect(session.slots[0].values.get(q.clo_dynamic)).toBeCloseTo(clo_dynamic_ashrae(result.outputs.get(q.clo)!, met), 2);
+    expect(session.slots[0].values.get(q.clo_dynamic)).toBeCloseTo(clo_dynamic_ashrae(outputs.values.get(q.clo)!, met), 2);
   });
 });
 

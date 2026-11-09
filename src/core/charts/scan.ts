@@ -6,7 +6,7 @@
  * boundary asks for.
  */
 import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultNumber, resultWarnings, runOn } from "$lib/core/modelRun";
+import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import type { RegionGrid } from "./regionTracer";
@@ -121,8 +121,8 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
       [x.quantity, point.x],
       [y.quantity, point.y],
     ]));
-    const result = runOn(cell, model, atmosphericPressure);
-    return { value: resultNumber(result, output), withinBounds: resultWarnings(result).length === 0 };
+    const outputs = runOn(cell, model, atmosphericPressure);
+    return { value: outputNumber(outputs, output), withinBounds: rangeRowsOf(outputs).length === 0 };
   };
   const grid = { x: samples(x.range, GRID), y: samples(y.range, GRID) };
   const readings = grid.y.map((yValue) => grid.x.map((xValue) => run({ x: xValue, y: yValue })));

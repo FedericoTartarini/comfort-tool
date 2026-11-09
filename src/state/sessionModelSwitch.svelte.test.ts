@@ -21,7 +21,7 @@ import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { listedRowsOf, outOfRangeQuantitiesAt, resultValueOf, shapeOf, withBounds } from "./sessionTestReaders";
+import { listedRowsOf, outOfRangeQuantitiesAt, outputValueOf, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -109,7 +109,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.slots[0].values.get(q.v)).toBe(0.2);
     expect(session.slots[0].humidity?.value).toBe(35);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
   it("leaves, on a yes in IP, the same ends held, each read in its box as the range beside it reads", () => {
@@ -191,11 +191,11 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("leaves the outputs the current model's while the question is pending", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    const before = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
 
     session.requestModel(belowTheSlot);
 
-    expect(outputs.slots[0].result).toBe(before);
+    expect(outputs.slots[0].outputs).toBe(before);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 

@@ -24,7 +24,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
-import { editBands, heldSlot, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { editBands, heldSlot, outputValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
@@ -109,7 +109,7 @@ describe("The page in the session", () => {
 
     expect(session.page).toBe(page.explore);
     expect(session.model).toBe(heatIndexRothfusz);
-    expect(resultValueOf(new Outputs(session).slots[0].result, q.hi)).toBeTypeOf("number");
+    expect(outputValueOf(new Outputs(session).slots[0].outputs, q.hi)).toBeTypeOf("number");
   });
 
   it("paints Comfort zones and no band on the Standard page's dynamic chart with Compare off", () => {

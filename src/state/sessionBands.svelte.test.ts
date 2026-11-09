@@ -101,7 +101,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
         const { session, outputs } = exploreSession(type);
         expect(paintedFills(outputs)).toEqual(fillsOf(defaultList, outputs));
         expect(strokedEdges(outputs, defaultList)).toEqual(edgesOf(defaultList));
-        const { result, scan } = outputs.slots[0];
+        const { outputs: outputsBefore, scan } = outputs.slots[0];
         const list = session.chart.bands;
         const spec = outputs.chart;
         const draft = bandsDraftOf(session);
@@ -120,7 +120,7 @@ describe("The Bands dialog's edits through a draft of the Band list", () => {
         expect(strokedEdges(outputs, expected)).toEqual(edgesOf(expected));
         expect(outputs.slots[0].scan).toBe(scan);
         // The result table reads the kernel's own category, never the list.
-        expect(outputs.slots[0].result).toEqual(result);
+        expect(outputs.slots[0].outputs).toEqual(outputsBefore);
       });
     }
   }

@@ -1,8 +1,9 @@
+import type { ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { ViolationRow } from "./applicability";
 import { colorForBand, letteringOn } from "./bandPalette";
-import type { ModelResult, RegisteredModel } from "./modelDeclaration";
-import { resultValue } from "./modelRun";
+import type { RegisteredModel } from "./modelDeclaration";
+import { outputValue } from "./modelRun";
 import type { Quantity } from "./quantities";
 import { displayUnitFor, numberWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -31,19 +32,19 @@ export type ResultCell =
  * unit systems; a finite number in its display unit; a dash for anything else,
  * a `null`, the library's no value, a NaN or a category its classifier does
  * not name among them. `violations`
- * are the rows the result shows broken: while there is one, a boolean reads
+ * are the rows the outputs show broken: while there is one, a boolean reads
  * the dash too, as pythermalcomfort's NaN under its own gate (ADR-0002
  * decision 77, rule 2), which the row's limits icon explains (decision 85,
  * rule 5); a Band badge stays.
  */
 export function formatResultCell(
   model: RegisteredModel,
-  result: ModelResult | null,
+  outputs: ModelOutputs | null,
   quantity: Quantity,
   system: UnitSystem,
   violations: readonly ViolationRow[],
 ): ResultCell {
-  const value = result ? resultValue(result, quantity) : undefined;
+  const value = outputs ? outputValue(outputs, quantity) : undefined;
   const classifier = model.info.outputs[quantity.key]?.classifier;
   if (classifier) {
     // `labels` holds strings; a `null`, a NaN or a boolean is no label, and so the dash.

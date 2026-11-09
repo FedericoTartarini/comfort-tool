@@ -162,7 +162,7 @@ test.describe("the dialog", () => {
         await dialog.getByRole("tab", { name: tab }).click();
         const panel = dialog.getByRole("tabpanel");
         const tabList = await dialog.getByRole("tablist").boundingBox();
-        const dock = await panel.locator(".result-dock").boundingBox();
+        const dock = await panel.locator(".dock").boundingBox();
         const apply = await panel.getByRole("button", { name: "Apply" }).boundingBox();
         places.push([tabList!.y, dock!.y + dock!.height, apply!.y]);
       }

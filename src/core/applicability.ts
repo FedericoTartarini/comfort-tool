@@ -5,19 +5,19 @@
  * decision 4), intersected with its kind's bound from `kindBounds` when the
  * model takes the quantity (decision 46); `axisRangeFor` reads the same
  * applicability bounds only as an axis range's fallback (decision 5). The
- * rows a completed run still breaks are the library's, read off the result's
+ * rows a completed run still breaks are the library's, read off the outputs'
  * `warnings` (ADR-0002 decision 23) and mapped to quantities here.
  *
  * A violation is `{ quantity, bounded, role, value, bound }`, and its warning
  * sentence is assembled here from the bounded quantity's label, the bound and
  * the display unit, in the copy dictionary's words.
  */
-import type { Bound, InputsInfo } from "jsthermalcomfort";
+import type { Bound, InputsInfo, ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { CalculatorInputs, FormCalculator } from "./calculators";
 import { temperatureMode, type HumidityMode } from "./entryModes";
-import { inputsOf, type ModelResult, type RegisteredModel } from "./modelDeclaration";
-import { resultWarnings } from "./modelRun";
+import { inputsOf, type RegisteredModel } from "./modelDeclaration";
+import { rangeRowsOf } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import {
@@ -209,7 +209,7 @@ export function calculatorBound(calculator: FormCalculator, quantity: Quantity):
 /**
  * The quantities of `inputs` outside {@link calculatorBound}, judged as the
  * gate judges an entry: the dialog's boxes marked out of range, while its
- * result is cleared and its Apply disabled (decision 75 rule 5).
+ * outputs are cleared and its Apply disabled (decision 75 rule 5).
  */
 export function outOfRangeCalculatorInputs(calculator: FormCalculator, inputs: CalculatorInputs): Quantity[] {
   return [...inputs.values].flatMap(([quantity, value]) => {
@@ -415,7 +415,7 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
 }
 
 /**
- * The rows a completed run broke, as the library reports them on the result's
+ * The rows a completed run broke, as the library reports them on the outputs'
  * `warnings` (ADR-0002 decision 23) — the app finds no row of its own. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
  * lacks is dropped. A row on what an activity-adjusted group the model has
@@ -433,9 +433,9 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
  * are not kept. A row is only a value shown outside its bound, as the gate
  * judges an entry.
  */
-export function violationRows(model: RegisteredModel, result: ModelResult, modes: ValueEntryModes): ViolationRow[] {
+export function violationRows(model: RegisteredModel, outputs: ModelOutputs, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
-  for (const { key, role, value, bound } of resultWarnings(result)) {
+  for (const { key, role, value, bound } of rangeRowsOf(outputs)) {
     const keyed = quantityFor(key);
     if (!keyed) {
       continue;

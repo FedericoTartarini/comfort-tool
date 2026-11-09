@@ -1,8 +1,8 @@
 /**
- * The outputs keep nothing (ADR-0002 decision 84, rule 9): the result, the
- * violation rows and the chart are derived from the slots as they are, and a
- * value a writer let through is run, the library's rows showing it as a
- * violation. This is the seam a session goes into and the outputs come out
+ * The outputs keep nothing (ADR-0002 decision 84, rule 9): each run's
+ * outputs, the violation rows and the chart are derived from the slots as they
+ * are, and a value a writer let through is run, the library's rows showing it
+ * as a violation. This is the seam a session goes into and the outputs come out
  * of, with no component and no router.
  *
  * Nothing flushes: the outputs are a derivation, so reading one after a change
@@ -23,13 +23,13 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs, type SlotOutputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { heldSlot, resultValueOf } from "./sessionTestReaders";
+import { heldSlot, outputValueOf } from "./sessionTestReaders";
 
 const q = quantities;
 
 /** Read everything the page reads, which is what makes a derivation recompute. */
 function readEverything(outputs: Outputs): void {
-  void outputs.slots[0].result;
+  void outputs.slots[0].outputs;
   void outputs.slots[0].violations;
   void outputs.chart;
 }
@@ -39,7 +39,7 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
   return chart?.traces.find((trace): trace is PointTrace => trace.kind === "point");
 }
 
-/** `pmvPpdIso`, counting every call the outputs make of it — the result's and the chart's. */
+/** `pmvPpdIso`, counting every call the outputs make of it — for a slot's outputs and for the chart. */
 function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
   let runs = 0;
   const model = {
@@ -74,24 +74,24 @@ function ashraeWithoutControlAt09(): { session: Session; outputs: Outputs } {
 }
 
 describe("Outputs", () => {
-  it("derives a result and a chart from a valid session", () => {
+  it("derives outputs and a chart from a valid session", () => {
     const outputs = new Outputs(new Session(pmvPpdIso));
 
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
 
-  it("after any commit, the result and the violation rows are the run of the slot as it is", () => {
+  it("after any commit, the outputs and the violation rows are the run of the slot as it is", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    void outputs.slots[0].result;
+    void outputs.slots[0].outputs;
 
     // Written as it is, then cut to ISO 7730's 30 °C, then a humidity that breaks the vapour-pressure row.
     for (const [quantity, value] of [[q.tdb, 26], [q.tdb, 35], [q.rh, 95]] as const) {
       expect(session.commitEntry(0, quantity, value).kind).not.toBe("refused");
       const run = runOfFirstSlot(session);
 
-      expect(outputs.slots[0].result).toEqual(run);
+      expect(outputs.slots[0].outputs).toEqual(run);
       expect(outputs.slots[0].violations).toEqual(violationRows(session.model, run, session.entryModes));
     }
     expect(heldSlot(session, 0).values.get(q.tdb)).toBe(30);
@@ -101,7 +101,7 @@ describe("Outputs", () => {
   it("calculates a run that breaks PMV (ASHRAE 55)'s air-speed rule without local control, with its violation rows", () => {
     const { outputs } = ashraeWithoutControlAt09();
 
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
     expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
@@ -109,32 +109,32 @@ describe("Outputs", () => {
   it("runs a value a writer let through, and the library's rows show it as a violation", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    void outputs.slots[0].result;
+    void outputs.slots[0].outputs;
 
     // Past ISO 7730's 30 °C, written past the commit's judgement.
     session.slots[0].setEntered(q.tdb, 35);
 
-    expect(outputs.slots[0].result).toEqual(runOfFirstSlot(session));
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputs.slots[0].outputs).toEqual(runOfFirstSlot(session));
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
     expect(outputs.slots[0].violations.map((row) => row.quantity)).toContain(q.tdb);
   });
 
-  it("changes the chart's axis range and not the result when the unit system changes", () => {
+  it("changes the chart's axis range and not the outputs when the unit system changes", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    const result = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
     const range = outputs.chart?.layout.x.range;
 
     session.unitSystem = unitSystem.ip;
 
     expect(outputs.chart?.layout.x.range).not.toEqual(range);
-    expect(outputs.slots[0].result).toEqual(result);
+    expect(outputs.slots[0].outputs).toEqual(before);
   });
 
-  it("follows the chart type and the chosen axes, and not the result", () => {
+  it("follows the chart type and the chosen axes, and not the outputs", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    const result = outputs.slots[0].result;
+    const before = outputs.slots[0].outputs;
 
     session.chart.type = chartType.dynamic;
 
@@ -146,7 +146,7 @@ describe("Outputs", () => {
 
     expect(outputs.chart?.layout.y.title).not.toBe(yTitle);
     expect(outputs.chart?.layout.y.title).toContain(q.rh.label);
-    expect(outputs.slots[0].result).toBe(result);
+    expect(outputs.slots[0].outputs).toBe(before);
   });
 
   it("offers the axes of the dynamic chart it draws, in the slot's entry mode", () => {
@@ -218,23 +218,23 @@ describe("Outputs", () => {
     // default temperature is below the Rothfusz regression's floor, and is run.
     session.setModel(heatIndexRothfusz);
 
-    expect(outputs.slots[0].result).toEqual(runOfFirstSlot(session));
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeUndefined();
+    expect(outputs.slots[0].outputs).toEqual(runOfFirstSlot(session));
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeUndefined();
     expect(outputs.slots[0].violations.map((row) => row.quantity)).toEqual([q.tdb]);
     expect(outputs.chart).not.toBeNull();
   });
 
-  it("shows the new model's own result after a commit", () => {
+  it("shows the new model's own outputs after a commit", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    void outputs.slots[0].result;
+    void outputs.slots[0].outputs;
 
     session.setModel(heatIndexRothfusz);
     session.commitEntry(0, q.tdb, 30);
 
     expect(outputs.slots[0].violations).toEqual([]);
-    expect(resultValueOf(outputs.slots[0].result, q.hi)).toBeTypeOf("number");
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeUndefined();
+    expect(outputValueOf(outputs.slots[0].outputs, q.hi)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeUndefined();
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
 });

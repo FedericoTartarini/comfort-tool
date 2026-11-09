@@ -25,7 +25,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
-import { outOfRangeQuantitiesAt, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { outOfRangeQuantitiesAt, outputValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -33,7 +33,7 @@ const q = quantities;
  * A model that takes a quantity PMV (ISO 7730) does not, so a slot built for
  * that one never holds it. `run` reads the extra input first, which is
  * what makes an unseeded slot throw rather than quietly run without it; the
- * value comes back on the result so a test can read what the slot supplied.
+ * value comes back among the outputs so a test can read what the slot supplied.
  */
 const takesExternalWork = {
   ...pmvPpdIso,
@@ -55,7 +55,7 @@ const withoutTemperatureGroup = {
 /**
  * The option PMV (ASHRAE 55) reads through `run`'s second reader. With it off,
  * an air speed above what the standard allows the room comes back as a broken
- * row on the result, which is how a test sees the option reach the call.
+ * row among the outputs, which is how a test sees the option reach the call.
  */
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
@@ -107,8 +107,8 @@ describe("Session.setModel", () => {
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBe(0.4);
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
   it("keeps the values already in the slot, whichever model put them there", () => {
@@ -236,15 +236,15 @@ describe("Session.requestModel", () => {
    * model never ran on the next one's slot, and the next model never ran on a
    * slot that was not ready for it.
    */
-  it("holds a result the model it names could have produced", () => {
+  it("holds outputs the model it names could have produced", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBeUndefined();
+    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBeUndefined();
 
     session.requestModel(takesExternalWork);
 
-    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
+    expect(outputValueOf(outputs.slots[0].outputs, q.wme)).toBe(0.4);
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
   it("does nothing when the model is already the current one", () => {
@@ -354,14 +354,14 @@ describe("InputSlot.setEntered", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.dewPoint);
-    const before = resultValueOf(outputs.slots[0].result, q.pmv);
+    const before = outputValueOf(outputs.slots[0].outputs, q.pmv);
 
     session.slots[0].setEntered(q.dew_point_tmp, 12);
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
-    expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(before);
+    expect(outputValueOf(outputs.slots[0].outputs, q.pmv)).not.toBe(before);
   });
 });
 

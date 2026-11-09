@@ -260,9 +260,9 @@
 		margin-inline: -4px;
 		padding: 4px;
 	}
-	/* The result dock: a band across the dialog's width, tinted as the footer under it and ruled off from the settings
+	/* The dock: a band across the dialog's width, tinted as the footer under it and ruled off from the settings
 	   above, so where the choosing ends and what Apply will write begins is drawn, not left to a gap. */
-	.result-dock {
+	.dock {
 		margin: var(--space-page) -1rem 0;
 		padding: var(--space-page) 1rem;
 		border-top: 1px solid var(--border);
@@ -407,7 +407,7 @@
 }
 /* The Input calculators dialog (decision 75, rule 6 (b)): centred like every dialog and of one height, so switching a
    tab moves no control. The title and the tab list stand at the top; under them a tab's settings, the one region that
-   scrolls (`.calculator-settings`); then the result dock and the footer, held at the bottom. Every tab is mounted, the
+   scrolls (`.calculator-settings`); then the dock and the footer, held at the bottom. Every tab is mounted, the
    inactive ones hidden by the primitive. */
 [data-slot="dialog-content"].dialog-fixed {
 	display: flex;
@@ -424,8 +424,8 @@
 	flex-direction: column;
 	min-height: 0;
 }
-/* The footer under the result dock meets it, where the primitive's grid gap stood. */
-.result-dock + [data-slot="dialog-footer"] {
+/* The footer under the dock meets it, where the primitive's grid gap stood. */
+.dock + [data-slot="dialog-footer"] {
 	margin-top: 0;
 }
 /* A tab's action on its settings, Restore defaults or Clear, stands at the title's right, before the close button, which
@@ -529,7 +529,7 @@
 	overflow-x: visible;
 }
 /* The result table's headings wrap, standing at the foot of their cell over the column they name, padded as the body
-   cells are rather than held to the primitive's 40 px; a result's value, a category, a number, Yes or No, or a dash,
+   cells are rather than held to the primitive's 40 px; an output's value, a category, a number, Yes or No, or a dash,
    is right-aligned in tabular figures under its heading, so decimals line up (decision 70, rule 1). Unlayered, as the
    heading's `h-10`, `text-left` and `whitespace-nowrap` are the primitive's. */
 .result-table [data-slot="table-head"] {

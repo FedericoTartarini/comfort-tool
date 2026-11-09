@@ -6,19 +6,6 @@ import { temperatureMode } from "./entryModes";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
- * The model's own result object, keyed by the same strings as its `_INFO`:
- * a number for a physical output, a category label or a yes/no, or `null`
- * where the library returns no value. `run` returns this directly (ADR-0002
- * decision 3) — the app reads it by key rather than transcribing a shape of
- * its own.
- *
- * The library's `ModelOutputs`, which every model's outputs extend: it types
- * `warnings` and no output, so `core/modelRun.ts`'s `resultValue` reads an
- * output by key.
- */
-export type ModelResult = ModelOutputs;
-
-/**
  * How a declaration reads its slot's values: one number per Quantity, under
  * the quantity table's own key, so `values.tdb` type-checks and `values.tbd`
  * does not (ADR-0002 decision 34). Reading a quantity the slot does not hold
@@ -267,13 +254,18 @@ interface CommonDeclaration {
    * key and the property agree. A model without options leaves the reader
    * unnamed (ADR-0002 decision 36).
    *
-   * The contract: the model's own result object, carrying the model's numbers
-   * unrounded (ADR-0002 decision 18), with the library's `round_output`
-   * written off in the call (decision 35). A registry-wide test samples the
-   * table's first number column and fails when it was left on (decision 38).
-   * Called by `state/compute` and by the chart spec builders.
+   * The contract: the model's own outputs, returned directly (ADR-0002
+   * decision 3) and keyed by the same strings as its `_INFO`: a number for a
+   * physical output, a category label or a yes/no, or `null` where the library
+   * returns no value. `ModelOutputs`, which every model's outputs extend, types
+   * `warnings` and no output, so the app reads an output by key
+   * (`core/modelRun.ts`'s `outputValue`) rather than transcribing a shape of its
+   * own. The numbers are unrounded (ADR-0002 decision 18), with the library's
+   * `round_output` written off in the call (decision 35). A registry-wide test
+   * samples the table's first number column and fails when it was left on
+   * (decision 38). Called by `state/compute` and by the chart spec builders.
    */
-  readonly run: (values: Values, options: OptionsReader) => ModelResult;
+  readonly run: (values: Values, options: OptionsReader) => ModelOutputs;
   /**
    * The panel's list, in panel order: each quantity with its SI default, and
    * each option where its switch stands among the rows (ADR-0002 decision

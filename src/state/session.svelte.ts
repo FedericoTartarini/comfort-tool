@@ -1,7 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ClassifierBins } from "jsthermalcomfort";
 import type { BandList } from "$lib/core/bands";
-import { shownRow, type Calculator, type CalculatorResult } from "$lib/core/calculators";
+import { shownRow, type Calculator, type CalculatorOutputs } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import { classifierOf, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
@@ -518,14 +518,14 @@ export class Session {
   }
 
   /**
-   * An input calculator's Apply of `result` to the slot at `position`: the
-   * row the dock shows for it, the result met with the row and cut to the
+   * An input calculator's Apply of `outputs` to the slot at `position`: the
+   * row the dock shows for it, the output met with the row and cut to the
    * row's bound (`shownRow`), committed as a typed value is (ADR-0002
    * decision 84, rule 5). What the commit says is returned; the dialog
    * raises no notice, as its dock showed the cut before the person chose.
    */
-  applyCalculator(position: SlotPosition, calculator: Calculator, result: CalculatorResult): Verdict {
-    const row = shownRow(this.#heldSlotAt(position), calculator, result, this.model, this.atmosphericPressure);
+  applyCalculator(position: SlotPosition, calculator: Calculator, outputs: CalculatorOutputs): Verdict {
+    const row = shownRow(this.#heldSlotAt(position), calculator, outputs, this.model, this.atmosphericPressure);
     return this.commitEntry(position, row.quantity, row.after);
   }
 

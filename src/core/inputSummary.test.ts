@@ -31,8 +31,8 @@ function runOf(slot: Slot, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): 
 
 /** `slot` drawn unnamed at the default pressure, with the violation rows `model`'s run of it reports. */
 function reportedRunOf(model: RegisteredModel, slot: Slot): DrawnRun {
-  const result = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
-  return { ...runOf(slot), violations: violationRows(model, result, slot) };
+  const outputs = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
+  return { ...runOf(slot), violations: violationRows(model, outputs, slot) };
 }
 
 /** The lines of a run's broken limits: the limits popover's heading, then each limit in its row's sentence. */
@@ -209,7 +209,7 @@ describe("inputSummary", () => {
     expect(summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso))]).flat().some((line) => line.includes(rowOf(scan.output)))).toBe(false);
   });
 
-  it("holds no result of the model", () => {
+  it("holds no outputs of the model", () => {
     for (const model of registeredModels) {
       const slot = startingSlot(model);
       const lines = summaryOf(model, [runOf(slot)]).flat();

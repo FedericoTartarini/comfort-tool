@@ -8,10 +8,11 @@
  * is on, and the texts a tab keeps and a link carries of it. Shared by the
  * state tests so that all of them compare the same way.
  */
+import type { ModelOutputs } from "jsthermalcomfort";
 import { expect } from "vitest";
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "$lib/core/applicability";
-import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
-import { resultValue } from "$lib/core/modelRun";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { outputValue } from "$lib/core/modelRun";
 import type { Address } from "$lib/core/page";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { narrowedToPage, toText } from "$lib/core/shareLink";
@@ -155,8 +156,8 @@ export function editBands(session: Session, edit: (draft: BandListDraft) => void
 }
 
 /** A value the result table would show, read through the app's own accessor. */
-export function resultValueOf(result: ModelResult | null, quantity: Quantity) {
-  return result === null ? undefined : resultValue(result, quantity);
+export function outputValueOf(outputs: ModelOutputs | null, quantity: Quantity) {
+  return outputs === null ? undefined : outputValue(outputs, quantity);
 }
 
 /**
