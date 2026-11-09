@@ -1,6 +1,6 @@
 <!--
-  The input calculators' one entry and their dialog (ADR-0002 decision 75,
-  rule 6 as noted 2026-10-15). The entry is a full-width button at the Inputs
+  The input calculators' one button and their dialog (ADR-0002 decision 75,
+  rule 6 as noted 2026-10-15). The button stands full width at the Inputs
   card's foot, "Input calculators" over the labels of the calculators the
   model's panel offers; there is none where it offers none. It opens one
   dialog of one width and one fixed height, a tab per calculator in the
@@ -14,7 +14,7 @@
   any other way changes nothing.
 
   Its look is the generated dialog's and tabs' (the `line` variant), with the
-  shared `.calculator-entry`, `.dialog-fixed` and `.dock` rules.
+  shared `.calculator-button`, `.dialog-fixed` and `.dock` rules.
 -->
 <script module lang="ts">
   import type { Calculator } from "$lib/core/calculators";
@@ -109,10 +109,10 @@
     <!-- Its border parts it from the rows above, with no rule (decision 75, rule 6 (a)); focus comes back to it on close. -->
     <Dialog.Trigger>
       {#snippet child({ props })}
-        <Button {...props} variant="outline" class="calculator-entry">
-          <span class="calculator-entry-text">
+        <Button {...props} variant="outline" class="calculator-button">
+          <span class="calculator-button-text">
             <span>{copy.inputCalculators}</span>
-            <span class="caption calculator-entry-labels">{copy.calculatorLabels(calculators.map((calculator) => calculator.label))}</span>
+            <span class="caption calculator-button-labels">{copy.calculatorLabels(calculators.map((calculator) => calculator.label))}</span>
           </span>
           <ChevronRightIcon />
         </Button>

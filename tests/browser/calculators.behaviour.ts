@@ -30,13 +30,13 @@ async function open(page: Page, address = PMV_ADDRESS) {
   await expect(page.locator(".chart-plot svg").first()).toBeVisible();
 }
 
-function entryOf(page: Page) {
+function calculatorsButton(page: Page) {
   return page.getByRole("button", { name: /^Input calculators/ });
 }
 
-/** The dialog, opened from the entry, on the tab named `tab` where one is given. */
+/** The dialog, opened from the button, on the tab named `tab` where one is given. */
 async function openDialog(page: Page, tab?: string) {
-  await entryOf(page).click();
+  await calculatorsButton(page).click();
   const dialog = page.getByRole("dialog");
   if (tab) {
     await dialog.getByRole("tab", { name: tab }).click();
@@ -90,12 +90,12 @@ function increaseAt(sharp: number): number {
   return delta_mrt;
 }
 
-test.describe("the entry", () => {
+test.describe("the input calculators' button", () => {
   test("on PMV (ASHRAE 55), the Inputs card ends with the button naming the three; the clothing box holds presets alone and the mean radiant temperature box no button", async ({ page }) => {
     await open(page);
-    const entry = entryOf(page);
-    await expect(entry).toContainText("Input calculators");
-    await expect(entry).toContainText(ALL_LABELS);
+    const button = calculatorsButton(page);
+    await expect(button).toContainText("Input calculators");
+    await expect(button).toContainText(ALL_LABELS);
 
     const presets = boxOf(page, /^Clothing insulation/).getByRole("button", { name: "Presets" });
     await expect(presets).toHaveText("Presets");
@@ -111,8 +111,8 @@ test.describe("the entry", () => {
 
   test("on PMV (ISO 7730), the button names Custom ensemble alone and the dialog has one tab", async ({ page }) => {
     await open(page, ISO_ADDRESS);
-    await expect(entryOf(page)).toContainText(ENSEMBLE);
-    await expect(entryOf(page)).not.toContainText(SOLAR);
+    await expect(calculatorsButton(page)).toContainText(ENSEMBLE);
+    await expect(calculatorsButton(page)).not.toContainText(SOLAR);
     const dialog = await openDialog(page);
     await expect(dialog.getByRole("tab")).toHaveText([ENSEMBLE]);
   });
@@ -120,12 +120,12 @@ test.describe("the entry", () => {
   test("on Adaptive (ASHRAE 55), there is no button", async ({ page }) => {
     await open(page, ADAPTIVE_ADDRESS);
     await expect(page.getByRole("button", { name: "Model" })).toBeVisible();
-    await expect(entryOf(page)).toHaveCount(0);
+    await expect(calculatorsButton(page)).toHaveCount(0);
   });
 
   test("on Explore, the button and the dialog are the Standard page's", async ({ page }) => {
     await open(page, EXPLORE_ADDRESS);
-    await expect(entryOf(page)).toContainText(ALL_LABELS);
+    await expect(calculatorsButton(page)).toContainText(ALL_LABELS);
     const dialog = await openDialog(page);
     await expect(dialog.getByRole("tab")).toHaveText([SOLAR, ENSEMBLE, CLOTHING]);
     await expect(dialog.getByText("Apply to")).toHaveCount(0);
@@ -143,7 +143,7 @@ test.describe("the dialog", () => {
     await dialog.getByRole("tab", { name: CLOTHING }).click();
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
-    await expect(entryOf(page)).toBeFocused();
+    await expect(calculatorsButton(page)).toBeFocused();
 
     dialog = await openDialog(page);
     await expect(dialog.getByRole("tab", { name: CLOTHING })).toHaveAttribute("aria-selected", "true");
@@ -263,7 +263,7 @@ test.describe("Solar gain on people", () => {
     await expect(dockLine(dialog, MEAN_RADIANT_TEMPERATURE_LINE)).toHaveText(`15 → ${once}`);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(entryOf(page)).toBeFocused();
+    await expect(calculatorsButton(page)).toBeFocused();
     await expect(meanRadiantTemperature).toHaveValue(once);
 
     // 15 °C raised twice is past ASHRAE 55's 40 °C: the dock shows the cut before Apply, as decision 84 rule 5 has it.

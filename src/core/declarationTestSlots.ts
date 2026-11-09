@@ -54,12 +54,12 @@ export function enteredSlotFor(
       values.delete(quantity);
     }
   }
-  const airSpeedEntry = entered.vr === undefined ? airSpeedMode.airSpeed : airSpeedMode.relativeAirSpeed;
-  if (airSpeedEntry === airSpeedMode.relativeAirSpeed) {
+  const airSpeedEntryMode = entered.vr === undefined ? airSpeedMode.airSpeed : airSpeedMode.relativeAirSpeed;
+  if (airSpeedEntryMode === airSpeedMode.relativeAirSpeed) {
     values.delete(quantities.v);
   }
-  const clothingEntry = entered.clo_dynamic === undefined ? clothingMode.clothingInsulation : clothingMode.dynamicClothingInsulation;
-  if (clothingEntry === clothingMode.dynamicClothingInsulation) {
+  const clothingEntryMode = entered.clo_dynamic === undefined ? clothingMode.clothingInsulation : clothingMode.dynamicClothingInsulation;
+  if (clothingEntryMode === clothingMode.dynamicClothingInsulation) {
     values.delete(quantities.clo);
   }
   for (const [key, value] of Object.entries(entered)) {
@@ -67,5 +67,5 @@ export function enteredSlotFor(
       values.set(quantities[key as keyof typeof quantities], value);
     }
   }
-  return { ...slot, values, temperature: { mode }, airSpeed: { mode: airSpeedEntry }, clothing: { mode: clothingEntry } };
+  return { ...slot, values, temperature: { mode }, airSpeed: { mode: airSpeedEntryMode }, clothing: { mode: clothingEntryMode } };
 }

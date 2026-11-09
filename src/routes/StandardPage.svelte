@@ -161,7 +161,7 @@ import { palette } from "$lib/core/palette";
       <ChartControls chart={session.chart} drawnAxes={computation.drawnAxes} />
       {#if computation.chart}
         <div class="chart-area">
-          <ChartLegend entries={computation.chart.legend} />
+          <ChartLegend items={computation.chart.legend} />
           <PlotlyChart spec={computation.chart} />
         </div>
         <!-- Under the plot, a caption per slot whose Comfort zones are all empty, its swatch while the slots are named

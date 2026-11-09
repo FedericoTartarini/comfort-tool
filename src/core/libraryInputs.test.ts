@@ -97,14 +97,14 @@ describe("resolveQuantities", () => {
   });
 
   it("resolves no rh for a model whose inputs do not name it", () => {
-    const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.rh) };
+    const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((input) => input.quantity !== q.rh) };
     expect(resolveQuantities(defaultSlot(pmvPpdIso), withoutHumidity, DEFAULT_ATMOSPHERIC_PRESSURE).has(q.rh)).toBe(false);
   });
 
   it("does not expand an operative entry for a model without separate temperatures", () => {
     const withoutTemperatures = {
       ...pmvPpdIso,
-      inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tdb && entry.quantity !== q.tr),
+      inputs: pmvPpdIso.inputs.filter((input) => input.quantity !== q.tdb && input.quantity !== q.tr),
     };
     const resolved = resolveQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), withoutTemperatures, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.has(q.tdb)).toBe(false);

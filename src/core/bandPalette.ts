@@ -6,9 +6,9 @@ import type { SlotHue } from "./slotAppearance";
 
 /**
  * The band palettes of the app (ADR-0002 decisions 60 and 66). A classifier's
- * colours come from its entry in {@link classifierPalettes}, keyed by the
+ * colours come from its palette in {@link classifierPalettes}, keyed by the
  * library's classifier object, by identity, as the quantity table is, and read
- * by its entry's rule; they are assigned by position in its bins, never by
+ * by its palette's rule; they are assigned by position in its bins, never by
  * label text, so the library owns the bands and the app owns only the paint.
  * The result table's Band badges read their fill and lettering from here
  * (`core/resultCell.ts`), as Explore's default Band list does its colours
@@ -46,7 +46,7 @@ export const colorFamilies = { rdBu, ylOrRd } as const;
  * longer side, the shorter side's surplus dropped from the neutral outward, so
  * each side keeps its darkest colours and the neutral its family's neutral.
  */
-export type PaletteEntry =
+export type BandPalette =
   | {
       readonly kind: "sequential";
       readonly family: ColorFamily;
@@ -62,15 +62,15 @@ export type PaletteEntry =
       readonly neutral: number;
     };
 
-/** The entries {@link classifierPalettes} chooses from. */
+/** The palettes {@link classifierPalettes} chooses from. */
 export const palettes = {
   /** A scale around the neutral band `neutral`, cold blue to hot red. */
-  diverging: (neutral: number): PaletteEntry => ({ kind: "diverging", family: rdBu, reversed: true, neutral }),
+  diverging: (neutral: number): BandPalette => ({ kind: "diverging", family: rdBu, reversed: true, neutral }),
   /** A one-sided scale, safe to dangerous. */
   sequential: { kind: "sequential", family: ylOrRd },
   /** A one-sided scale of categories, whose last band, "none", is in none of them. */
   sequentialCategories: { kind: "sequential", family: ylOrRd, lastBandUnpainted: true },
-} as const satisfies Record<string, PaletteEntry | ((neutral: number) => PaletteEntry)>;
+} as const satisfies Record<string, BandPalette | ((neutral: number) => BandPalette)>;
 
 /**
  * Every classifier the app paints, with its palette. A new classifier lands
@@ -79,7 +79,7 @@ export const palettes = {
  * Each is read off its model info by the output it classifies, so an output
  * the info stops classifying fails here when the app loads.
  */
-const classifierPalettes: ReadonlyMap<ClassifierBins, PaletteEntry> = new Map<ClassifierBins, PaletteEntry>([
+const classifierPalettes: ReadonlyMap<ClassifierBins, BandPalette> = new Map<ClassifierBins, BandPalette>([
   // Neutral is "Neutral", the fourth of seven.
   [classifierOf(PMV_PPD_ISO_INFO, quantities.tsv), palettes.diverging(3)],
   [classifierOf(PMV_PPD_ASHRAE_INFO, quantities.tsv), palettes.diverging(3)],
@@ -93,36 +93,36 @@ const classifierPalettes: ReadonlyMap<ClassifierBins, PaletteEntry> = new Map<Cl
  * One colour per band of `bins`, in its order, read from its palette's family
  * by the palette's rule; `undefined` for a band its palette leaves unpainted.
  * Throws, naming the classifier by its first and last labels, when `table` has
- * no entry for it, its family has no colours at the count the rule reads, or
+ * no palette for it, its family has no colours at the count the rule reads, or
  * its neutral band is not one of its bands, rather than painting it half or
  * wrapping round. Only a test passes its own `table`.
  */
 export function bandColors(
   bins: ClassifierBins,
-  table: ReadonlyMap<ClassifierBins, PaletteEntry> = classifierPalettes,
+  table: ReadonlyMap<ClassifierBins, BandPalette> = classifierPalettes,
 ): readonly (string | undefined)[] {
   const { labels } = bins;
   const count = labels.length;
   const name = `The classifier "${labels[0]}" … "${labels[count - 1]}"`;
-  const entry = table.get(bins);
-  if (!entry) {
+  const bandPalette = table.get(bins);
+  if (!bandPalette) {
     throw new Error(`${name} has no palette; add it to the band palette's table`);
   }
   const colorsAt = (read: number): readonly string[] => {
-    const colors = entry.family[read];
+    const colors = bandPalette.family[read];
     if (!colors) {
       throw new Error(`${name} has ${count} bands, read at ${read} colours, a count its palette's colour family does not have`);
     }
     return colors;
   };
-  if (entry.kind === "sequential") {
+  if (bandPalette.kind === "sequential") {
     const ordered: (string | undefined)[] = colorsAt(count + 1).slice(1);
-    if (entry.lastBandUnpainted) {
+    if (bandPalette.lastBandUnpainted) {
       ordered[count - 1] = undefined;
     }
     return ordered;
   }
-  const { neutral } = entry;
+  const { neutral } = bandPalette;
   if (!Number.isInteger(neutral) || neutral < 0 || neutral >= count) {
     throw new Error(`${name} has ${count} bands, which cannot centre on a neutral band at index ${neutral}`);
   }
@@ -130,7 +130,7 @@ export function bandColors(
   const above = count - 1 - neutral;
   const side = Math.max(below, above);
   const read = colorsAt(2 * side + 1);
-  const colors = entry.reversed ? [...read].reverse() : read;
+  const colors = bandPalette.reversed ? [...read].reverse() : read;
   return [...colors.slice(0, below), colors[side], ...colors.slice(colors.length - above)];
 }
 

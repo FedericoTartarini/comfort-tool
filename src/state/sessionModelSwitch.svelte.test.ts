@@ -7,7 +7,7 @@
  * The seam is that file's, and nothing flushes for the reason
  * `compute.svelte.test.ts` gives: the computation is a derivation, so reading
  * it after a change is what recomputes it. The models here are fixtures, not
- * registry entries: each spreads PMV (ISO 7730)'s declaration and overrides
+ * registered models: each spreads PMV (ISO 7730)'s declaration and overrides
  * the one thing it is about.
  */
 import { psy_ta_rh } from "jsthermalcomfort";

@@ -122,11 +122,11 @@ function hoverInfo(mode: HoverMode): "skip" | "text" {
   return mode === "off" ? "skip" : "text";
 }
 
-export function toPlotlyAnnotation(entry: Annotation) {
+export function toPlotlyAnnotation(annotation: Annotation) {
   return {
-    x: entry.x,
-    y: entry.y,
-    text: entry.text,
+    x: annotation.x,
+    y: annotation.y,
+    text: annotation.text,
     showarrow: false,
     xanchor: "right",
     yanchor: "top",

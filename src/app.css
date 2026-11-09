@@ -182,7 +182,7 @@
 		max-block-size: var(--chart-cap);
 		min-block-size: 0;
 	}
-	/* The chart's one legend, a row above the plot (decision 89, rule 3): its entries from the plot's left edge,
+	/* The chart's one legend, a row above the plot (decision 89, rule 3): its items from the plot's left edge,
 	   wrapping onto further lines within the plot's width. */
 	.chart-legend {
 		display: flex;
@@ -281,12 +281,12 @@
 		font-size: var(--font-size-body);
 		font-weight: 500;
 	}
-	/* The input calculators' entry: its title over the calculators' labels, a caption at the text's regular weight. */
-	.calculator-entry-text {
+	/* The input calculators' button: its title over the calculators' labels, a caption at the text's regular weight. */
+	.calculator-button-text {
 		display: grid;
 		gap: 0.125rem;
 	}
-	.calculator-entry-labels {
+	.calculator-button-labels {
 		font-weight: 400;
 	}
 	/* A garment row's label, at the panel's labels' weight, level with the row's list button. */
@@ -443,9 +443,9 @@
 	display: flex;
 	align-items: flex-end;
 }
-/* The input calculators' entry at the Inputs card's foot: one full-width button on two lines, its title over the
+/* The input calculators' button at the Inputs card's foot: full width and on two lines, its title over the
    calculators' labels, the chevron muted at its end (decision 75, rule 6 (a)). */
-.calculator-entry {
+.calculator-button {
 	width: 100%;
 	height: auto;
 	justify-content: space-between;
@@ -453,7 +453,7 @@
 	white-space: normal;
 	text-align: start;
 }
-.calculator-entry svg {
+.calculator-button svg {
 	color: var(--muted-foreground);
 }
 /* A sidebar menu item is a link drawn as a button: hovered, the primitive fills it, so the base rule's underline does
@@ -466,7 +466,7 @@
 [data-slot="popover-content"].list-popover {
 	padding: 0;
 }
-/* An item that ends in a value, in such a list: the generated item's check mark goes, since no entry is ever checked.
+/* An item that ends in a value, in such a list: the generated item's check mark goes, since no item is ever checked.
    Hidden, it still took its width and an auto margin, so the values ended short of the right edge, each at an x of its
    own, and stood further from it than the labels from the left. */
 .list-popover [data-slot="command-item"]:has(> .item-value) > svg {
@@ -574,7 +574,7 @@
 .result-table .bounds-icon-hidden {
 	visibility: hidden;
 }
-/* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
+/* The Bands table is a compact one (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as
    tall as its small buttons, and a colour box narrow enough that No colour stands beside it. */
 .bands-table [data-slot="table-head"] {
 	height: 2rem;

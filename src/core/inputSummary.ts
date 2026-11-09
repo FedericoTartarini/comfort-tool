@@ -75,7 +75,7 @@ function valueLine(quantity: Quantity, value: number | undefined, unitSystem: Un
   return copy.summaryValue(labelWithUnit(quantity, unit), shown);
 }
 
-/** The Band list's Edges in order, in `output`'s display unit, as the Bands panel's Edge column reads them. */
+/** The Band list's Edges in order, in `output`'s display unit, as the Bands table's Edge column reads them. */
 function edgesLine(output: Quantity, bands: BandList, unitSystem: UnitSystem): string {
   const unit = displayUnitFor(output, unitSystem);
   return copy.summaryEdges(labelWithUnit(output, unit), bands.edges.map((edge) => formatNumber(unit.fromSi(edge))).join(", "));

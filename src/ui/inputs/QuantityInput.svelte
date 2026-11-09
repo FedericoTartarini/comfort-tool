@@ -1,11 +1,11 @@
 <!--
   A quantity's row, one shape for every row (ADR-0002 decision 67, rule 3):
-  the label row, then per entry a box, with the row's menu of its presets
-  inside it, and a caption line under it of the bound with its unit
-  (ADR-0002 decision 84, rule 10); an entry is a slot's, or the session's
-  atmospheric pressure. The row is the generated field, and each entry's box
-  and caption a field of their own, marked invalid while the entry is out of
-  range (the shell's spec, "The rows").
+  the label row, then its boxes, each with the row's menu of its presets
+  inside it and a caption line under it of the bound with its unit (ADR-0002
+  decision 84, rule 10); a box is a slot's, the session's atmospheric
+  pressure, or an input calculator's own input. The row is the generated
+  field, and each box and its caption a field of their own, marked invalid
+  while its value is out of range (the shell's spec, "The rows").
   On Compare the label row stands over the three slot columns, so it names
   the first slot's box as a label does and each box is named for its slot as
   well.
@@ -13,8 +13,8 @@
 <script module lang="ts">
   import type { Bound } from "$lib/core/applicability";
 
-  /** One box in a row: a slot's, or the session's atmospheric pressure. */
-  export interface QuantityEntry {
+  /** One box in a row: a slot's, the session's atmospheric pressure, or an input calculator's own input. */
+  export interface QuantityBox {
     /** Canonical SI value. */
     value: number;
     /** Allowed bound in SI; shown converted, a step stops at it, and the box turns red outside it. A `Bound` may be min-only or max-only. */
@@ -55,10 +55,10 @@
      */
     besideLabel?: Snippet;
     /** One per slot column, in slot order; `null` keeps the column of a slot not compared empty. */
-    entries: readonly [QuantityEntry, ...(QuantityEntry | null)[]];
+    boxes: readonly [QuantityBox, ...(QuantityBox | null)[]];
   }
 
-  let { quantity, unitSystem, besideLabel, entries }: Props = $props();
+  let { quantity, unitSystem, besideLabel, boxes }: Props = $props();
 
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
@@ -66,13 +66,13 @@
   const presets = $derived(presetsFor(quantity) ?? []);
 
   /** The caption line under a box: the bound with the display unit, `10 – 40 °C`, or nothing where there is none. */
-  function captionOf(entry: QuantityEntry): string {
-    return entry.bound ? valueWithUnit(formatBound(entry.bound, quantity, unitSystem), unit) : "";
+  function captionOf(box: QuantityBox): string {
+    return box.bound ? valueWithUnit(formatBound(box.bound, quantity, unitSystem), unit) : "";
   }
 
-  /** `control`'s accessible name with the entry's slot in it, while the slots are named. */
-  function controlNameFor(control: string, entry: QuantityEntry): string | undefined {
-    return entry.slotLabel && copy.slotControl(control, entry.slotLabel);
+  /** `control`'s accessible name with the box's slot in it, while the slots are named. */
+  function controlNameFor(control: string, box: QuantityBox): string | undefined {
+    return box.slotLabel && copy.slotControl(control, box.slotLabel);
   }
 </script>
 
@@ -81,25 +81,25 @@
     <Field.Label for="{id}-0">{labelText}</Field.Label>
     {@render besideLabel?.()}
   </Inline>
-  <SlotColumns count={entries.length}>
-    {#each entries as entry, index (index)}
-      {#if entry}
+  <SlotColumns count={boxes.length}>
+    {#each boxes as box, index (index)}
+      {#if box}
         {#snippet rowMenu()}
-          <RowMenuButton {presets} {unit} slotLabel={entry.slotLabel} isWithinBounds={entry.isWithinBounds} oncommit={entry.oncommit} />
+          <RowMenuButton {presets} {unit} slotLabel={box.slotLabel} isWithinBounds={box.isWithinBounds} oncommit={box.oncommit} />
         {/snippet}
-        <Field.Field data-invalid={entry.outOfRange || undefined}>
+        <Field.Field data-invalid={box.outOfRange || undefined}>
           <NumberInput
             id="{id}-{index}"
-            value={entry.value}
+            value={box.value}
             {unit}
-            bound={entry.bound}
-            invalid={entry.outOfRange}
-            isWithinBounds={entry.isWithinBounds}
-            ariaLabel={controlNameFor(labelText, entry)}
+            bound={box.bound}
+            invalid={box.outOfRange}
+            isWithinBounds={box.isWithinBounds}
+            ariaLabel={controlNameFor(labelText, box)}
             end={presets.length > 0 ? rowMenu : undefined}
-            oncommit={entry.oncommit}
+            oncommit={box.oncommit}
           />
-          <Field.Description class="caption-line">{captionOf(entry)}</Field.Description>
+          <Field.Description class="caption-line">{captionOf(box)}</Field.Description>
         </Field.Field>
       {:else}
         <!-- A slot not compared keeps its column, empty. -->

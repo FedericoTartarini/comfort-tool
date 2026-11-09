@@ -157,9 +157,9 @@ const drawings: readonly Drawing[] = [
   adaptiveDrawing,
 ];
 
-/** The legend's zone entries: every entry but the markers' and the relative-humidity curves'. */
+/** The legend's zone items: every item but the markers' and the relative-humidity curves'. */
 function zoneLegendOf(spec: ChartSpec) {
-  return spec.legend.filter((entry) => entry.swatch !== "marker" && entry.color !== chartInk.isoline);
+  return spec.legend.filter((item) => item.swatch !== "marker" && item.color !== chartInk.isoline);
 }
 
 /** The slots' readout lines in every cell of `spec`'s hover grid, past the two axis lines each cell starts with. */
@@ -168,9 +168,9 @@ function slotReadoutsOf(spec: ChartSpec): string[] {
   return (grid?.hoverText ?? []).flat().flatMap((cell) => cell.slice(2));
 }
 
-/** The labels of `spec`'s marker entries in its legend, in slot order. */
-function markerEntriesOf(spec: ChartSpec): string[] {
-  return spec.legend.filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
+/** The labels of `spec`'s marker items in its legend, in slot order. */
+function markerItemsOf(spec: ChartSpec): string[] {
+  return spec.legend.filter((item) => item.swatch === "marker").map((item) => item.label);
 }
 
 /** The three slots' labels while they are named. */
@@ -216,13 +216,13 @@ describe.each(drawings)("$name, drawn of one slot while the slots are not named"
     expect(markersOf(spec).map((marker) => ({ label: marker.label, color: marker.color }))).toEqual([
       { label: "Input", color: chartInk.marker(palette.slots[0]) },
     ]);
-    expect(markerEntriesOf(spec)).toEqual(["Input"]);
+    expect(markerItemsOf(spec)).toEqual(["Input"]);
   });
 
-  it("names no zone entry and no readout line by its slot", () => {
+  it("names no zone item and no readout line by its slot", () => {
     const readouts = slotReadoutsOf(spec);
     expect(readouts.length).toBeGreaterThan(0);
-    expect([...zoneLegendOf(spec).map((entry) => entry.label), ...readouts].filter((line) => line.startsWith("Input"))).toEqual([]);
+    expect([...zoneLegendOf(spec).map((item) => item.label), ...readouts].filter((line) => line.startsWith("Input"))).toEqual([]);
   });
 });
 
@@ -230,12 +230,12 @@ describe.each(drawings)("$name, drawn of one slot while the slots are named", ({
   const spec = draw([slots[0]]);
   const unnamed = drawAlone(slots[0]);
 
-  it("prefixes each zone entry and readout line with Input 1, and names its marker Input 1", () => {
-    expect(zoneLegendOf(spec).map((entry) => entry.label)).toEqual(
-      zoneLegendOf(unnamed).map((entry) => copy.withSlotLabel("Input 1", entry.label)),
+  it("prefixes each zone item and readout line with Input 1, and names its marker Input 1", () => {
+    expect(zoneLegendOf(spec).map((item) => item.label)).toEqual(
+      zoneLegendOf(unnamed).map((item) => copy.withSlotLabel("Input 1", item.label)),
     );
     expect(slotReadoutsOf(spec)).toEqual(slotReadoutsOf(unnamed).map((line) => copy.withSlotLabel("Input 1", line)));
-    expect(markerEntriesOf(spec)).toEqual(["Input 1"]);
+    expect(markerItemsOf(spec)).toEqual(["Input 1"]);
   });
 });
 
@@ -292,17 +292,17 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, drawAlone
     );
   });
 
-  it("has a fill legend entry per slot per zone, in the slot's hue, and one marker entry per slot", () => {
+  it("has a fill legend item per slot per zone, in the slot's hue, and one marker item per slot", () => {
     const expected = slots.flatMap((slot, position) =>
-      zoneLegendOf(drawAlone(slot)).map((entry, level) => ({
-        label: copy.withSlotLabel(slotLabels[position], entry.label),
+      zoneLegendOf(drawAlone(slot)).map((item, level) => ({
+        label: copy.withSlotLabel(slotLabels[position], item.label),
         swatch: "fill",
         color: chartInk.zoneFill(palette.slots[position], level, zonesPerSlot),
       })),
     );
     expect(zoneLegendOf(spec)).toEqual(expected);
     expect(expected).toHaveLength(3 * zonesPerSlot);
-    expect(markerEntriesOf(spec)).toEqual(slotLabels);
+    expect(markerItemsOf(spec)).toEqual(slotLabels);
   });
 });
 

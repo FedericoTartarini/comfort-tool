@@ -120,7 +120,7 @@
       <ChartControls chart={session.chart} drawnAxes={computation.drawnAxes} />
       {#if computation.chart}
         <div class="chart-area">
-          <ChartLegend entries={computation.chart.legend} />
+          <ChartLegend items={computation.chart.legend} />
           <PlotlyChart spec={computation.chart} />
         </div>
       {/if}

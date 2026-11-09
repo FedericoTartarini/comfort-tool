@@ -104,7 +104,7 @@ interface DrawnZone {
 /** Each Comfort zone `model`'s chart of `slot` draws, as the Standard page asks for it, with its limit. */
 function zonesOf(model: ModelDeclaration, slot: Slot): { readonly limit: number; readonly drawn: DrawnZone }[] {
   const spec = psychrometricSpec(chartRequestFor(model, slot));
-  const grid = spec.traces.find((entry) => entry.kind === "hoverGrid");
+  const grid = spec.traces.find((trace) => trace.kind === "hoverGrid");
   if (!grid) {
     throw new Error(`${model.info.label}'s chart has no hover grid`);
   }
@@ -121,7 +121,7 @@ function zonesOf(model: ModelDeclaration, slot: Slot): { readonly limit: number;
 
 /** `model`'s zone of `limit` on its chart of `slot`. */
 function zoneOf(model: ModelDeclaration, slot: Slot, limit: number): DrawnZone {
-  const zone = zonesOf(model, slot).find((entry) => entry.limit === limit);
+  const zone = zonesOf(model, slot).find((candidate) => candidate.limit === limit);
   if (!zone) {
     throw new Error(`${model.info.label} draws no zone of limit ${limit}`);
   }
@@ -195,7 +195,7 @@ describe("criterion 3a: the psychrometric chart's zones against the library", ()
     const psychrometricModels = registeredModels.filter((model) => psychrometricChartOf(model));
     expect(psychrometricModels.length).toBeGreaterThan(0);
     for (const model of psychrometricModels) {
-      const tolerance = renderingTolerances.find((entry) => entry.model === model)?.tolerance;
+      const tolerance = renderingTolerances.find((candidate) => candidate.model === model)?.tolerance;
       if (tolerance === undefined) {
         throw new Error(`${model.info.label} has no rendering tolerance: measure its worst residual and fix one`);
       }

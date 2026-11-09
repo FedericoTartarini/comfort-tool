@@ -49,7 +49,7 @@ const takesExternalWork = {
 const withoutTemperatureGroup = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_without_mean_radiant" },
-  inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tr),
+  inputs: pmvPpdIso.inputs.filter((input) => input.quantity !== q.tr),
 } satisfies ModelDeclaration;
 
 /**
@@ -63,7 +63,7 @@ const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 const declaresDrierAir = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_declares_drier_air" },
-  inputs: pmvPpdIso.inputs.map((entry) => (entry.quantity === q.rh ? { ...entry, value: 40 } : entry)),
+  inputs: pmvPpdIso.inputs.map((input) => (input.quantity === q.rh ? { ...input, value: 40 } : input)),
 } satisfies ModelDeclaration;
 
 /**

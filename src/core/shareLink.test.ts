@@ -246,7 +246,7 @@ describe("toDecodedSession", () => {
     expect(read(changed(valid, ["enabled"], [true]))).toBeUndefined();
     expect(read(changed(valid, ["slots"], [jsonOf(valid)]))).toBeUndefined();
     expect(read(changed(valid, ["slots", 0, "options"], undefined))).toBeUndefined();
-    // A dynamic chart's entry without its axes (B19), and a chart entry without its type.
+    // A dynamic chart's `charts` member without its axes (B19), and a `charts` member without its type.
     expect(read(changed(valid, ["charts", ashrae, "axes"], undefined))).toBeUndefined();
     expect(read(changed(valid, ["charts", ashrae, "type"], undefined))).toBeUndefined();
     expect(read(changed(valid, ["charts", ashrae, "bands", "colors", 0], 5))).toBeUndefined();
@@ -293,7 +293,7 @@ describe("toDecodedSession", () => {
     expect(read(changed(valid, [q.p_atm.key], 1))?.atmosphericPressure).toBe(1);
   });
 
-  it("takes a scanning model's chart entry without a Band list, a link copied on the Standard page (rule 5), and starts it on the classifier's list", () => {
+  it("takes a scanning model's `charts` member without a Band list, a link copied on the Standard page (rule 5), and starts it on the classifier's list", () => {
     const decoded = read(changed(valid, ["charts", ashrae, "bands"], undefined));
     expect(decoded?.charts.get(pmvPpdAshrae)).toEqual({
       ...editedSession().charts.get(pmvPpdAshrae),
@@ -338,7 +338,7 @@ describe("toDecodedSession", () => {
     }
   });
 
-  it("refuses a text without a chart entry for its own model", () => {
+  it("refuses a text without a `charts` member for its own model", () => {
     expect(read(changed(valid, ["charts", ashrae], undefined))).toBeUndefined();
   });
 });

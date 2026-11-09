@@ -93,7 +93,7 @@ function expectEdgesCrossed(spec: ChartSpec, list: BandList, values: Scanned["va
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }
@@ -107,7 +107,7 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
 
 /** The cover above the saturation line: the path filled in the plot's ground. */
 function coverOf(spec: ChartSpec): PathTrace {
-  const trace = spec.traces.find((entry): entry is PathTrace => entry.kind === "path" && entry.fill === chartInk.ground);
+  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartInk.ground);
   if (!trace) {
     throw new Error("spec has no cover");
   }
@@ -191,7 +191,7 @@ describe("the psychrometric chart given a Band list", () => {
     const top = spec.layout.y.range[1];
     expect(trace).toMatchObject({ fill: chartInk.ground, color: chartInk.ground, hover: "off" });
     expect(trace.label).toBeUndefined();
-    expect(spec.legend.map((entry) => entry.color)).not.toContain(chartInk.ground);
+    expect(spec.legend.map((item) => item.color)).not.toContain(chartInk.ground);
     // Along the saturation line from the lowest temperature to the right edge,
     // every point on it: at 30 °C saturated air holds less than the top's 30 g/kg.
     const along = cover.x.length - 2;
@@ -286,7 +286,7 @@ describe("the psychrometric chart given a Band list", () => {
   });
 
   it("reads the temperature, the humidity ratio, the number and the band in every cell below saturation, off the hover grid alone", () => {
-    expect(spec.traces.filter((entry) => entry.hover !== "off").map((entry) => entry.kind)).toEqual(["hoverGrid"]);
+    expect(spec.traces.filter((trace) => trace.hover !== "off").map((trace) => trace.kind)).toEqual(["hoverGrid"]);
     const { hoverText } = hoverGridOf(spec);
     trace.values.forEach((row, yIndex) =>
       row.forEach((value, xIndex) => {

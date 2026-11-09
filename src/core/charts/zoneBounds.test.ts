@@ -74,7 +74,7 @@ function zoneOf(spec: ChartSpec): PathTrace {
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }

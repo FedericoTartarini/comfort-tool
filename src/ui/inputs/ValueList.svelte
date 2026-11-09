@@ -1,12 +1,12 @@
 <!--
-  A popover's list of named entries, each ending in its value where it has
+  A popover's list of named items, each ending in its value where it has
   one: the list a row's menu opens, taken out of `RowMenuButton` so every such
   list is the same list (ADR-0002 decision 76, rule 4). Searchable where the
   caller gives the search's words. It sits inside the caller's `Popover.Root`,
-  after its trigger, and hands the chosen entry's key back.
+  after its trigger, and hands the chosen item's key back.
 -->
 <script lang="ts" module>
-  /** One entry: its label, its value as shown, where it has one, and whether it cannot be picked, still shown. */
+  /** One item: its label, its value as shown, where it has one, and whether it cannot be picked, still shown. */
   export interface ValueListItem {
     readonly key: string;
     readonly label: string;
@@ -14,7 +14,7 @@
     readonly disabled?: boolean;
   }
 
-  /** A group of entries, under a heading or none; an empty group is not drawn. */
+  /** A group of items, under a heading or none; an empty group is not drawn. */
   export interface ValueListGroup {
     readonly heading?: string;
     readonly items: readonly ValueListItem[];

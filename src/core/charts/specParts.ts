@@ -12,10 +12,10 @@ import type { SlotAppearance } from "$lib/core/slotAppearance";
 import { labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartedSlot } from "./chartRequest";
-import type { AxisSpec, LegendEntry, PointTrace } from "./chartSpec";
+import type { AxisSpec, LegendItem, PointTrace } from "./chartSpec";
 
 /**
- * `label`, a legend entry's or a readout line's, as the chart names it for
+ * `label`, a legend item's or a readout line's, as the chart names it for
  * `charted`: prefixed with the slot's label where the slot has one, and as it
  * is otherwise.
  */
@@ -23,12 +23,12 @@ export function labelFor(charted: ChartedSlot, label: string): string {
   return charted.label === undefined ? label : copy.withSlotLabel(charted.label, label);
 }
 
-/** A Comfort zone's paint: its fill's colour, its line's colour and width, and its legend entry. */
+/** A Comfort zone's paint: its fill's colour, its line's colour and width, and its legend item. */
 export interface ZoneInk {
   readonly fill: string;
   readonly line: string;
   readonly lineWidth: number;
-  readonly legendEntry: LegendEntry;
+  readonly legendItem: LegendItem;
 }
 
 /**
@@ -48,25 +48,25 @@ export function zoneInkFor(charted: ChartedSlot, zoneLabel: string, level: numbe
     fill,
     line: chartInk.zoneLine(charted.hue),
     lineWidth: chartInk.zoneLineWidth,
-    legendEntry: { label, swatch: "fill", color: fill },
+    legendItem: { label, swatch: "fill", color: fill },
   };
 }
 
 /**
  * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
- * and the legend entry that names it by the slot, or as the one input where
+ * and the legend item that names it by the slot, or as the one input where
  * the slot has no label. Chrome, so it never captures the pointer.
  */
 export function markerFor(
   appearance: SlotAppearance,
   x: number,
   y: number,
-): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
+): { readonly trace: PointTrace; readonly legendItem: LegendItem } {
   const color = chartInk.marker(appearance.hue);
   const label = appearance.label ?? copy.unnamedMarker;
   return {
     trace: { kind: "point", x, y, color, hover: "off", label },
-    legendEntry: { label, swatch: "marker", color },
+    legendItem: { label, swatch: "marker", color },
   };
 }
 

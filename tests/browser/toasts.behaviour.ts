@@ -71,7 +71,7 @@ async function failImage(page: Page) {
   await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
 }
 
-async function boxOf(locator: Locator) {
+async function boundingBoxOf(locator: Locator) {
   const box = await locator.boundingBox();
   if (box === null) {
     throw new Error(`${locator} has no box`);
@@ -86,9 +86,9 @@ test("a refused share link raises a toast at the window's top right, over the he
   const toast = toasts(page);
   await expect(toast).toHaveCount(1);
   await expect(toast).toContainText("The shared link could not be read, so nothing was opened from it.");
-  const box = await boxOf(toast);
+  const box = await boundingBoxOf(toast);
   const banner = page.getByRole("banner");
-  const header = await boxOf(banner);
+  const header = await boundingBoxOf(banner);
   // From the page's right edge, the header band's: the window less the scrollbar's gutter the root keeps.
   expect(header.x + header.width - (box.x + box.width)).toBeLessThanOrEqual(32);
   // Its top within the header band.
@@ -106,7 +106,7 @@ test("a refused share link raises a toast at the window's top right, over the he
   await expect(toast).toHaveCount(0);
 });
 
-test("a link with a value out of range opens nothing: the entry shows the model's default, one toast says the link could not be read, and no dialog", async ({ page }) => {
+test("a link with a value out of range opens nothing: the number box shows the model's default, one toast says the link could not be read, and no dialog", async ({ page }) => {
   await open(page, `${ISO_ADDRESS}?share=${OUT_OF_RANGE_LINK}`);
 
   await expect(page.getByRole("spinbutton", { name: /^Dry-bulb air temperature/ })).toHaveValue("25");

@@ -125,7 +125,7 @@ function intersect(bounds: readonly Bound[]): Bound | undefined {
  * decision 46). The two hold at once, so a caller intersects them.
  */
 function everyBoundFor(model: ModelDeclaration, quantity: Quantity): Bound[] {
-  const takes = declaredQuantitiesOf(model).some((entry) => entry.quantity === quantity);
+  const takes = declaredQuantitiesOf(model).some((input) => input.quantity === quantity);
   return [boundFor(model.info.inputs, quantity), takes ? kindBounds[quantity.kind] : undefined].filter(
     (bound): bound is Bound => bound !== undefined,
   );
@@ -255,7 +255,7 @@ export function enteredBound(
       return correctedEntryBoundFor(model, quantity, correction);
     }
   }
-  return intersect(boundingQuantities(quantity, slot).flatMap((entry) => everyBoundFor(model, entry)));
+  return intersect(boundingQuantities(quantity, slot).flatMap((boundingQuantity) => everyBoundFor(model, boundingQuantity)));
 }
 
 /** The quantities whose bounds an entry of `quantity` must satisfy, under the slot's entry modes. */

@@ -365,9 +365,9 @@ export function requireAxisRange(model: ModelDeclaration, quantity: Quantity): R
  * The classifier `info` puts on its output `output`, the library's own object
  * (ADR-0002 decision 90 rule 5): what a scan's Bands start as, and what the
  * band palette is keyed by. The model info types every classifier as
- * optional; a declaration or a palette entry naming an output the info does
- * not classify is a bug, so this throws, naming the model and the output,
- * rather than leave a `!` at each reader.
+ * optional; a declaration or a row of the palette table naming an output the
+ * info does not classify is a bug, so this throws, naming the model and the
+ * output, rather than leave a `!` at each reader.
  */
 export function classifierOf(info: ModelInfo, output: Quantity): ClassifierBins {
   const classifier = info.outputs[output.key]?.classifier;
@@ -387,7 +387,7 @@ export function requireScan(model: ModelDeclaration): DeclaredScan {
 
 /** The quantities `model` lists, each with its SI default, in panel order. */
 export function declaredQuantitiesOf(model: ModelDeclaration): DeclaredQuantity[] {
-  return model.inputs.filter((entry): entry is DeclaredQuantity => !("option" in entry));
+  return model.inputs.filter((input): input is DeclaredQuantity => !("option" in input));
 }
 
 /**
@@ -395,7 +395,7 @@ export function declaredQuantitiesOf(model: ModelDeclaration): DeclaredQuantity[
  * slot holds each one's value beside the quantities' (ADR-0002 decision 36).
  */
 export function optionsOf(model: ModelDeclaration): OptionSpec[] {
-  return model.inputs.flatMap((entry) => ("option" in entry ? [entry.option] : []));
+  return model.inputs.flatMap((input) => ("option" in input ? [input.option] : []));
 }
 
 /**
@@ -405,11 +405,11 @@ export function optionsOf(model: ModelDeclaration): OptionSpec[] {
  * with only some of them has none.
  */
 export function hasHumidityGroup(model: ModelDeclaration): boolean {
-  return declaredQuantitiesOf(model).some((entry) => entry.quantity === quantities.rh);
+  return declaredQuantitiesOf(model).some((input) => input.quantity === quantities.rh);
 }
 
 export function hasTemperatureGroup(model: ModelDeclaration): boolean {
-  const entered = declaredQuantitiesOf(model).map((entry) => entry.quantity);
+  const entered = declaredQuantitiesOf(model).map((input) => input.quantity);
   return temperatureMode.separate.panel.every((quantity) => entered.includes(quantity));
 }
 

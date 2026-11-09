@@ -79,7 +79,7 @@ export interface CalculatorInputs {
 
 /** What every calculator says of itself, whatever its dialog asks. */
 interface CommonCalculator {
-  /** Its tab's label in the dialog, and its label on the entry. */
+  /** Its tab's label in the dialog, and its label on the button. */
   readonly label: string;
   /** The line its tab opens with, naming the standard's method. */
   readonly method: string;
@@ -262,7 +262,7 @@ export function outputOf(calculator: Calculator, outputs: CalculatorOutputs): nu
 /**
  * The calculators `model`'s panel offers for `slot`: the distinct ones over
  * its {@link panelRows} in row order, a row folded into another's included,
- * so the one list the entry names and the dialog's tabs follow (ADR-0002
+ * so the one list the button names and the dialog's tabs follow (ADR-0002
  * decision 75 rule 6). A row stands for the quantities of its entry group,
  * so the list is the same under every entry mode.
  */
@@ -300,7 +300,7 @@ export function shownRow(
   model: ModelDeclaration,
   atmosphericPressure: number,
 ): ShownRow {
-  const row = panelRows(model, slot).find((entry) => !("option" in entry) && entry.calculators.includes(calculator));
+  const row = panelRows(model, slot).find((candidate) => !("option" in candidate) && candidate.calculators.includes(calculator));
   if (!row || "option" in row) {
     throw new Error(`${model.info.label} offers ${calculator.label} on no row`);
   }
@@ -334,7 +334,7 @@ export function shownRow(
  * commits the row's value as a typed value is committed ({@link shownRow}).
  */
 export function withCalculatorOutputs(slot: Slot, calculator: Calculator, outputs: CalculatorOutputs, model: ModelDeclaration): Slot {
-  const row = declaredQuantitiesOf(model).find((entry) => entry.calculators?.includes(calculator));
+  const row = declaredQuantitiesOf(model).find((input) => input.calculators?.includes(calculator));
   if (!row) {
     throw new Error(`${model.info.label} declares ${calculator.label} on no row`);
   }

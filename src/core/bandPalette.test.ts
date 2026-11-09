@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO, PMV_PPD_ISO_INFO, UTCI_INFO, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { bandColors, chartInk, colorForBand, letteringOn, palettes, type PaletteEntry } from "./bandPalette";
+import { bandColors, chartInk, colorForBand, letteringOn, palettes, type BandPalette } from "./bandPalette";
 import { classifierOf } from "./modelDeclaration";
 import { palette } from "./palette";
 import { quantities } from "./quantities";
@@ -53,7 +53,7 @@ describe("bandColors", () => {
 
   it("drops a shorter cold side's surplus from the neutral outward, as the warm side's", () => {
     const neutralFifth = binsOfLength(10);
-    const table = new Map<ClassifierBins, PaletteEntry>([[neutralFifth, palettes.diverging(4)]]);
+    const table = new Map<ClassifierBins, BandPalette>([[neutralFifth, palettes.diverging(4)]]);
     expect(bandColors(neutralFifth, table)).toEqual([
       "#053061",
       "#2166ac",
@@ -68,10 +68,10 @@ describe("bandColors", () => {
     ]);
   });
 
-  it("throws for a diverging entry whose neutral the band count cannot centre, naming the classifier", () => {
+  it("throws for a diverging palette whose neutral the band count cannot centre, naming the classifier", () => {
     const tenBands = binsOfLength(10);
     for (const neutral of [-1, 10, 4.5]) {
-      const table = new Map<ClassifierBins, PaletteEntry>([[tenBands, palettes.diverging(neutral)]]);
+      const table = new Map<ClassifierBins, BandPalette>([[tenBands, palettes.diverging(neutral)]]);
       expect(() => bandColors(tenBands, table), String(neutral)).toThrow('"band 1" … "band 10"');
     }
   });
@@ -80,7 +80,7 @@ describe("bandColors", () => {
     // Nine bands centred on the fifth read RdBu-9, ten sequential ones YlOrRd-11; neither is copied.
     const nineBands = binsOfLength(9);
     const tenBands = binsOfLength(10);
-    const table = new Map<ClassifierBins, PaletteEntry>([
+    const table = new Map<ClassifierBins, BandPalette>([
       [nineBands, palettes.diverging(4)],
       [tenBands, palettes.sequential],
     ]);
@@ -92,7 +92,7 @@ describe("bandColors", () => {
     expect(() => bandColors(binsOfLength(10))).toThrow('"band 1" … "band 10"');
   });
 
-  it("has an entry whose colour count is its band count for every classifier a registered model paints", () => {
+  it("has a palette whose colour count is its band count for every classifier a registered model paints", () => {
     // Each classified output is a column of the result table; the scan's
     // declared bands are Explore's default Band list.
     for (const model of registeredModels) {

@@ -82,7 +82,7 @@
           <QuantityInput
             {quantity}
             {unitSystem}
-            entries={[
+            boxes={[
               {
                 value: requireValue(inputs.values, quantity),
                 bound: calculatorBound(calculator, quantity),

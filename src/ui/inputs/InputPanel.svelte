@@ -30,7 +30,7 @@
   import { Label } from "$lib/ui/primitives/label";
   import { Switch } from "$lib/ui/primitives/switch";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
-  import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";
+  import QuantityInput, { type QuantityBox } from "./QuantityInput.svelte";
 
   interface Props {
     model: ModelDeclaration;
@@ -63,7 +63,7 @@
     return "option" in row ? row.option : row.quantity;
   }
 
-  function entryOf(slot: ComparedSlot, quantity: Quantity): QuantityEntry {
+  function quantityBoxOf(slot: ComparedSlot, quantity: Quantity): QuantityBox {
     const { inputSlot, computation } = slot;
     const { position } = computation;
     const slotLabel = computation.appearance.label;
@@ -76,9 +76,9 @@
     };
   }
 
-  function entriesOf(quantity: Quantity): readonly [QuantityEntry, ...(QuantityEntry | null)[]] {
+  function quantityBoxesOf(quantity: Quantity): readonly [QuantityBox, ...(QuantityBox | null)[]] {
     const [head, ...rest] = columns;
-    return [entryOf(head, quantity), ...rest.map((slot) => slot && entryOf(slot, quantity))];
+    return [quantityBoxOf(head, quantity), ...rest.map((slot) => slot && quantityBoxOf(slot, quantity))];
   }
 </script>
 
@@ -141,7 +141,7 @@
         quantity={row.quantity}
         {unitSystem}
         besideLabel={group ? entryGroupMenuButton : undefined}
-        entries={entriesOf(row.quantity)}
+        boxes={quantityBoxesOf(row.quantity)}
       />
     {/if}
   {/each}

@@ -82,7 +82,7 @@ function requestWithZones(zones: readonly [ComfortZone, ...ComfortZone[]]): Char
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }
@@ -102,7 +102,7 @@ const isoWithoutBounds: ModelDeclaration = {
 
 /** The cover above the saturation line: the path filled in the plot's ground. */
 function coverOf(spec: ChartSpec): PathTrace {
-  const trace = spec.traces.find((entry): entry is PathTrace => entry.kind === "path" && entry.fill === chartInk.ground);
+  const trace = spec.traces.find((candidate): candidate is PathTrace => candidate.kind === "path" && candidate.fill === chartInk.ground);
   if (!trace) {
     throw new Error("spec has no cover");
   }
@@ -380,7 +380,7 @@ describe("psychrometricSpec", () => {
       [true, copy.zoneLegend(zone)],
       [false, copy.zoneLegend(zone)],
     ]);
-    expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
+    expect(drawn.legend.map((item) => item.swatch)).toEqual(["line", "fill", "marker"]);
   });
 
   it("names the zones drawn today by their limit, word for word", () => {
@@ -460,11 +460,11 @@ describe("psychrometricSpec", () => {
 
   it("labels every other relative-humidity isoline where it leaves the viewport", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
-    expect(spec.annotations.map((entry) => entry.text)).toEqual(["20 %", "40 %", "60 %", "80 %", "100 %"]);
-    for (const entry of spec.annotations) {
-      expect(entry.x).toBeGreaterThanOrEqual(10);
-      expect(entry.x).toBeLessThanOrEqual(40);
-      expect(entry.y).toBeLessThanOrEqual(30);
+    expect(spec.annotations.map((annotation) => annotation.text)).toEqual(["20 %", "40 %", "60 %", "80 %", "100 %"]);
+    for (const annotation of spec.annotations) {
+      expect(annotation.x).toBeGreaterThanOrEqual(10);
+      expect(annotation.x).toBeLessThanOrEqual(40);
+      expect(annotation.y).toBeLessThanOrEqual(30);
     }
   });
 
@@ -480,9 +480,9 @@ describe("psychrometricSpec", () => {
 
   it("offers one legend covering humidity, each zone and the slot", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
-    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "fill", "marker"]);
+    expect(spec.legend.map((item) => item.swatch)).toEqual(["line", "fill", "fill", "fill", "fill", "marker"]);
     expect(spec.legend[0].label).toBe(q.rh.label);
-    expect(spec.legend.slice(1, 5).map((entry) => entry.label)).toEqual(
+    expect(spec.legend.slice(1, 5).map((item) => item.label)).toEqual(
       isoZonesLargestFirst().map((zone) => copy.zoneLegend(zone)),
     );
   });
@@ -565,7 +565,7 @@ describe("the relative-humidity labels at the plot's size", () => {
           }
         });
         // Its own isoline ends on its corner, every other one clear of it.
-        for (const end of ends.filter((entry) => !entry.label?.endsWith(` ${text}`))) {
+        for (const end of ends.filter((candidate) => !candidate.label?.endsWith(` ${text}`))) {
           expect(covers(box, end.point), `${text} on the end of ${end.label}`).toBe(false);
         }
       });

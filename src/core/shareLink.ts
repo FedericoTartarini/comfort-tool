@@ -119,8 +119,8 @@ function narrowedSlot(slot: Slot, model: ModelDeclaration): Slot {
  * with a slot that holds no humidity value; has slot 1, or an enabled slot,
  * `null`; or does not read back as written.
  *
- * A scanning model's chart entry without a Band list, which a link copied on
- * the Standard page writes (rule 5), reads back as written, and starts on
+ * A scanning model's `charts` member without a Band list, which a link copied
+ * on the Standard page writes (rule 5), reads back as written, and starts on
  * the classifier's list once the comparison is made.
  */
 export function toDecodedSession(text: string, models: readonly ModelDeclaration[]): WrittenSession | undefined {

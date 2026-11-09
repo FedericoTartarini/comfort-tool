@@ -353,8 +353,8 @@ export type PanelRow = Required<Pick<DeclaredQuantity, "quantity" | "calculators
  * clothing insulation's does (ADR-0002 decision 75 rule 3).
  */
 function enteredRows(model: ModelDeclaration, modes: ValueEntryModes): PanelRow[] {
-  let rows = model.inputs.map((entry): PanelRow =>
-    "option" in entry ? entry : { quantity: entry.quantity, calculators: entry.calculators ?? [] },
+  let rows = model.inputs.map((input): PanelRow =>
+    "option" in input ? input : { quantity: input.quantity, calculators: input.calculators ?? [] },
   );
   for (const group of valueEntryGroups) {
     if (!group.appliesTo(model)) {

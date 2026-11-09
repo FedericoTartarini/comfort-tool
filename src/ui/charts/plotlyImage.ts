@@ -5,13 +5,13 @@
  * the title, the legend, the chart, then the Input summary and the footer, its
  * plot area at its size's ratio (decision 89, rules 3 and 5). Its traces are
  * the screen's conversion's (`plotlyFigure.ts`), the hover grid left out and
- * one added per legend entry. Its numbers were measured on plotly.js 4.0.0
+ * one added per legend item. Its numbers were measured on plotly.js 4.0.0
  * (`.scratch/image-export/` ticket 01, `.scratch/frontend-review-round-2/`
  * tickets 06 and 07): an upgrade measures them again.
  */
 import type { PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
 import { chartInk } from "$lib/core/bandPalette";
-import type { LegendEntry } from "$lib/core/charts/chartSpec";
+import type { LegendItem } from "$lib/core/charts/chartSpec";
 import { imageFormat, type ImageDescription, type ImageFormat } from "$lib/core/image";
 import { sideMarginsOf, toPlotlyAnnotation, TRANSPARENT, toPlotlyAxis, toPlotlyData, toPlotlyYAxis } from "./plotlyFigure";
 
@@ -61,7 +61,7 @@ const FOOTER_GAP = 6;
 const LINE_HEIGHT = LETTERING.size * PLOTLY_LINE_SPACING;
 /**
  * Higher than any legend, in px. Plotly's default is half the figure's
- * height, past which the legend scrolls and the file loses entries.
+ * height, past which the legend scrolls and the file loses items.
  */
 const LEGEND_MAX_HEIGHT = 100_000;
 const LEGEND_LINE_WIDTH = 2;
@@ -140,9 +140,9 @@ function figureOf(image: ImageDescription, legendHeight: number) {
       bgcolor: TRANSPARENT,
     },
     annotations: [
-      ...chart.annotations.map((entry) => {
-        const annotation = toPlotlyAnnotation(entry);
-        return { ...annotation, font: { ...annotation.font, size: LETTERING.size } };
+      ...chart.annotations.map((annotation) => {
+        const plotlyAnnotation = toPlotlyAnnotation(annotation);
+        return { ...plotlyAnnotation, font: { ...plotlyAnnotation.font, size: LETTERING.size } };
       }),
       ...(title === null ? [] : [titleAnnotationOf(title, plotTop - titleBottom)]),
       ...(summaryAndFooter === null
@@ -210,18 +210,18 @@ function fileAxisOf<Axis extends ReturnType<typeof toPlotlyAxis>>(axis: Axis) {
 }
 
 /**
- * One legend entry: a trace that draws nothing and shows in Plotly's legend
- * in the entry's swatch and colour. An empty `x` would show no entry at all.
+ * One legend item: a trace that draws nothing and shows in Plotly's legend
+ * in the item's swatch and colour. An empty `x` would show no item at all.
  */
-function legendTraceOf(entry: LegendEntry): PlotlyData {
-  const nothing = { type: "scatter", x: [null], y: [null], name: entry.label, showlegend: true, hoverinfo: "skip" };
-  switch (entry.swatch) {
+function legendTraceOf(item: LegendItem): PlotlyData {
+  const nothing = { type: "scatter", x: [null], y: [null], name: item.label, showlegend: true, hoverinfo: "skip" };
+  switch (item.swatch) {
     case "fill":
-      return { ...nothing, mode: "none", fill: "toself", fillcolor: entry.color };
+      return { ...nothing, mode: "none", fill: "toself", fillcolor: item.color };
     case "line":
-      return { ...nothing, mode: "lines", line: { color: entry.color, width: LEGEND_LINE_WIDTH } };
+      return { ...nothing, mode: "lines", line: { color: item.color, width: LEGEND_LINE_WIDTH } };
     case "marker":
-      return { ...nothing, mode: "markers", marker: { color: entry.color, size: LEGEND_MARKER_SIZE } };
+      return { ...nothing, mode: "markers", marker: { color: item.color, size: LEGEND_MARKER_SIZE } };
   }
 }
 

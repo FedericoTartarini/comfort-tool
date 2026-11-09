@@ -394,27 +394,27 @@ describe("the compared slots' appearances", () => {
     return computation.slots.map((slot) => slot.appearance.label);
   }
 
-  /** The labels of the chart's marker entries in its legend, in slot order. */
-  function markerEntriesOf(computation: Computation): string[] {
-    return (computation.chart?.legend ?? []).filter((entry) => entry.swatch === "marker").map((entry) => entry.label);
+  /** The labels of the chart's marker items in its legend, in slot order. */
+  function markerItemsOf(computation: Computation): string[] {
+    return (computation.chart?.legend ?? []).filter((item) => item.swatch === "marker").map((item) => item.label);
   }
 
   it("names no slot on the Standard page with Compare off, and the marker reads Input", () => {
     const computation = new Computation(new Session(pmvPpdIso));
     expect(appearanceLabelsOf(computation)).toEqual([undefined]);
-    expect(markerEntriesOf(computation)).toEqual(["Input"]);
+    expect(markerItemsOf(computation)).toEqual(["Input"]);
   });
 
   it("names every compared slot by position while Compare is on, slots 2 and 3 disabled or not", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     const computation = new Computation(session);
     expect(appearanceLabelsOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
-    expect(markerEntriesOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
+    expect(markerItemsOf(computation)).toEqual(["Input 1", "Input 2", "Input 3"]);
 
     session.setSlotEnabled(1, false);
     session.setSlotEnabled(2, false);
     expect(appearanceLabelsOf(computation)).toEqual(["Input 1"]);
-    expect(markerEntriesOf(computation)).toEqual(["Input 1"]);
+    expect(markerItemsOf(computation)).toEqual(["Input 1"]);
   });
 
   it("follows Compare: switched off, the slot is unnamed again, and on, named again", () => {
@@ -432,7 +432,7 @@ describe("the compared slots' appearances", () => {
     const computation = new Computation(session);
     expect(session.compare).toBe(true);
     expect(appearanceLabelsOf(computation)).toEqual([undefined]);
-    expect(markerEntriesOf(computation)).toEqual(["Input"]);
+    expect(markerItemsOf(computation)).toEqual(["Input"]);
   });
 
   it("keeps each slot's hue by position, named or not", () => {

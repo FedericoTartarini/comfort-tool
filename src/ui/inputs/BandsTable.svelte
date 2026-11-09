@@ -1,9 +1,9 @@
 <!--
-  The Bands panel on Explore (ADR-0002 decision 59): one row per band of a
+  The Bands table on Explore (ADR-0002 decision 59): one row per band of a
   draft of the model's Band list, in the chart's order, each with its label,
   its colour and its upper Edge; the first band is open below, so no row has a
   lower Edge. Every edit goes to the draft, which calls the Band list module;
-  the panel writes nothing itself, and the chart reads nothing of it until the
+  the table writes nothing itself, and the chart reads nothing of it until the
   dialog's Apply (decision 84, rule 6). An Edge box's verdict is whether the
   Edge stays in order: one out of order is refused at its commit, the box
   shows the Edge as it was, and the cell says why until that Edge is next

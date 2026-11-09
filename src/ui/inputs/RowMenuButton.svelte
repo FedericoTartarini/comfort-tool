@@ -33,7 +33,7 @@
 
   const name = $derived(slotLabel ? copy.slotControl(copy.presetTrigger, slotLabel) : copy.presetTrigger);
 
-  // An entry's key is its position among the presets.
+  // An item's key is its position among the presets.
   const listGroups = $derived([
     {
       items: presets.map((preset, index) => ({

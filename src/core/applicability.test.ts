@@ -557,12 +557,12 @@ function endsOf(boundText: string): number[] {
 }
 
 describe("formatBound, across the registry", () => {
-  const humidityEntries = Object.values(humidityMode);
+  const humidityModes = Object.values(humidityMode);
   /** Every bound an entry of `model` is held to at its default slot, in each humidity entry mode, and every row of its info. */
   function boundsOf(model: ModelDeclaration): (readonly [Quantity, Bound])[] {
     const bounds: (readonly [Quantity, Bound])[] = [];
     const defaults = defaultSlot(model);
-    const slots = defaults.humidity ? humidityEntries.map((mode) => withHumidity(defaults, mode, 0)) : [defaults];
+    const slots = defaults.humidity ? humidityModes.map((mode) => withHumidity(defaults, mode, 0)) : [defaults];
     for (const slot of slots) {
       for (const quantity of Object.values(q)) {
         const bound = enteredBound(model, quantity, slot, DEFAULT_ATMOSPHERIC_PRESSURE);

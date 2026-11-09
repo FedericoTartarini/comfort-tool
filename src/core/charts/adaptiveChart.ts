@@ -3,7 +3,7 @@ import { adaptiveChartOf, requireAxisRange, type Range, type ZoneLimits } from "
 import { enteredValue, withEntryModes } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, LegendEntry, PathPiece, PathTrace, Trace } from "./chartSpec";
+import type { ChartSpec, LegendItem, PathPiece, PathTrace, Trace } from "./chartSpec";
 import { hoverGridFor } from "./fieldPaint";
 import { containsPoint, type Polygon } from "./polygon";
 import { axisFor, labelFor, markerFor, zoneInkFor } from "./specParts";
@@ -49,8 +49,8 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
 
   const fills: PathTrace[] = [];
   const lines: PathTrace[] = [];
-  /** Each slot's legend entries, zones first, so the legend reads slot by slot. */
-  const legendOfSlot = request.slots.map((): LegendEntry[] => []);
+  /** Each slot's legend items, zones first, so the legend reads slot by slot. */
+  const legendOfSlot = request.slots.map((): LegendItem[] => []);
 
   const zonesOfSlot = request.slots.map((charted) =>
     chart.limits({ inputs: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
@@ -61,14 +61,14 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
     const zones = zonesOfSlot[position];
     for (const [index, zone] of zones.entries()) {
       const ink = zoneInkFor(charted, zone.label, index, zones.length);
-      const { label } = ink.legendEntry;
+      const { label } = ink.legendItem;
       // Neither the fill nor a line captures the pointer, so the hover grid below reads for them.
       fills.push({ kind: "path", pieces: [displayed(regionsOfSlot[position][index])], color: ink.fill, width: 0, fill: ink.fill, hover: "off", label });
       for (const limit of [zone.upper, zone.lower]) {
         const pieces = strokedPiecesOf(limit, xRange).map((points) => displayed(coordinatesOf(points)));
         lines.push({ kind: "path", pieces, color: ink.line, width: ink.lineWidth, hover: "off", label });
       }
-      legendOfSlot[position].push(ink.legendEntry);
+      legendOfSlot[position].push(ink.legendItem);
     }
   });
   const traces: Trace[] = [...fills, ...lines];
@@ -87,7 +87,7 @@ export function adaptiveSpec(request: ChartRequest): ChartSpec {
     if (markerX !== undefined && markerY !== undefined) {
       const marker = markerFor(charted, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
       traces.push(marker.trace);
-      legendOfSlot[position].push(marker.legendEntry);
+      legendOfSlot[position].push(marker.legendItem);
     }
   });
 

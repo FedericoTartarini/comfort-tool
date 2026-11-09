@@ -92,8 +92,8 @@ describe("table", () => {
 
 /**
  * v1 has one chart per chart type (ADR-0002 decision 31's note): the chart
- * lookups return the first entry of a type, and the chart picker keys its
- * entries by type.
+ * lookups return the first chart of a type, and the chart picker keys its
+ * charts by type.
  */
 function expectEachChartTypeOnce(model: ModelDeclaration): void {
   const types = model.charts.map((chart) => chart.type);
@@ -153,7 +153,7 @@ describe("charts", () => {
 /** `vr` is derived as `v_relative(v, met)`, so a model that takes it must be entered both. */
 function expectAirSpeedAndMetabolicRateUnderRelativeAirSpeed(model: ModelDeclaration): void {
   if (!hasAirSpeedGroup(model)) return;
-  const entered = declaredQuantitiesOf(model).map((entry) => entry.quantity);
+  const entered = declaredQuantitiesOf(model).map((input) => input.quantity);
   expect(entered, model.info.label).toEqual(expect.arrayContaining([q.v, q.met]));
 }
 
@@ -169,7 +169,7 @@ describe("hasAirSpeedGroup", () => {
 
 describe("declaredQuantitiesOf and optionsOf", () => {
   it("read PMV (ASHRAE 55)'s quantities with their defaults and its one option off its panel list", () => {
-    expect(declaredQuantitiesOf(pmvPpdAshrae).map((entry) => entry.quantity)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
+    expect(declaredQuantitiesOf(pmvPpdAshrae).map((input) => input.quantity)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
     expect(optionsOf(pmvPpdAshrae).map((option) => option.key)).toEqual(["airspeed_control"]);
   });
 
@@ -191,7 +191,7 @@ describe("declaredQuantitiesOf and optionsOf", () => {
 describe("calculators", () => {
   /** Each row of `model` that offers a calculator, as its quantity and what it offers. */
   const offeredBy = (model: ModelDeclaration) =>
-    declaredQuantitiesOf(model).flatMap((entry) => (entry.calculators ? [[entry.quantity, entry.calculators]] : []));
+    declaredQuantitiesOf(model).flatMap((input) => (input.calculators ? [[input.quantity, input.calculators]] : []));
 
   it("stand on the rows decision 75 names, and on no other, for every registered model", () => {
     const table = new Map<ModelDeclaration, unknown[]>([
@@ -220,9 +220,9 @@ describe("calculators", () => {
       [solarGainOnOccupants, q.tr],
     ]);
     for (const model of registeredModels) {
-      for (const entry of declaredQuantitiesOf(model)) {
-        for (const calculator of entry.calculators ?? []) {
-          expect(entry.quantity, `${model.info.label}: ${calculator.label}`).toBe(rowOf.get(calculator));
+      for (const input of declaredQuantitiesOf(model)) {
+        for (const calculator of input.calculators ?? []) {
+          expect(input.quantity, `${model.info.label}: ${calculator.label}`).toBe(rowOf.get(calculator));
         }
       }
     }
@@ -240,7 +240,7 @@ describe("inputs", () => {
     const withoutMetabolicRate: ModelDeclaration = {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, label: "Fixture taking vr without met" },
-      inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.met),
+      inputs: pmvPpdIso.inputs.filter((input) => input.quantity !== q.met),
     };
     expect(() => expectAirSpeedAndMetabolicRateUnderRelativeAirSpeed(withoutMetabolicRate)).toThrow(withoutMetabolicRate.info.label);
   });
@@ -259,7 +259,7 @@ function takesClothingUnderACorrectingStandard(model: ModelDeclaration): boolean
  */
 function expectWhatTheClothingCorrectionTakes(model: ModelDeclaration): void {
   if (!hasClothingGroup(model)) return;
-  expect(declaredQuantitiesOf(model).map((entry) => entry.quantity), model.info.label).toContain(q.met);
+  expect(declaredQuantitiesOf(model).map((input) => input.quantity), model.info.label).toContain(q.met);
   let corrected: number;
   try {
     corrected = dynamicClothingInsulationOf(defaultSlot(model), model);
@@ -293,7 +293,7 @@ describe("the clothing entry group", () => {
     const withoutMetabolicRate: ModelDeclaration = {
       ...pmvPpdAshrae,
       info: { ...pmvPpdAshrae.info, label: "Fixture correcting clothing without met" },
-      inputs: pmvPpdAshrae.inputs.filter((entry) => entry.quantity !== q.met),
+      inputs: pmvPpdAshrae.inputs.filter((input) => input.quantity !== q.met),
     };
     expect(() => expectWhatTheClothingCorrectionTakes(withoutMetabolicRate)).toThrow(withoutMetabolicRate.info.label);
   });
@@ -302,7 +302,7 @@ describe("the clothing entry group", () => {
     const noAirSpeed: ModelDeclaration = {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, label: "Fixture correcting clothing by ISO 7730 without v" },
-      inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.v),
+      inputs: pmvPpdIso.inputs.filter((input) => input.quantity !== q.v),
     };
     expect(() => expectWhatTheClothingCorrectionTakes(noAirSpeed)).toThrow(noAirSpeed.info.label);
   });
@@ -310,7 +310,7 @@ describe("the clothing entry group", () => {
   it("that leaves out v under ASHRAE 55, whose correction takes none, passes the check", () => {
     const noAirSpeed: ModelDeclaration = {
       ...pmvPpdAshrae,
-      inputs: pmvPpdAshrae.inputs.filter((entry) => entry.quantity !== q.v),
+      inputs: pmvPpdAshrae.inputs.filter((input) => input.quantity !== q.v),
     };
     expect(() => expectWhatTheClothingCorrectionTakes(noAirSpeed)).not.toThrow();
   });

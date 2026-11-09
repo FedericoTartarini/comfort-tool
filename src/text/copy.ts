@@ -89,7 +89,7 @@ export const copy = {
   } satisfies Record<EntryModeId, string>,
   // A row's menu button holds the row's presets alone (ADR-0002 decision 75, rule 6).
   presetTrigger: "Presets",
-  // The input calculators' entry at the Inputs card's foot, its second line the calculators' labels, and the dialog's
+  // The input calculators' button at the Inputs card's foot, its second line the calculators' labels, and the dialog's
   // title (decision 75, rule 6 (a) and (b)).
   inputCalculators: "Input calculators",
   calculatorLabels: (labels: readonly string[]) => labels.join(" · "),
@@ -195,7 +195,7 @@ export const copy = {
   yes: "Yes",
   no: "No",
   slotLabel: (index: number) => `Input ${index + 1}`,
-  // The chart marker's legend entry while its slot has no label: the one slot of a page that compares nothing. Its
+  // The chart marker's legend item while its slot has no label: the one slot of a page that compares nothing. Its
   // own string beside the two "Input" column headings, three places that say the word.
   unnamedMarker: "Input",
   // One slot's control or quantity while the slots are named: a control's accessible name in a row that stands over
@@ -208,7 +208,7 @@ export const copy = {
   off: "Off",
   // A caption line about one row of the result table, while Compare is on.
   slotNote: (slotLabel: string, note: string) => `${slotLabel}: ${note}`,
-  // A chart's legend entry or readout line of one slot, while the slots are named.
+  // A chart's legend item or readout line of one slot, while the slots are named.
   withSlotLabel: (label: string, text: string) => `${label} · ${text}`,
   chart: "Chart",
   // The chart type select's name, in the chart card's heading row with no visible label (ADR-0002 decision 87, rule 4,
@@ -223,7 +223,7 @@ export const copy = {
   // The line under the plot of a slot whose Comfort zones are all empty, whatever emptied them (ADR-0002 decision 83
   // rule 1, as noted 2026-10-22).
   noComfortZone: "No comfort zone at these inputs.",
-  // The Bands panel on Explore (ADR-0002 decision 59), in a dialog the chart's heading row opens (decision 73, rule 8).
+  // The Bands table on Explore (ADR-0002 decision 59), in a dialog the chart's heading row opens (decision 73, rule 8).
   bands: "Bands",
   bandsReset: "Reset bands",
   bandsApply: "Apply",
@@ -242,7 +242,7 @@ export const copy = {
       : above === undefined
         ? `Not taken: ${edge} is not above ${below}, the edge before it.`
         : `Not taken: ${edge} is not between ${below} and ${above}, the edges beside it.`,
-  // A band's legend entry and hover line while its label is empty, as Add leaves it (ADR-0002 decision 59's note of
+  // A band's legend item and hover line while its label is empty, as Add leaves it (ADR-0002 decision 59's note of
   // 2026-10-17); the Band list keeps the empty label.
   unlabelledBand: "Unlabelled band",
   // A control's name for assistive technology: a band is named by its place, since its label may be empty.

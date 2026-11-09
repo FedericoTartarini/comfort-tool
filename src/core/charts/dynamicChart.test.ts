@@ -68,7 +68,7 @@ function runsAlong(line: PathTrace, fill: PathTrace): boolean {
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }
@@ -201,7 +201,7 @@ describe("the scanned dynamic chart of one slot", () => {
     const heat = dynamicOf(heatIndexRothfusz);
     const drawn = dynamicSpec(chartRequestFor(heatIndexRothfusz, defaultSlot(heatIndexRothfusz)), heat.axes);
     expect(drawn.traces.filter((trace) => trace.hover === "off").map((trace) => trace.kind)).toEqual(["point"]);
-    expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["marker"]);
+    expect(drawn.legend.map((item) => item.swatch)).toEqual(["marker"]);
   });
 
   it("starts Heat Index's temperature axis where the regression holds", () => {
@@ -237,7 +237,7 @@ describe("the scanned dynamic chart of one slot", () => {
   });
 
   it("carries one legend: every zone, then the slot", () => {
-    expect(spec.legend.map((entry) => [entry.label, entry.swatch])).toEqual([
+    expect(spec.legend.map((item) => [item.label, item.swatch])).toEqual([
       ...declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), "fill"]),
       ["Input", "marker"],
     ]);

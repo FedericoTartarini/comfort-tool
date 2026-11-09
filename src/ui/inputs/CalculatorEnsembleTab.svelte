@@ -95,7 +95,7 @@
     query = "";
   }
 
-  /** A garment's insulation in clo, as a list's entry ends with it. */
+  /** A garment's insulation in clo, as a list's item ends with it. */
   function shownInsulationOf(garment: string): string {
     return formatNumber(requireGarment(garment));
   }

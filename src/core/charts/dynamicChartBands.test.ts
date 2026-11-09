@@ -2,7 +2,7 @@
  * The scanned dynamic chart handed a Band list, as Explore asks for it
  * (ADR-0002 decisions 58, 59 and 62): a fill per coloured band over slot 1's
  * scan, up to the top of the coloured bands contiguous above it, a line at
- * every band's upper Edge, a legend entry per coloured band, and a readout
+ * every band's upper Edge, a legend item per coloured band, and a readout
  * naming the list's band. Handed none it paints Comfort zones
  * (`dynamicChart.test.ts`).
  */
@@ -60,7 +60,7 @@ function last<T>(row: readonly T[]): T {
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }
@@ -210,13 +210,13 @@ describe("the scanned dynamic chart given a Band list", () => {
     );
     expect(strokesOf(drawn)).toEqual(edgeLinesOf(hidden));
     expectEdgesCrossed(drawn, hidden, values);
-    expect(drawn.legend.map((entry) => entry.label)).not.toContain("Neutral");
+    expect(drawn.legend.map((item) => item.label)).not.toContain("Neutral");
     expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Neutral");
   });
 
-  it("names a coloured band with an empty label as unlabelled in its legend entry and on hover, a labelled one unchanged", () => {
+  it("names a coloured band with an empty label as unlabelled in its legend item and on hover, a labelled one unchanged", () => {
     const drawn = bandedSpec(setLabel(isoBands, 3, ""));
-    expect(drawn.legend.slice(0, isoBands.labels.length).map((entry) => entry.label)).toEqual(
+    expect(drawn.legend.slice(0, isoBands.labels.length).map((item) => item.label)).toEqual(
       isoBands.labels.map((label, index) => (index === 3 ? "Unlabelled band" : label)),
     );
     expect(bandRead(hoverGridOf(drawn).hoverText[4][40])).toBe("Unlabelled band");

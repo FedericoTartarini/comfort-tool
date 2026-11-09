@@ -6,7 +6,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { requireValue, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import type { ChartRequest } from "./chartRequest";
-import type { Annotation, ChartSpec, LegendEntry, PathTrace, Trace } from "./chartSpec";
+import type { Annotation, ChartSpec, LegendItem, PathTrace, Trace } from "./chartSpec";
 import { fieldPaintFor } from "./fieldPaint";
 import type { ScanFrame, ScannedField } from "./scan";
 import { axisFor, markerFor, samples } from "./specParts";
@@ -117,7 +117,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     const saturation = rh === 100;
     if (saturation) {
       const boundary = coverFor(sampled, xRange, humidityRatioRange);
-      // Chrome with no label and no legend entry: it reads nothing, so the
+      // Chrome with no label and no legend item: it reads nothing, so the
       // hover grid under it reads for the cell, "—" as it does above the line.
       cover = {
         kind: "path",
@@ -161,8 +161,8 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
     traces.push(saturationLine);
   }
 
-  // Each slot's legend entries, its zones then its marker, so the legend reads slot by slot.
-  const legend: LegendEntry[] = [{ label: q.rh.label, swatch: "line", color: chartInk.isoline }, ...paint.bandLegend];
+  // Each slot's legend items, its zones then its marker, so the legend reads slot by slot.
+  const legend: LegendItem[] = [{ label: q.rh.label, swatch: "line", color: chartInk.isoline }, ...paint.bandLegend];
   request.slots.forEach((charted, position) => {
     const resolved = resolveQuantities(withEntryModes(charted.slot, request.entryModes, model), model, atmosphericPressure);
     const tdb = requireValue(resolved, q.tdb);
@@ -172,7 +172,7 @@ export function psychrometricSpec(request: ChartRequest, scans?: readonly Scanne
       humidityRatioUnit.fromSi(psy_ta_rh(tdb, requireValue(resolved, q.rh), atmosphericPressure).hr),
     );
     traces.push(marker.trace);
-    legend.push(...paint.zoneLegendOfSlot[position], marker.legendEntry);
+    legend.push(...paint.zoneLegendOfSlot[position], marker.legendItem);
   });
 
   return {

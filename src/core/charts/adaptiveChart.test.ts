@@ -57,7 +57,7 @@ function markerOf(spec: ChartSpec): PointTrace | undefined {
 }
 
 function hoverGridOf(spec: ChartSpec): HoverGridTrace {
-  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  const trace = spec.traces.find((candidate): candidate is HoverGridTrace => candidate.kind === "hoverGrid");
   if (!trace) {
     throw new Error("spec has no hover grid");
   }
@@ -125,7 +125,7 @@ describe("a declared limits source", () => {
 
   it("carries every zone into the one legend, ahead of the slot marker", () => {
     const spec = adaptiveSpec(request);
-    expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "90% acceptability", "Input"]);
+    expect(spec.legend.map((item) => item.label)).toEqual(["80% acceptability", "90% acceptability", "Input"]);
   });
 
   it("stays on its declared operative axis under separate entry, where the dynamic chart would map it to tdb", () => {

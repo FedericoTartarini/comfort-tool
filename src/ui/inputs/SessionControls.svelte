@@ -64,7 +64,7 @@
   <QuantityInput
     quantity={quantities.p_atm}
     unitSystem={session.unitSystem}
-    entries={[
+    boxes={[
       {
         value: session.atmosphericPressure,
         bound: kindBounds[quantities.p_atm.kind],
