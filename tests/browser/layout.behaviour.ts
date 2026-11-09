@@ -263,6 +263,24 @@ for (const width of [1440, 1280]) {
   });
 }
 
+test("at 1440 px, the switch question is titled by the new model's limits, and its yes cuts the value to them and switches", async ({ page }) => {
+  await openStandard(page, 1440);
+  // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
+  const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
+  await airSpeed.fill("3");
+  await airSpeed.press("Enter");
+  await page.getByRole("button", { name: "Model", exact: true }).click();
+  await page.getByRole("option", { name: /^Adaptive/ }).click();
+  const question = page.getByRole("dialog", { name: "Values outside the new model's limits" });
+  await expect(question).toBeVisible();
+
+  await question.getByRole("button", { name: "Yes, cut and switch", exact: true }).click();
+
+  await expect(question).toBeHidden();
+  await expect(page).toHaveURL((url) => url.pathname === ADAPTIVE_ADDRESS);
+  await expect(airSpeed).toHaveValue("2");
+});
+
 /**
  * A desktop keeps two columns at every width (decision 87, rule 3): on a
  * laptop with the sidebar open the result and chart cards stand beside the

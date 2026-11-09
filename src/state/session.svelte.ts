@@ -623,7 +623,7 @@ export class Session {
     this.pendingSwitch = { model, slots };
   }
 
-  /** "Yes, switch and adjust": every listed value moves to its nearest bound, and every slot lands with the model. */
+  /** "Yes, cut and switch": every listed value moves to its nearest bound, and every slot lands with the model. */
   acceptSwitch(): void {
     const pending = this.pendingSwitch;
     if (!pending) {

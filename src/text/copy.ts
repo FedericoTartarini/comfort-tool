@@ -136,14 +136,14 @@ export const copy = {
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
   // headings: "Input" heads quantity labels here and slot labels in the result
   // table, so the two are not one string.
-  switchCutTitle: "Boundary Range Warning",
+  switchCutTitle: "Values outside the new model's limits",
   switchCutIntro: (modelLabel: string) => `${modelLabel} does not accept every value you entered.`,
-  switchCutQuestion: "Adjust these values to the nearest allowed value and switch?",
-  switchCutAccept: "Yes, switch and adjust",
+  switchCutQuestion: "Cut these values to their limits and switch?",
+  switchCutAccept: "Yes, cut and switch",
   switchCutDecline: "No, stay here",
   switchCutInputColumn: "Input",
   switchCutCurrentColumn: "Current",
-  switchCutAllowedColumn: "Allowed range",
+  switchCutAllowedColumn: "Limits",
   // Reset and its question (ADR-0002 decision 63, rules 7 and 8).
   reset: "Reset",
   resetQuestion: "This returns the page to what a new tab at this address shows: every input, the units, the atmospheric pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
