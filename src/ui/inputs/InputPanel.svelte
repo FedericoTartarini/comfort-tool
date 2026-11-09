@@ -19,7 +19,7 @@
 
 <script lang="ts">
   import { enteredBound } from "$lib/core/applicability";
-  import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration, OptionSpec } from "$lib/core/modelDeclaration";
   import { enteredValue, panelRows, rowEntryGroupOf, type PanelRow } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
@@ -33,7 +33,7 @@
   import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     /**
      * One per slot column, in slot order: slot 1 alone, or on Compare the
      * three, `null` for a slot not compared, whose column stays empty.

@@ -1,6 +1,6 @@
 import { adaptive_ashrae, ADAPTIVE_ASHRAE_INFO } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
-import type { RegisteredModel, ZoneLimits } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration, ZoneLimits } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { adaptive_ashrae_zone, type AdaptiveAshraeBand, type AdaptivePoint } from "$lib/temporary-library/adaptive_ashrae_zone";
 
@@ -87,4 +87,4 @@ export const adaptiveAshrae = {
       },
     },
   ],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;

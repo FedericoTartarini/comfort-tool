@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest";
 import { hr_to_rh } from "jsthermalcomfort";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { optionsOf, psychrometricChartOf, requireScan, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, psychrometricChartOf, requireScan, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { withEnteredValues, withOption, type Slot } from "$lib/core/slot";
@@ -51,7 +51,7 @@ const hrUnit = displayUnitFor(q.hr, unitSystem.si);
  * two decimals, as pythermalcomfort's does, so PMV is a staircase in the
  * temperature, a step of up to 0.0048 PMV, that no grid locates.
  */
-const renderingBounds: readonly { readonly model: RegisteredModel; readonly bound: number }[] = [
+const renderingBounds: readonly { readonly model: ModelDeclaration; readonly bound: number }[] = [
   { model: pmvPpdIso, bound: 0.005 },
   { model: pmvPpdAshrae, bound: 0.01 },
 ];
@@ -103,7 +103,7 @@ interface DrawnZone {
 }
 
 /** Each Comfort zone `model`'s chart of `slot` draws, as the Standard page asks for it, with its limit. */
-function zonesOf(model: RegisteredModel, slot: Slot): { readonly limit: number; readonly drawn: DrawnZone }[] {
+function zonesOf(model: ModelDeclaration, slot: Slot): { readonly limit: number; readonly drawn: DrawnZone }[] {
   const spec = psychrometricSpec(chartRequestFor(model, slot));
   const grid = spec.traces.find((entry) => entry.kind === "hoverGrid");
   if (!grid) {
@@ -121,7 +121,7 @@ function zonesOf(model: RegisteredModel, slot: Slot): { readonly limit: number; 
 }
 
 /** `model`'s zone of `limit` on its chart of `slot`. */
-function zoneOf(model: RegisteredModel, slot: Slot, limit: number): DrawnZone {
+function zoneOf(model: ModelDeclaration, slot: Slot, limit: number): DrawnZone {
   const zone = zonesOf(model, slot).find((entry) => entry.limit === limit);
   if (!zone) {
     throw new Error(`${model.info.label} draws no zone of limit ${limit}`);
@@ -173,7 +173,7 @@ function verticesOnGridLines(zone: DrawnZone) {
 }
 
 /** `model` run on `slot` at `temperature` and the humidity ratio `hr`, in SI. */
-function runAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number) {
+function runAt(model: ModelDeclaration, slot: Slot, temperature: number, hr: number) {
   const cell = withEnteredValues(slot, new Map([
     [slot.temperature.mode.axis, temperature],
     [q.rh, hr_to_rh(hr, temperature, p)],
@@ -182,12 +182,12 @@ function runAt(model: RegisteredModel, slot: Slot, temperature: number, hr: numb
 }
 
 /** `model`'s own scanned number for `slot` at `temperature` and the humidity ratio `hr`, in SI. */
-function numberAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): number {
+function numberAt(model: ModelDeclaration, slot: Slot, temperature: number, hr: number): number {
   return outputNumber(runAt(model, slot, temperature, hr), requireScan(model).output);
 }
 
 /** Whether `model`'s run on `slot` at `temperature` and the humidity ratio `hr` breaks a bound: its `warnings` has a range row. */
-function isOutsideApplicabilityAt(model: RegisteredModel, slot: Slot, temperature: number, hr: number): boolean {
+function isOutsideApplicabilityAt(model: ModelDeclaration, slot: Slot, temperature: number, hr: number): boolean {
   return rangeRowsOf(runAt(model, slot, temperature, hr)).length > 0;
 }
 

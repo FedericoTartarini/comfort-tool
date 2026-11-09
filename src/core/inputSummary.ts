@@ -2,7 +2,7 @@ import { copy } from "$lib/text/copy";
 import { limitsBrokenLines, type ViolationRow } from "./applicability";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
-import { optionsOf, standardOf, type RegisteredModel } from "./modelDeclaration";
+import { optionsOf, standardOf, type ModelDeclaration } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 import { enteredValue, panelQuantities, type Slot } from "./slot";
@@ -41,7 +41,7 @@ export type InputSummary = readonly (readonly string[])[];
  * holds no outputs.
  */
 export function inputSummary(parts: {
-  model: RegisteredModel;
+  model: ModelDeclaration;
   runs: readonly DrawnRun[];
   unitSystem: UnitSystem;
   bands: BandList | null;
@@ -53,7 +53,7 @@ export function inputSummary(parts: {
   return [[modelLine], ...runs.map((run) => runLines(model, run, unitSystem)), ...edges];
 }
 
-function runLines(model: RegisteredModel, run: DrawnRun, unitSystem: UnitSystem): string[] {
+function runLines(model: ModelDeclaration, run: DrawnRun, unitSystem: UnitSystem): string[] {
   const { slot, atmosphericPressure, violations } = run;
   const options = optionsReader(slot.options);
   return [

@@ -15,7 +15,7 @@ import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { bandListOf } from "$lib/core/bands";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { classifierOf, optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, optionsOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
@@ -45,7 +45,7 @@ const BISECTION_STEP = 2 ** -BISECTIONS;
  * only to its 30 °C bound (ADR-0002 decision 89), where a zone meets the
  * plot's edge; drawn past it, the bound cuts the zones inside the plot.
  */
-const isoDrawnPastItsBound: RegisteredModel = {
+const isoDrawnPastItsBound: ModelDeclaration = {
   ...pmvPpdIso,
   axisRanges: pmvPpdIso.axisRanges.map((range) => (range.quantity === q.tdb ? { ...range, max: 35 } : range)),
 };
@@ -102,17 +102,17 @@ function indexOf(samples: readonly number[], value: number): number {
 }
 
 /** `model` run on `slot` with `entered` over it, as a scan's cell is entered. */
-function runAt(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity, number>) {
+function runAt(model: ModelDeclaration, slot: Slot, entered: ReadonlyMap<Quantity, number>) {
   return runOn(withEnteredValues(slot, entered), model, P);
 }
 
 /** Whether the run on `slot` with `entered` over it breaks a bound: its `warnings` has a range row. */
-function isOutsideApplicability(model: RegisteredModel, slot: Slot, entered: ReadonlyMap<Quantity, number>): boolean {
+function isOutsideApplicability(model: ModelDeclaration, slot: Slot, entered: ReadonlyMap<Quantity, number>): boolean {
   return rangeRowsOf(runAt(model, slot, entered)).length > 0;
 }
 
 /** The limit of the zone drawn `position`-th among one slot's zones, largest first, as the chart draws them. */
-function limitOf(model: RegisteredModel, position: number): number {
+function limitOf(model: ModelDeclaration, position: number): number {
   return comfortZonesOf(model)[position].limit;
 }
 
@@ -261,7 +261,7 @@ describe("PMV (ASHRAE 55)'s clothing axis", () => {
  * that run breaks a bound. The cover hides the air above saturation, which
  * this file does not read.
  */
-function psychrometricCells(model: RegisteredModel, slot: Slot, spec: ChartSpec) {
+function psychrometricCells(model: ModelDeclaration, slot: Slot, spec: ChartSpec) {
   const { x, y } = samplesOf(spec);
   const hrUnit = displayUnitFor(q.hr, unitSystem.si);
   return y.flatMap((hrShown, yIndex) =>
@@ -395,7 +395,7 @@ describe("the note of a slot whose Comfort zones are all empty", () => {
 describe("criterion 3c: a zone's boundary on a bound, against the library", () => {
   const charts: readonly {
     readonly name: string;
-    readonly model: RegisteredModel;
+    readonly model: ModelDeclaration;
     readonly slot: Slot;
     readonly frame: ScanFrame;
     readonly spec: ChartSpec;

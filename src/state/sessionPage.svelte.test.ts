@@ -12,7 +12,7 @@ import type { ChartSpec, PathPiece, PointTrace, Trace } from "$lib/core/charts/c
 import { bandFillsOf, bandLinesOf, heldBetween, numbersAlong, regionOf, zoneFillsOf, zoneLinesOf } from "$lib/core/charts/chartTestPaths";
 import { traceRegion } from "$lib/core/charts/regionTracer";
 import { chartType } from "$lib/core/chartType";
-import { classifierOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
@@ -92,7 +92,7 @@ function psychrometricLayersOf(traces: readonly Trace[]): string[] {
 }
 
 /** `session` sent to `target` and its model, as the address sends it. */
-function openAt(session: Session, target: Page, model: RegisteredModel = session.model): void {
+function openAt(session: Session, target: Page, model: ModelDeclaration = session.model): void {
   session.setAddress({ page: target, model });
 }
 

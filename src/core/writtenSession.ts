@@ -7,7 +7,7 @@
  */
 import { bandListOf, type BandList } from "./bands";
 import type { ChartType } from "./chartType";
-import { classifierOf, dynamicChartOf, type ChartAxes, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, dynamicChartOf, type ChartAxes, type ModelDeclaration } from "./modelDeclaration";
 import { page, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "./quantities";
 import { startingSlot, type Slot } from "./slot";
@@ -36,7 +36,7 @@ export interface ChartSettings {
  */
 export interface WrittenSession {
   /** The model the slots were converted for. */
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
   readonly unitSystem: UnitSystem;
   /** In Pa (ADR-0002 decision 49). */
   readonly atmosphericPressure: number;
@@ -46,7 +46,7 @@ export interface WrittenSession {
   /** What each slot holds, in slot order: slots 2 and 3 `null` until first enabled (ADR-0002 decision 50). */
   readonly slots: readonly [Slot, Slot | null, Slot | null];
   /** The chart settings of every model the session has been on, and of no other. */
-  readonly charts: ReadonlyMap<RegisteredModel, ChartSettings>;
+  readonly charts: ReadonlyMap<ModelDeclaration, ChartSettings>;
 }
 
 /** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
@@ -69,7 +69,7 @@ export function comparedPositionsOf(session: Pick<WrittenSession, "compare" | "e
 }
 
 /** The chart settings `model` starts on, which its declaration gives: its first chart, its declared axes, its scan's classifier. */
-export function startingChartSettings(model: RegisteredModel): ChartSettings {
+export function startingChartSettings(model: ModelDeclaration): ChartSettings {
   return {
     type: model.charts[0].type,
     axes: dynamicChartOf(model)?.axes ?? null,
@@ -82,7 +82,7 @@ export function startingChartSettings(model: RegisteredModel): ChartSettings {
  * {@link startingSlot} and no other slot, SI, standard pressure, Compare off,
  * and the model's own {@link startingChartSettings}.
  */
-export function startingSession(model: RegisteredModel): WrittenSession {
+export function startingSession(model: ModelDeclaration): WrittenSession {
   return {
     model,
     unitSystem: unitSystem.si,

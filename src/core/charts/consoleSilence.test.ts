@@ -14,7 +14,7 @@ import {
   dynamicChartOf,
   psychrometricChartOf,
   type LibraryInputs,
-  type RegisteredModel,
+  type ModelDeclaration,
 } from "$lib/core/modelDeclaration";
 import { adaptiveSpec } from "./adaptiveChart";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
@@ -29,7 +29,7 @@ const consoleMethods = ["warn", "log", "error"] as const;
  * slot and of three compared ones. Each write reads
  * `console.<method>: <args>`.
  */
-function consoleWritesWhileDrawing(model: RegisteredModel): string[] {
+function consoleWritesWhileDrawing(model: ModelDeclaration): string[] {
   const spies = consoleMethods.map((method) => [method, vi.spyOn(console, method).mockImplementation(() => undefined)] as const);
   try {
     const slot = startingSlot(model);
@@ -72,7 +72,7 @@ describe("drawing a model's charts", () => {
         }
         return pmvPpdIso.run(inputs);
       },
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(consoleWritesWhileDrawing(logsOnce)).toEqual(["console.warn: cooling effect assumed 0"]);
   });
 });

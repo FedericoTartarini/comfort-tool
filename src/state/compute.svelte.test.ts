@@ -14,7 +14,7 @@ import { violationRows, warningFor } from "$lib/core/applicability";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
-import type { LibraryInputs, RegisteredModel } from "$lib/core/modelDeclaration";
+import type { LibraryInputs, ModelDeclaration } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import { quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -40,7 +40,7 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
 }
 
 /** `pmvPpdIso`, counting every call the outputs make of it — for a slot's outputs and for the chart. */
-function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
+function modelCountingRuns(): { model: ModelDeclaration; runs: () => number } {
   let runs = 0;
   const model = {
     ...pmvPpdIso,
@@ -48,7 +48,7 @@ function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
       runs += 1;
       return pmvPpdIso.run(inputs);
     },
-  } satisfies RegisteredModel;
+  } satisfies ModelDeclaration;
   return { model, runs: () => runs };
 }
 

@@ -22,8 +22,8 @@ import {
   type ChartAxes,
   type DeclaredScan,
   type LibraryInputs,
+  type ModelDeclaration,
   type Range,
-  type RegisteredModel,
 } from "./modelDeclaration";
 import { outputValue, runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -38,10 +38,10 @@ const isoWithAdaptiveChart = {
   ...pmvPpdIso,
   scan: undefined,
   charts: [{ type: chartType.adaptive, axes: { x: quantities.tdb, y: quantities.v }, limits: () => [] }],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;
 
 /** The axes of `model`'s chart that has some: its dynamic chart's, else its adaptive chart's. */
-function chartAxesOf(model: RegisteredModel): ChartAxes | undefined {
+function chartAxesOf(model: ModelDeclaration): ChartAxes | undefined {
   return (dynamicChartOf(model) ?? adaptiveChartOf(model))?.axes;
 }
 
@@ -50,7 +50,7 @@ function chartAxesOf(model: RegisteredModel): ChartAxes | undefined {
  * declared defaults, the range the axis is drawn over, the slot at a position
  * along it, and the run's value for a quantity there.
  */
-function alongTheXAxis(model: RegisteredModel, axes: ChartAxes) {
+function alongTheXAxis(model: ModelDeclaration, axes: ChartAxes) {
   const defaults = startingSlot(model);
   const axis = axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
@@ -94,7 +94,7 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
  */
-function driftProbes(model: RegisteredModel, axes: ChartAxes, scan: DeclaredScan): Slot[] {
+function driftProbes(model: ModelDeclaration, axes: ChartAxes, scan: DeclaredScan): Slot[] {
   const { defaults, range, at, valueAt } = alongTheXAxis(model, axes);
   const outputAt = (position: number) => Number(valueAt(position, scan.output));
 
@@ -109,7 +109,7 @@ function driftProbes(model: RegisteredModel, axes: ChartAxes, scan: DeclaredScan
 }
 
 /** Asserts that the scan's bands cut the run's output where the run itself does, at every probe. */
-function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
+function expectBandsToBinAsRunDoes(model: ModelDeclaration): void {
   const { scan } = model;
   const chart = dynamicChartOf(model);
   // A model that scans nothing declares no bands to check.
@@ -141,7 +141,7 @@ describe("the scan's declared bands", () => {
       run: () => {
         throw new Error("a chart with no bands was probed");
       },
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(() => expectBandsToBinAsRunDoes(neverRun)).not.toThrow();
   });
 });
@@ -164,7 +164,7 @@ const SAMPLES_ALONG_THE_AXIS = 25;
  * output's category leads the table (ADR-0002 decision 85, rule 1), and a
  * label or a flag has no decimals to round.
  */
-function firstNumberColumn(model: RegisteredModel): Quantity | undefined {
+function firstNumberColumn(model: ModelDeclaration): Quantity | undefined {
   return model.table.find((column) => column.kind !== "label" && column.kind !== "flag");
 }
 
@@ -180,7 +180,7 @@ function firstNumberColumn(model: RegisteredModel): Quantity | undefined {
  * the grid now and then, and one such value says nothing.
  */
 function unroundedSampleCount(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   axes: ChartAxes,
   quantity: Quantity | undefined = firstNumberColumn(model),
 ): number {
@@ -234,7 +234,7 @@ function isoRounding(round_output: boolean) {
         limit_inputs: false,
         round_output,
       }),
-  } satisfies RegisteredModel;
+  } satisfies ModelDeclaration;
 }
 
 describe("run's numbers", () => {

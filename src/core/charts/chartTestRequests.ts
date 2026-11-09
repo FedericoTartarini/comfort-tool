@@ -6,7 +6,7 @@
  * with Compare on and slots 2 and 3 disabled. Either paints Comfort zones, as
  * the Standard page asks; a test of Bands hands its own list.
  */
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "$lib/core/quantities";
 import { entryModesOf, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadge } from "$lib/core/slotBadge";
@@ -16,7 +16,7 @@ import type { ChartedSlot, ChartRequest } from "./chartRequest";
 
 /** `model`'s chart of `slot` alone, as slot 1 unnamed, in `system` and in the session's entry modes `modes`, by default its own. */
 export function chartRequestFor(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   slot: Slot,
   system: UnitSystem = unitSystem.si,
   modes: ValueEntryModes = entryModesOf(slot),
@@ -31,7 +31,7 @@ export function chartRequestFor(
  * open holds every slot in them.
  */
 export function chartRequestForSlots(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   slots: readonly Slot[],
   system: UnitSystem = unitSystem.si,
   modes: ValueEntryModes = entryModesOf(slots[0]),
@@ -40,6 +40,6 @@ export function chartRequestForSlots(
   return requestOf(model, charted, system, modes);
 }
 
-function requestOf(model: RegisteredModel, slots: readonly ChartedSlot[], system: UnitSystem, modes: ValueEntryModes): ChartRequest {
+function requestOf(model: ModelDeclaration, slots: readonly ChartedSlot[], system: UnitSystem, modes: ValueEntryModes): ChartRequest {
   return { model, slots, unitSystem: system, entryModes: modes, atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE, bands: null };
 }

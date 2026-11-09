@@ -1,5 +1,5 @@
 import type { BandList } from "$lib/core/bands";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import type { Slot, ValueEntryModes } from "$lib/core/slot";
 import type { SlotBadge } from "$lib/core/slotBadge";
 import type { UnitSystem } from "$lib/core/unitSystem";
@@ -19,7 +19,7 @@ export interface ChartedSlot extends SlotBadge {
  * chart component reads.
  */
 export interface ChartRequest {
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
   readonly slots: readonly ChartedSlot[];
   readonly unitSystem: UnitSystem;
   /**

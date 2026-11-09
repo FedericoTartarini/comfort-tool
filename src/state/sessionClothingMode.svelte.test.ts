@@ -15,7 +15,7 @@ import type { PointTrace } from "$lib/core/charts/chartSpec";
 import { enteredBound } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -52,7 +52,7 @@ const corrections = [
   { model: pmvPpdIso, dynamic: ({ clo, met, v }: (typeof entriesOfSlot)[number]) => clo_dynamic_iso(clo, met, v) },
 ] as const;
 
-function threeDifferentSlots(model: RegisteredModel): Session {
+function threeDifferentSlots(model: ModelDeclaration): Session {
   const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(model));
   slotPositions.forEach((position) => {
     const { clo, v, met } = entriesOfSlot[position];
@@ -64,7 +64,7 @@ function threeDifferentSlots(model: RegisteredModel): Session {
 }
 
 /** A session on `model` whose one slot enters `clo_dynamic` and what else `entries` names of a slot. */
-function enteringDynamic(model: RegisteredModel, entries: { v: number; met: number }, dynamic: number): Session {
+function enteringDynamic(model: ModelDeclaration, entries: { v: number; met: number }, dynamic: number): Session {
   const session = new Session(model);
   session.slots[0].setEntered(q.v, entries.v);
   session.slots[0].setEntered(q.met, entries.met);

@@ -3,7 +3,7 @@ import {
   requireAxisRange,
   requireScan,
   type ChartAxes,
-  type RegisteredModel,
+  type ModelDeclaration,
 } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import { enteredQuantities, enteredValue, underEntryModes, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
@@ -20,7 +20,7 @@ import { axisFor, markerFor } from "./specParts";
  * each across its declared range.
  */
 export function dynamicScanFrameFor(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   axes: ChartAxes,
   modes: ValueEntryModes,
   atmosphericPressure: number,
@@ -99,7 +99,7 @@ export function dynamicSpec(request: ChartRequest, axes: ChartAxes, scans?: read
  * collapse onto a single quantity. x === y is not a chart (ADR §4.4), so the
  * y axis moves to the next quantity that can carry one.
  */
-export function resolvedAxes(model: RegisteredModel, axes: ChartAxes, modes: ValueEntryModes): ChartAxes {
+export function resolvedAxes(model: ModelDeclaration, axes: ChartAxes, modes: ValueEntryModes): ChartAxes {
   const x = underEntryModes(axes.x, modes);
   const y = underEntryModes(axes.y, modes);
   if (y !== x) {
@@ -113,6 +113,6 @@ export function resolvedAxes(model: RegisteredModel, axes: ChartAxes, modes: Val
  * enters, minus anything with no axis range ({@link axisRangeFor}) — the
  * range is what the scan sweeps between.
  */
-export function dynamicAxisQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
+export function dynamicAxisQuantities(model: ModelDeclaration, modes: ValueEntryModes): Quantity[] {
   return enteredQuantities(model, modes).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
 }

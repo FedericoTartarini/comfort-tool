@@ -5,9 +5,9 @@ import {
   hasTemperatureGroup,
   takesRelativeAirSpeed,
   type LibraryInputs,
+  type ModelDeclaration,
   type OptionSpec,
   type OptionsReader,
-  type RegisteredModel,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import { dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
@@ -26,7 +26,7 @@ const q = quantities;
  * the resolved values is the library's, and among a slot's the entry. No
  * `p_atm` is filled: no registered model takes one (ADR-0002 decision 49).
  */
-export function resolveQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Map<Quantity, number> {
+export function resolveQuantities(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): Map<Quantity, number> {
   const resolved = new Map(slot.values);
 
   if (hasTemperatureGroup(model) && slot.temperature.mode === temperatureMode.operative) {
@@ -61,7 +61,7 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
  * speed breaks a limit the gate does not hold the entry to) come back on the outputs'
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericPressure: number): LibraryInputs {
+export function toLibraryInputs(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): LibraryInputs {
   return inputsReader(resolveQuantities(slot, model, atmosphericPressure));
 }
 

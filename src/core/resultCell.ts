@@ -2,7 +2,7 @@ import type { ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { ViolationRow } from "./applicability";
 import { colorForBand, letteringOn } from "./bandPalette";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 import { outputValue } from "./modelRun";
 import type { Quantity } from "./quantities";
 import { displayUnitFor, numberWithUnit } from "./units";
@@ -38,7 +38,7 @@ export type ResultCell =
  * rule 5); a Band badge stays.
  */
 export function formatResultCell(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   outputs: ModelOutputs | null,
   quantity: Quantity,
   system: UnitSystem,

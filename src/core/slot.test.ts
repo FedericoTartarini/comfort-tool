@@ -9,7 +9,7 @@ import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } 
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { inputsReader, resolveQuantities } from "./libraryInputs";
-import { hasHumidityGroup, optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { hasHumidityGroup, optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import {
   areSameEntryModes,
@@ -127,7 +127,7 @@ describe("entered values", () => {
     const model = {
       ...pmvPpdIso,
       inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tdb || quantity === q.rh),
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tdb, q.rh]);
     expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.tdb, q.rh]);
   });
@@ -136,7 +136,7 @@ describe("entered values", () => {
     const model = {
       ...pmvPpdIso,
       inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tr || quantity === q.rh),
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tr, q.rh]);
     expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.tr, q.rh]);
   });
@@ -171,7 +171,7 @@ describe("entered values", () => {
     describe("the calculators a row offers", () => {
       const starting = startingSlot(pmvPpdAshrae);
       /** The calculators of the row of `quantity` among `model`'s rows for `slot`. */
-      const offeredOn = (model: RegisteredModel, slot: Slot, quantity: Quantity) =>
+      const offeredOn = (model: ModelDeclaration, slot: Slot, quantity: Quantity) =>
         panelRows(model, slot).find((row) => !("option" in row) && row.quantity === quantity)!;
 
       it("are those declared on the quantity the row enters", () => {
@@ -518,7 +518,7 @@ describe("withClothingMode", () => {
   });
 
   /** `slot` switched into dynamic clothing entry and back. */
-  function roundTripped(slot: Slot, model: RegisteredModel): Slot {
+  function roundTripped(slot: Slot, model: ModelDeclaration): Slot {
     return withClothingMode(withClothingMode(slot, clothingMode.corrected, model), clothingMode.uncorrected, model);
   }
 
@@ -654,7 +654,7 @@ describe("the entry groups held among the values", () => {
 
 describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   /** Every combination of entry modes a slot of `model` can be in, humidity included where the model has its group. */
-  function slotsInEveryMode(model: RegisteredModel): Slot[] {
+  function slotsInEveryMode(model: ModelDeclaration): Slot[] {
     const slots: Slot[] = [];
     for (const temperature of Object.values(temperatureMode)) {
       for (const airSpeed of Object.values(airSpeedMode)) {

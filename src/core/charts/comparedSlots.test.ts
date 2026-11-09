@@ -12,7 +12,7 @@ import {
   dynamicChartOf,
   type ComfortZone,
   type DeclaredDynamicChart,
-  type RegisteredModel,
+  type ModelDeclaration,
 } from "$lib/core/modelDeclaration";
 import {
   enteredSlotFor,
@@ -85,7 +85,7 @@ function alphaOf(fill: string | undefined): number {
 }
 
 /** The Comfort zones `model`'s scan declares. */
-function declaredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
+function declaredZonesOf(model: ModelDeclaration): readonly ComfortZone[] {
   const zones = model.scan?.comfortZones;
   if (!zones) {
     throw new Error(`${model.info.label} declares no Comfort zones`);
@@ -93,7 +93,7 @@ function declaredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
   return zones;
 }
 
-function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
+function dynamicOf(model: ModelDeclaration): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
   if (!chart) {
     throw new Error(`${model.info.label} declares no dynamic chart`);
@@ -102,7 +102,7 @@ function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
 }
 
 /** Three slots that differ in what moves a zone: slot 1 at the defaults, then more clothing, then more activity. */
-function threeSlots(model: RegisteredModel): Slot[] {
+function threeSlots(model: ModelDeclaration): Slot[] {
   return [startingSlot(model), enteredSlotFor(model, { clo: 1 }), enteredSlotFor(model, { met: 1.4 })];
 }
 
@@ -119,7 +119,7 @@ interface Drawing {
   readonly zonesPerSlot: number;
 }
 
-function psychrometricDrawing(model: RegisteredModel): Drawing {
+function psychrometricDrawing(model: ModelDeclaration): Drawing {
   return {
     name: `${model.info.label}, psychrometric`,
     slots: threeSlots(model),
@@ -129,7 +129,7 @@ function psychrometricDrawing(model: RegisteredModel): Drawing {
   };
 }
 
-function dynamicDrawing(model: RegisteredModel): Drawing {
+function dynamicDrawing(model: ModelDeclaration): Drawing {
   const chart = dynamicOf(model);
   return {
     name: `${model.info.label}, dynamic`,

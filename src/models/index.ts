@@ -1,4 +1,4 @@
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { adaptiveAshrae } from "./adaptiveAshrae";
 import { heatIndexRothfusz } from "./heatIndexRothfusz";
 import { pmvPpdAshrae } from "./pmvPpdAshrae";
@@ -11,4 +11,4 @@ import { pmvPpdIso } from "./pmvPpdIso";
  * then the models with no standard last. `defaultModel` reads the default from
  * this order.
  */
-export const registeredModels: readonly RegisteredModel[] = [pmvPpdAshrae, adaptiveAshrae, pmvPpdIso, heatIndexRothfusz];
+export const registeredModels: readonly ModelDeclaration[] = [pmvPpdAshrae, adaptiveAshrae, pmvPpdIso, heatIndexRothfusz];

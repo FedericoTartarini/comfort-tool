@@ -17,7 +17,7 @@ import { isAtmosphericPressureOutOfRange } from "$lib/core/applicability";
 import type { ChartSpec, PathPiece, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { insideAtSamples, onlyPieceOf, zoneFillsOf } from "$lib/core/charts/chartTestPaths";
 import { humidityMode } from "$lib/core/entryModes";
-import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { requireAxisRange, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -39,7 +39,7 @@ const TDB = 25;
 const HUMIDITY_RATIO = 0.01;
 
 /** PMV (ISO 7730) with one applicability row replaced, so a switch to it has a question to ask. */
-function withBound(key: string, bound: { min?: number; max?: number }): RegisteredModel {
+function withBound(key: string, bound: { min?: number; max?: number }): ModelDeclaration {
   const inputs: InputsInfo = pmvPpdIso.info.inputs;
   const field = inputs[key];
   if (field?.kind !== "numeric") {

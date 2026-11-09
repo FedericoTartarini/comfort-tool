@@ -20,7 +20,7 @@ import {
 } from "./applicability";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
-import { optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { formatNumber, isShownBeyond } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
@@ -44,7 +44,7 @@ function rangeRow(key: string, role: "input" | "derived" | "output", value: numb
 }
 
 /** The quantities {@link outOfRangeRows} names in `slot` under `model` at `atmosphericPressure`. */
-function quantitiesOutOfRange(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Quantity[] {
+function quantitiesOutOfRange(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): Quantity[] {
   return outOfRangeRows(slot, model, atmosphericPressure).map((row) => row.quantity);
 }
 
@@ -558,7 +558,7 @@ function endsOf(range: string): number[] {
 describe("formatBound, across the registry", () => {
   const humidityEntries = Object.values(humidityMode);
   /** Every bound an entry of `model` is held to at its starting slot, in each humidity entry mode, and every row of its info. */
-  function boundsOf(model: RegisteredModel): (readonly [Quantity, Bound])[] {
+  function boundsOf(model: ModelDeclaration): (readonly [Quantity, Bound])[] {
     const bounds: (readonly [Quantity, Bound])[] = [];
     const starting = startingSlot(model);
     const slots = starting.humidity ? humidityEntries.map((mode) => withHumidity(starting, mode, 0)) : [starting];

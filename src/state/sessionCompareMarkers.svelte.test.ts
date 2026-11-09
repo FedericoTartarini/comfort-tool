@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, type ValueEntryMode } from "$lib/core/entryModes";
-import { dynamicChartOf, hasHumidityGroup, type DeclaredChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, hasHumidityGroup, type DeclaredChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { valueEntryGroups, type ValueEntryGroup } from "$lib/core/slot";
 import { registeredModels } from "$lib/models";
@@ -41,7 +41,7 @@ const setModeOf: Record<ValueEntryGroup["field"], (session: Session, mode: Value
 };
 
 /** The defaults, then every other mode of each group `model` has, the other groups at their defaults. */
-function modeCasesOf(model: RegisteredModel): ModeCase[] {
+function modeCasesOf(model: ModelDeclaration): ModeCase[] {
   const fresh = new Session(model);
   const cases: ModeCase[] = [{ name: "the default entry modes", enter: () => {} }];
   for (const group of valueEntryGroups.filter((candidate) => candidate.appliesTo(model))) {
@@ -87,7 +87,7 @@ function drawChart(session: Session, outputs: Outputs, chart: DeclaredChart): Ch
  * slot 3 enabled, each named by the model, the entry modes, the chart, the
  * pair and the distance; or a chart that draws other than three markers.
  */
-function markersTooClose(model: RegisteredModel, modeCase: ModeCase): string[] {
+function markersTooClose(model: ModelDeclaration, modeCase: ModeCase): string[] {
   const session = new Session(model);
   const outputs = new Outputs(session);
   // Before Compare: a slot first enabled takes slot 1's entry modes, so the
@@ -136,7 +136,7 @@ describe("the check that keeps the three markers apart", () => {
         "quantity" in input && (input.quantity === q.tdb || input.quantity === q.tr) ? { ...input, value: upperEndOf(input.quantity) } : input,
       ),
       charts: [{ type: chartType.psychrometric }],
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(markersTooClose(fixture, modeCasesOf(fixture)[0])).toContainEqual(
       "Fixture at its temperature bound, the default entry modes, Psychrometric chart: Input 1 and Input 2 stand 0.0000 apart",
     );

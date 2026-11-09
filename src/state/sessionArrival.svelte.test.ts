@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { atmosphericPressureRow, enteredBound, nearestEnd, outOfRangeRows } from "$lib/core/applicability";
 import { humidityMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { valueEntryGroups, withEnteredValues, withHumidityMode, type Slot } from "$lib/core/slot";
@@ -24,12 +24,12 @@ const q = quantities;
 /** A pressure below the bound's 30 000 Pa (ADR-0002 decision 49). */
 const PRESSURE_OUT_OF_RANGE = 20000;
 
-function standardAddress(model: RegisteredModel): Address {
+function standardAddress(model: ModelDeclaration): Address {
   return { page: page.standard, model };
 }
 
 /** The bound the gate holds `quantity` to in `slot` under `model`, or a throw for an entry it leaves unbounded. */
-function boundOf(model: RegisteredModel, quantity: Quantity, slot: Slot) {
+function boundOf(model: ModelDeclaration, quantity: Quantity, slot: Slot) {
   const bound = enteredBound(model, quantity, slot, DEFAULT_ATMOSPHERIC_PRESSURE);
   if (!bound) {
     throw new Error(`${quantity.label} has no bound under ${model.info.label}`);
@@ -42,7 +42,7 @@ function boundOf(model: RegisteredModel, quantity: Quantity, slot: Slot) {
  * humidity entry last and past its bound at the dry bulb already moved; an
  * entry with no bound is left as it is.
  */
-function pastEveryBound(slot: Slot, model: RegisteredModel): Slot {
+function pastEveryBound(slot: Slot, model: ModelDeclaration): Slot {
   const entered = [...slot.values.keys()];
   if (slot.humidity) {
     entered.push(slot.humidity.mode.quantity);
@@ -59,7 +59,7 @@ function pastEveryBound(slot: Slot, model: RegisteredModel): Slot {
  * can hold, once in the default mode of every other entry group and once in
  * the other mode of every group the model has.
  */
-function slotsInEveryEntryMode(model: RegisteredModel): Slot[] {
+function slotsInEveryEntryMode(model: ModelDeclaration): Slot[] {
   const [starting] = new Session(model).toWrittenSession().slots;
   const corrected = valueEntryGroups.reduce(
     (converted, group) =>
@@ -78,7 +78,7 @@ function slotsInEveryEntryMode(model: RegisteredModel): Slot[] {
  * slot 3 disabled, and the pressure out of range: the worst a link or a kept
  * tab can carry.
  */
-function sessionPastEveryBound(model: RegisteredModel, slot: Slot): Session {
+function sessionPastEveryBound(model: ModelDeclaration, slot: Slot): Session {
   const past = pastEveryBound(slot, model);
   const written = new Session(model).toWrittenSession();
   return new Session({

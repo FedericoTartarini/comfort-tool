@@ -2,7 +2,7 @@ import { pmv_ppd_iso, PMV_PPD_ISO_INFO } from "jsthermalcomfort";
 import { customEnsemble } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { categoryZones } from "$lib/core/comfortZones";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
@@ -79,4 +79,4 @@ export const pmvPpdIso = {
     comfortZones: categoryZones(PMV_PPD_ISO_INFO.outputs.category.classifier),
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;

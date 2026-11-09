@@ -34,12 +34,12 @@ import type { ClassifierBins } from "jsthermalcomfort";
 import { bandListFrom } from "./bands";
 import { dynamicAxisQuantities } from "./charts/dynamicChart";
 import { humidityMode, type HumidityMode, type ValueEntryMode } from "./entryModes";
-import { classifierOf, dynamicChartOf, hasHumidityGroup, optionsOf, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, dynamicChartOf, hasHumidityGroup, optionsOf, type ModelDeclaration, type OptionSpec } from "./modelDeclaration";
 import { page, paintsBandsOn, type Page } from "./page";
 import { quantities, type Quantity } from "./quantities";
 import {
+  declaredQuantitiesUnderEntryModes,
   defaultEntryModes,
-  inputsUnderEntryModes,
   isHumidityQuantity,
   seedDeclaredDefaults,
   underEntryModes,
@@ -62,7 +62,7 @@ const PREFIX = "v1.";
 const entryModeFields = Object.keys(defaultEntryModes) as (keyof ValueEntryModes)[];
 
 /** `session` written out as a text, its options grouped under the model in `models` that declares each. */
-export function toText(session: WrittenSession, models: readonly RegisteredModel[]): string {
+export function toText(session: WrittenSession, models: readonly ModelDeclaration[]): string {
   return PREFIX + toBase64Url(deflateSync(new TextEncoder().encode(JSON.stringify(sessionJson(session, models)))));
 }
 
@@ -96,7 +96,7 @@ export function narrowedToPage(session: WrittenSession, onPage: Page): WrittenSe
 }
 
 /** What of `slot` `model` is computed from: the values it holds under the slot's entry modes, its humidity, its options. */
-function enteredSlot(slot: Slot, model: RegisteredModel): Slot {
+function enteredSlot(slot: Slot, model: ModelDeclaration): Slot {
   const held = heldQuantities(model, slot);
   return {
     ...slot,
@@ -120,7 +120,7 @@ function enteredSlot(slot: Slot, model: RegisteredModel): Slot {
  * the Standard page writes (rule 5), reads back as written, and starts on
  * the classifier's list once the comparison is made.
  */
-export function toDecodedSession(text: string, models: readonly RegisteredModel[]): WrittenSession | undefined {
+export function toDecodedSession(text: string, models: readonly ModelDeclaration[]): WrittenSession | undefined {
   try {
     const json = jsonOf(text);
     const session = sessionFrom(json, models);
@@ -138,11 +138,11 @@ export function toDecodedSession(text: string, models: readonly RegisteredModel[
 }
 
 /** `settings` with the Band list `model` starts on where they hold none and it scans. */
-function withStartingBands(settings: ChartSettings, model: RegisteredModel): ChartSettings {
+function withStartingBands(settings: ChartSettings, model: ModelDeclaration): ChartSettings {
   return settings.bands ? settings : { ...settings, bands: startingChartSettings(model).bands };
 }
 
-function sessionJson(session: WrittenSession, models: readonly RegisteredModel[]) {
+function sessionJson(session: WrittenSession, models: readonly ModelDeclaration[]) {
   const [first] = session.slots;
   const entryModes: Record<string, string> = Object.fromEntries(entryModeFields.map((field) => [field, first[field].mode.id]));
   if (first.humidity) {
@@ -160,7 +160,7 @@ function sessionJson(session: WrittenSession, models: readonly RegisteredModel[]
   };
 }
 
-function slotJson(slot: Slot, models: readonly RegisteredModel[]) {
+function slotJson(slot: Slot, models: readonly ModelDeclaration[]) {
   const values: Record<string, number> = Object.fromEntries([...slot.values].map(([quantity, value]) => [quantity.key, value]));
   if (slot.humidity) {
     values[slot.humidity.mode.quantity.key] = slot.humidity.value;
@@ -174,7 +174,7 @@ function slotJson(slot: Slot, models: readonly RegisteredModel[]) {
 }
 
 /** The model in `models` that declares `option`; a slot holds no other. */
-function ownerOf(option: OptionSpec, models: readonly RegisteredModel[]): RegisteredModel {
+function ownerOf(option: OptionSpec, models: readonly ModelDeclaration[]): ModelDeclaration {
   const owner = models.find((model) => optionsOf(model).includes(option));
   if (!owner) {
     throw new Error(`No registered model declares the option ${option.label}`);
@@ -231,7 +231,7 @@ function jsonOf(text: string): unknown {
   }
 }
 
-function sessionFrom(json: unknown, models: readonly RegisteredModel[]): WrittenSession {
+function sessionFrom(json: unknown, models: readonly ModelDeclaration[]): WrittenSession {
   const written = membersOf(json, ["model", "unitSystem", quantities.p_atm.key, "compare", "enabled", "entryModes", "slots", "charts"]);
   const model = modelNamed(written.model, models) ?? refuse();
   const modes = entryModesFrom(written.entryModes);
@@ -289,7 +289,7 @@ function entryModesFrom(json: unknown): WrittenEntryModes {
  * humidity mode the text writes is refused, since a default there would be in
  * another mode than slot 1's.
  */
-function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredModel, models: readonly RegisteredModel[]): Slot {
+function slotFrom(json: unknown, modes: WrittenEntryModes, model: ModelDeclaration, models: readonly ModelDeclaration[]): Slot {
   const written = membersOf(json, ["values", "options"]);
   const enterable = models.flatMap((candidate) => heldQuantities(candidate, modes.values));
   const values = new Map<Quantity, number>();
@@ -325,11 +325,11 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: RegisteredMode
 
 /**
  * The quantities a slot in `modes` holds `model`'s inputs under among its
- * values, by the walk a switch seeds by ({@link inputsUnderEntryModes}):
- * humidity is held apart from them.
+ * values, by the walk a switch seeds by
+ * ({@link declaredQuantitiesUnderEntryModes}): humidity is held apart from them.
  */
-function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
-  return inputsUnderEntryModes(model, modes).map(({ held }) => held).filter((quantity) => !isHumidityQuantity(quantity));
+function heldQuantities(model: ModelDeclaration, modes: ValueEntryModes): Quantity[] {
+  return declaredQuantitiesUnderEntryModes(model, modes).map(({ held }) => held).filter((quantity) => !isHumidityQuantity(quantity));
 }
 
 /**
@@ -339,7 +339,7 @@ function heldQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantit
  * it writes none, as a link copied on the Standard page does (rule 5), until
  * {@link toDecodedSession} starts it on the classifier's after comparing.
  */
-function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: WrittenEntryModes): ChartSettings {
+function chartSettingsFrom(json: unknown, model: ModelDeclaration, modes: WrittenEntryModes): ChartSettings {
   const dynamic = dynamicChartOf(model);
   const written = membersOf(json, ["type", ...(dynamic ? ["axes"] : [])]);
   const { bands } = recordOf(json);
@@ -356,7 +356,7 @@ function chartSettingsFrom(json: unknown, model: RegisteredModel, modes: Written
   };
 }
 
-function axesFrom(json: unknown, model: RegisteredModel, modes: ValueEntryModes): ChartSettings["axes"] {
+function axesFrom(json: unknown, model: ModelDeclaration, modes: ValueEntryModes): ChartSettings["axes"] {
   const written = membersOf(json, ["x", "y"]);
   const offered = dynamicAxisQuantities(model, modes);
   // A picked axis is kept as picked across an entry-mode change, and drawn
@@ -379,7 +379,7 @@ function bandsFrom(json: unknown, classifier: ClassifierBins): ChartSettings["ba
   return list ?? refuse();
 }
 
-function modelNamed(name: unknown, models: readonly RegisteredModel[]): RegisteredModel | undefined {
+function modelNamed(name: unknown, models: readonly ModelDeclaration[]): ModelDeclaration | undefined {
   return memberWithId(models, (model) => model.info.name, name);
 }
 

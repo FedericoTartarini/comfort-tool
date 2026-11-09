@@ -32,7 +32,7 @@ import {
 } from "./calculators";
 import { enteredSlotFor, entryModesWithClothing, entryModesWithTemperature } from "./declarationTestSlots";
 import { clothingMode, humidityMode, temperatureMode } from "./entryModes";
-import { optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { startingSlot, withClothingMode, withHumidityMode, withOption, withTemperatureMode, type Slot } from "./slot";
 
@@ -328,7 +328,7 @@ describe("withCalculatorOutputs", () => {
 });
 
 describe("panelCalculators", () => {
-  const expected: [RegisteredModel, Calculator[]][] = [
+  const expected: [ModelDeclaration, Calculator[]][] = [
     [pmvPpdAshrae, [solarGainOnOccupants, customEnsemble, clothingFromOutdoorTemperature]],
     [pmvPpdIso, [customEnsemble]],
     [adaptiveAshrae, []],

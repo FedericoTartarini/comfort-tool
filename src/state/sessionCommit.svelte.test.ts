@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { airSpeedMode, clothingMode, humidityMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "$lib/core/quantities";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -98,7 +98,7 @@ describe("a slot's entry, committed", () => {
  * dynamic clothing insulation's.
  */
 interface PastTheRow {
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
   readonly entered: Quantity;
   readonly value: number;
   readonly startMet: number;
@@ -117,7 +117,7 @@ const pastTheRow: readonly PastTheRow[] = [
 ];
 
 /** The row of `model`'s info that bounds what the model is given for an entered `entered`, and that quantity. */
-function rowOf(model: RegisteredModel, entered: Quantity) {
+function rowOf(model: ModelDeclaration, entered: Quantity) {
   const [bounded, taken] = entered === q.v ? [q.vr, q.vr] : [q.clo_dynamic, q.clo];
   const field = model.info.inputs[taken.key];
   return { bounded, bound: field?.kind === "numeric" ? field.applicability : undefined };

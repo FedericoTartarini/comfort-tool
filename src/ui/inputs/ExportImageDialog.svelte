@@ -29,7 +29,7 @@
     type ImageSize,
   } from "$lib/core/image";
   import { inputSummary, type DrawnRun } from "$lib/core/inputSummary";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
   import { downloadImage } from "$lib/ui/charts/plotlyImage";
@@ -46,7 +46,7 @@
     /** The chart the page shows, or `null` while it shows none. */
     chart: ChartSpec | null;
     /** The session's model and chart type, which name the default title. */
-    model: RegisteredModel;
+    model: ModelDeclaration;
     chartType: ChartType;
     /** What the Input summary lists: the runs {@link chart} is drawn of, read at Download. */
     runs: readonly DrawnRun[];

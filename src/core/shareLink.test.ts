@@ -21,7 +21,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { addEdge, moveEdge, setColor, setLabel } from "./bands";
 import { chartType } from "./chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
-import { classifierOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { rehearseSwitch } from "./modelSwitch";
 import { page, pagesOf, paintsBandsOn, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
@@ -52,7 +52,7 @@ function roundTrip(session: WrittenSession): WrittenSession | undefined {
 }
 
 /** `slot` on `model` in every entry group's other mode: operative, relative air speed, dynamic clothing, dew point. */
-function inOtherEntryModes(slot: Slot, model: RegisteredModel): Slot {
+function inOtherEntryModes(slot: Slot, model: ModelDeclaration): Slot {
   const operative = withTemperatureMode(slot, temperatureMode.operative, model);
   const corrected = withClothingMode(withAirSpeedMode(operative, airSpeedMode.corrected), clothingMode.corrected, model);
   return withHumidityMode(corrected, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
@@ -81,7 +81,7 @@ function editedSession(): WrittenSession {
   if (!ashraeBands || !isoBands) {
     throw new Error("Both PMV models scan");
   }
-  const charts = new Map<RegisteredModel, ChartSettings>([
+  const charts = new Map<ModelDeclaration, ChartSettings>([
     [pmvPpdAshrae, { type: chartType.dynamic, axes: { x: q.tdb, y: q.rh }, bands: moveEdge(setColor(ashraeBands, 1, "#00FF7f"), 3, 0.4) }],
     [pmvPpdIso, { type: chartType.dynamic, axes: { x: q.met, y: q.v }, bands: setColor(setLabel(addEdge(isoBands, 2, classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)), 0, FAR_LABEL), 4, undefined) }],
     [adaptiveAshrae, startingChartSettings(adaptiveAshrae)],
@@ -355,7 +355,7 @@ describe("narrowedToPage", () => {
     return { ...written, slots: [seeded(one), two && seeded(two), three && seeded(three)] };
   };
   /** `session` holding Adaptive's value, moved to `model` as a switch moves it, with `model`'s chart settings. */
-  const switchedTo = (model: RegisteredModel): WrittenSession => {
+  const switchedTo = (model: ModelDeclaration): WrittenSession => {
     const switched = (slot: Slot) => rehearseSwitch(slot, pmvPpdAshrae, model, session.atmosphericPressure).slot;
     const [one, two, three] = holdingAdaptive(session).slots;
     return {

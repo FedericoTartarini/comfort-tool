@@ -12,7 +12,7 @@ import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { classifierOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
@@ -50,7 +50,7 @@ function bandedSpec(
   bands: BandList,
   slot: Slot = startingSlot(pmvPpdIso),
   changes: Partial<ChartRequest> = {},
-  model: RegisteredModel = pmvPpdIso,
+  model: ModelDeclaration = pmvPpdIso,
 ): ChartSpec {
   return psychrometricSpec({ ...chartRequestFor(model, slot), bands, ...changes });
 }
@@ -63,7 +63,7 @@ interface Scanned {
 }
 
 /** Slot 1's scan of `model`'s psychrometric chart of `slot`, painting `bands`, with `changes` to the request. */
-function scannedOf(bands: BandList, slot: Slot = startingSlot(pmvPpdIso), changes: Partial<ChartRequest> = {}, model: RegisteredModel = pmvPpdIso): Scanned {
+function scannedOf(bands: BandList, slot: Slot = startingSlot(pmvPpdIso), changes: Partial<ChartRequest> = {}, model: ModelDeclaration = pmvPpdIso): Scanned {
   const drawn = { ...chartRequestFor(model, slot), bands, ...changes };
   const frame = psychrometricScanFrameFor(drawn.model, drawn.entryModes, drawn.atmosphericPressure);
   const { x, y } = hoverGridOf(psychrometricSpec(drawn));

@@ -2,7 +2,7 @@ import { copy } from "$lib/text/copy";
 import type { ChartSpec } from "./charts/chartSpec";
 import type { ChartType } from "./chartType";
 import type { InputSummary } from "./inputSummary";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 
 /**
  * The printed sizes of an Image (ADR-0002 decision 64, rule 5): Elsevier's
@@ -90,7 +90,7 @@ export function imageFooter(madeAt: Date): readonly string[] {
  * The title an Image starts with (decision 64, rule 2): the model's name as
  * the model select shows it and the chart's, as `PMV / PPD (ASHRAE 55) · Psychrometric`.
  */
-export function defaultImageTitle(model: RegisteredModel, type: ChartType): string {
+export function defaultImageTitle(model: ModelDeclaration, type: ChartType): string {
   return `${model.info.label} · ${type.title}`;
 }
 

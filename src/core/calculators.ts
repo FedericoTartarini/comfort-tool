@@ -22,7 +22,7 @@ import {
 } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { entryVerdict, type Bound } from "./applicability";
-import { inputsOf, type DeclaredQuantity, type RegisteredModel } from "./modelDeclaration";
+import { declaredQuantitiesOf, type DeclaredQuantity, type ModelDeclaration } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, enteredValue, panelRows, requireValue, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 
@@ -266,7 +266,7 @@ export function outputOf(calculator: Calculator, outputs: CalculatorOutputs): nu
  * decision 75 rule 6). A row stands for the quantities of its entry group,
  * so the list is the same under every entry mode.
  */
-export function panelCalculators(model: RegisteredModel, slot: Slot): Calculator[] {
+export function panelCalculators(model: ModelDeclaration, slot: Slot): Calculator[] {
   return [...new Set(panelRows(model, slot).flatMap((row) => ("option" in row ? [] : row.calculators)))];
 }
 
@@ -297,7 +297,7 @@ export function shownRow(
   slot: Slot,
   calculator: Calculator,
   outputs: CalculatorOutputs | undefined,
-  model: RegisteredModel,
+  model: ModelDeclaration,
   atmosphericPressure: number,
 ): ShownRow {
   const row = panelRows(model, slot).find((entry) => !("option" in entry) && entry.calculators.includes(calculator));
@@ -333,8 +333,8 @@ export function shownRow(
  * the first mode is written and left. The value is not gated here: Apply
  * commits the row's value as a typed value is committed ({@link shownRow}).
  */
-export function withCalculatorOutputs(slot: Slot, calculator: Calculator, outputs: CalculatorOutputs, model: RegisteredModel): Slot {
-  const row = inputsOf(model).find((entry) => entry.calculators?.includes(calculator));
+export function withCalculatorOutputs(slot: Slot, calculator: Calculator, outputs: CalculatorOutputs, model: ModelDeclaration): Slot {
+  const row = declaredQuantitiesOf(model).find((entry) => entry.calculators?.includes(calculator));
   if (!row) {
     throw new Error(`${model.info.label} declares ${calculator.label} on no row`);
   }

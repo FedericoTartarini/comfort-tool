@@ -4,7 +4,7 @@
   select shows the model it is given.
 -->
 <script lang="ts" module>
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { StandardEntry } from "$lib/core/standard";
 
   /**
@@ -14,7 +14,7 @@
    */
   export interface ModelGroup {
     readonly standard: StandardEntry | undefined;
-    readonly models: readonly RegisteredModel[];
+    readonly models: readonly ModelDeclaration[];
   }
 </script>
 
@@ -32,8 +32,8 @@
      */
     choices: readonly ModelGroup[];
     /** The session's current model, which `choices` holds. */
-    model: RegisteredModel;
-    onchoose: (model: RegisteredModel) => void;
+    model: ModelDeclaration;
+    onchoose: (model: ModelDeclaration) => void;
   }
 
   let { choices, model, onchoose }: Props = $props();

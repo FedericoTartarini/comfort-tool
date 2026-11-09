@@ -12,7 +12,7 @@ import {
   type ClothingMode,
   type TemperatureMode,
 } from "./entryModes";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 import { quantities } from "./quantities";
 import { defaultEntryModes, startingSlot, type Slot, type ValueEntryModes } from "./slot";
 
@@ -43,7 +43,7 @@ type HumidityKey = (typeof humidityMode)[keyof typeof humidityMode]["quantity"][
  * humidity entry is not among the values, so it cannot be entered here.
  */
 export function enteredSlotFor(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   entered: Partial<Record<Exclude<keyof typeof quantities, HumidityKey>, number>>,
 ): Slot {
   const slot = startingSlot(model);

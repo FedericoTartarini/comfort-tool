@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { ChartType } from "$lib/core/chartType";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { ChartState } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import { Label } from "$lib/ui/primitives/label";
   import ChoiceSelect from "./ChoiceSelect.svelte";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     chart: ChartState;
   }
 

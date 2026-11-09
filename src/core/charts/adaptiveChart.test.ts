@@ -4,7 +4,7 @@ import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { inputsReader } from "$lib/core/libraryInputs";
-import { requireAxisRange, type AxisRange, type DeclaredAdaptiveChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { requireAxisRange, type AxisRange, type DeclaredAdaptiveChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -34,10 +34,10 @@ const fixtureAxisRanges: readonly AxisRange[] = [
 ];
 
 /** PMV (ISO 7730)'s declaration over the fixture's ranges, on whose inputs a fixture chart is drawn. */
-const fixtureModel: RegisteredModel = { ...pmvPpdIso, axisRanges: fixtureAxisRanges };
+const fixtureModel: ModelDeclaration = { ...pmvPpdIso, axisRanges: fixtureAxisRanges };
 
 /** {@link fixtureModel} with `chart` as its one chart. */
-function isoDrawing(chart: DeclaredAdaptiveChart): RegisteredModel {
+function isoDrawing(chart: DeclaredAdaptiveChart): ModelDeclaration {
   return { ...fixtureModel, charts: [chart] };
 }
 
@@ -219,7 +219,7 @@ describe("Adaptive's running mean axis", () => {
         ...info,
         inputs: { ...info.inputs, t_running_mean: { ...info.inputs.t_running_mean, applicability: { min: 12, max: 30 } } },
       },
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     const spec = adaptiveSpec({ ...adaptiveRequest, model: moved });
     expect(spec.layout.x.range).toEqual([12, 30]);
   });

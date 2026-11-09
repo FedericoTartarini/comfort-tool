@@ -11,7 +11,7 @@ import { classifyFromBins } from "jsthermalcomfort";
 import { bandListOf, moveEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
-import { classifierOf, dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
@@ -30,7 +30,7 @@ import { scannedField } from "./scan";
 const q = quantities;
 
 /** `model`'s dynamic chart. */
-function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
+function dynamicOf(model: ModelDeclaration): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
   if (!chart) {
     throw new Error(`${model.info.label} no longer declares a dynamic chart`);
@@ -43,7 +43,7 @@ const isoBands = bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands));
 const isoRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
 /** `model`'s dynamic chart of its starting slot, painting `bands`. */
-function bandedSpec(bands: BandList, model: RegisteredModel = pmvPpdIso): ChartSpec {
+function bandedSpec(bands: BandList, model: ModelDeclaration = pmvPpdIso): ChartSpec {
   const chart = dynamicOf(model);
   return dynamicSpec({ ...chartRequestFor(model, startingSlot(model)), bands }, chart.axes);
 }
@@ -253,8 +253,8 @@ describe("a Band list whose Edges are unevenly spaced", () => {
   ];
 
   /** A model whose PMV is `pmvAt` of each point's dry-bulb temperature, on the dynamic chart's tdb × v. */
-  function modelOf(pmvAt: (tdb: number) => number): RegisteredModel {
-    return { ...pmvPpdIso, axisRanges: fixtureAxisRanges, run: (inputs) => ({ pmv: pmvAt(inputs.tdb), warnings: [] }) } satisfies RegisteredModel;
+  function modelOf(pmvAt: (tdb: number) => number): ModelDeclaration {
+    return { ...pmvPpdIso, axisRanges: fixtureAxisRanges, run: (inputs) => ({ pmv: pmvAt(inputs.tdb), warnings: [] }) } satisfies ModelDeclaration;
   }
 
   /** The spec of a model whose PMV is `value` at every point of the field, painting `bands`. */
@@ -350,7 +350,7 @@ describe("a Band list whose Edges are unevenly spaced", () => {
       axisRanges: fixtureAxisRanges,
       scan: { ...pmvPpdIso.scan, output: q.operative_tmp },
       run: (inputs) => ({ operative_tmp: inputs.tdb, warnings: [] }),
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     const degrees: BandList = { ...uneven, edges: [15, 20, 30, 100] };
     const lines = linesOf(dynamicSpec({ ...isoRequest, model, unitSystem: unitSystem.ip, bands: degrees }, isoChart.axes));
     const xs = lines.map((line) => [...new Set(line.pieces.flatMap((piece) => piece.x.map((x) => x.toFixed(6))))]);

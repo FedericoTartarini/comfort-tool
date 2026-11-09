@@ -5,7 +5,7 @@
  * a Comfort zone's or a Band's, found on those runs and on the few more a
  * boundary asks for.
  */
-import type { ComfortZone, Range, RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ComfortZone, ModelDeclaration, Range } from "$lib/core/modelDeclaration";
 import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
@@ -40,7 +40,7 @@ export interface Sweep {
  * the same for both.
  */
 export interface ScanFrame {
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
   readonly output: Quantity;
   readonly x: Sweep;
   readonly y: Sweep;
@@ -97,7 +97,7 @@ export interface NumberInterval {
  * declaring the psychrometric chart has some, which a registry-wide test holds
  * (`core/modelDeclaration.test.ts`).
  */
-export function comfortZonesOf(model: RegisteredModel): readonly ComfortZone[] {
+export function comfortZonesOf(model: ModelDeclaration): readonly ComfortZone[] {
   return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 

@@ -15,7 +15,7 @@
  * be read at another entry (see {@link settledOutOfRangeRows}).
  */
 import { nearestEnd, outOfRangeRows, type OutOfRangeRow } from "./applicability";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 
@@ -36,7 +36,7 @@ export interface RehearsedSwitch {
  * switch keeps (ADR-0002 decision 49), as {@link settledOutOfRangeRows}
  * lists it.
  */
-export function rehearseSwitch(slot: Slot, from: RegisteredModel, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
+export function rehearseSwitch(slot: Slot, from: ModelDeclaration, model: ModelDeclaration, atmosphericPressure: number): RehearsedSwitch {
   const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, model), model);
   return { slot: seeded, outOfRangeRows: settledOutOfRangeRows(seeded, model, atmosphericPressure) };
 }
@@ -57,7 +57,7 @@ export function rehearseSwitch(slot: Slot, from: RegisteredModel, model: Registe
  * humidity-ratio entry has no bound then and is not listed, so it may be out
  * of range once the pressure returns (ADR-0002 decision 53).
  */
-export function settledOutOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPressure: number): OutOfRangeRow[] {
+export function settledOutOfRangeRows(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): OutOfRangeRow[] {
   let rows = outOfRangeRows(slot, model, atmosphericPressure);
   for (let pass = 0; pass < slot.values.size; pass += 1) {
     const next = outOfRangeRows(slot, model, atmosphericPressure, adjustToBounds(slot, rows));
@@ -108,7 +108,7 @@ export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot
  * dynamic clothing insulation is inverted by that model's standard's rule,
  * which the new model, having no clothing group, does not have.
  */
-function convertEntryModes(slot: Slot, from: RegisteredModel, model: RegisteredModel): Slot {
+function convertEntryModes(slot: Slot, from: ModelDeclaration, model: ModelDeclaration): Slot {
   return valueEntryGroups.reduce(
     (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from)),
     slot,

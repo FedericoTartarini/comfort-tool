@@ -4,7 +4,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { violationRows, type ViolationRow } from "./applicability";
 import { palette } from "./palette";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { formatResultCell, type ResultCell } from "./resultCell";
@@ -13,8 +13,8 @@ import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
-const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
-const atTdb = (model: RegisteredModel, tdb: number) =>
+const atDefaults = (model: ModelDeclaration) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+const atTdb = (model: ModelDeclaration, tdb: number) =>
   runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
 /** Outputs holding `values` and no `warnings` rows. */

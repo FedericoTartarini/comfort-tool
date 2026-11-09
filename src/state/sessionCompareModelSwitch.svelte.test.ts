@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { isAtmosphericPressureOutOfRange } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { inputsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { declaredQuantitiesOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -42,7 +42,7 @@ const q = quantities;
 const coolerAndTakesWork = {
   ...withBounds({ tdb: { min: 10, max: 20 }, met: { min: 1.1 } }),
   inputs: [...pmvPpdIso.inputs, { quantity: q.wme, value: 0.4 }],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;
 
 /** A dry-bulb temperature, [°C], and a metabolic rate, [met], {@link coolerAndTakesWork} accepts. */
 const accepted = new Map<Quantity, number>([
@@ -278,7 +278,7 @@ describe("the model switch while Compare is on, by setting the model or there an
     expect(session.model).toBe(pmvPpdIso);
     slotPositions.forEach((position) => {
       const held = heldSlot(session, position);
-      for (const { quantity } of inputsOf(pmvPpdIso)) {
+      for (const { quantity } of declaredQuantitiesOf(pmvPpdIso)) {
         if (quantity !== q.rh) {
           expect(held.values.get(quantity)).toBe(before[position].values.get(quantity));
         }

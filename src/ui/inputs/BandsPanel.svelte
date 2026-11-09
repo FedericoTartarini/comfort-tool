@@ -12,7 +12,7 @@
 -->
 <script lang="ts">
   import { chartInk } from "$lib/core/bandPalette";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import { displayUnitFor, labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { BandListDraft, EdgeRefusal } from "$lib/state/bandListDraft.svelte";
@@ -26,7 +26,7 @@
   import NumberInput from "./NumberInput.svelte";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     draft: BandListDraft;
     unitSystem: UnitSystem;
   }

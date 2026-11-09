@@ -1,7 +1,7 @@
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { resolveQuantities } from "$lib/core/libraryInputs";
-import { requireAxisRange, requireScan, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { requireAxisRange, requireScan, type ModelDeclaration, type Range } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { requireValue, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
@@ -39,7 +39,7 @@ const ISOLINE_SAMPLES = 121;
  * relative humidity above 100. A model without a scan throws, naming it.
  */
 export function psychrometricScanFrameFor(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   entryModes: ValueEntryModes,
   atmosphericPressure: number,
 ): ScanFrame {

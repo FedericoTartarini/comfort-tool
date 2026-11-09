@@ -2,7 +2,7 @@
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { limitsBrokenLines } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
@@ -11,7 +11,7 @@
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     /**
      * One row per compared slot, in slot order. While their badges carry names, the Input column names each row beside
      * its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's limits icon alone, hidden where the row broke no limit.

@@ -16,7 +16,7 @@ import type { Bound, InputsInfo, ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import type { CalculatorInputs, FormCalculator } from "./calculators";
 import { temperatureMode, type HumidityMode } from "./entryModes";
-import { inputsOf, type RegisteredModel } from "./modelDeclaration";
+import { declaredQuantitiesOf, type ModelDeclaration } from "./modelDeclaration";
 import { rangeRowsOf } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
@@ -121,8 +121,8 @@ function intersect(bounds: readonly Bound[]): Bound | undefined {
  * model takes the quantity, the bound of the quantity's kind (ADR-0002
  * decision 46). The two hold at once, so a caller intersects them.
  */
-function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
-  const takes = inputsOf(model).some((entry) => entry.quantity === quantity);
+function everyBoundFor(model: ModelDeclaration, quantity: Quantity): Bound[] {
+  const takes = declaredQuantitiesOf(model).some((entry) => entry.quantity === quantity);
   return [boundFor(model.info.inputs, quantity), takes ? kindBounds[quantity.kind] : undefined].filter(
     (bound): bound is Bound => bound !== undefined,
   );
@@ -166,7 +166,7 @@ function isInverted(bound: Bound): boolean {
  * the pressure is out of range (decision 53).
  * `undefined` for a model without the humidity entry group.
  */
-function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
+function humidityEntryBoundFor(model: ModelDeclaration, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
   if (mode.readsPressure && isAtmosphericPressureOutOfRange(atmosphericPressure)) {
     return undefined;
   }
@@ -189,7 +189,7 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
  * calculated, and its violation is reported on the entered row
  * ({@link violationRows}).
  */
-function correctedEntryBoundFor(model: RegisteredModel, quantity: Quantity, correction: EntryCorrection): Bound | undefined {
+function correctedEntryBoundFor(model: ModelDeclaration, quantity: Quantity, correction: EntryCorrection): Bound | undefined {
   if (correction.corrected.panel.includes(quantity)) {
     return boundFor(model.info.inputs, correction.taken);
   }
@@ -235,7 +235,7 @@ export function outOfRangeCalculatorInputs(calculator: FormCalculator, inputs: C
  * row for it.
  */
 export function enteredBound(
-  model: RegisteredModel,
+  model: ModelDeclaration,
   quantity: Quantity,
   slot: Slot,
   atmosphericPressure: number,
@@ -284,7 +284,7 @@ function boundingQuantities(quantity: Quantity, slot: Slot): readonly Quantity[]
  * input panel's red boxes and the model-switch dialog's rows are both this
  * list, so the two can never disagree about a value.
  */
-export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPressure: number, boundsAt: Slot = slot): OutOfRangeRow[] {
+export function outOfRangeRows(slot: Slot, model: ModelDeclaration, atmosphericPressure: number, boundsAt: Slot = slot): OutOfRangeRow[] {
   const entered: (readonly [Quantity, number])[] = [...slot.values];
   if (slot.humidity) {
     entered.push([slot.humidity.mode.quantity, slot.humidity.value]);
@@ -349,7 +349,7 @@ function verdictOf<Row extends OutOfRangeRow>(
  */
 export function entryVerdict(
   slot: Slot,
-  model: RegisteredModel,
+  model: ModelDeclaration,
   atmosphericPressure: number,
   quantity: Quantity,
   value: number,
@@ -368,7 +368,7 @@ export function entryVerdict(
  */
 export function atmosphericPressureVerdict(
   slots: readonly { readonly position: SlotPosition; readonly slot: Slot }[],
-  model: RegisteredModel,
+  model: ModelDeclaration,
   value: number,
 ): Verdict<SlotOutOfRangeRow> {
   return verdictOf(value, q.p_atm, kindBounds[q.p_atm.kind], (written) =>
@@ -433,7 +433,7 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
  * are not kept. A row is only a value shown outside its bound, as the gate
  * judges an entry.
  */
-export function violationRows(model: RegisteredModel, outputs: ModelOutputs, modes: ValueEntryModes): ViolationRow[] {
+export function violationRows(model: ModelDeclaration, outputs: ModelOutputs, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
   for (const { key, role, value, bound } of rangeRowsOf(outputs)) {
     const keyed = quantityFor(key);
@@ -465,7 +465,7 @@ export function violationRows(model: RegisteredModel, outputs: ModelOutputs, mod
  * entry in `modes` and bounding the corrected quantity, read off the group's
  * {@link EntryCorrection}.
  */
-function reportedRow(model: RegisteredModel, keyed: Quantity, modes: ValueEntryModes): Pick<ViolationRow, "quantity" | "bounded"> {
+function reportedRow(model: ModelDeclaration, keyed: Quantity, modes: ValueEntryModes): Pick<ViolationRow, "quantity" | "bounded"> {
   for (const group of valueEntryGroups) {
     if (group.correction?.taken === keyed && group.appliesTo(model)) {
       return { quantity: group.modeOf(modes).axis, bounded: group.correction.corrected.axis };

@@ -1,7 +1,7 @@
 import { Standard } from "jsthermalcomfort";
 import type { StandardId } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { standardOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page } from "$lib/core/page";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -44,20 +44,20 @@ const fixtureIso7933 = {
 const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
 
 /** Whether `a` and `b` both have a standard, and it is one standard. */
-function shareAStandard(a: RegisteredModel, b: RegisteredModel): boolean {
+function shareAStandard(a: ModelDeclaration, b: ModelDeclaration): boolean {
   const standard = standardOf(a);
   return standard !== undefined && standard === standardOf(b);
 }
 
 /** Whether no model without a standard comes before a model with one. */
-function hasStandardModelsFirst(models: readonly RegisteredModel[]): boolean {
+function hasStandardModelsFirst(models: readonly ModelDeclaration[]): boolean {
   return models.every(
     (model, i) => standardOf(model) === undefined || models.slice(0, i).every((earlier) => standardOf(earlier) !== undefined),
   );
 }
 
 /** Whether each model of a standard follows another of it, or is the first of its standard. */
-function keepsStandardsTogether(models: readonly RegisteredModel[]): boolean {
+function keepsStandardsTogether(models: readonly ModelDeclaration[]): boolean {
   return models.every(
     (model, i) =>
       (i > 0 && shareAStandard(model, models[i - 1])) || !models.slice(0, i).some((earlier) => shareAStandard(model, earlier)),
@@ -203,7 +203,7 @@ describe("standardLinks", () => {
 
 describe("modelChoicesOn", () => {
   /** Each group as its standard's identifier, or `undefined` for the standard-less group, and its models. */
-  function byStandard(groups: readonly ModelGroup[]): [StandardId | undefined, readonly RegisteredModel[]][] {
+  function byStandard(groups: readonly ModelGroup[]): [StandardId | undefined, readonly ModelDeclaration[]][] {
     return groups.map(({ standard, models }) => [standard?.id, models]);
   }
 

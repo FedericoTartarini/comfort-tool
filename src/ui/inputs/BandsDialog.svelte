@@ -8,7 +8,7 @@
   A model with no Band list has nothing to edit, and its button is disabled.
 -->
 <script lang="ts">
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { BandListDraft } from "$lib/state/bandListDraft.svelte";
   import type { ChartState } from "$lib/state/session.svelte";
@@ -18,7 +18,7 @@
   import BandsPanel from "./BandsPanel.svelte";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     chart: ChartState;
     unitSystem: UnitSystem;
   }

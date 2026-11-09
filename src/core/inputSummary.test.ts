@@ -9,7 +9,7 @@ import { bandListOf } from "./bands";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import { inputSummary, type DrawnRun } from "./inputSummary";
-import { classifierOf, inputsOf, optionsOf, type RegisteredModel } from "./modelDeclaration";
+import { classifierOf, declaredQuantitiesOf, optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
@@ -30,7 +30,7 @@ function runOf(slot: Slot, atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE): 
 }
 
 /** `slot` drawn unnamed at the default pressure, with the violation rows `model`'s run of it reports. */
-function reportedRunOf(model: RegisteredModel, slot: Slot): DrawnRun {
+function reportedRunOf(model: ModelDeclaration, slot: Slot): DrawnRun {
   const outputs = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
   return { ...runOf(slot), violations: violationRows(model, outputs, slot) };
 }
@@ -46,7 +46,7 @@ function namedRunOf(slot: Slot, position: SlotPosition): DrawnRun {
 }
 
 /** The summary of `runs` on Standard: no Band list. */
-function summaryOf(model: RegisteredModel, runs: readonly DrawnRun[], system: UnitSystem = si) {
+function summaryOf(model: ModelDeclaration, runs: readonly DrawnRun[], system: UnitSystem = si) {
   return inputSummary({ model, runs, unitSystem: system, bands: null });
 }
 
@@ -71,7 +71,7 @@ describe("inputSummary", () => {
     expect(summary).toEqual([
       [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).name)],
       [
-        ...inputsOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
+        ...declaredQuantitiesOf(pmvPpdAshrae).map(({ quantity, value }) => `${rowOf(quantity)}${formatNumber(value)}`),
         `${ashraeOption.label}: ${copy.no}`,
         `${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`,
       ],
@@ -108,7 +108,7 @@ describe("inputSummary", () => {
   });
 
   it("heads no run when the runs are unnamed, whatever their count", () => {
-    const [{ quantity, value }] = inputsOf(pmvPpdIso);
+    const [{ quantity, value }] = declaredQuantitiesOf(pmvPpdIso);
     for (const count of [1, 2, 3]) {
       const runs = Array.from({ length: count }, () => runOf(startingSlot(pmvPpdIso)));
       const [, ...slots] = summaryOf(pmvPpdIso, runs);

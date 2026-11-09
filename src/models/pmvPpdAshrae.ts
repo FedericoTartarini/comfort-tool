@@ -2,7 +2,7 @@ import { pmv_ppd_ashrae, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
 import { clothingFromOutdoorTemperature, customEnsemble, solarGainOnOccupants } from "$lib/core/calculators";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
-import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration, OptionSpec } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
 
@@ -90,4 +90,4 @@ export const pmvPpdAshrae = {
     comfortZones: [intervalZone(copy.comfortZone, PMV_PPD_ASHRAE_INFO.outputs.compliance.interval)],
   },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;

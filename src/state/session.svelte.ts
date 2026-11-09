@@ -4,7 +4,7 @@ import type { BandList } from "$lib/core/bands";
 import { shownRow, type Calculator, type CalculatorOutputs } from "$lib/core/calculators";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
-import { classifierOf, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, type ChartAxes, type ModelDeclaration, type OptionSpec } from "$lib/core/modelDeclaration";
 import { page, type Address, type Page } from "$lib/core/page";
 import {
   atmosphericPressureRow,
@@ -173,7 +173,7 @@ export class ChartState {
   #bands: BandList | null;
 
   /** `model`'s chart, set up as `settings` say. */
-  constructor(model: RegisteredModel, settings: ChartSettings) {
+  constructor(model: ModelDeclaration, settings: ChartSettings) {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan ? classifierOf(model.info, model.scan.bands) : null;
@@ -240,7 +240,7 @@ export interface RehearsedSlot {
  * these is held — it is the question, not a half-done switch.
  */
 export interface PendingSwitch {
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
   readonly slots: readonly RehearsedSlot[];
 }
 
@@ -255,7 +255,7 @@ export class Session {
   // All four hold objects compared by identity elsewhere, so `$state.raw`.
   /** The page the address names. Set with the model, by {@link setAddress}; no page component sets it. */
   page: Page;
-  model: RegisteredModel;
+  model: ModelDeclaration;
   unitSystem: UnitSystem;
   /** The chart settings of the current model. */
   chart: ChartState;
@@ -278,7 +278,7 @@ export class Session {
   // Each model remembers its own chart settings. A plain Map: only `chart` is
   // read reactively, and lazily filling a reactive map during a derivation
   // would be a write inside a read.
-  readonly #chartByModel = new Map<RegisteredModel, ChartState>();
+  readonly #chartByModel = new Map<ModelDeclaration, ChartState>();
 
   /**
    * A session holding what `from` holds, on the Standard page until an
@@ -286,7 +286,7 @@ export class Session {
    * {@link startingSession}, so a session comes to hold its state one way;
    * nothing lays a written session over a session already built.
    */
-  constructor(from: RegisteredModel | WrittenSession) {
+  constructor(from: ModelDeclaration | WrittenSession) {
     const written = "slots" in from ? from : startingSession(from);
     for (const [model, settings] of written.charts) {
       this.#chartByModel.set(model, new ChartState(model, settings));
@@ -557,7 +557,7 @@ export class Session {
    * model in one step, so no derivation sees a slot and the model disagree.
    * The address's path, {@link setAddress}, sets the model so and then cuts.
    */
-  setModel(model: RegisteredModel): void {
+  setModel(model: ModelDeclaration): void {
     if (model === this.model) {
       return;
     }
@@ -604,7 +604,7 @@ export class Session {
    * {@link acceptSwitch} or {@link declineSwitch} answers it (decision 84,
    * rule 4).
    */
-  requestModel(model: RegisteredModel): void {
+  requestModel(model: ModelDeclaration): void {
     // Every request supersedes the last one, so no question outlives the act
     // that asked it — asking for the model already current answers the
     // previous question with a "No" rather than leaving it standing.
@@ -644,7 +644,7 @@ export class Session {
    * with the rest, and is listed so that none changes unseen (ADR-0002
    * decision 84, rule 4).
    */
-  #rehearse(model: RegisteredModel): RehearsedSlot[] {
+  #rehearse(model: ModelDeclaration): RehearsedSlot[] {
     return slotPositions.flatMap((position) => {
       const held = this.#slots[position];
       if (!held) {
@@ -663,7 +663,7 @@ export class Session {
    * against a slot that has since moved is stale, and an unanswered question
    * is a "No".
    */
-  #land(model: RegisteredModel, slots: readonly Pick<RehearsedSlot, "position" | "slot">[]): void {
+  #land(model: ModelDeclaration, slots: readonly Pick<RehearsedSlot, "position" | "slot">[]): void {
     for (const { position, slot } of slots) {
       this.#slots[position]?.replaceWith(slot);
     }
@@ -700,7 +700,7 @@ export class Session {
     return this.#slots.filter((slot): slot is InputSlot => slot !== null);
   }
 
-  #chartFor(model: RegisteredModel): ChartState {
+  #chartFor(model: ModelDeclaration): ChartState {
     let state = this.#chartByModel.get(model);
     if (!state) {
       state = new ChartState(model, startingChartSettings(model));

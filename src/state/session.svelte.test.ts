@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
-import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -43,14 +43,14 @@ const takesExternalWork = {
     const wme = inputs.wme;
     return { ...pmvPpdIso.run(inputs), wme };
   },
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;
 
 /** A model with no temperature entry group: a dry-bulb temperature and no mean radiant one. */
 const withoutTemperatureGroup = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_without_mean_radiant" },
   inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tr),
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;
 
 /**
  * The option PMV (ASHRAE 55) reads through `run`'s second reader. With it off,
@@ -64,7 +64,7 @@ const declaresDrierAir = {
   ...pmvPpdIso,
   info: { ...pmvPpdIso.info, name: "fixture_declares_drier_air" },
   inputs: pmvPpdIso.inputs.map((entry) => (entry.quantity === q.rh ? { ...entry, value: 40 } : entry)),
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;
 
 /**
  * A slot holds a humidity only once a declaration's default or the person

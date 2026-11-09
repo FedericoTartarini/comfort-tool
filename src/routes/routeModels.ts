@@ -1,5 +1,5 @@
 import type { StandardId } from "jsthermalcomfort";
-import { standardOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { standardOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { standardEntryFor, type StandardEntry } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
@@ -14,7 +14,7 @@ import type { ModelGroup } from "$lib/ui/inputs/ModelSelect.svelte";
  */
 
 /** Models that belong to a standard, in registry order. */
-export function standardModels(): RegisteredModel[] {
+export function standardModels(): ModelDeclaration[] {
   return registeredModels.filter((model) => standardOf(model) !== undefined);
 }
 
@@ -26,7 +26,7 @@ export function standardModels(): RegisteredModel[] {
  * The link is an address, so it opens the same model whichever model the person is on.
  */
 export function standardLinks(
-  models: readonly RegisteredModel[] = registeredModels,
+  models: readonly ModelDeclaration[] = registeredModels,
 ): { standard: StandardEntry; address: Address }[] {
   return modelGroupsOf(models).flatMap(({ standard, models: [first] }) =>
     standard ? [{ standard, address: { page: page.standard, model: first } }] : [],
@@ -64,7 +64,7 @@ export function ariaCurrentOf(link: Address, address: Address): "page" | "true" 
  */
 export function modelChoicesOn(
   address: Address,
-  models: readonly RegisteredModel[] = registeredModels,
+  models: readonly ModelDeclaration[] = registeredModels,
 ): readonly ModelGroup[] {
   const groups = modelGroupsOf(models);
   if (address.page !== page.standard) {
@@ -79,9 +79,9 @@ export function modelChoicesOn(
  * standard, in the order `models` first names each, under its entry; then one
  * group of the models with no standard, when there are any.
  */
-function modelGroupsOf(models: readonly RegisteredModel[]): ModelGroup[] {
-  const groups: { standard: StandardEntry; models: RegisteredModel[] }[] = [];
-  const withoutStandard: RegisteredModel[] = [];
+function modelGroupsOf(models: readonly ModelDeclaration[]): ModelGroup[] {
+  const groups: { standard: StandardEntry; models: ModelDeclaration[] }[] = [];
+  const withoutStandard: ModelDeclaration[] = [];
   for (const model of models) {
     const id = standardOf(model);
     if (id === undefined) {
@@ -98,7 +98,7 @@ function modelGroupsOf(models: readonly RegisteredModel[]): ModelGroup[] {
   return withoutStandard.length > 0 ? [...groups, { standard: undefined, models: withoutStandard }] : groups;
 }
 
-export function defaultModel(): RegisteredModel {
+export function defaultModel(): ModelDeclaration {
   const model = standardModels()[0];
   if (!model) {
     throw new Error("No registered model belongs to a standard");
@@ -107,7 +107,7 @@ export function defaultModel(): RegisteredModel {
 }
 
 /** `standardOf(model)`, or throws when the model has none (an Explore-only model has no Standard page). */
-export function requireStandard(model: RegisteredModel): StandardId {
+export function requireStandard(model: ModelDeclaration): StandardId {
   const standard = standardOf(model);
   if (!standard) {
     throw new Error(`${model.info.label} has no standard and no Standard page`);
@@ -132,7 +132,7 @@ export function toRouteSegment(name: string): string {
  * model is written to and the one it is found by cannot drift apart. Throws
  * for a model with no standard, which has no Standard page.
  */
-export function routeSegmentsOf(model: RegisteredModel): { standard: string; model: string } {
+export function routeSegmentsOf(model: ModelDeclaration): { standard: string; model: string } {
   return { standard: standardEntryFor(requireStandard(model)).routeSegment, model: toRouteSegment(model.info.name) };
 }
 
@@ -140,7 +140,7 @@ export function routeSegmentsOf(model: RegisteredModel): { standard: string; mod
  * A model's Explore address: its own route segment alone, keyed as the Explore
  * route's params. Every model has one, a model with no standard included.
  */
-export function exploreSegmentsOf(model: RegisteredModel): { model: string } {
+export function exploreSegmentsOf(model: ModelDeclaration): { model: string } {
   return { model: toRouteSegment(model.info.name) };
 }
 
@@ -155,8 +155,8 @@ export function exploreSegmentsOf(model: RegisteredModel): { model: string } {
 export function modelBySegment(
   standardSegment: string | undefined,
   modelSegment: string | undefined,
-  models: readonly RegisteredModel[] = registeredModels,
-): RegisteredModel | undefined {
+  models: readonly ModelDeclaration[] = registeredModels,
+): ModelDeclaration | undefined {
   return models.find((model) => {
     if (standardOf(model) === undefined) {
       return false;
@@ -173,7 +173,7 @@ export function modelBySegment(
  */
 export function modelByExploreSegment(
   modelSegment: string | undefined,
-  models: readonly RegisteredModel[] = registeredModels,
-): RegisteredModel | undefined {
+  models: readonly ModelDeclaration[] = registeredModels,
+): ModelDeclaration | undefined {
   return models.find((model) => exploreSegmentsOf(model).model === modelSegment);
 }

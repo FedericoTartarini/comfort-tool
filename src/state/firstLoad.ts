@@ -1,4 +1,4 @@
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import type { Address } from "$lib/core/page";
 import { toDecodedSession } from "$lib/core/shareLink";
 import type { WrittenSession } from "$lib/core/writtenSession";
@@ -56,7 +56,7 @@ export interface FirstLoad {
  * Touches no browser: the texts are read by the caller and handed in, so this
  * is the whole decision and is tested without one.
  */
-export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly RegisteredModel[]): FirstLoad {
+export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly ModelDeclaration[]): FirstLoad {
   const kept = texts.kept === undefined ? undefined : toDecodedSession(texts.kept, models);
   if (texts.link === undefined) {
     return loadAt(address, kept, []);

@@ -1,4 +1,4 @@
-import { standardOf, type RegisteredModel } from "./modelDeclaration";
+import { standardOf, type ModelDeclaration } from "./modelDeclaration";
 
 /**
  * The app's pages (ADR-0002 decision 57). A closed set in the same shape as
@@ -28,7 +28,7 @@ export function paintsBandsOn(onPage: Page): boolean {
 /** Where the address points: a page, and the model it is open on. */
 export interface Address {
   readonly page: Page;
-  readonly model: RegisteredModel;
+  readonly model: ModelDeclaration;
 }
 
 /**
@@ -36,7 +36,7 @@ export interface Address {
  * needs the model's standard, Explore every model has, and Time-series needs
  * the declaration's `timeSeries`.
  */
-export function pagesOf(model: RegisteredModel): Page[] {
+export function pagesOf(model: ModelDeclaration): Page[] {
   return [
     ...(standardOf(model) === undefined ? [] : [page.standard]),
     page.explore,

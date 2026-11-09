@@ -1,6 +1,6 @@
 import type { ModelOutputs, ModelWarning } from "jsthermalcomfort";
 import { optionsReader, toLibraryInputs } from "./libraryInputs";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelDeclaration } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
 import type { Slot } from "./slot";
 
@@ -9,7 +9,7 @@ import type { Slot } from "./slot";
  * resolved from it ({@link toLibraryInputs}) and the options it holds, handed
  * to the declaration's `run`. The one statement of the call.
  */
-export function runOn(slot: Slot, model: RegisteredModel, atmosphericPressure: number): ModelOutputs {
+export function runOn(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): ModelOutputs {
   return model.run(toLibraryInputs(slot, model, atmosphericPressure), optionsReader(slot.options));
 }
 

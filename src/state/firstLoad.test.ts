@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { optionsOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
 import { toDecodedSession, toText } from "$lib/core/shareLink";
@@ -73,7 +73,7 @@ function editedSession(): Session {
   return session;
 }
 
-function standardAddress(model: RegisteredModel): Address {
+function standardAddress(model: ModelDeclaration): Address {
   return { page: page.standard, model };
 }
 

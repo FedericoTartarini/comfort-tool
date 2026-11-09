@@ -8,7 +8,7 @@ import {
   requireAxisRange,
   type ComfortZone,
   type DeclaredDynamicChart,
-  type RegisteredModel,
+  type ModelDeclaration,
 } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
 import { quantities, type Quantity } from "$lib/core/quantities";
@@ -76,7 +76,7 @@ function hoverGridOf(spec: ChartSpec): HoverGridTrace {
 }
 
 /** `model`'s dynamic chart. */
-function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
+function dynamicOf(model: ModelDeclaration): DeclaredDynamicChart {
   const chart = dynamicChartOf(model);
   if (!chart) {
     throw new Error(`${model.info.label} no longer declares a dynamic chart`);
@@ -85,7 +85,7 @@ function dynamicOf(model: RegisteredModel): DeclaredDynamicChart {
 }
 
 /** The Comfort zones `model`'s scan declares, largest first. */
-function declaredZonesOf(model: RegisteredModel): ComfortZone[] {
+function declaredZonesOf(model: ModelDeclaration): ComfortZone[] {
   return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 
@@ -248,8 +248,8 @@ describe("a model's own number in the scanned field", () => {
   const chart = dynamicOf(pmvPpdIso);
 
   /** A model whose PMV is `value` at every point of the field. */
-  function flatModel(value: number): RegisteredModel {
-    return { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies RegisteredModel;
+  function flatModel(value: number): ModelDeclaration {
+    return { ...pmvPpdIso, run: () => ({ pmv: value, warnings: [] }) } satisfies ModelDeclaration;
   }
 
   function flat(value: number): ChartSpec {
@@ -295,7 +295,7 @@ describe("dynamicAxisQuantities", () => {
     const model = {
       ...pmvPpdIso,
       inputs: [...pmvPpdIso.inputs, { quantity: q.compliance, value: 0 }],
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toContain(q.compliance);
     expect(dynamicAxisQuantities(model, entryModesWithTemperature(temperatureMode.separate))).not.toContain(q.compliance);
   });

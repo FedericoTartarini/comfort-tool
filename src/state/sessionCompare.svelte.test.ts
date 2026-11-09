@@ -18,7 +18,7 @@ import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
 import { scannedField, type ScanFrame } from "$lib/core/charts/scan";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { optionsOf, type LibraryInputs, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsOf, type LibraryInputs, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { page } from "$lib/core/page";
 import { palette } from "$lib/core/palette";
@@ -60,7 +60,7 @@ function outputsAlone(entries: ReadonlyMap<Quantity, number>) {
 }
 
 /** `pmvPpdIso`, counting every call the outputs make of it. */
-function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
+function modelCountingRuns(): { model: ModelDeclaration; runs: () => number } {
   let runs = 0;
   const model = {
     ...pmvPpdIso,
@@ -68,7 +68,7 @@ function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
       runs += 1;
       return pmvPpdIso.run(inputs);
     },
-  } satisfies RegisteredModel;
+  } satisfies ModelDeclaration;
   return { model, runs: () => runs };
 }
 
@@ -492,7 +492,7 @@ describe("the charts of the compared slots", () => {
      * runs depend on its slot, the zones' boundaries asking for more runs
      * where a bound ends them, so a pass is counted of the slot it is for.
      */
-    function onePassOf(model: RegisteredModel, runs: () => number, prepare: (session: Session) => void = () => {}): number {
+    function onePassOf(model: ModelDeclaration, runs: () => number, prepare: (session: Session) => void = () => {}): number {
       const session = new Session(model);
       session.chart.type = chartType.dynamic;
       prepare(session);
@@ -582,7 +582,7 @@ describe("the charts of the compared slots", () => {
  */
 describe("the session's entry modes", () => {
   /** The slot a session holding only a slot entered with `entries` holds after `change`. */
-  function convertedAlone(model: RegisteredModel, entries: ReadonlyMap<Quantity, number>, change: (session: Session) => void) {
+  function convertedAlone(model: ModelDeclaration, entries: ReadonlyMap<Quantity, number>, change: (session: Session) => void) {
     const session = new Session(model);
     for (const [quantity, value] of entries) {
       session.slots[0].setEntered(quantity, value);
@@ -607,7 +607,7 @@ describe("the session's entry modes", () => {
     ]),
   ];
 
-  function threeDifferentSlots(model: RegisteredModel): Session {
+  function threeDifferentSlots(model: ModelDeclaration): Session {
     const session = enterSlot1ValuesInOthers(sessionComparingThreeSlots(model));
     slotPositions.forEach((position) => {
       for (const [quantity, value] of entriesOfSlot[position]) {

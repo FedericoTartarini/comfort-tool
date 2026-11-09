@@ -1,6 +1,6 @@
 import { heat_index_rothfusz, HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
@@ -40,4 +40,4 @@ export const heatIndexRothfusz = {
   // no standard to draw a limit on it.
   scan: { output: q.hi, bands: q.stress_category },
   charts: [{ type: chartType.dynamic, axes: { x: q.tdb, y: q.rh } }],
-} satisfies RegisteredModel;
+} satisfies ModelDeclaration;

@@ -40,7 +40,7 @@
   import { formatBound } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import { panelCalculators, shownRow, type CalculatorOutputs } from "$lib/core/calculators";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { displayUnitFor, nameWithUnit, numberInUnit } from "$lib/core/units";
   import type { Session, SlotPosition } from "$lib/state/session.svelte";
@@ -57,7 +57,7 @@
   import type { SlotColumn } from "./InputPanel.svelte";
 
   interface Props {
-    model: RegisteredModel;
+    model: ModelDeclaration;
     /** The page's slot columns, as the input panel takes them, `null` for a slot not compared: the others are those Apply can write. */
     columns: readonly [SlotColumn, ...(SlotColumn | null)[]];
     unitSystem: UnitSystem;

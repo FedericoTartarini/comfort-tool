@@ -12,7 +12,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { inputsReader, optionsReader, resolveQuantities } from "./libraryInputs";
-import { inputsOf, optionsOf, type LibraryInputs, type OptionSpec, type OptionsReader, type RegisteredModel } from "./modelDeclaration";
+import { declaredQuantitiesOf, optionsOf, type LibraryInputs, type ModelDeclaration, type OptionSpec, type OptionsReader } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantityFor, type Quantity } from "./quantities";
 import { startingSlot } from "./slot";
@@ -46,7 +46,7 @@ vi.mock("jsthermalcomfort", async (importOriginal) => {
 const [airSpeedControl] = optionsOf(pmvPpdAshrae);
 
 /** The inputs object of the last call `model.run` made to the library function it is named after. */
-function receivedInputs(model: RegisteredModel, inputs: LibraryInputs, options: OptionsReader): Readonly<Record<string, unknown>> {
+function receivedInputs(model: ModelDeclaration, inputs: LibraryInputs, options: OptionsReader): Readonly<Record<string, unknown>> {
   lastCalls.delete(model.info.name);
   model.run(inputs, options);
   const received = lastCalls.get(model.info.name)?.[0];
@@ -65,7 +65,7 @@ function receivedInputs(model: RegisteredModel, inputs: LibraryInputs, options: 
  * slot does not hold — `wme`, written as the literal 0 — has no number to
  * compare and is skipped; the rest are the ones the compiler cannot pair.
  */
-function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: string[] } {
+function mispairedKeys(model: ModelDeclaration): { checked: string[]; mispaired: string[] } {
   const slot = startingSlot(model);
   const distinct = new Map<Quantity, number>(
     [...resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
@@ -112,7 +112,7 @@ describe("run's inputs object", () => {
           limit_inputs: false,
           round_output: false,
         }),
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(mispairedKeys(swapped).mispaired).toEqual(["tdb", "tr"]);
   });
 
@@ -147,7 +147,7 @@ export function inputsTypeProof(inputs: LibraryInputs, options: OptionsReader): 
  * between a run with the option on and one with it off, everything else at the
  * model's defaults. A positional argument that differs is named by its index.
  */
-function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
+function kwargsFedBy(model: ModelDeclaration, option: OptionSpec): string[] {
   const slot = startingSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
     lastCalls.delete(model.info.name);
@@ -193,14 +193,14 @@ describe("an option's key", () => {
     const misspelt: OptionSpec = { ...airSpeedControl, key: "airspeed_contol" };
     const declared = {
       ...pmvPpdAshrae,
-      inputs: [...inputsOf(pmvPpdAshrae), { option: misspelt }],
+      inputs: [...declaredQuantitiesOf(pmvPpdAshrae), { option: misspelt }],
       run: (inputs: LibraryInputs, options: OptionsReader) => pmvPpdAshrae.run(inputs, () => options(misspelt)),
-    } satisfies RegisteredModel;
+    } satisfies ModelDeclaration;
     expect(kwargsFedBy(declared, misspelt)).not.toEqual([misspelt.key]);
   });
 
   it("catches an option the run never reads", () => {
-    const unread = { ...pmvPpdIso, inputs: [...pmvPpdIso.inputs, { option: airSpeedControl }] } satisfies RegisteredModel;
+    const unread = { ...pmvPpdIso, inputs: [...pmvPpdIso.inputs, { option: airSpeedControl }] } satisfies ModelDeclaration;
     expect(kwargsFedBy(unread, airSpeedControl)).toEqual([]);
   });
 });

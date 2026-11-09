@@ -15,7 +15,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { imageSize, type ImageSize } from "$lib/core/image";
 import { inputsReader } from "$lib/core/libraryInputs";
-import { classifierOf, psychrometricChartOf, type ComfortZone, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { classifierOf, psychrometricChartOf, type ComfortZone, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
@@ -96,7 +96,7 @@ function isolinesOf(spec: ChartSpec): PathTrace[] {
 }
 
 /** PMV (ISO 7730) whose every run breaks no bound, so its zones are its numbers' alone. */
-const isoWithoutBounds: RegisteredModel = {
+const isoWithoutBounds: ModelDeclaration = {
   ...pmvPpdIso,
   run: (inputs) => ({ ...pmvPpdIso.run(inputs), warnings: [] }),
 };
@@ -317,7 +317,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("ends a zone where the model stops giving a number, the end found on the run as a bound's is", () => {
-    const noNumberWhenDry: RegisteredModel = {
+    const noNumberWhenDry: ModelDeclaration = {
       ...pmvPpdIso,
       run: (inputs) => ({ ...pmvPpdIso.run(inputs), ...(inputs.rh < 10 ? { pmv: Number.NaN } : {}) }),
     };
@@ -385,7 +385,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("names the zones drawn today by their limit, word for word", () => {
-    const zoneLabels = (model: RegisteredModel) =>
+    const zoneLabels = (model: ModelDeclaration) =>
       zoneFillsOf(psychrometricSpec(chartRequestFor(model, startingSlot(model)))).map((zone) => zone.label);
     expect(zoneLabels(pmvPpdIso)).toEqual([
       "Category IV (|PMV| < 1)",

@@ -1,4 +1,4 @@
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import type { Address } from "$lib/core/page";
 import { Outputs } from "./compute.svelte";
 import { firstLoadAt } from "./firstLoad";
@@ -14,7 +14,7 @@ import type { Notice, OpenSession } from "./openSession";
  * the tab kept; writing it is the app's, at every change of the session.
  */
 export class Tab {
-  readonly #models: readonly RegisteredModel[];
+  readonly #models: readonly ModelDeclaration[];
   readonly #onnotice: (notice: Notice) => void;
   /** Set by the first address, and again by each replacement. Replaced whole, so `$state.raw`. */
   #opened = $state.raw<OpenSession>();
@@ -23,7 +23,7 @@ export class Tab {
   #declineNotices: readonly Notice[] = [];
   #replacements = $state(0);
 
-  constructor(models: readonly RegisteredModel[], onnotice: (notice: Notice) => void) {
+  constructor(models: readonly ModelDeclaration[], onnotice: (notice: Notice) => void) {
     this.#models = models;
     this.#onnotice = onnotice;
   }
