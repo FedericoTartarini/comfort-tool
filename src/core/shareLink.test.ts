@@ -2,12 +2,14 @@
  * The share link's codec at the core seam (ADR-0002 decision 63, rules 1, 6
  * and 10): a written session in, a text out, and back. Every expected value
  * is the app's own object: the written session before the round trip is the
- * one expected after it. No expected text is written out but the prefix, so
- * the encoding may change until the format is frozen (rule 9); a refused text
- * is a valid one changed in one place, read and written again through Node's
- * own raw DEFLATE and URL-safe Base64 (decision 88 rule 1), not the codec's
- * `fflate`, so its edits name rule 1's members and the wire format is checked
- * apart from the library that writes it.
+ * one expected after it. Besides the prefix, one text alone is written out,
+ * {@link GOLDEN_TEXT}, so that a rename that leaks into the format fails a
+ * test; the format may still change before the official release (decision 91
+ * rule 6), and a change that does replaces that text in the same commit. A
+ * refused text is a valid one changed in one place, read and written again
+ * through Node's own raw DEFLATE and URL-safe Base64 (decision 88 rule 1), not
+ * the codec's `fflate`, so its edits name rule 1's members and the wire format
+ * is checked apart from the library that writes it.
  */
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
@@ -95,6 +97,15 @@ function editedSession(): WrittenSession {
   };
 }
 
+/**
+ * {@link editedSession} as the codec wrote it at `383aa03`, before the naming
+ * rename (`.scratch/naming/`), its every member of rule 1's JSON exercised. Not
+ * written by hand: an edit to the session or the format writes it again, with
+ * its commit named here.
+ */
+const GOLDEN_TEXT =
+  "v1.zVLNitswEH6VZfZqL5azdhxfF5Ze2ksOPYTFyJYSC2RLyHK6JuRWSm99gj5He-rDFPbcV-iMknT7syVQSmkC9sw3I883n74ddEZIDSXYbltZKyo-tI5LiGDslV9Og5cdVpVFxFbcY5Im-IugMZ3lTkLp3SgjkD2vtRRQrkK-5nqQdwR7Nz3HGQOUO8CPWem4H-kcmBCrLU3jyi2tpPPgpA5ojFg8BBCnaeNb1W-wLqaed6qJT1Cs-mGkI6bHxnbslFB-okb5KrZG9R72EQzYjRxWO9hyPR7odNJDya7S2XWWz4tFwg5R9Mis8p3FjbMItg7K5IrNApXqyIEgrOGgKgw6tLPZVZGxrJhli0WxYHnOcL6xRDCM_UlqRHDTsGjVGNTL4H0E_fb7ffQnfHO8nn_Mly79N3Sv_yc90ZJNyx1Z4amDfrLkzBMd9OX9YZd7RL2oESFnuZYsVfNehKIUG-paxSmyjxk9aI8EV6eEUJbgZM1rqakRbowmV98Y5BbBUqtN6_V0ccxfyNE7_kPlJXcd5sfXM-OBNjHauPC9yxRl4UT4Mklub-drigST2TqhaD2nf4iEqJsQyXXB85SiOmVFWsMdXt83SdRgzupB93vQY3tODnZSBJV4WpGHT28f3ny4-Pz-9ZeP7x6l-dvq5HO-aFCdftT6O4mO6Tl1uOBoO7TxL445VQA99hU";
+
 describe("toText and toDecodedSession", () => {
   it("are the identity on every registered model's defaults", () => {
     for (const model of registeredModels) {
@@ -109,6 +120,11 @@ describe("toText and toDecodedSession", () => {
     expect(back?.slots[0].values.get(q.met)).toBe(1.2345678901234567);
     expect(back?.charts.get(pmvPpdIso)?.bands?.labels[0]).toBe(FAR_LABEL);
     expect(back?.charts.get(pmvPpdIso)?.bands?.colors[4]).toBeUndefined();
+  });
+
+  it("read a text written before the naming rename as the edited session, which writes that text back byte for byte", () => {
+    expect(toDecodedSession(GOLDEN_TEXT, registeredModels)).toEqual(editedSession());
+    expect(toText(editedSession(), registeredModels)).toBe(GOLDEN_TEXT);
   });
 
   it("are the identity on a session in every entry group's other mode that has been on every registered model, each on its starting chart", () => {
