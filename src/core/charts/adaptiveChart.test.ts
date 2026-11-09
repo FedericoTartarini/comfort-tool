@@ -6,7 +6,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { inputsReader } from "$lib/core/libraryInputs";
 import { requireAxisRange, type AxisRange, type DeclaredAdaptiveChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
+import { defaultSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -44,7 +44,7 @@ function isoDrawing(chart: DeclaredAdaptiveChart): ModelDeclaration {
 const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = inputsReader(startingSlot(pmvPpdIso).values);
+const { v } = inputsReader(defaultSlot(pmvPpdIso).values);
 
 /** The fixture's range for `quantity`, as the layout writes a range. */
 function fixtureRangeOf(quantity: Quantity): [number, number] {
@@ -191,10 +191,10 @@ describe("a declared limits source", () => {
   });
 });
 
-const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae));
+const adaptiveRequest = chartRequestFor(adaptiveAshrae, defaultSlot(adaptiveAshrae));
 
 /** Adaptive's own air speed, at which `adaptiveRequest` draws. */
-const { v: startingAirSpeed } = inputsReader(startingSlot(adaptiveAshrae).values);
+const { v: defaultAirSpeed } = inputsReader(defaultSlot(adaptiveAshrae).values);
 
 describe("Adaptive's running mean axis", () => {
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -291,7 +291,7 @@ describe("Adaptive's acceptability zones", () => {
   const spec = adaptiveSpec(adaptiveRequest);
   const fills = fillsOf(spec);
   const lines = linesOf(spec);
-  const psychrometric = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
+  const psychrometric = psychrometricSpec(chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso)));
   const psychrometricFills = zoneFillsOf(psychrometric);
   const psychrometricLines = zoneLinesOf(psychrometric);
   const { min, max } = requireAxisRange(adaptiveAshrae, q.t_running_mean);
@@ -302,19 +302,19 @@ describe("Adaptive's acceptability zones", () => {
       { label: q.acceptability_90.label, width: 0 },
     ]);
     expect(fills.map(onlyPieceOf)).toEqual(
-      libraryBandsAt(startingAirSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
+      libraryBandsAt(defaultAirSpeed).map((band) => pathOf([...band.upper_limit, ...[...band.lower_limit].reverse()])),
     );
   });
 
   it("strokes each zone's upper and lower limit as two open paths, the temporary library's own", () => {
     expect(lines.map((line) => ({ label: line.label, ...onlyPieceOf(line) }))).toEqual(
-      libraryBandsAt(startingAirSpeed).flatMap((band, index) =>
+      libraryBandsAt(defaultAirSpeed).flatMap((band, index) =>
         [band.upper_limit, band.lower_limit].map((limit) => ({ label: fills[index]?.label, ...pathOf(limit) })),
       ),
     );
   });
 
-  it.each([0, startingAirSpeed])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
+  it.each([0, defaultAirSpeed])("strokes no side down either end of the running means at %s m/s, where the fill closes", (airSpeed) => {
     const drawn = adaptiveSpec(chartRequestFor(adaptiveAshrae, adaptiveAt(airSpeed)));
     for (const line of linesOf(drawn)) {
       const { x } = onlyPieceOf(line);
@@ -377,7 +377,7 @@ describe("Adaptive's acceptability zones", () => {
   });
 
   it.each([1, 3])("lays every fill, then every outline, then the hover grid, then the markers, for %s slot(s)", (count) => {
-    const slots = [startingSlot(adaptiveAshrae), adaptiveAt(0.9), adaptiveAt(1.2)].slice(0, count);
+    const slots = [defaultSlot(adaptiveAshrae), adaptiveAt(0.9), adaptiveAt(1.2)].slice(0, count);
     const layers = adaptiveSpec(chartRequestForSlots(adaptiveAshrae, slots)).traces.map(layerOf);
     expect(layers).toEqual([
       ...Array(2 * count).fill("fill"),
@@ -448,7 +448,7 @@ describe("the adaptive chart's hover grid", () => {
       const column = end === "lowest" ? 0 : grid.x.length - 1;
       const at = (limit: readonly AdaptivePoint[]) => (end === "lowest" ? limit[0] : limit[limit.length - 1])?.operative_tmp ?? NaN;
       const labels = [q.acceptability_80.label, q.acceptability_90.label];
-      const bands = libraryBandsAt(startingAirSpeed);
+      const bands = libraryBandsAt(defaultAirSpeed);
       const innermost = grid.y.map((y) =>
         bands
           .map((band, index) => (at(band.lower_limit) <= y && y <= at(band.upper_limit) ? labels[index] : undefined))

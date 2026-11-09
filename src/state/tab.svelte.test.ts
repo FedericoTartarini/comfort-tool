@@ -12,7 +12,7 @@ import { page, type Address } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
 import { toText } from "$lib/core/shareLink";
 import { unitSystem } from "$lib/core/unitSystem";
-import { startingChartSettings, startingSession } from "$lib/core/writtenSession";
+import { defaultChartSettings, defaultSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -126,7 +126,7 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual([]);
     // The kept session had been on PMV (ISO 7730) and the link had not: it is on its defaults.
     session.setAddress({ page: page.explore, model: pmvPpdIso });
-    expect(session.chart.toChartSettings()).toEqual(startingChartSettings(pmvPpdIso));
+    expect(session.chart.toChartSettings()).toEqual(defaultChartSettings(pmvPpdIso));
   });
 
   it("answered no gives the kept session, unchanged but for having followed the address, and no link waits", () => {
@@ -207,7 +207,7 @@ describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)",
 
     tab.arrive(addressOf(sender), toText(linkSessionOf(sender), registeredModels));
 
-    expect(openedOn(openSessionOf(tab))).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(openedOn(openSessionOf(tab))).toEqual({ written: defaultSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
     expect(raised).toEqual(["linkRefused"]);
   });
 
@@ -252,7 +252,7 @@ describe("Reset (ADR-0002 decision 63, rule 8)", () => {
       const address = addressOf(before);
       expect(openSessionOf(tab)).not.toBe(replaced);
       expect(openedOn(openSessionOf(tab)), `${address.model.info.label} on ${address.page.label}`).toEqual({
-        written: startingSession(address.model),
+        written: defaultSession(address.model),
         page: address.page,
         pendingSwitch: null,
       });

@@ -70,9 +70,9 @@ function entriesBreaking(breaking: readonly SlotPosition[]): ReadonlyMap<Quantit
  */
 function comparingSlotsEntered(entries: readonly ReadonlyMap<Quantity, number>[]): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
-  const starting = [...session.slots[0].values];
+  const defaults = [...session.slots[0].values];
   slotPositions.forEach((position) => {
-    for (const [quantity, value] of [...starting, ...entries[position]]) {
+    for (const [quantity, value] of [...defaults, ...entries[position]]) {
       heldSlot(session, position).setEntered(quantity, value);
     }
   });

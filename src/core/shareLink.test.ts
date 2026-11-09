@@ -29,7 +29,7 @@ import { narrowedToPage, toText, toDecodedSession } from "./shareLink";
 import {
   enteredQuantities,
   isHumidityQuantity,
-  startingSlot,
+  defaultSlot,
   withAirSpeedMode,
   withClothingMode,
   withEnteredValues,
@@ -39,7 +39,7 @@ import {
   type Slot,
 } from "./slot";
 import { unitSystem } from "./unitSystem";
-import { startingChartSettings, startingSession, type ChartSettings, type WrittenSession } from "./writtenSession";
+import { defaultChartSettings, defaultSession, type ChartSettings, type WrittenSession } from "./writtenSession";
 
 const q = quantities;
 const PREFIX = "v1.";
@@ -72,19 +72,19 @@ const FAR_LABEL = "很冷 ❄️";
 function editedSession(): WrittenSession {
   const model = pmvPpdAshrae;
   const [airSpeedControl] = optionsOf(model);
-  const first = withEnteredValues(inOtherEntryModes(startingSlot(model), model), new Map([[q.met, 1.2345678901234567]]));
+  const first = withEnteredValues(inOtherEntryModes(defaultSlot(model), model), new Map([[q.met, 1.2345678901234567]]));
   // Past PMV (ASHRAE 55)'s 30 °C, as a written session may carry it in slot 2.
   const second = withOption(withEnteredValues(first, new Map([[q.operative_tmp, 60]])), airSpeedControl, true);
   const third = withEnteredValues(first, new Map([[q.met, 1.4]]));
-  const ashraeBands = startingChartSettings(pmvPpdAshrae).bands;
-  const isoBands = startingChartSettings(pmvPpdIso).bands;
+  const ashraeBands = defaultChartSettings(pmvPpdAshrae).bands;
+  const isoBands = defaultChartSettings(pmvPpdIso).bands;
   if (!ashraeBands || !isoBands) {
     throw new Error("Both PMV models scan");
   }
   const charts = new Map<ModelDeclaration, ChartSettings>([
     [pmvPpdAshrae, { type: chartType.dynamic, axes: { x: q.tdb, y: q.rh }, bands: moveEdge(setColor(ashraeBands, 1, "#00FF7f"), 3, 0.4) }],
     [pmvPpdIso, { type: chartType.dynamic, axes: { x: q.met, y: q.v }, bands: setColor(setLabel(addEdge(isoBands, 2, classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands)), 0, FAR_LABEL), 4, undefined) }],
-    [adaptiveAshrae, startingChartSettings(adaptiveAshrae)],
+    [adaptiveAshrae, defaultChartSettings(adaptiveAshrae)],
   ]);
   return {
     model,
@@ -109,7 +109,7 @@ const GOLDEN_TEXT =
 describe("toText and toDecodedSession", () => {
   it("are the identity on every registered model's defaults", () => {
     for (const model of registeredModels) {
-      expect(roundTrip(startingSession(model)), model.info.label).toEqual(startingSession(model));
+      expect(roundTrip(defaultSession(model)), model.info.label).toEqual(defaultSession(model));
     }
   });
 
@@ -127,12 +127,12 @@ describe("toText and toDecodedSession", () => {
     expect(toText(editedSession(), registeredModels)).toBe(GOLDEN_TEXT);
   });
 
-  it("are the identity on a session in every entry group's other mode that has been on every registered model, each on its starting chart", () => {
+  it("are the identity on a session in every entry group's other mode that has been on every registered model, each on its default chart", () => {
     const session = editedSession();
     const charts = new Map(session.charts);
     for (const model of registeredModels) {
       if (!charts.has(model)) {
-        charts.set(model, startingChartSettings(model));
+        charts.set(model, defaultChartSettings(model));
       }
     }
     expect(roundTrip({ ...session, charts })).toEqual({ ...session, charts });
@@ -151,7 +151,7 @@ describe("toText and toDecodedSession", () => {
   });
 
   it("write a text that starts with the prefix and holds only URL-safe characters", () => {
-    for (const session of [editedSession(), ...registeredModels.map(startingSession)]) {
+    for (const session of [editedSession(), ...registeredModels.map(defaultSession)]) {
       const text = toText(session, registeredModels);
       expect(text.startsWith(PREFIX)).toBe(true);
       expect(text.slice(PREFIX.length)).toMatch(/^[A-Za-z0-9_-]+$/);
@@ -297,7 +297,7 @@ describe("toDecodedSession", () => {
     const decoded = read(changed(valid, ["charts", ashrae, "bands"], undefined));
     expect(decoded?.charts.get(pmvPpdAshrae)).toEqual({
       ...editedSession().charts.get(pmvPpdAshrae),
-      bands: startingChartSettings(pmvPpdAshrae).bands,
+      bands: defaultChartSettings(pmvPpdAshrae).bands,
     });
   });
 
@@ -362,7 +362,7 @@ describe("narrowedToPage", () => {
       ...session,
       model,
       slots: [switched(one), two && switched(two), three && switched(three)],
-      charts: new Map([...session.charts, [model, session.charts.get(model) ?? startingChartSettings(model)]]),
+      charts: new Map([...session.charts, [model, session.charts.get(model) ?? defaultChartSettings(model)]]),
     };
   };
 
@@ -430,7 +430,7 @@ describe("narrowedToPage", () => {
   const readBack = (narrowed: WrittenSession, onPage: Page): WrittenSession =>
     paintsBandsOn(onPage)
       ? narrowed
-      : { ...narrowed, charts: new Map([...narrowed.charts].map(([model, settings]) => [model, { ...settings, bands: startingChartSettings(model).bands }])) };
+      : { ...narrowed, charts: new Map([...narrowed.charts].map(([model, settings]) => [model, { ...settings, bands: defaultChartSettings(model).bands }])) };
 
   it("writes a text that reads back as the narrowed session for every registered model on each of its pages, a Band list it does not carry on the classifier's", () => {
     for (const model of registeredModels) {

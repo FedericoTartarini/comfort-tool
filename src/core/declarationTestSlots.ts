@@ -1,5 +1,5 @@
 /**
- * The slot a test enters values over: a model's own starting slot, so every
+ * The slot a test enters values over: a model's own default slot, so every
  * test that shares it runs a declaration on the numbers the app starts it on;
  * and the entry modes a test asks a rule about.
  */
@@ -14,7 +14,7 @@ import {
 } from "./entryModes";
 import type { ModelDeclaration } from "./modelDeclaration";
 import { quantities } from "./quantities";
-import { defaultEntryModes, startingSlot, type Slot, type ValueEntryModes } from "./slot";
+import { defaultEntryModes, defaultSlot, type Slot, type ValueEntryModes } from "./slot";
 
 /** The entry modes of a session that changed none but temperature's, to `mode`. */
 export function entryModesWithTemperature(mode: TemperatureMode): ValueEntryModes {
@@ -35,7 +35,7 @@ export function entryModesWithClothing(mode: ClothingMode): ValueEntryModes {
 type HumidityKey = (typeof humidityMode)[keyof typeof humidityMode]["quantity"]["key"];
 
 /**
- * `model`'s starting slot with `entered` over its values. Entering
+ * `model`'s default slot with `entered` over its values. Entering
  * `operative_tmp` puts the slot under operative entry, where it stands in for
  * the separate temperatures, as the input panel shows it, and entering `vr`
  * under relative air speed entry, where it stands in for the air speed, and
@@ -46,7 +46,7 @@ export function enteredSlotFor(
   model: ModelDeclaration,
   entered: Partial<Record<Exclude<keyof typeof quantities, HumidityKey>, number>>,
 ): Slot {
-  const slot = startingSlot(model);
+  const slot = defaultSlot(model);
   const values = new Map(slot.values);
   const mode = entered.operative_tmp === undefined ? temperatureMode.separate : temperatureMode.operative;
   if (mode === temperatureMode.operative) {

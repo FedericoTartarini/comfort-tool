@@ -736,6 +736,6 @@ export function seedDeclaredDefaults(slot: Slot, model: ModelDeclaration): Slot 
  * holding no humidity and no option, put through {@link seedDeclaredDefaults}
  * as a switch is, so starting and switching are one rule.
  */
-export function startingSlot(model: ModelDeclaration): Slot {
+export function defaultSlot(model: ModelDeclaration): Slot {
   return seedDeclaredDefaults({ values: new Map(), ...defaultEntryModes, options: new Map() }, model);
 }

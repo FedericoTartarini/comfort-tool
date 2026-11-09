@@ -14,7 +14,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { classifierOf, dynamicChartOf, type AxisRange, type DeclaredDynamicChart, type ModelDeclaration } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
 import { quantities } from "$lib/core/quantities";
-import { startingSlot } from "$lib/core/slot";
+import { defaultSlot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
@@ -40,12 +40,12 @@ function dynamicOf(model: ModelDeclaration): DeclaredDynamicChart {
 
 const isoChart = dynamicOf(pmvPpdIso);
 const isoBands = bandListOf(classifierOf(pmvPpdIso.info, pmvPpdIso.scan.bands));
-const isoRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
+const isoRequest = chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso));
 
-/** `model`'s dynamic chart of its starting slot, painting `bands`. */
+/** `model`'s dynamic chart of its default slot, painting `bands`. */
 function bandedSpec(bands: BandList, model: ModelDeclaration = pmvPpdIso): ChartSpec {
   const chart = dynamicOf(model);
-  return dynamicSpec({ ...chartRequestFor(model, startingSlot(model)), bands }, chart.axes);
+  return dynamicSpec({ ...chartRequestFor(model, defaultSlot(model)), bands }, chart.axes);
 }
 
 /** Slot 1's scanned number in `request`'s dynamic chart, `[yIndex][xIndex]`, in SI: what the Bands are painted over. */
@@ -154,7 +154,7 @@ describe("the scanned dynamic chart given a Band list", () => {
 
   it("paints Heat Index's five bands in its own palette, over its own scan", () => {
     const heatBands = bandListOf(classifierOf(heatIndexRothfusz.info, heatIndexRothfusz.scan.bands));
-    const heatValues = scannedValuesOf(chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz)));
+    const heatValues = scannedValuesOf(chartRequestFor(heatIndexRothfusz, defaultSlot(heatIndexRothfusz)));
     const drawn = bandedSpec(heatBands, heatIndexRothfusz);
     expectFills(drawn, contiguousFillsOf(heatBands), heatValues, heatBands.right);
     expectEdgesCrossed(drawn, heatBands, heatValues);
@@ -362,7 +362,7 @@ describe("a Band list over several slots", () => {
   it("paints the first slot's scan and reads each slot's number and band", () => {
     const warm = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
     const one = bandedSpec(isoBands);
-    const two = dynamicSpec({ ...chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), warm]), bands: isoBands }, isoChart.axes);
+    const two = dynamicSpec({ ...chartRequestForSlots(pmvPpdIso, [defaultSlot(pmvPpdIso), warm]), bands: isoBands }, isoChart.axes);
     expect(fillsOf(two).map((fill) => fill.pieces)).toEqual(fillsOf(one).map((fill) => fill.pieces));
     expect(linesOf(two).map((line) => line.pieces)).toEqual(linesOf(one).map((line) => line.pieces));
     expect(hoverGridOf(two).hoverText[4][40]).toHaveLength(6);

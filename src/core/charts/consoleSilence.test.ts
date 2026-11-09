@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { startingSlot } from "$lib/core/slot";
+import { defaultSlot } from "$lib/core/slot";
 import {
   adaptiveChartOf,
   dynamicChartOf,
@@ -32,7 +32,7 @@ const consoleMethods = ["warn", "log", "error"] as const;
 function consoleWritesWhileDrawing(model: ModelDeclaration): string[] {
   const spies = consoleMethods.map((method) => [method, vi.spyOn(console, method).mockImplementation(() => undefined)] as const);
   try {
-    const slot = startingSlot(model);
+    const slot = defaultSlot(model);
     for (const request of [chartRequestFor(model, slot), chartRequestForSlots(model, [slot, slot, slot])]) {
       const dynamic = dynamicChartOf(model);
       if (dynamic) {

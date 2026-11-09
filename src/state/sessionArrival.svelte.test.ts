@@ -60,14 +60,14 @@ function pastEveryBound(slot: Slot, model: ModelDeclaration): Slot {
  * the other mode of every group the model has.
  */
 function slotsInEveryEntryMode(model: ModelDeclaration): Slot[] {
-  const [starting] = new Session(model).toWrittenSession().slots;
+  const [defaults] = new Session(model).toWrittenSession().slots;
   const corrected = valueEntryGroups.reduce(
     (converted, group) =>
       group.appliesTo(model) ? group.convert(converted, group.modes.find((mode) => mode !== group.modeOf(converted))!, model) : converted,
-    starting,
+    defaults,
   );
-  const humidityModes = starting.humidity ? Object.values(humidityMode) : [undefined];
-  return [starting, corrected].flatMap((slot) =>
+  const humidityModes = defaults.humidity ? Object.values(humidityMode) : [undefined];
+  return [defaults, corrected].flatMap((slot) =>
     humidityModes.map((mode) => (mode ? withHumidityMode(slot, mode, DEFAULT_ATMOSPHERIC_PRESSURE) : slot)),
   );
 }

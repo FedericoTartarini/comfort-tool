@@ -24,7 +24,7 @@ import {
   dynamicClothingInsulationOf,
   operativeTemperatureOf,
   relativeAirSpeedOf,
-  startingSlot,
+  defaultSlot,
   withAirSpeedMode,
   withClothingMode,
   withTemperatureMode,
@@ -103,7 +103,7 @@ function dynamicOf(model: ModelDeclaration): DeclaredDynamicChart {
 
 /** Three slots that differ in what moves a zone: slot 1 at the defaults, then more clothing, then more activity. */
 function threeSlots(model: ModelDeclaration): Slot[] {
-  return [startingSlot(model), enteredSlotFor(model, { clo: 1 }), enteredSlotFor(model, { met: 1.4 })];
+  return [defaultSlot(model), enteredSlotFor(model, { clo: 1 }), enteredSlotFor(model, { met: 1.4 })];
 }
 
 /**
@@ -143,7 +143,7 @@ function dynamicDrawing(model: ModelDeclaration): Drawing {
 /** Adaptive's chart, whose two acceptability zones move with the air speed alone. */
 const adaptiveDrawing: Drawing = {
   name: `${adaptiveAshrae.info.label}, adaptive`,
-  slots: [startingSlot(adaptiveAshrae), enteredSlotFor(adaptiveAshrae, { v: 0.9 }), enteredSlotFor(adaptiveAshrae, { v: 1.2 })],
+  slots: [defaultSlot(adaptiveAshrae), enteredSlotFor(adaptiveAshrae, { v: 0.9 }), enteredSlotFor(adaptiveAshrae, { v: 1.2 })],
   draw: (drawn) => adaptiveSpec(chartRequestForSlots(adaptiveAshrae, drawn)),
   drawAlone: (slot) => adaptiveSpec(chartRequestFor(adaptiveAshrae, slot)),
   zonesPerSlot: 2,
@@ -404,7 +404,7 @@ describe("a slot in another temperature entry mode than the session's", () => {
   it("is scanned on the session's axes as the converted slot alone is", () => {
     const chart = dynamicOf(pmvPpdIso);
     const spec = dynamicSpec(
-      chartRequestForSlots(pmvPpdIso, [operative, startingSlot(pmvPpdIso)], unitSystem.si, entryModesWithTemperature(temperatureMode.separate)),
+      chartRequestForSlots(pmvPpdIso, [operative, defaultSlot(pmvPpdIso)], unitSystem.si, entryModesWithTemperature(temperatureMode.separate)),
       chart.axes,
     );
     const alone = dynamicSpec(
@@ -423,7 +423,7 @@ describe("a slot in another air-speed entry mode than the session's", () => {
 
   it("is marked on the session's air-speed axis, at the value the entry-mode change converts it to", () => {
     const chart = dynamicOf(pmvPpdIso);
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart.axes);
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [defaultSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart.axes);
     const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.relativeAirSpeed)), chart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
     expect(markersOf(spec)[1].y).toBe(relativeAirSpeedOf(entered));
@@ -466,7 +466,7 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
   const clothingAxes = { x: q.tdb, y: q.clo };
 
   it("is marked on the session's clothing axis, at the dynamic clothing insulation the model was given", () => {
-    const spec = dynamicSpec(chartRequestForSlots(model, [startingSlot(model), entered], unitSystem.si, corrected), clothingAxes);
+    const spec = dynamicSpec(chartRequestForSlots(model, [defaultSlot(model), entered], unitSystem.si, corrected), clothingAxes);
     const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.dynamicClothingInsulation, model)), clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
     expect(markersOf(spec)[1].y).toBe(dynamicClothingInsulationOf(entered, model));

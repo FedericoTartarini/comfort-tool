@@ -36,8 +36,8 @@ import {
   type ZoneLimits,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { defaultEntryModes, dynamicClothingInsulationOf, startingSlot, valueEntryGroups } from "./slot";
-import { startingChartSettings } from "./writtenSession";
+import { defaultEntryModes, dynamicClothingInsulationOf, defaultSlot, valueEntryGroups } from "./slot";
+import { defaultChartSettings } from "./writtenSession";
 
 const q = quantities;
 
@@ -72,7 +72,7 @@ describe("standard", () => {
 describe("scan", () => {
   it("that names an output its model info does not classify throws when the model is loaded, naming the model and the output", () => {
     const unclassified: ModelDeclaration = { ...pmvPpdIso, scan: { ...pmvPpdIso.scan, bands: q.pmv } };
-    expect(() => startingChartSettings(unclassified)).toThrow(
+    expect(() => defaultChartSettings(unclassified)).toThrow(
       `${pmvPpdIso.info.label} gives its output ${q.pmv.label} no classifier`,
     );
   });
@@ -255,14 +255,14 @@ function takesClothingUnderACorrectingStandard(model: ModelDeclaration): boolean
  * The clothing is corrected at the slot's own values, so a model with the
  * clothing group must be entered what its standard's rule takes: the
  * metabolic rate, and the air speed where the rule reads one. Correcting the
- * model's own starting slot reads exactly those.
+ * model's own default slot reads exactly those.
  */
 function expectWhatTheClothingCorrectionTakes(model: ModelDeclaration): void {
   if (!hasClothingGroup(model)) return;
   expect(declaredQuantitiesOf(model).map((entry) => entry.quantity), model.info.label).toContain(q.met);
   let corrected: number;
   try {
-    corrected = dynamicClothingInsulationOf(startingSlot(model), model);
+    corrected = dynamicClothingInsulationOf(defaultSlot(model), model);
   } catch (error) {
     throw new Error(`${model.info.label}: ${String(error)}`);
   }

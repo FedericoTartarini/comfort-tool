@@ -32,7 +32,7 @@ const q = quantities;
 /** An atmospheric pressure other than the default, about 1 950 m above sea level. */
 const LOWER_PRESSURE = 80000;
 
-/** PMV (ISO 7730)'s starting dry-bulb temperature, [°C], which every slot here keeps. */
+/** PMV (ISO 7730)'s default dry-bulb temperature, [°C], which every slot here keeps. */
 const TDB = 25;
 
 /** The humidity ratio entered below, [kg/kg]: about 50 % at 25 °C and 101 325 Pa. */

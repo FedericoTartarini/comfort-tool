@@ -66,9 +66,9 @@ const postureWords = {
 
 /** The postures `SOLAR_GAIN_INFO` allows, its default first, then the rest in the library's order, each under its word. */
 function solarGainPostures(): [PostureOption, ...PostureOption[]] {
-  const { allowed, default: defaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
+  const { allowed, default: libraryDefaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
   const option = (value: Posture): PostureOption => ({ value, label: postureWords[value] });
-  return [option(defaultPosture), ...allowed.filter((value) => value !== defaultPosture).map(option)];
+  return [option(libraryDefaultPosture), ...allowed.filter((value) => value !== libraryDefaultPosture).map(option)];
 }
 
 /** What a form dialog holds: each asked quantity's SI value, and the posture where one is asked. */
@@ -249,7 +249,7 @@ export const solarGainOnOccupants: FormCalculator = {
 };
 
 /** What `calculator`'s form dialog starts at: each asked quantity at its default, and the first posture offered. */
-export function startingInputs(calculator: FormCalculator): CalculatorInputs {
+export function defaultInputs(calculator: FormCalculator): CalculatorInputs {
   const values = new Map(calculator.asks.map(({ quantity, value }) => [quantity, value]));
   return calculator.postures ? { values, posture: calculator.postures[0].value } : { values };
 }

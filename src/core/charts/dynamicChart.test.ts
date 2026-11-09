@@ -12,7 +12,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { palette } from "$lib/core/palette";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { enteredQuantities, startingSlot } from "$lib/core/slot";
+import { enteredQuantities, defaultSlot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
@@ -38,7 +38,7 @@ const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 const request = chartRequestFor(pmvPpdIso, slot);
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = inputsReader(startingSlot(pmvPpdIso).values);
+const { v } = inputsReader(defaultSlot(pmvPpdIso).values);
 
 /** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
 function declaredRangeOf(quantity: Quantity): [number, number] {
@@ -191,7 +191,7 @@ describe("the scanned dynamic chart of one slot", () => {
 
   it("paints PMV (ASHRAE 55)'s one Comfort zone and one marker", () => {
     const ashrae = dynamicOf(pmvPpdAshrae);
-    const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, startingSlot(pmvPpdAshrae)), ashrae.axes);
+    const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, defaultSlot(pmvPpdAshrae)), ashrae.axes);
     expect(zoneFillsOf(drawn).map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdAshrae).map((zone) => copy.zoneLegend(zone)));
     expect(zoneLinesOf(drawn).map((zone) => zone.label)).toEqual(declaredZonesOf(pmvPpdAshrae).map((zone) => copy.zoneLegend(zone)));
     expect(drawn.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
@@ -199,14 +199,14 @@ describe("the scanned dynamic chart of one slot", () => {
 
   it("paints Heat Index's marker alone, its output being no PMV", () => {
     const heat = dynamicOf(heatIndexRothfusz);
-    const drawn = dynamicSpec(chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz)), heat.axes);
+    const drawn = dynamicSpec(chartRequestFor(heatIndexRothfusz, defaultSlot(heatIndexRothfusz)), heat.axes);
     expect(drawn.traces.filter((trace) => trace.hover === "off").map((trace) => trace.kind)).toEqual(["point"]);
     expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["marker"]);
   });
 
   it("starts Heat Index's temperature axis where the regression holds", () => {
     const heat = dynamicOf(heatIndexRothfusz);
-    const heatRequest = chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz));
+    const heatRequest = chartRequestFor(heatIndexRothfusz, defaultSlot(heatIndexRothfusz));
     expect(dynamicSpec(heatRequest, heat.axes).layout.x.range).toEqual([27, 50]);
     const [ipMin, ipMax] = dynamicSpec({ ...heatRequest, unitSystem: unitSystem.ip }, heat.axes).layout.x.range;
     expect(ipMin).toBeCloseTo(80.6, 2);
@@ -391,7 +391,7 @@ describe("axes across a clothing entry mode switch", () => {
 });
 
 describe("the scanned chart's hover readout", () => {
-  const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
+  const pmvRequest = chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso));
 
   // Cell (row 4, column 40) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 26 °C, v 0.08 m/s, where the model gives a PMV of -0.1459… on the

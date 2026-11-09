@@ -19,7 +19,7 @@ import { classifierOf, psychrometricChartOf, type ComfortZone, type ModelDeclara
 import { outputNumber, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
-import { startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
+import { defaultSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { registeredModels } from "$lib/models";
@@ -42,7 +42,7 @@ const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const PMV_DIGITS = 2;
 
 /** The ISO declaration's own met, clothing insulation and v, which every slot below keeps. */
-const { met, clo: clothingInsulation, v } = inputsReader(startingSlot(pmvPpdIso).values);
+const { met, clo: clothingInsulation, v } = inputsReader(defaultSlot(pmvPpdIso).values);
 /** The dynamic clothing insulation the model is given for it: ISO 7730's rule, by the library. */
 const clo = clo_dynamic_iso(clothingInsulation, met, v);
 
@@ -386,7 +386,7 @@ describe("psychrometricSpec", () => {
 
   it("names the zones drawn today by their limit, word for word", () => {
     const zoneLabels = (model: ModelDeclaration) =>
-      zoneFillsOf(psychrometricSpec(chartRequestFor(model, startingSlot(model)))).map((zone) => zone.label);
+      zoneFillsOf(psychrometricSpec(chartRequestFor(model, defaultSlot(model)))).map((zone) => zone.label);
     expect(zoneLabels(pmvPpdIso)).toEqual([
       "Category IV (|PMV| < 1)",
       "Category III (|PMV| < 0.7)",
@@ -490,10 +490,10 @@ describe("psychrometricSpec", () => {
 });
 
 describe("the psychrometric chart's hover readout on the Standard page", () => {
-  const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
+  const spec = psychrometricSpec(chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso)));
   const { hoverText } = hoverGridOf(spec);
   /** The same scan, which keeps the cell's own number wherever a zone leaves the cell out. */
-  const scan = scannedOf(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
+  const scan = scannedOf(chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso)));
   const pmvUnit = displayUnitFor(q.pmv, unitSystem.si);
 
   it("is read off the hover grid alone", () => {
@@ -527,13 +527,13 @@ describe("the psychrometric chart's hover readout on the Standard page", () => {
   });
 
   it("reads in IP units in IP", () => {
-    const ip = hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso), unitSystem.ip)));
+    const ip = hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso), unitSystem.ip)));
     expect(ip.hoverText[10][30].slice(0, 2)).toEqual(["Dry-bulb air temperature: 71.6 °F", "Humidity ratio: 6 lb/klb"]);
     expect(ip.hoverText[10][30][2]).toBe(hoverText[10][30][2]);
   });
 
   it("reads every compared slot's number, each labelled by its slot", () => {
-    const slots = [startingSlot(pmvPpdIso), enteredSlotFor(pmvPpdIso, { clo: 1 }), enteredSlotFor(pmvPpdIso, { met: 1.4 })];
+    const slots = [defaultSlot(pmvPpdIso), enteredSlotFor(pmvPpdIso, { clo: 1 }), enteredSlotFor(pmvPpdIso, { met: 1.4 })];
     const compared = hoverGridOf(psychrometricSpec(chartRequestForSlots(pmvPpdIso, slots))).hoverText;
     const alone = slots.map((entered) => hoverGridOf(psychrometricSpec(chartRequestFor(pmvPpdIso, entered))).hoverText);
     expect(compared[10][30]).toEqual([
@@ -552,7 +552,7 @@ describe("the relative-humidity labels at the plot's size", () => {
   it.each(charts.flatMap((chart) => labelFrames.map((frame) => ({ ...chart, frame }))))(
     "keeps every label clear of every other and of every other isoline's end: $model.info.label, $system.id, $frame.name",
     ({ model, system, frame }) => {
-      const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model), system));
+      const spec = psychrometricSpec(chartRequestFor(model, defaultSlot(model), system));
       const boxes = spec.annotations.map((annotation) => labelBoxOf(annotation, spec, frame));
       const ends = isolinesOf(spec).map((isoline) => {
         const { x, y } = onlyPieceOf(isoline);

@@ -10,7 +10,7 @@ import type { ChartType } from "./chartType";
 import { classifierOf, dynamicChartOf, type ChartAxes, type ModelDeclaration } from "./modelDeclaration";
 import { page, type Page } from "./page";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "./quantities";
-import { startingSlot, type Slot } from "./slot";
+import { defaultSlot, type Slot } from "./slot";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
 /** One model's chart settings: which chart is on screen and how it is set up. */
@@ -69,7 +69,7 @@ export function comparedPositionsOf(session: Pick<WrittenSession, "compare" | "e
 }
 
 /** The chart settings `model` starts on, which its declaration gives: its first chart, its declared axes, its scan's classifier. */
-export function startingChartSettings(model: ModelDeclaration): ChartSettings {
+export function defaultChartSettings(model: ModelDeclaration): ChartSettings {
   return {
     type: model.charts[0].type,
     axes: dynamicChartOf(model)?.axes ?? null,
@@ -79,17 +79,17 @@ export function startingChartSettings(model: ModelDeclaration): ChartSettings {
 
 /**
  * The written session `model` starts on, its defaults: slot 1 on
- * {@link startingSlot} and no other slot, SI, standard pressure, Compare off,
- * and the model's own {@link startingChartSettings}.
+ * {@link defaultSlot} and no other slot, SI, standard pressure, Compare off,
+ * and the model's own {@link defaultChartSettings}.
  */
-export function startingSession(model: ModelDeclaration): WrittenSession {
+export function defaultSession(model: ModelDeclaration): WrittenSession {
   return {
     model,
     unitSystem: unitSystem.si,
     atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
     compare: false,
     enabled: [false, false],
-    slots: [startingSlot(model), null, null],
-    charts: new Map([[model, startingChartSettings(model)]]),
+    slots: [defaultSlot(model), null, null],
+    charts: new Map([[model, defaultChartSettings(model)]]),
   };
 }

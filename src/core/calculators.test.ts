@@ -22,7 +22,7 @@ import {
   panelCalculators,
   shownRow,
   solarGainOnOccupants,
-  startingInputs,
+  defaultInputs,
   wearGarment,
   withCalculatorOutputs,
   type Calculator,
@@ -34,7 +34,7 @@ import { enteredSlotFor, entryModesWithClothing, entryModesWithTemperature } fro
 import { clothingMode, humidityMode, temperatureMode } from "./entryModes";
 import { optionsOf, type ModelDeclaration } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { startingSlot, withClothingMode, withHumidityMode, withOption, withTemperatureMode, type Slot } from "./slot";
+import { defaultSlot, withClothingMode, withHumidityMode, withOption, withTemperatureMode, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -132,19 +132,19 @@ describe("solarGainOnOccupants", () => {
       { value: "standing", label: "Standing" },
       { value: "supine", label: "Supine" },
     ]);
-    expect(startingInputs(solarGainOnOccupants).posture).toBe("sitting");
+    expect(defaultInputs(solarGainOnOccupants).posture).toBe("sitting");
   });
 
   it("offers each posture SOLAR_GAIN_INFO allows once, its default first", () => {
-    const { allowed, default: defaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
+    const { allowed, default: libraryDefaultPosture } = SOLAR_GAIN_INFO.inputs.posture;
     const values = solarGainOnOccupants.postures?.map((posture) => posture.value);
     expect(values).toHaveLength(allowed.length);
     expect(new Set(values)).toEqual(new Set(allowed));
-    expect(values?.[0]).toBe(defaultPosture);
+    expect(values?.[0]).toBe(libraryDefaultPosture);
   });
 
-  const defaults = startingInputs(solarGainOnOccupants);
-  /** The library's `solar_gain` at the dialog's starting values, as the app calls it. */
+  const defaults = defaultInputs(solarGainOnOccupants);
+  /** The library's `solar_gain` at the dialog's default values, as the app calls it. */
   const libraryAt = (posture: "sitting" | "standing", sol_altitude = 45) =>
     solar_gain({
       sol_altitude,
@@ -186,9 +186,9 @@ describe("solarGainOnOccupants", () => {
   });
 });
 
-describe("startingInputs", () => {
+describe("defaultInputs", () => {
   it("is each asked quantity at its default and no posture, for a calculator that asks none", () => {
-    expect(startingInputs(clothingFromOutdoorTemperature)).toEqual({ values: new Map([[q.tout, 20]]) });
+    expect(defaultInputs(clothingFromOutdoorTemperature)).toEqual({ values: new Map([[q.tout, 20]]) });
   });
 });
 
@@ -214,12 +214,12 @@ describe("calculatorBound", () => {
 
 describe("outOfRangeCalculatorInputs", () => {
   const withValue = (quantity: Quantity, value: number) => {
-    const inputs = startingInputs(solarGainOnOccupants);
+    const inputs = defaultInputs(solarGainOnOccupants);
     return { ...inputs, values: new Map(inputs.values).set(quantity, value) };
   };
 
   it("is none at the defaults", () => {
-    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, startingInputs(solarGainOnOccupants))).toEqual([]);
+    expect(outOfRangeCalculatorInputs(solarGainOnOccupants, defaultInputs(solarGainOnOccupants))).toEqual([]);
   });
 
   it("names an input past its info row, and one past its kind bound", () => {
@@ -321,7 +321,7 @@ describe("withCalculatorOutputs", () => {
   });
 
   it("throws naming a calculator the model does not declare", () => {
-    expect(() => withCalculatorOutputs(startingSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
+    expect(() => withCalculatorOutputs(defaultSlot(pmvPpdAshrae), solarGainOnOccupants, increase, { ...pmvPpdAshrae, inputs: [] })).toThrow(
       "Solar gain on people",
     );
   });
@@ -337,10 +337,10 @@ describe("panelCalculators", () => {
 
   for (const [model, calculators] of expected) {
     it(`gives ${model.info.label}'s calculators in row order, the same under operative and dynamic clothing entry`, () => {
-      const starting = startingSlot(model);
-      expect(panelCalculators(model, starting)).toEqual(calculators);
-      expect(panelCalculators(model, { ...starting, ...entryModesWithTemperature(temperatureMode.operative) })).toEqual(calculators);
-      expect(panelCalculators(model, { ...starting, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) })).toEqual(calculators);
+      const defaults = defaultSlot(model);
+      expect(panelCalculators(model, defaults)).toEqual(calculators);
+      expect(panelCalculators(model, { ...defaults, ...entryModesWithTemperature(temperatureMode.operative) })).toEqual(calculators);
+      expect(panelCalculators(model, { ...defaults, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) })).toEqual(calculators);
     });
   }
 });

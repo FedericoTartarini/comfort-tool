@@ -19,7 +19,7 @@ import { classifierOf, optionsOf, type ModelDeclaration } from "$lib/core/modelD
 import { outputNumber, rangeRowsOf, runOn } from "$lib/core/modelRun";
 import { palette } from "$lib/core/palette";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { startingSlot, withEnteredValues, withEntryModes, withOption, type Slot } from "$lib/core/slot";
+import { defaultSlot, withEnteredValues, withEntryModes, withOption, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -50,7 +50,7 @@ const isoDrawnPastItsBound: ModelDeclaration = {
   axisRanges: pmvPpdIso.axisRanges.map((range) => (range.quantity === q.tdb ? { ...range, max: 35 } : range)),
 };
 
-/** PMV (ASHRAE 55)'s starting slot with `entered` over it, local control of the air speed as `control` says. */
+/** PMV (ASHRAE 55)'s default slot with `entered` over it, local control of the air speed as `control` says. */
 function ashraeSlot(control: boolean, entered: Parameters<typeof enteredSlotFor>[1] = {}): Slot {
   return withOption(enteredSlotFor(pmvPpdAshrae, entered), airSpeedControl, control);
 }
@@ -164,7 +164,7 @@ describe("PMV (ASHRAE 55)'s air-speed chart", () => {
   });
 
   it("draws no zone between two grid points it leaves out, so no sliver runs through the cut", () => {
-    const iso = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
+    const iso = psychrometricSpec(chartRequestFor(pmvPpdIso, defaultSlot(pmvPpdIso)));
     for (const [spec, fill] of [[off, zoneOf(off)], ...zoneFillsOf(iso).map((zone) => [iso, zone] as const)] as const) {
       const { x, y } = samplesOf(spec);
       const region = regionOf(spec, fill);
@@ -280,7 +280,7 @@ function psychrometricCells(model: ModelDeclaration, slot: Slot, spec: ChartSpec
 
 describe("PMV (ISO 7730)'s psychrometric zones", () => {
   it("leave out the grid points above 30 °C and above 2 700 Pa of vapour pressure, and keep every other point they had", () => {
-    const slot = startingSlot(pmvPpdIso);
+    const slot = defaultSlot(pmvPpdIso);
     const spec = psychrometricSpec(chartRequestFor(isoDrawnPastItsBound, slot));
     const cells = psychrometricCells(isoDrawnPastItsBound, slot, spec);
     const fills = zoneFillsOf(spec);
@@ -414,7 +414,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
       };
     })(),
     (() => {
-      const slot = startingSlot(pmvPpdIso);
+      const slot = defaultSlot(pmvPpdIso);
       const request = chartRequestFor(isoDrawnPastItsBound, slot);
       return {
         name: "PMV (ISO 7730)'s psychrometric chart drawn past its 30 °C bound",

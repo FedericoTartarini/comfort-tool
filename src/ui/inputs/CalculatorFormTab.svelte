@@ -25,7 +25,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { calculatorBound, outOfRangeCalculatorInputs } from "$lib/core/applicability";
-  import { startingInputs, type CalculatorOutputs, type PostureOption } from "$lib/core/calculators";
+  import { defaultInputs, type CalculatorOutputs, type PostureOption } from "$lib/core/calculators";
   import type { Quantity } from "$lib/core/quantities";
   import { requireValue } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -49,15 +49,15 @@
 
   const id = $props.id();
 
-  const starting = $derived(startingInputs(calculator));
-  const inputs = $derived(keptInputs.get(calculator) ?? starting);
+  const defaults = $derived(defaultInputs(calculator));
+  const inputs = $derived(keptInputs.get(calculator) ?? defaults);
   const outOfRange = $derived(outOfRangeCalculatorInputs(calculator, inputs));
   const outputs = $derived(outOfRange.length > 0 ? null : calculator.compute(inputs));
   const lines = $derived(
     calculator.outputs.map((quantity) => ({ quantity, label: quantity.label, value: outputs?.values.get(quantity) ?? Number.NaN })),
   );
   const changed = $derived(
-    inputs.posture !== starting.posture || [...inputs.values].some(([quantity, value]) => starting.values.get(quantity) !== value),
+    inputs.posture !== defaults.posture || [...inputs.values].some(([quantity, value]) => defaults.values.get(quantity) !== value),
   );
 
   function setValue(quantity: Quantity, si: number) {

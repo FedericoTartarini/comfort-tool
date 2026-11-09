@@ -50,7 +50,7 @@ import {
 import { unitSystem } from "./unitSystem";
 import {
   comparedPositionsOf,
-  startingChartSettings,
+  defaultChartSettings,
   type ChartSettings,
   type SlotPosition,
   type WrittenSession,
@@ -131,7 +131,7 @@ export function toDecodedSession(text: string, models: readonly ModelDeclaration
     if (canonicalOf(sessionJson(session, models)) !== canonicalOf(json)) {
       refuse();
     }
-    return { ...session, charts: new Map([...session.charts].map(([model, settings]) => [model, withStartingBands(settings, model)])) };
+    return { ...session, charts: new Map([...session.charts].map(([model, settings]) => [model, withDefaultBands(settings, model)])) };
   } catch (error) {
     if (error instanceof Refused) {
       return undefined;
@@ -141,8 +141,8 @@ export function toDecodedSession(text: string, models: readonly ModelDeclaration
 }
 
 /** `settings` with the Band list `model` starts on where they hold none and it scans. */
-function withStartingBands(settings: ChartSettings, model: ModelDeclaration): ChartSettings {
-  return settings.bands ? settings : { ...settings, bands: startingChartSettings(model).bands };
+function withDefaultBands(settings: ChartSettings, model: ModelDeclaration): ChartSettings {
+  return settings.bands ? settings : { ...settings, bands: defaultChartSettings(model).bands };
 }
 
 function sessionJson(session: WrittenSession, models: readonly ModelDeclaration[]) {
@@ -253,7 +253,7 @@ function sessionFrom(json: unknown, models: readonly ModelDeclaration[]): Writte
     slots: [first, slots[1], slots[2]],
     charts: new Map([
       // A session holds its own model's chart settings: a text without them reads back as other than written.
-      [model, startingChartSettings(model)],
+      [model, defaultChartSettings(model)],
       ...Object.entries(recordOf(written.charts)).flatMap(([name, settings]) => {
         const charted = modelNamed(name, models);
         return charted ? [[charted, chartSettingsFrom(settings, charted, modes)] as const] : [];
@@ -273,10 +273,10 @@ function entryModesFrom(json: unknown): WrittenEntryModes {
   const written = recordOf(json);
   const valueModes = { ...defaultEntryModes };
   for (const name of entryModeNames) {
-    const fieldDefault = defaultEntryModes[name].mode;
-    const group = valueEntryGroups.find((candidate) => candidate.modes.includes(fieldDefault));
+    const defaultMode = defaultEntryModes[name].mode;
+    const group = valueEntryGroups.find((candidate) => candidate.modes.includes(defaultMode));
     const mode: ValueEntryMode =
-      written[name] === undefined ? fieldDefault : (memberNamed(group?.modes ?? [], (candidate) => candidate.id, written[name]) ?? refuse());
+      written[name] === undefined ? defaultMode : (memberNamed(group?.modes ?? [], (candidate) => candidate.id, written[name]) ?? refuse());
     valueModes[name] = { mode };
   }
   const humidity =

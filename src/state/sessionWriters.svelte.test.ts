@@ -26,7 +26,7 @@ const q = quantities;
 /** PMV (ASHRAE 55)'s row of the clothing insulation it takes, which an entered dynamic clothing insulation is held to. */
 const dynamicClothingBound = pmvPpdAshrae.info.inputs.clo!.applicability!;
 
-/** A session on PMV (ASHRAE 55) under dynamic clothing entry, at its starting metabolic rate. */
+/** A session on PMV (ASHRAE 55) under dynamic clothing entry, at its default metabolic rate. */
 function dynamicClothingSession(): Session {
   const session = new Session(pmvPpdAshrae);
   session.setClothingMode(clothingMode.dynamicClothingInsulation);

@@ -34,8 +34,8 @@ import type { UnitSystem } from "$lib/core/unitSystem";
 import {
   comparedPositionsOf,
   slotPositions,
-  startingChartSettings,
-  startingSession,
+  defaultChartSettings,
+  defaultSession,
   type ChartSettings,
   type SlotPosition,
   type WrittenSession,
@@ -159,7 +159,7 @@ function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>
 
 /**
  * Which chart is on screen and how it is set up (ADR §4.5). The defaults come
- * from the model's declaration ({@link startingChartSettings}).
+ * from the model's declaration ({@link defaultChartSettings}).
  */
 export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
@@ -169,7 +169,7 @@ export class ChartState {
   /** The classifier the Band list began as, which a draft's Add reads; none for a model that scans nothing. */
   readonly #classifier: ClassifierBins | null;
   /** The Band list the model starts on, which a draft's Reset returns to; none for a model that scans nothing. */
-  readonly #startingBands: BandList | null;
+  readonly #defaultBands: BandList | null;
   // Replaced whole, never mutated, so `$state.raw`.
   #bands: BandList | null;
 
@@ -178,7 +178,7 @@ export class ChartState {
     this.type = $state.raw(settings.type);
     this.axes = $state.raw(settings.axes);
     this.#classifier = model.scan ? classifierOf(model.info, model.scan.bands) : null;
-    this.#startingBands = startingChartSettings(model).bands;
+    this.#defaultBands = defaultChartSettings(model).bands;
     this.#bands = $state.raw(settings.bands);
   }
 
@@ -212,10 +212,10 @@ export class ChartState {
    * nothing.
    */
   draftBands(): BandListDraft | null {
-    if (!this.#bands || !this.#classifier || !this.#startingBands) {
+    if (!this.#bands || !this.#classifier || !this.#defaultBands) {
       return null;
     }
-    return new BandListDraft(this.#bands, this.#startingBands, this.#classifier, (list) => {
+    return new BandListDraft(this.#bands, this.#defaultBands, this.#classifier, (list) => {
       this.#bands = list;
     });
   }
@@ -284,11 +284,11 @@ export class Session {
   /**
    * A session holding what `from` holds, on the Standard page until an
    * address says otherwise (ADR-0002 decision 63). A model alone is its
-   * {@link startingSession}, so a session comes to hold its state one way;
+   * {@link defaultSession}, so a session comes to hold its state one way;
    * nothing lays a written session over a session already built.
    */
   constructor(from: ModelDeclaration | WrittenSession) {
-    const written = "slots" in from ? from : startingSession(from);
+    const written = "slots" in from ? from : defaultSession(from);
     for (const [model, settings] of written.charts) {
       this.#chartByModel.set(model, new ChartState(model, settings));
     }
@@ -704,7 +704,7 @@ export class Session {
   #chartFor(model: ModelDeclaration): ChartState {
     let state = this.#chartByModel.get(model);
     if (!state) {
-      state = new ChartState(model, startingChartSettings(model));
+      state = new ChartState(model, defaultChartSettings(model));
       this.#chartByModel.set(model, state);
     }
     return state;

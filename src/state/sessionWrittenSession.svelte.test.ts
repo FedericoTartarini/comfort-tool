@@ -15,7 +15,7 @@ import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/
 import { optionsOf } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
-import { startingSession } from "$lib/core/writtenSession";
+import { defaultSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -110,14 +110,14 @@ function editedSession(): Session {
 }
 
 describe("a session built on a model alone", () => {
-  it("is the session built on the model's starting written session, and reads itself out as that, for every registered model", () => {
+  it("is the session built on the model's default written session, and reads itself out as that, for every registered model", () => {
     for (const model of registeredModels) {
       const onModel = new Session(model);
-      const onStart = new Session(startingSession(model));
+      const onDefaultSession = new Session(defaultSession(model));
 
-      expect(stateOf(onStart), model.info.label).toEqual(stateOf(onModel));
-      expect(shownOf(new Computation(onStart)), model.info.label).toEqual(shownOf(new Computation(onModel)));
-      expect(onModel.toWrittenSession(), model.info.label).toEqual(startingSession(model));
+      expect(stateOf(onDefaultSession), model.info.label).toEqual(stateOf(onModel));
+      expect(shownOf(new Computation(onDefaultSession)), model.info.label).toEqual(shownOf(new Computation(onModel)));
+      expect(onModel.toWrittenSession(), model.info.label).toEqual(defaultSession(model));
     }
   });
 });

@@ -14,7 +14,7 @@ import { runOn } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { copy } from "$lib/text/copy";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
-import { panelQuantities, startingSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
+import { panelQuantities, defaultSlot, withEntryModes, withHumidityMode, withOption, type Slot } from "./slot";
 import { slotLabels } from "./slotAppearance";
 import { standardEntryFor } from "./standard";
 import { displayUnitFor, labelWithUnit } from "./units";
@@ -67,7 +67,7 @@ const LOWER_PRESSURE_SHOWN = "90";
 
 describe("inputSummary", () => {
   it("of one run on a model's defaults lists the model, its standard, the panel's rows, its options and the pressure, with no slot heading", () => {
-    const summary = summaryOf(pmvPpdAshrae, [runOf(startingSlot(pmvPpdAshrae))]);
+    const summary = summaryOf(pmvPpdAshrae, [runOf(defaultSlot(pmvPpdAshrae))]);
     expect(summary).toEqual([
       [copy.summaryModel(pmvPpdAshrae.info.label, standardEntryFor(Standard.ashrae_55_2023).label)],
       [
@@ -80,7 +80,7 @@ describe("inputSummary", () => {
 
   it("lists, for every registered model on its defaults, one row per quantity the panel lists and one line per declared option", () => {
     for (const model of registeredModels) {
-      const slot = startingSlot(model);
+      const slot = defaultSlot(model);
       const [, lines] = summaryOf(model, [runOf(slot)]);
       const rows = panelQuantities(model, slot);
       expect(lines, model.info.label).toHaveLength(rows.length + optionsOf(model).length + 1);
@@ -90,19 +90,19 @@ describe("inputSummary", () => {
   });
 
   it("gives a model with no standard its label alone", () => {
-    const [chart] = summaryOf(heatIndexRothfusz, [runOf(startingSlot(heatIndexRothfusz))]);
+    const [chart] = summaryOf(heatIndexRothfusz, [runOf(defaultSlot(heatIndexRothfusz))]);
     expect(chart).toEqual([heatIndexRothfusz.info.label]);
   });
 
   it("gives three named runs three groups in slot order, each headed by its slot's label", () => {
-    const runs = ([0, 1, 2] as const).map((position) => namedRunOf(startingSlot(pmvPpdIso), position));
+    const runs = ([0, 1, 2] as const).map((position) => namedRunOf(defaultSlot(pmvPpdIso), position));
     const [, ...slots] = summaryOf(pmvPpdIso, runs);
     expect(slots.map((lines) => lines[0])).toEqual(["Input 1", "Input 2", "Input 3"]);
   });
 
   it("heads each run by its label when the runs are named, whatever their count", () => {
     for (const positions of [[0], [1], [0, 2]] as const) {
-      const [, ...slots] = summaryOf(pmvPpdIso, positions.map((position) => namedRunOf(startingSlot(pmvPpdIso), position)));
+      const [, ...slots] = summaryOf(pmvPpdIso, positions.map((position) => namedRunOf(defaultSlot(pmvPpdIso), position)));
       expect(slots.map((lines) => lines[0])).toEqual(positions.map((position) => slotLabels[position]));
     }
   });
@@ -110,7 +110,7 @@ describe("inputSummary", () => {
   it("heads no run when the runs are unnamed, whatever their count", () => {
     const [{ quantity, value }] = declaredQuantitiesOf(pmvPpdIso);
     for (const count of [1, 2, 3]) {
-      const runs = Array.from({ length: count }, () => runOf(startingSlot(pmvPpdIso)));
+      const runs = Array.from({ length: count }, () => runOf(defaultSlot(pmvPpdIso)));
       const [, ...slots] = summaryOf(pmvPpdIso, runs);
       expect(slots.map((lines) => lines[0]), `${count} drawn`).toEqual(runs.map(() => `${rowOf(quantity)}${formatNumber(value)}`));
     }
@@ -118,7 +118,7 @@ describe("inputSummary", () => {
 
   it("lists each entry group's second mode under that mode's quantities and not the first mode's", () => {
     const second = { temperature: { mode: temperatureMode.operative }, airSpeed: { mode: airSpeedMode.relativeAirSpeed }, clothing: { mode: clothingMode.dynamicClothingInsulation } };
-    const [, lines] = summaryOf(pmvPpdAshrae, [runOf(withEntryModes(startingSlot(pmvPpdAshrae), second, pmvPpdAshrae))]);
+    const [, lines] = summaryOf(pmvPpdAshrae, [runOf(withEntryModes(defaultSlot(pmvPpdAshrae), second, pmvPpdAshrae))]);
     for (const quantity of [q.operative_tmp, q.vr, q.clo_dynamic]) {
       expect(hasRowOf(lines, quantity), quantity.key).toBe(true);
     }
@@ -130,7 +130,7 @@ describe("inputSummary", () => {
   it("lists each humidity entry under its own quantity alone", () => {
     const modes = Object.values(humidityMode);
     for (const mode of modes) {
-      const slot = withHumidityMode(startingSlot(pmvPpdIso), mode, DEFAULT_ATMOSPHERIC_PRESSURE);
+      const slot = withHumidityMode(defaultSlot(pmvPpdIso), mode, DEFAULT_ATMOSPHERIC_PRESSURE);
       const [, lines] = summaryOf(pmvPpdIso, [runOf(slot)]);
       for (const other of modes) {
         expect(hasRowOf(lines, other.quantity), `${mode.quantity.key} lists ${other.quantity.key}`).toBe(other === mode);
@@ -149,7 +149,7 @@ describe("inputSummary", () => {
   });
 
   it("lists each run's own option and its own pressure", () => {
-    const off = startingSlot(pmvPpdAshrae);
+    const off = defaultSlot(pmvPpdAshrae);
     const on = withOption(off, ashraeOption, true);
     const [, first, second] = summaryOf(pmvPpdAshrae, [runOf(off), runOf(on, LOWER_PRESSURE)]);
     expect(first).toContain(`${ashraeOption.label}: ${copy.no}`);
@@ -173,7 +173,7 @@ describe("inputSummary", () => {
   });
 
   it("writes no bounds for a run that broke none", () => {
-    const run = reportedRunOf(pmvPpdIso, startingSlot(pmvPpdIso));
+    const run = reportedRunOf(pmvPpdIso, defaultSlot(pmvPpdIso));
     expect(run.violations).toEqual([]);
     const [, lines] = summaryOf(pmvPpdIso, [run]);
     expect(lines).not.toContain(copy.boundsBrokenHeading);
@@ -181,7 +181,7 @@ describe("inputSummary", () => {
   });
 
   it("writes, under Compare, each run's own bounds after its own values", () => {
-    const unbrokenSlot = startingSlot(pmvPpdIso);
+    const unbrokenSlot = defaultSlot(pmvPpdIso);
     const runs = [
       { ...reportedRunOf(pmvPpdIso, unbrokenSlot), label: slotLabels[0] },
       { ...reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 40, met: 2, clo: 1 })), label: slotLabels[1] },
@@ -201,17 +201,17 @@ describe("inputSummary", () => {
       throw new Error("PMV (ISO 7730) declares no scan");
     }
     const bands = bandListOf(classifierOf(pmvPpdIso.info, scan.bands));
-    const summary = inputSummary({ model: pmvPpdIso, runs: [runOf(startingSlot(pmvPpdIso))], unitSystem: si, bands });
+    const summary = inputSummary({ model: pmvPpdIso, runs: [runOf(defaultSlot(pmvPpdIso))], unitSystem: si, bands });
     const last = summary[summary.length - 1];
     expect(last).toHaveLength(1);
     expect(last[0]).toContain(labelWithUnit(scan.output, displayUnitFor(scan.output, si)));
     expect(last[0]).toContain(bands.edges.map(formatNumber).join(", "));
-    expect(summaryOf(pmvPpdIso, [runOf(startingSlot(pmvPpdIso))]).flat().some((line) => line.includes(rowOf(scan.output)))).toBe(false);
+    expect(summaryOf(pmvPpdIso, [runOf(defaultSlot(pmvPpdIso))]).flat().some((line) => line.includes(rowOf(scan.output)))).toBe(false);
   });
 
   it("holds no outputs of the model", () => {
     for (const model of registeredModels) {
-      const slot = startingSlot(model);
+      const slot = defaultSlot(model);
       const lines = summaryOf(model, [runOf(slot)]).flat();
       const entered = panelQuantities(model, slot);
       for (const key of Object.keys(model.info.outputs)) {

@@ -24,7 +24,7 @@ import {
   relativeAirSpeedOf,
   relativeHumidityOf,
   rowEntryGroupOf,
-  startingSlot,
+  defaultSlot,
   underEntryModes,
   valueEntryGroups,
   withAirSpeedMode,
@@ -45,8 +45,8 @@ const LOWER_PRESSURE = 80000;
 const withoutStandard = { ...pmvPpdIso, info: { ...pmvPpdIso.info, standards: [] } };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = inputsReader(startingSlot(pmvPpdIso).values);
-const rh = relativeHumidityOf(startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
+const { tdb, v, met } = inputsReader(defaultSlot(pmvPpdIso).values);
+const rh = relativeHumidityOf(defaultSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("operativeTemperatureOf", () => {
   // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
@@ -89,9 +89,9 @@ describe("operativeTemperatureOf", () => {
 
 describe("entered values", () => {
   it("reads the humidity entry from where the slot keeps it", () => {
-    expect(enteredValue(startingSlot(pmvPpdIso), q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(rh);
+    expect(enteredValue(defaultSlot(pmvPpdIso), q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(rh);
     expect(enteredValue(enteredSlotFor(pmvPpdIso, { tdb: 27 }), q.tdb, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(27);
-    expect(enteredValue(startingSlot(pmvPpdIso), q.vr, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    expect(enteredValue(defaultSlot(pmvPpdIso), q.vr, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
   });
 
   it("lists the panel rows of the current temperature mode", () => {
@@ -144,7 +144,7 @@ describe("entered values", () => {
   describe("the panel's rows", () => {
     /** A slot in `temperature` and `humidity` entry; the rows depend on nothing else. */
     function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): Slot {
-      return { ...startingSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
+      return { ...defaultSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
     }
 
     for (const humidity of Object.values(humidityMode)) {
@@ -169,45 +169,45 @@ describe("entered values", () => {
     });
 
     describe("the calculators a row offers", () => {
-      const starting = startingSlot(pmvPpdAshrae);
+      const defaults = defaultSlot(pmvPpdAshrae);
       /** The calculators of the row of `quantity` among `model`'s rows for `slot`. */
       const offeredOn = (model: ModelDeclaration, slot: Slot, quantity: Quantity) =>
         panelRows(model, slot).find((row) => !("option" in row) && row.quantity === quantity)!;
 
       it("are those declared on the quantity the row enters", () => {
-        expect(offeredOn(pmvPpdAshrae, starting, q.clo)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
-        expect(offeredOn(pmvPpdAshrae, starting, q.tr)).toMatchObject({ calculators: [solarGainOnOccupants] });
+        expect(offeredOn(pmvPpdAshrae, defaults, q.clo)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
+        expect(offeredOn(pmvPpdAshrae, defaults, q.tr)).toMatchObject({ calculators: [solarGainOnOccupants] });
       });
 
       it("are the clothing calculators on the row re-pointed to the dynamic clothing insulation", () => {
-        const dynamic = { ...starting, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) };
+        const dynamic = { ...defaults, ...entryModesWithClothing(clothingMode.dynamicClothingInsulation) };
         expect(offeredOn(pmvPpdAshrae, dynamic, q.clo_dynamic)).toMatchObject({ calculators: [customEnsemble, clothingFromOutdoorTemperature] });
       });
 
       it("are Solar gain on the operative row, which stands for the mean radiant temperature too", () => {
-        const operative = { ...starting, ...entryModesWithTemperature(temperatureMode.operative) };
+        const operative = { ...defaults, ...entryModesWithTemperature(temperatureMode.operative) };
         expect(offeredOn(pmvPpdAshrae, operative, q.operative_tmp)).toMatchObject({ calculators: [solarGainOnOccupants] });
       });
 
       it("are none on a dry-bulb row, a humidity row, or any row of a model that declares none", () => {
-        expect(offeredOn(pmvPpdAshrae, starting, q.tdb)).toMatchObject({ calculators: [] });
-        expect(offeredOn(pmvPpdAshrae, starting, q.rh)).toMatchObject({ calculators: [] });
-        const dewPoint = { ...starting, humidity: { mode: humidityMode.dewPoint, value: 10 } };
+        expect(offeredOn(pmvPpdAshrae, defaults, q.tdb)).toMatchObject({ calculators: [] });
+        expect(offeredOn(pmvPpdAshrae, defaults, q.rh)).toMatchObject({ calculators: [] });
+        const dewPoint = { ...defaults, humidity: { mode: humidityMode.dewPoint, value: 10 } };
         expect(offeredOn(pmvPpdAshrae, dewPoint, q.dew_point_tmp)).toMatchObject({ calculators: [] });
-        const rows = panelRows(adaptiveAshrae, startingSlot(adaptiveAshrae));
+        const rows = panelRows(adaptiveAshrae, defaultSlot(adaptiveAshrae));
         expect(rows.flatMap((row) => ("option" in row ? [] : row.calculators))).toEqual([]);
       });
     });
 
     describe("an option", () => {
       const [airSpeedControl] = optionsOf(pmvPpdAshrae);
-      const starting = startingSlot(pmvPpdAshrae);
-      const corrected = { ...starting, ...entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed) };
+      const defaults = defaultSlot(pmvPpdAshrae);
+      const corrected = { ...defaults, ...entryModesWithAirSpeed(airSpeedMode.relativeAirSpeed) };
       /** Each row as what it lists: its quantity, or its option. */
       const listed = (slot: Slot) => panelRows(pmvPpdAshrae, slot).map((row) => ("option" in row ? row.option : row.quantity));
 
       it("stands where PMV (ASHRAE 55) lists it, after the air speed, under either air-speed mode", () => {
-        expect(listed(starting)).toEqual([q.tdb, q.tr, q.v, airSpeedControl, q.rh, q.met, q.clo]);
+        expect(listed(defaults)).toEqual([q.tdb, q.tr, q.v, airSpeedControl, q.rh, q.met, q.clo]);
         expect(listed(corrected)).toEqual([q.tdb, q.tr, q.vr, airSpeedControl, q.rh, q.met, q.clo]);
         expect(listed({ ...corrected, temperature: { mode: temperatureMode.operative } })).toEqual([
           q.operative_tmp,
@@ -221,7 +221,7 @@ describe("entered values", () => {
 
       it("keeps its place across the humidity swap", () => {
         for (const humidity of Object.values(humidityMode)) {
-          const slot = { ...starting, humidity: { mode: humidity, value: 0 } };
+          const slot = { ...defaults, humidity: { mode: humidity, value: 0 } };
           expect(listed(slot), humidity.id).toEqual([q.tdb, q.tr, q.v, airSpeedControl, humidity.quantity, q.met, q.clo]);
         }
       });
@@ -234,14 +234,14 @@ describe("entered values", () => {
   });
 
   it("re-derives everything downstream of a swept value", () => {
-    const slot = startingSlot(pmvPpdIso);
+    const slot = defaultSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.v, 0.6]]));
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr)).toBe(v_relative(0.6, met));
     expect(slot.values.get(q.v)).toBe(v);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
-    const slot = startingSlot(pmvPpdIso);
+    const slot = defaultSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(80);
     expect(slot.humidity?.value).toBe(rh);
@@ -249,7 +249,7 @@ describe("entered values", () => {
 
   it("reads a dew-point entry as entered, and rh as derived from it at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
-    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(rh, 0);
   });
@@ -261,7 +261,7 @@ describe("entered values", () => {
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
-    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.relativeHumidity, value: 70 });
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(70);
@@ -271,7 +271,7 @@ describe("entered values", () => {
   for (const entered of Object.values(humidityMode)) {
     it(`sets the humidity entry to ${entered.id} on entering its quantity, whatever mode the slot was in, or none`, () => {
       for (const held of [undefined, ...Object.values(humidityMode)]) {
-        const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: held && { mode: held, value: 1 } };
+        const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: held && { mode: held, value: 1 } };
         const written = withEnteredValues(slot, new Map([[entered.quantity, 2]]));
         expect(written.humidity).toEqual({ mode: entered, value: 2 });
         for (const mode of Object.values(humidityMode)) {
@@ -291,7 +291,7 @@ describe("entered values", () => {
 
 /** Adaptive (ASHRAE 55) takes no humidity, so the slot it starts on holds none. */
 describe("a slot that holds no humidity", () => {
-  const holdsNone = startingSlot(adaptiveAshrae);
+  const holdsNone = defaultSlot(adaptiveAshrae);
 
   it("holds none from its start", () => {
     expect(holdsNone.humidity).toBeUndefined();
@@ -570,7 +570,7 @@ describe("the entry groups held among the values", () => {
   const operative = entryModesWithTemperature(temperatureMode.operative);
 
   it("start a slot in the modes a declaration writes its inputs in", () => {
-    expect(entryModesOf(startingSlot(pmvPpdIso))).toEqual(defaultEntryModes);
+    expect(entryModesOf(defaultSlot(pmvPpdIso))).toEqual(defaultEntryModes);
     for (const group of valueEntryGroups) {
       expect(group.modes).toContain(group.modeOf(defaultEntryModes));
     }
@@ -661,7 +661,7 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
         for (const clothing of Object.values(clothingMode)) {
           for (const humidity of hasHumidityGroup(model) ? Object.values(humidityMode) : [undefined]) {
             slots.push({
-              ...startingSlot(model),
+              ...defaultSlot(model),
               temperature: { mode: temperature },
               airSpeed: { mode: airSpeed },
               clothing: { mode: clothing },
@@ -702,7 +702,7 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   }
 
   it("returns the temperature, air speed, clothing and humidity groups on their rows, with the modes in the table's order", () => {
-    const slot = startingSlot(pmvPpdIso);
+    const slot = defaultSlot(pmvPpdIso);
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.tdb)).toEqual({
       name: "temperature",
       modes: Object.values(temperatureMode),
@@ -718,7 +718,7 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   });
 
   it("returns none for the metabolic rate, the pressure and the mean radiant temperature, which the temperature row folds", () => {
-    const slot = startingSlot(pmvPpdIso);
+    const slot = defaultSlot(pmvPpdIso);
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.met)).toBeUndefined();
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.p_atm)).toBeUndefined();
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.tr)).toBeUndefined();
@@ -734,12 +734,12 @@ describe("the entry group a row offers (ADR-0002 decision 68)", () => {
   });
 
   it("returns the humidity group on the row of the mode entered", () => {
-    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.dew_point_tmp)?.mode).toBe(humidityMode.dewPoint);
     expect(rowEntryGroupOf(pmvPpdIso, slot, q.rh)).toBeUndefined();
   });
 
   it("returns none on a row of a group the model does not have", () => {
-    expect(rowEntryGroupOf(adaptiveAshrae, startingSlot(adaptiveAshrae), q.v)).toBeUndefined();
+    expect(rowEntryGroupOf(adaptiveAshrae, defaultSlot(adaptiveAshrae), q.v)).toBeUndefined();
   });
 });

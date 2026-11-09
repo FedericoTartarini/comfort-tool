@@ -3,7 +3,7 @@
  * seam: a link's text or none, a kept text or none and an address in, the
  * session the page opens on, the toasts and the link left waiting out, with
  * no browser, no router and no component. The expected session is the app's
- * own: a model's starting session, the narrowed session a link was written
+ * own: a model's default session, the narrowed session a link was written
  * from, or the live session the text was written from, moved to the address
  * as the back button moves it.
  */
@@ -16,7 +16,7 @@ import { quantities } from "$lib/core/quantities";
 import { toDecodedSession, toText } from "$lib/core/shareLink";
 import type { Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
-import { startingChartSettings, startingSession } from "$lib/core/writtenSession";
+import { defaultChartSettings, defaultSession } from "$lib/core/writtenSession";
 import { registeredModels } from "$lib/models";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -84,7 +84,7 @@ describe("the first address's load", () => {
         const { session } = firstLoadAt({ page: onPage, model }, { link: undefined, kept: undefined }, registeredModels);
 
         expect(openedOn(session), `${model.info.label} on ${onPage.label}`).toEqual({
-          written: startingSession(model),
+          written: defaultSession(model),
           page: onPage,
           pendingSwitch: null,
         });
@@ -130,7 +130,7 @@ describe("the first address's load", () => {
 
       const { session, toasts } = firstLoadAt(standardAddress(pmvPpdIso), { link: undefined, kept: text }, registeredModels);
 
-      expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+      expect(openedOn(session), text).toEqual({ written: defaultSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
       expect(toasts, text).toEqual([]);
     }
   });
@@ -148,7 +148,7 @@ describe("the first address's load", () => {
 
     const { session, toasts } = firstLoadAt(standardAddress(pmvPpdAshrae), { link: undefined, kept: text }, registeredModels);
 
-    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.standard, pendingSwitch: null });
+    expect(openedOn(session)).toEqual({ written: defaultSession(pmvPpdAshrae), page: page.standard, pendingSwitch: null });
     expect(toasts).toEqual([]);
   });
 
@@ -207,7 +207,7 @@ describe("the first address's load with a link", () => {
 
     const { session, toasts, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
-    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(openedOn(session)).toEqual({ written: defaultSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
     expect(toasts).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
@@ -218,7 +218,7 @@ describe("the first address's load with a link", () => {
 
     const { session, toasts, waitingLink } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
-    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(openedOn(session)).toEqual({ written: defaultSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
     expect(toasts).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
@@ -231,7 +231,7 @@ describe("the first address's load with a link", () => {
     const { session, toasts } = firstLoadAt(addressOf(sender), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
     const chart = link.charts.get(pmvPpdAshrae);
-    const bands = startingChartSettings(pmvPpdAshrae).bands;
+    const bands = defaultChartSettings(pmvPpdAshrae).bands;
     expect(openedOn(session)).toEqual({
       written: { ...link, charts: new Map([[pmvPpdAshrae, { ...chart, bands }]]) },
       page: page.standard,
@@ -246,7 +246,7 @@ describe("the first address's load with a link", () => {
 
     const { session, toasts, waitingLink } = firstLoadAt(addressOf(sender), { link: lackingLinkTextOf(sender), kept: undefined }, registeredModels);
 
-    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
+    expect(openedOn(session)).toEqual({ written: defaultSession(pmvPpdAshrae), page: page.explore, pendingSwitch: null });
     expect(toasts).toEqual(["linkRefused"]);
     expect(waitingLink).toBeNull();
   });
@@ -265,7 +265,7 @@ describe("the first address's load with a link", () => {
     for (const text of ["", "v1.not-base64-json", "v2.e30", linkTextOf(onExplore()).slice(0, -12)]) {
       const { session, toasts, waitingLink } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
 
-      expect(openedOn(session), text).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+      expect(openedOn(session), text).toEqual({ written: defaultSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
       expect(toasts, text).toEqual(["linkRefused"]);
       expect(waitingLink, text).toBeNull();
     }
@@ -339,7 +339,7 @@ describe("the first address's load with a link", () => {
     const { session, toasts } = firstLoadAt(standardAddress(pmvPpdIso), { link: text, kept: undefined }, registeredModels);
 
     // A link copied on the Standard page carries no Band list and opens on the classifier's, the sender's unedited one.
-    expect(sender.chart.bands).toEqual(startingChartSettings(pmvPpdAshrae).bands);
+    expect(sender.chart.bands).toEqual(defaultChartSettings(pmvPpdAshrae).bands);
     const expected = new Session({ ...linkSessionOf(sender), charts: new Map([[pmvPpdAshrae, sender.chart.toChartSettings()]]) });
     expect(expected.setAddress(standardAddress(pmvPpdIso))).toBe(false);
     expect(openedOn(session)).toEqual(openedOn(expected));
@@ -355,7 +355,7 @@ describe("the first address's load with a link", () => {
 
     const { session, toasts } = firstLoadAt(standardAddress(pmvPpdIso), { link: linkTextOf(sender), kept: undefined }, registeredModels);
 
-    expect(openedOn(session)).toEqual({ written: startingSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
+    expect(openedOn(session)).toEqual({ written: defaultSession(pmvPpdIso), page: page.standard, pendingSwitch: null });
     expect(toasts).toEqual(["linkRefused"]);
   });
 });

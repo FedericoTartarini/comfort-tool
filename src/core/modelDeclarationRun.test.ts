@@ -27,7 +27,7 @@ import {
 } from "./modelDeclaration";
 import { outputValue, runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
-import { startingSlot, withEnteredValues, type Slot } from "./slot";
+import { defaultSlot, withEnteredValues, type Slot } from "./slot";
 
 /**
  * The ISO declaration scanning nothing, its one chart the adaptive chart, as
@@ -51,7 +51,7 @@ function chartAxesOf(model: ModelDeclaration): ChartAxes | undefined {
  * along it, and the run's value for a quantity there.
  */
 function alongTheXAxis(model: ModelDeclaration, axes: ChartAxes) {
-  const defaults = startingSlot(model);
+  const defaults = defaultSlot(model);
   const axis = axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
   return {

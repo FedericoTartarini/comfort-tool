@@ -183,7 +183,7 @@ export type DeclaredChart =
     }
   | {
       readonly type: typeof chartType.dynamic;
-      /** Starting axes; the user may pick any entered quantity that has an axis range ({@link axisRangeFor}). */
+      /** Default axes; the user may pick any entered quantity that has an axis range ({@link axisRangeFor}). */
       readonly axes: ChartAxes;
       readonly limits?: never;
     }

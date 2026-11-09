@@ -15,7 +15,7 @@ import { inputsReader, optionsReader, resolveQuantities } from "./libraryInputs"
 import { declaredQuantitiesOf, optionsOf, type LibraryInputs, type ModelDeclaration, type OptionSpec, type OptionsReader } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantityFor, type Quantity } from "./quantities";
-import { startingSlot } from "./slot";
+import { defaultSlot } from "./slot";
 
 /** The arguments of the last call of each library function, by export name. */
 const lastCalls = vi.hoisted(() => new Map<string, readonly unknown[]>());
@@ -66,7 +66,7 @@ function receivedInputs(model: ModelDeclaration, inputs: LibraryInputs, options:
  * compare and is skipped; the rest are the ones the compiler cannot pair.
  */
 function mispairedKeys(model: ModelDeclaration): { checked: string[]; mispaired: string[] } {
-  const slot = startingSlot(model);
+  const slot = defaultSlot(model);
   const distinct = new Map<Quantity, number>(
     [...resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
   );
@@ -148,7 +148,7 @@ export function inputsTypeProof(inputs: LibraryInputs, options: OptionsReader): 
  * model's defaults. A positional argument that differs is named by its index.
  */
 function kwargsFedBy(model: ModelDeclaration, option: OptionSpec): string[] {
-  const slot = startingSlot(model);
+  const slot = defaultSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
     lastCalls.delete(model.info.name);
     runOn({ ...slot, options: new Map(slot.options).set(option, value) }, model, DEFAULT_ATMOSPHERIC_PRESSURE);

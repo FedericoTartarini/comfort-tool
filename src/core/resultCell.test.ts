@@ -8,14 +8,14 @@ import type { ModelDeclaration } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "./quantities";
 import { formatResultCell, type ResultCell } from "./resultCell";
-import { startingSlot, withEnteredValues } from "./slot";
+import { defaultSlot, withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
-const atDefaults = (model: ModelDeclaration) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+const atDefaults = (model: ModelDeclaration) => runOn(defaultSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: ModelDeclaration, tdb: number) =>
-  runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+  runOn(withEnteredValues(defaultSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
 /** Outputs holding `values` and no `warnings` rows. */
 const outputsOf = (values: Readonly<Record<string, number | string | boolean | null>>): ModelOutputs => ({ ...values, warnings: [] });
@@ -65,7 +65,7 @@ describe("formatResultCell", () => {
   // ADR-0002 decision 77 rule 2: as pythermalcomfort's NaN under its own gate, the row says why.
   it("reads PMV (ASHRAE 55)'s compliance as a dash, and PMV and PPD as numbers, at 28 °C and 1.0 m/s without local control", () => {
     const slot = withEnteredValues(
-      startingSlot(pmvPpdAshrae),
+      defaultSlot(pmvPpdAshrae),
       new Map<Quantity, number>([[q.tdb, 28], [q.tr, 28], [q.v, 1], [q.met, 1], [q.clo, 0.61]]),
     );
     const outputs = runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
