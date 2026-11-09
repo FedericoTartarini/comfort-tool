@@ -2,15 +2,14 @@ import { deflateRawSync } from "node:zlib";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
- * Every notice the app gives is a toast at the window's top right, over the
+ * Every toast the app gives stands at the window's top right, over the
  * header's right end while the page is at its top, kept until its close
  * button closes it, and the header holds none (ADR-0002 decision 84, rule 7).
- * Each notice is raised
- * where the page raises it: a link at the first address, refused where it
- * does not read back as written or holds a value out of range (decision 88,
- * rules 4 and 5); Share's clipboard; the
- * Image's download. A notice raised again replaces its own toast, and
- * Reset takes the toasts standing with it.
+ * Each toast is raised where the page raises it: a link at the first address,
+ * refused where it does not read back as written or holds a value out of
+ * range (decision 88, rules 4 and 5); Share's clipboard; the Image's
+ * download. A toast raised again replaces itself, and Reset takes the toasts
+ * standing with it.
  */
 
 const PMV_ADDRESS = "/standard/ashrae-55-2023/pmv-ppd-ashrae";
@@ -80,7 +79,7 @@ async function boxOf(locator: Locator) {
   return box;
 }
 
-test("a refused share link raises a toast at the window's top right, over the header, that stays until its close button closes it, and the header holds no notice", async ({ page }) => {
+test("a refused share link raises a toast at the window's top right, over the header, that stays until its close button closes it, and the header itself holds none", async ({ page }) => {
   await page.clock.install();
   await open(page, `${ISO_ADDRESS}?share=v1.not-base64-json`);
 
@@ -125,14 +124,14 @@ test("a link with every value within its bound raises no toast", async ({ page }
   await expect(toasts(page)).toHaveCount(0);
 });
 
-test("a clipboard that refuses the link raises its toast, refusing again replaces it, and another notice stacks", async ({ page }) => {
+test("a clipboard that refuses the link raises its toast, refusing again replaces it, and another toast stacks", async ({ page }) => {
   await open(page, PMV_ADDRESS);
 
   await shareRefused(page);
   await expect(toasts(page)).toContainText("The link could not be copied.");
 
   await shareRefused(page);
-  // Another notice after the second refusal: once its toast stands, the refusal's has had its turn.
+  // Another toast after the second refusal: once it stands, the refusal's has had its turn.
   await failImage(page);
   await expect(toasts(page)).toHaveCount(2);
   await expect(toasts(page).filter({ hasText: "The link could not be copied." })).toHaveCount(1);

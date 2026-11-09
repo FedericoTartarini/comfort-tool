@@ -3,29 +3,29 @@ import type { Address } from "$lib/core/page";
 import { Outputs } from "./compute.svelte";
 import { firstLoadAt } from "./firstLoad";
 import { clearKeptText, readKeptText } from "./keptText";
-import type { Notice, OpenSession } from "./openSession";
+import type { OpenSession, Toast } from "./openSession";
 
 /**
  * What the root holds about the tab beside its open session, and not in it
  * (ADR-0002 decision 63): the open session and a share link waiting on the
  * person's answer. It replaces the session one way, which Reset and a link's
- * yes both call (rule 8), and hands the notice a load gives to the root's
- * `onnotice`, which raises it (decision 84, rule 7). Reads and clears what
+ * yes both call (rule 8), and hands the toast a load gives to the root's
+ * `ontoast`, which raises it (decision 84, rule 7). Reads and clears what
  * the tab kept; writing it is the app's, at every change of the session.
  */
 export class Tab {
   readonly #models: readonly ModelDeclaration[];
-  readonly #onnotice: (notice: Notice) => void;
+  readonly #ontoast: (toast: Toast) => void;
   /** Set by the first address, and again by each replacement. Replaced whole, so `$state.raw`. */
   #opened = $state.raw<OpenSession>();
   #waitingLink = $state<string | null>(null);
-  /** What a no to the waiting link raises, held while it waits (`FirstLoad.declineNotices`); not read by the page, so plain. */
-  #declineNotices: readonly Notice[] = [];
+  /** What a no to the waiting link raises, held while it waits (`FirstLoad.declineToasts`); not read by the page, so plain. */
+  #declineToasts: readonly Toast[] = [];
   #replacements = $state(0);
 
-  constructor(models: readonly ModelDeclaration[], onnotice: (notice: Notice) => void) {
+  constructor(models: readonly ModelDeclaration[], ontoast: (toast: Toast) => void) {
     this.#models = models;
-    this.#onnotice = onnotice;
+    this.#ontoast = ontoast;
   }
 
   /** The open session and its outputs, or `undefined` until the first address opens them. */
@@ -55,13 +55,13 @@ export class Tab {
    * An address, and the share link's text it carried if any. The first opens
    * the session on its page and model, from its link or what the tab kept;
    * every one after it — back and forward, the app's own navigation — moves
-   * the session there, and raises the cut's notice where that cut a value
+   * the session there, and raises the cut's toast where that cut a value
    * (decision 84, rule 4). This is the address's path, and it never asks.
    */
   arrive(address: Address, link: string | undefined): void {
     if (this.#opened) {
       if (this.#opened.session.setAddress(address)) {
-        this.#onnotice("valuesCut");
+        this.#ontoast("valuesCut");
       }
       return;
     }
@@ -83,29 +83,29 @@ export class Tab {
 
   /**
    * The person said no to the waiting link: it is dropped, and the session
-   * kept where the address moved it, with the notice of the cut that move
+   * kept where the address moved it, with the toast of the cut that move
    * made, if it made one.
    */
   declineLink(): void {
     this.#waitingLink = null;
-    for (const notice of this.#declineNotices) {
-      this.#onnotice(notice);
+    for (const toast of this.#declineToasts) {
+      this.#ontoast(toast);
     }
-    this.#declineNotices = [];
+    this.#declineToasts = [];
   }
 
   /**
    * Run the first address's load at `address`, with `link` and what the tab
    * kept: the session it opens and the link it leaves waiting, each in place
-   * of what was there, and the notices it raises.
+   * of what was there, and the toasts it raises.
    */
   #openAt(address: Address, link: string | undefined): void {
     const load = firstLoadAt(address, { link, kept: readKeptText() }, this.#models);
     this.#opened = { session: load.session, outputs: new Outputs(load.session) };
     this.#waitingLink = load.waitingLink;
-    this.#declineNotices = load.declineNotices;
-    for (const notice of load.notices) {
-      this.#onnotice(notice);
+    this.#declineToasts = load.declineToasts;
+    for (const toast of load.toasts) {
+      this.#ontoast(toast);
     }
   }
 

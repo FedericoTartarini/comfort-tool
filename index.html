@@ -10,7 +10,7 @@
     <!--
       A browser without Proxy or Array toSorted cannot run the app: one without
       Proxy skips its module script, one without toSorted fails on sv-router's
-      first route match (ADR-0001 §2, §7 criterion 5). The notice names the
+      first route match (ADR-0001 §2, §7 criterion 5). The message names the
       build's target (vite.config.js).
       The check is ES5 and inline because it is all such a browser runs; the
       styles are inline because the app's stylesheet cannot be relied on there:
@@ -18,13 +18,13 @@
       only fonts, custom properties and animations, and in one that keeps them
       the inline styles win over the layered rules.
     -->
-    <div id="browser-notice" hidden style="max-width: 36em; margin: 4em auto; padding: 0 1em; font-family: sans-serif; line-height: 1.5">
+    <div id="unsupported-browser" hidden style="max-width: 36em; margin: 4em auto; padding: 0 1em; font-family: sans-serif; line-height: 1.5">
       <h1 style="font-size: 1.25em">This browser is too old for the CBE Thermal Comfort Tool</h1>
       <p>The tool needs Chrome 111, Firefox 115 or Safari 16.4, or a newer version of one of them.</p>
     </div>
     <script>
       if (typeof Proxy === "undefined" || !Array.prototype.toSorted) {
-        document.getElementById("browser-notice").removeAttribute("hidden");
+        document.getElementById("unsupported-browser").removeAttribute("hidden");
       }
     </script>
     <div id="app"></div>

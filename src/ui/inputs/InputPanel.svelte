@@ -26,8 +26,8 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import { raiseVerdict } from "$lib/ui/layout/toasts";
   import { Label } from "$lib/ui/primitives/label";
-  import { raiseVerdict } from "$lib/ui/outputs/notices";
   import { Switch } from "$lib/ui/primitives/switch";
   import EntryGroupMenuButton, { type EntryModeSetters } from "./EntryGroupMenuButton.svelte";
   import QuantityInput, { type QuantityEntry } from "./QuantityInput.svelte";

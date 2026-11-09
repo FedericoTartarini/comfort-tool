@@ -3,25 +3,25 @@ import { boundSentence, warningFor, type OutOfRangeRow, type Verdict, type Viola
 import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
-import type { Notice } from "$lib/state/openSession";
+import type { Toast } from "$lib/state/openSession";
 import type { SlotPosition } from "$lib/state/session.svelte";
 import { copy } from "$lib/text/copy";
 
-const noticeText: Record<Notice, string> = {
-  linkRefused: copy.linkRefusedNotice,
-  copyRefused: copy.copyRefusedNotice,
-  imageFailed: copy.imageFailedNotice,
-  valuesCut: copy.valuesCutNotice,
+const toastText: Record<Toast, string> = {
+  linkRefused: copy.linkRefusedToast,
+  copyRefused: copy.copyRefusedToast,
+  imageFailed: copy.imageFailedToast,
+  valuesCut: copy.valuesCutToast,
 };
 
 /**
- * Give `notice` as a toast (ADR-0002 decision 84, rule 7), held by the app's
- * one toaster at the top right until its close button closes it. The notice
- * is the toast's id, so the same notice raised again replaces its own toast
- * rather than stacking a second.
+ * Raise the toast `id` (ADR-0002 decision 84, rule 7), held by the app's one
+ * toaster at the top right until its close button closes it. `id` is the
+ * toast's Sonner id, so the same toast raised again replaces itself rather
+ * than stacking a second.
  */
-export function raiseNotice(notice: Notice): void {
-  toast(noticeText[notice], { id: notice });
+export function raiseToast(id: Toast): void {
+  toast(toastText[id], { id });
 }
 
 /** The box a value was committed in: its quantity, and its slot's name while the slots are named. */
@@ -55,7 +55,7 @@ export function raiseVerdict<Row extends OutOfRangeRow>(
     const slotName = slotNameOf(row);
     return slotName ? copy.slotNote(slotName, sentence) : sentence;
   });
-  toast(copy.refusedNotice(subject, numberWithUnit(value, unit), reasons));
+  toast(copy.refusedToast(subject, numberWithUnit(value, unit), reasons));
 }
 
 /**
@@ -70,11 +70,11 @@ export function raiseLimitsBroken(
   unitSystem: UnitSystem,
   slotName?: string,
 ): void {
-  const text = copy.limitsBrokenNotice(rows.map((row) => warningFor(row, unitSystem)));
+  const text = copy.limitsBrokenToast(rows.map((row) => warningFor(row, unitSystem)));
   toast(slotName ? copy.slotNote(slotName, text) : text, { id: `limits-broken-${position}` });
 }
 
 /** Close every toast standing, as the session they speak of is replaced. */
-export function closeNotices(): void {
+export function closeToasts(): void {
   toast.dismiss();
 }

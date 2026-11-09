@@ -18,10 +18,10 @@
   after the mark, not the toggle, `h-6` in the band's white at 30 %; the
   breadcrumb is the title, the `h1`, which on a phone wraps to two lines; the
   search form goes, and Documentation, the last item, stands at the row's end
-  (decision 84, rule 7: every notice is a toast, so the header holds none),
-  and below `md` leaves the header for the sheet's Tools group (decision 87,
-  rule 2), a link to another site that opens a new tab (decision 89, rule
-  2); the row stands in the page's frame,
+  (decision 84, rule 7: the app's notifications are toasts, so the header
+  holds none), and below `md` leaves the header for the sheet's
+  Tools group (decision 87, rule 2), a link to another site that opens a new
+  tab (decision 89, rule 2); the row stands in the page's frame,
   `--frame-width`, which `PageFrame` sets beside the sidebar's width, the
   band's ground the window's width (rule 10 as revised again 2026-10-12).
   The band's own links and the toggle ring in the paper's white on focus,

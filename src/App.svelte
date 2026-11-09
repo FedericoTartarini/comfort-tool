@@ -3,7 +3,7 @@
   the first address from its share link or what the tab kept, and kept for
   every page after it, until Reset or a link's yes replaces it (ADR-0002
   decisions 57 and 63); beside it the question a waiting link asks, and the
-  one toaster every notice is raised in (decision 84, rule 7), both drawn
+  one toaster every toast is raised in (decision 84, rule 7), both drawn
   here, with the toast a compared slot raises when its run breaks a new
   limit, on whichever page; the router renders the page for the current URL.
 -->
@@ -20,9 +20,9 @@
   import { copy } from "$lib/text/copy";
   import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
   import Toaster from "$lib/ui/layout/Toaster.svelte";
-  import { closeNotices, raiseLimitsBroken, raiseNotice } from "$lib/ui/outputs/notices";
+  import { closeToasts, raiseLimitsBroken, raiseToast } from "$lib/ui/layout/toasts";
 
-  const tab = new Tab(registeredModels, raiseNotice);
+  const tab = new Tab(registeredModels, raiseToast);
 
   /** The share link to the page the session is on: its address, and the session narrowed to it (ADR-0002 decision 63, rule 5). */
   function linkToPage(): string {
@@ -81,7 +81,7 @@
   // the question waited stands after it (`.scratch/open-points.md` B30).
   setTabControls({
     reset: () => {
-      closeNotices();
+      closeToasts();
       tab.reset();
     },
     link: linkToPage,

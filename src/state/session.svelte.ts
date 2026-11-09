@@ -374,7 +374,7 @@ export class Session {
    * time takes what slot 1 holds now, entry modes and options included, each
    * value moved by its Slot offset, one share of its axis range per position
    * past slot 1, and is cut to its bounds as an arrival is (ADR-0002 decision
-   * 89's revision of rule 8). It raises no notice for the cut, as an entry
+   * 89's revision of rule 8). It raises no toast for the cut, as an entry
    * cut raises none. A slot enabled again holds what it held.
    */
   setSlotEnabled(position: OptionalSlotPosition, enabled: boolean): void {
@@ -507,7 +507,7 @@ export class Session {
    * Commit `value` for `quantity` in the slot at `position`: written as it
    * is, cut to its bound's end, or not written, as {@link judgeEntry} says,
    * which is returned for the page to tell the person. The session raises no
-   * notice itself.
+   * toast itself.
    */
   commitEntry(position: SlotPosition, quantity: Quantity, value: number): Verdict {
     const verdict = this.judgeEntry(position, quantity, value);
@@ -522,7 +522,7 @@ export class Session {
    * row the dock shows for it, the output met with the row and cut to the
    * row's bound (`shownRow`), committed as a typed value is (ADR-0002
    * decision 84, rule 5). What the commit says is returned; the dialog
-   * raises no notice, as its dock showed the cut before the person chose.
+   * raises no toast, as its dock showed the cut before the person chose.
    */
   applyCalculator(position: SlotPosition, calculator: Calculator, outputs: CalculatorOutputs): Verdict {
     const row = shownRow(this.#heldSlotAt(position), calculator, outputs, this.model, this.atmosphericPressure);

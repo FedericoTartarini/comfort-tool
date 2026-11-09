@@ -1,7 +1,7 @@
 /**
  * What the root holds about the tab (ADR-0002 decision 63, rules 3, 6 and 8)
  * at the state seam: an address and its share link's text in, the open
- * session, the notices raised and the link waiting on the person's answer
+ * session, the toasts raised and the link waiting on the person's answer
  * out, and the one operation that replaces the session, run by Reset and by
  * a link's yes. Session storage is the test environment's; no router, no component.
  */
@@ -19,7 +19,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { writeKeptText } from "./keptText";
-import type { Notice } from "./openSession";
+import type { Toast } from "./openSession";
 import type { Session } from "./session.svelte";
 import {
   addressOf,
@@ -70,19 +70,19 @@ function senderSession(): Session {
   return session;
 }
 
-/** A tab, and the notices it raises, in order. */
+/** A tab, and the toasts it raises, in order. */
 interface RecordingTab {
   tab: Tab;
-  raised: Notice[];
+  raised: Toast[];
 }
 
-/** A tab on the registered models, recording the notices it raises. */
+/** A tab on the registered models, recording the toasts it raises. */
 function recordingTab(): RecordingTab {
-  const raised: Notice[] = [];
-  return { tab: new Tab(registeredModels, (notice) => raised.push(notice)), raised };
+  const raised: Toast[] = [];
+  return { tab: new Tab(registeredModels, (toast) => raised.push(toast)), raised };
 }
 
-/** A tab that kept `kept`, opened at `address` through a link carrying `link`, and the notices it raises. */
+/** A tab that kept `kept`, opened at `address` through a link carrying `link`, and the toasts it raises. */
 function tabOpenedThroughLink(kept: Session, address: Address, link: string): RecordingTab {
   writeKeptText(keptTextOf(kept));
   const opened = recordingTab();
@@ -144,7 +144,7 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual([]);
   });
 
-  it("to another model than the tab's, answered no, gives the kept session converted and cut as a typed address converts and cuts it, nothing asked, and the cut notice only then", () => {
+  it("to another model than the tab's, answered no, gives the kept session converted and cut as a typed address converts and cuts it, nothing asked, and the cut toast only then", () => {
     const kept = keptSession();
     // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s: a switch in the app would ask.
     heldSlot(kept, 1).setEntered(q.tdb, 35);
@@ -162,7 +162,7 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual(["valuesCut"]);
   });
 
-  it("over a kept session the address cut, answered yes, gives only the link's notices", () => {
+  it("over a kept session the address cut, answered yes, gives only the link's toasts", () => {
     const kept = keptSession();
     heldSlot(kept, 1).setEntered(q.tdb, 35);
     const sender = sessionComparingThreeSlots(pmvPpdIso);
@@ -173,7 +173,7 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual([]);
   });
 
-  it("with a value out of range is refused, not cut (decision 88, rule 5): nothing waits, the kept session, and the refusal's notice alone", () => {
+  it("with a value out of range is refused, not cut (decision 88, rule 5): nothing waits, the kept session, and the refusal's toast alone", () => {
     const kept = keptSession();
     const sender = senderSession();
     // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
@@ -186,7 +186,7 @@ describe("a link reaching a tab that kept a session", () => {
     expect(raised).toEqual(["linkRefused"]);
   });
 
-  it("that lacks a value is refused (decision 88, rule 4): nothing waits, the kept session, and the notice", () => {
+  it("that lacks a value is refused (decision 88, rule 4): nothing waits, the kept session, and the toast", () => {
     const kept = keptSession();
     const sender = senderSession();
     const { tab, raised } = tabOpenedThroughLink(kept, addressOf(sender), lackingLinkTextOf(sender));
@@ -199,7 +199,7 @@ describe("a link reaching a tab that kept a session", () => {
 });
 
 describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)", () => {
-  it("through a link with a value out of range refuses it: the address's model on its defaults, and the refusal's notice alone", () => {
+  it("through a link with a value out of range refuses it: the address's model on its defaults, and the refusal's toast alone", () => {
     const sender = senderSession();
     // Past PMV (ASHRAE 55)'s 40 °C dry-bulb temperature.
     heldSlot(sender, 0).setEntered(q.tdb, 45);
@@ -220,7 +220,7 @@ describe("an arrival at a tab with nothing kept (ADR-0002 decision 84, rule 4)",
     expect(raised).toEqual([]);
   });
 
-  it("after the first, at a model under which a held value is out of range, cuts it and raises the cut notice; one with none raises nothing", () => {
+  it("after the first, at a model under which a held value is out of range, cuts it and raises the cut toast; one with none raises nothing", () => {
     const { tab, raised } = recordingTab();
     tab.arrive(standardAddress(pmvPpdAshrae), undefined);
     // Past PMV (ISO 7730)'s 30 °C dry-bulb temperature, inside PMV (ASHRAE 55)'s.

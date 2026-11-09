@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 /**
  * A share link as Share writes it on the Standard page, to PMV (ISO 7730)
- * at its defaults, deflated by Node's own zlib. The notice's check reads
+ * at its defaults, deflated by Node's own zlib. The message's check reads
  * nothing from the address, so without `Proxy` or `toSorted` its text only
  * has to look like one.
  */
@@ -49,30 +49,30 @@ const missingFeatures = [
 ];
 
 /**
- * The static notice `index.html` shows a browser below the tool's floor
+ * The static message `index.html` shows a browser below the tool's floor
  * (ADR-0001 §2, §7 criterion 5). A browser without `Proxy` skips the module
  * entry; a modern one with a feature removed runs it and fails on its own, so
- * these cases also prove the notice survives the app's failure.
+ * these cases also prove the message survives the app's failure.
  */
 for (const feature of missingFeatures) {
   for (const { name, address } of openings) {
-    test(`without ${feature.name}, ${name} shows the notice and leaves the app empty`, async ({ page }) => {
+    test(`without ${feature.name}, ${name} shows the message and leaves the app empty`, async ({ page }) => {
       await page.addInitScript(feature.remove);
       await page.goto(address);
 
-      await expect(page.locator("#browser-notice")).toBeVisible();
-      await expect(page.locator("#browser-notice")).toContainText("Chrome 111, Firefox 115 or Safari 16.4");
+      await expect(page.locator("#unsupported-browser")).toBeVisible();
+      await expect(page.locator("#unsupported-browser")).toContainText("Chrome 111, Firefox 115 or Safari 16.4");
       await expect(page.locator("#app")).toBeEmpty();
     });
   }
 }
 
-test("with Proxy and toSorted, a share link shows the app on the model it names, never the default, and never the notice", async ({ page }) => {
+test("with Proxy and toSorted, a share link shows the app on the model it names, never the default, and never the message", async ({ page }) => {
   await page.goto(SHARE_ADDRESS);
 
   await expect(page.locator("#app")).not.toBeEmpty();
   await expect(page.getByRole("button", { name: "Model", exact: true })).toHaveText("PMV / PPD (ISO 7730)");
   await expect(page).toHaveURL((url) => url.pathname === "/standard/iso-7730-2025/pmv-ppd-iso");
-  await expect(page.locator("#browser-notice")).toBeAttached();
-  await expect(page.locator("#browser-notice")).toBeHidden();
+  await expect(page.locator("#unsupported-browser")).toBeAttached();
+  await expect(page.locator("#unsupported-browser")).toBeHidden();
 });

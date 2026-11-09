@@ -4,8 +4,8 @@
   import type { Session, SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Stack from "$lib/ui/layout/Stack.svelte";
+  import { raiseVerdict } from "$lib/ui/layout/toasts";
   import { Button } from "$lib/ui/primitives/button";
-  import { raiseVerdict } from "$lib/ui/outputs/notices";
   import { Separator } from "$lib/ui/primitives/separator";
   import CopyLinkButton from "./CopyLinkButton.svelte";
   import QuantityInput from "./QuantityInput.svelte";

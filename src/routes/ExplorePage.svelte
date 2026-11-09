@@ -24,7 +24,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import { raiseNotice } from "$lib/ui/outputs/notices";
+  import { raiseToast } from "$lib/ui/layout/toasts";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Separator } from "$lib/ui/primitives/separator";
   import { inAppLinkTo, inAppSwitch } from "./inAppSwitch";
@@ -50,7 +50,7 @@
       {session}
       onreset={tab.reset}
       link={tab.link}
-      oncopyrefused={() => raiseNotice("copyRefused")}
+      oncopyrefused={() => raiseToast("copyRefused")}
     />
   {/snippet}
 
@@ -110,7 +110,7 @@
         runs={outputs.drawnRuns}
         unitSystem={session.unitSystem}
         bands={session.chart.bands}
-        onfailed={() => raiseNotice("imageFailed")}
+        onfailed={() => raiseToast("imageFailed")}
       />
     </Inline>
   {/snippet}

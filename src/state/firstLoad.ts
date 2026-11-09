@@ -2,7 +2,7 @@ import type { ModelDeclaration } from "$lib/core/modelDeclaration";
 import type { Address } from "$lib/core/page";
 import { toDecodedSession } from "$lib/core/shareLink";
 import type { WrittenSession } from "$lib/core/writtenSession";
-import type { Notice } from "./openSession";
+import type { Toast } from "./openSession";
 import { Session } from "./session.svelte";
 
 /** The texts a document load finds: the address's share link, and the one the tab kept; either may be absent. */
@@ -14,27 +14,27 @@ export interface LoadTexts {
 /** What the page opens on after a document load. */
 export interface FirstLoad {
   readonly session: Session;
-  /** The notices the load raises, in order; none for a load that has nothing to say. */
-  readonly notices: readonly Notice[];
+  /** The toasts the load raises, in order; none for a load that has nothing to say. */
+  readonly toasts: readonly Toast[];
   /**
    * A link's text left waiting on the person's yes, because the tab kept a
-   * session it would replace (rule 8), or `null`. Its notice waits with it:
+   * session it would replace (rule 8), or `null`. Its toast waits with it:
    * a yes runs this load again with the text and nothing kept.
    */
   readonly waitingLink: string | null;
   /**
-   * The notices a no to the waiting link raises: the cut's, where the address
+   * The toasts a no to the waiting link raises: the cut's, where the address
    * cut the kept session it keeps (decision 84, rule 4, and the user's ruling
    * on `.scratch/input-gate/` ticket 06); none while no link waits.
    */
-  readonly declineNotices: readonly Notice[];
+  readonly declineToasts: readonly Toast[];
 }
 
 /**
  * The session a document load opens at `address` (ADR-0002 decision 63, rule
  * 3), and what it raises:
  *
- * - a link and nothing kept: the link's session, and no notice;
+ * - a link and nothing kept: the link's session, and no toast;
  * - a link over a kept session: the kept session, the link waiting, and
  *   nothing raised: a yes runs the load again, and a no raises the kept
  *   session's cut;
@@ -42,7 +42,7 @@ export interface FirstLoad {
  *   rule 4), or one whose session the move to the address below would cut,
  *   past its own model's bounds (rule 5) or past those of another model its
  *   path was changed to, judged before anything is asked: the kept session,
- *   else the address's model on its defaults, the notice, and nothing asked;
+ *   else the address's model on its defaults, the toast, and nothing asked;
  * - no link: the kept session, else the defaults, and nothing raised, since
  *   the person typed no text; a kept text refused raises nothing.
  *
@@ -50,7 +50,7 @@ export interface FirstLoad {
  * follows the address as at any arrival, converted and seeded and never asked
  * (rule 4, decision 32), and cut to its bounds. Only a kept session is ever
  * cut, since a link that would be cut is refused instead; the cut is one more
- * notice, after a refused link's (decision 84, rule 4, as revised by decision
+ * toast, after a refused link's (decision 84, rule 4, as revised by decision
  * 88).
  *
  * Touches no browser: the texts are read by the caller and handed in, so this
@@ -68,9 +68,9 @@ export function firstLoadAt(address: Address, texts: LoadTexts, models: readonly
   }
   if (kept) {
     const load = loadAt(address, kept, []);
-    return { ...load, notices: [], waitingLink: texts.link, declineNotices: load.notices };
+    return { ...load, toasts: [], waitingLink: texts.link, declineToasts: load.toasts };
   }
-  return { session: linkSession, notices: [], waitingLink: null, declineNotices: [] };
+  return { session: linkSession, toasts: [], waitingLink: null, declineToasts: [] };
 }
 
 /**
@@ -85,11 +85,11 @@ function linkOpenedAt(address: Address, written: WrittenSession): Session | unde
 
 /**
  * The load of a session built from `written`, else the address's model on
- * its defaults, moved to `address`, with nothing waiting: `notices`, and the
+ * its defaults, moved to `address`, with nothing waiting: `toasts`, and the
  * cut's after them where the move cut a value.
  */
-function loadAt(address: Address, written: WrittenSession | undefined, notices: readonly Notice[]): FirstLoad {
+function loadAt(address: Address, written: WrittenSession | undefined, toasts: readonly Toast[]): FirstLoad {
   const session = new Session(written ?? address.model);
   const cut = session.setAddress(address);
-  return { session, notices: cut ? [...notices, "valuesCut"] : notices, waitingLink: null, declineNotices: [] };
+  return { session, toasts: cut ? [...toasts, "valuesCut"] : toasts, waitingLink: null, declineToasts: [] };
 }

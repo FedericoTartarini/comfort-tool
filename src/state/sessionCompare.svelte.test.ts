@@ -223,8 +223,8 @@ describe("the Slot offsets of a slot first enabled", () => {
     expect(differenceFromSlot1(session, 2).get(quantity)).toBeCloseTo(2 * share, 2);
   });
 
-  // That the cut raises no toast is the browser's to show: no notice is
-  // raised from here (layout.behaviour.ts, "compared slots that start apart").
+  // That the cut raises no toast is the browser's to show: nothing is raised
+  // from here (layout.behaviour.ts, "compared slots that start apart").
   for (const model of [pmvPpdAshrae, pmvPpdIso]) {
     it(`cut slot 3's metabolic rate to its bound where slot 1's stands at it, the other values moved, on ${model.info.label}`, () => {
       const max = model.info.inputs.met?.applicability?.max;

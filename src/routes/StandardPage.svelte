@@ -20,7 +20,7 @@ import { palette } from "$lib/core/palette";
   import PageFrame from "$lib/ui/layout/PageFrame.svelte";
   import SlotColumns from "$lib/ui/layout/SlotColumns.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import { raiseNotice } from "$lib/ui/outputs/notices";
+  import { raiseToast } from "$lib/ui/layout/toasts";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Label } from "$lib/ui/primitives/label";
   import { Separator } from "$lib/ui/primitives/separator";
@@ -65,7 +65,7 @@ import { palette } from "$lib/core/palette";
       {session}
       onreset={tab.reset}
       link={tab.link}
-      oncopyrefused={() => raiseNotice("copyRefused")}
+      oncopyrefused={() => raiseToast("copyRefused")}
     />
   {/snippet}
 
@@ -152,7 +152,7 @@ import { palette } from "$lib/core/palette";
       chartType={session.chart.type}
       runs={outputs.drawnRuns}
       unitSystem={session.unitSystem}
-      onfailed={() => raiseNotice("imageFailed")}
+      onfailed={() => raiseToast("imageFailed")}
     />
   {/snippet}
 

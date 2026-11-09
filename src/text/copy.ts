@@ -154,30 +154,30 @@ export const copy = {
   linkQuestion: "This tab already holds a session. Opening the link replaces it, and that cannot be undone.",
   linkAccept: "Yes, open the link",
   linkDecline: "No, keep mine",
-  // Share, and the notices a link and Share raise (ADR-0002 decision 63, rules 6 and 7; rule 7's button as noted 2026-10-27).
+  // Share, and the toasts a link and Share raise (ADR-0002 decision 63, rules 6 and 7; rule 7's button as noted 2026-10-27).
   share: "Share",
   linkCopied: "Link copied",
-  linkRefusedNotice: "The shared link could not be read, so nothing was opened from it.",
-  copyRefusedNotice: "The link could not be copied.",
+  linkRefusedToast: "The shared link could not be read, so nothing was opened from it.",
+  copyRefusedToast: "The link could not be copied.",
   // An arrival that cut values to their bounds (decision 84, rule 4, as noted 2026-10-28).
-  valuesCutNotice: "Some values were out of range and were cut to the nearest allowed value.",
+  valuesCutToast: "Some values were out of range and were cut to the nearest allowed value.",
   // A toast's close button (decision 84, rule 7).
   closeToast: "Close",
   // What a refused value's toast says (decision 84, rules 2 and 7): `subject` is the box's quantity, with its slot
   // under Compare; `value` carries its unit; each reason is a bound sentence, of what the value would break.
-  refusedNotice: (subject: string, value: string, reasons: readonly string[]) =>
+  refusedToast: (subject: string, value: string, reasons: readonly string[]) =>
     reasons.length === 1
       ? `${subject} was not changed to ${value}, which would put another value out of range. ${reasons[0]}. Change it first.`
       : `${subject} was not changed to ${value}, which would put other values out of range. ${reasons.join(". ")}. Change them first.`,
   // A run that broke a limit it did not break before (decision 84, rule 8): each reason is a bound sentence.
-  limitsBrokenNotice: (reasons: readonly string[]) => `Calculated, but outside ${reasons.length === 1 ? "a limit" : "limits"}. ${reasons.join(". ")}.`,
+  limitsBrokenToast: (reasons: readonly string[]) => `Calculated, but outside ${reasons.length === 1 ? "a limit" : "limits"}. ${reasons.join(". ")}.`,
   // An Image of the chart (ADR-0002 decision 64, rules 6 and 8).
   exportImage: "Export image",
   imageTitle: "Title",
   imageSize: "Size",
   imageFormat: "Format",
   imageDownload: "Download",
-  imageFailedNotice: "The image could not be made.",
+  imageFailedToast: "The image could not be made.",
   imageIncludesSummaryAndFooter: "Include input summary and footer",
   // A standard's name, `ASHRAE 55:2023`, as the sidebar, the Explore select's group heading and the Input summary write
   // it (decision 86, rule 2): the colon for every body.
