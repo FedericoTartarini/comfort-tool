@@ -34,7 +34,7 @@ export type ResultCell =
  * not name among them. `violations`
  * are the rows the outputs show broken: while there is one, a boolean reads
  * the dash too, as pythermalcomfort's NaN under its own gate (ADR-0002
- * decision 77, rule 2), which the row's limits icon explains (decision 85,
+ * decision 77, rule 2), which the row's bounds icon explains (decision 85,
  * rule 5); a Band badge stays.
  */
 export function formatResultCell(

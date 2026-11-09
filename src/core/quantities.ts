@@ -7,7 +7,7 @@
  * written as a string, besides the share link that will carry it; every other
  * module holds the row itself, compared by identity, never the key.
  *
- * `kindBounds`, beside the kinds, holds the range a kind is defined over,
+ * `kindBounds`, beside the kinds, holds the bound a kind is defined over,
  * whatever the model; the pre-call gate reads it (ADR-0002 decision 46).
  * `DEFAULT_ATMOSPHERIC_PRESSURE` is `p_atm`'s value until the user enters
  * another, written once here (ADR-0002 decision 49).
@@ -42,7 +42,7 @@ export type QuantityKind =
   | "flag";
 
 /**
- * The range a kind's values are defined over, whatever the model: a
+ * The bound a kind's values are defined over, whatever the model: a
  * percentage is 0 to 100. The library publishes no applicability on relative
  * humidity, so the pre-call gate reads this bound beside the model's own row
  * (ADR-0002 decision 46). A kind with no entry here has no bound of its own.
@@ -59,7 +59,7 @@ export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
   // alone holds, as the air speed's holds an entered `v`.
   clothingInsulation: { min: 0 },
   // Neither the library nor pythermalcomfort bounds `p_atm`; this is the
-  // deployed tool's range, one for every model (ADR-0002 decision 49).
+  // deployed tool's bound, one for every model (ADR-0002 decision 49).
   atmosphericPressure: { min: 30000, max: 110000 },
   // A share of a whole, 0 to 1 by definition: `SOLAR_GAIN_INFO` bounds no
   // transmittance or view fraction, and bounds the absorptivity inside it.
@@ -131,7 +131,7 @@ export const quantities = {
   compliance: { key: "compliance", kind: "flag", label: "Compliance" },
   // The input calculators' quantities, named by `CLO_TOUT_INFO` and
   // `SOLAR_GAIN_INFO` (ADR-0002 decision 75). The labels are the deployed
-  // tool's words less their ranges and symbols, SHARP kept as the standard's
+  // tool's words less their bounds and symbols, SHARP kept as the standard's
   // acronym (decision 75's note of 2026-10-15).
   tout: { key: "tout", kind: "temperature", label: "Outdoor air temperature at 6 a.m." },
   sol_altitude: { key: "sol_altitude", kind: "angle", label: "Solar altitude above horizon" },

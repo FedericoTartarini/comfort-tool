@@ -4,7 +4,7 @@ import { registeredModels } from "$lib/models";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { violationRows, warningFor } from "./applicability";
+import { violationRows, violationSentence } from "./applicability";
 import { bandListOf } from "./bands";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "./entryModes";
@@ -35,9 +35,9 @@ function reportedRunOf(model: ModelDeclaration, slot: Slot): DrawnRun {
   return { ...runOf(slot), violations: violationRows(model, outputs, slot) };
 }
 
-/** The lines of a run's broken limits: the limits popover's heading, then each limit in its row's sentence. */
-function limitLinesOf(run: DrawnRun): string[] {
-  return [copy.limitsBrokenHeading, ...run.violations.map((row) => warningFor(row, si))];
+/** The lines of a run's broken bounds: the bounds icon's heading, then each bound in its row's sentence. */
+function boundLinesOf(run: DrawnRun): string[] {
+  return [copy.boundsBrokenHeading, ...run.violations.map((row) => violationSentence(row, si))];
 }
 
 /** `slot` drawn as the slot at `position` while the slots are named. */
@@ -158,29 +158,29 @@ describe("inputSummary", () => {
     expect(second).toContain(`${rowOf(q.p_atm)}${LOWER_PRESSURE_SHOWN}`);
   });
 
-  it("writes the limits a run broke after its values, under the popover's heading, one line a limit", () => {
+  it("writes the bounds a run broke after its values, under the icon's heading, one line a bound", () => {
     const run = reportedRunOf(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, { v: 0.9 }));
     const [, lines] = summaryOf(pmvPpdAshrae, [run]);
     const [, unbroken] = summaryOf(pmvPpdAshrae, [runOf(run.slot)]);
-    expect(lines).toEqual([...unbroken, copy.limitsBrokenHeading, "Relative air speed must be ≤ 0.64 m/s"]);
+    expect(lines).toEqual([...unbroken, copy.boundsBrokenHeading, "Relative air speed must be ≤ 0.64 m/s"]);
   });
 
-  it("writes a line for each limit a run broke", () => {
+  it("writes a line for each bound a run broke", () => {
     const run = reportedRunOf(pmvPpdIso, enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 40, met: 2, clo: 1, v: 1.5 }));
     expect(run.violations.length).toBeGreaterThan(1);
     const [, lines] = summaryOf(pmvPpdIso, [run]);
-    expect(lines.slice(-limitLinesOf(run).length)).toEqual(limitLinesOf(run));
+    expect(lines.slice(-boundLinesOf(run).length)).toEqual(boundLinesOf(run));
   });
 
-  it("writes no limits for a run that broke none", () => {
+  it("writes no bounds for a run that broke none", () => {
     const run = reportedRunOf(pmvPpdIso, startingSlot(pmvPpdIso));
     expect(run.violations).toEqual([]);
     const [, lines] = summaryOf(pmvPpdIso, [run]);
-    expect(lines).not.toContain(copy.limitsBrokenHeading);
+    expect(lines).not.toContain(copy.boundsBrokenHeading);
     expect(lines[lines.length - 1]).toBe(`${rowOf(q.p_atm)}${DEFAULT_PRESSURE_SHOWN}`);
   });
 
-  it("writes, under Compare, each run's own limits after its own values", () => {
+  it("writes, under Compare, each run's own bounds after its own values", () => {
     const unbrokenSlot = startingSlot(pmvPpdIso);
     const runs = [
       { ...reportedRunOf(pmvPpdIso, unbrokenSlot), name: slotNames[0] },
@@ -190,9 +190,9 @@ describe("inputSummary", () => {
     const [, first, second, third] = summaryOf(pmvPpdIso, runs);
     const [, unbroken] = summaryOf(pmvPpdIso, [namedRunOf(unbrokenSlot, 0)]);
     expect(first).toEqual(unbroken);
-    expect(second.slice(-limitLinesOf(runs[1]).length)).toEqual(limitLinesOf(runs[1]));
-    expect(third.slice(-limitLinesOf(runs[2]).length)).toEqual(limitLinesOf(runs[2]));
-    expect(limitLinesOf(runs[1])).not.toEqual(limitLinesOf(runs[2]));
+    expect(second.slice(-boundLinesOf(runs[1]).length)).toEqual(boundLinesOf(runs[1]));
+    expect(third.slice(-boundLinesOf(runs[2]).length)).toEqual(boundLinesOf(runs[2]));
+    expect(boundLinesOf(runs[1])).not.toEqual(boundLinesOf(runs[2]));
   });
 
   it("ends, given a Band list, with the scanned output's label and every Edge in order", () => {

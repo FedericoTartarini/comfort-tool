@@ -103,7 +103,7 @@
               <NumberInput
                 value={bands.edges[index]}
                 {unit}
-                isLegal={(si) => draft.isInOrder(index, si)}
+                isWithinBounds={(si) => draft.isInOrder(index, si)}
                 ariaLabel={copy.bandControl(edgeColumn, index)}
                 oncommit={(si) => draft.moveEdge(index, si)}
               />

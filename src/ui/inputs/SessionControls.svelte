@@ -68,7 +68,7 @@
       {
         value: session.atmosphericPressure,
         bound: kindBounds[quantities.p_atm.kind],
-        isLegal: (si) => session.judgeAtmosphericPressure(si).kind === "legal",
+        isWithinBounds: (si) => session.judgeAtmosphericPressure(si).kind === "written",
         oncommit: commitPressure,
       },
     ]}

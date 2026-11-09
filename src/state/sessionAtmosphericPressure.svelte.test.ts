@@ -209,7 +209,7 @@ describe("a humidity-ratio entry while the atmospheric pressure is out of range"
     expect(outOfRangeQuantitiesAt(session, 0)).toEqual([]);
   });
 
-  it("is not listed by a requested switch, and a yes leaves it as entered while it adjusts a temperature", () => {
+  it("is not listed by a requested switch, and a yes leaves it as entered while it cuts a temperature", () => {
     const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
     session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 

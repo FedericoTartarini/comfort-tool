@@ -1,16 +1,16 @@
 /**
  * What is inside and outside a model's applicability. Reads `applicability`
  * off a model's `info.inputs` for the bound an entered quantity must satisfy
- * (the pre-call gate, and the range shown beside the input; ADR-0002
+ * (the pre-call gate, and the bound shown beside the input; ADR-0002
  * decision 4), intersected with its kind's bound from `kindBounds` when the
  * model takes the quantity (decision 46); `axisRangeFor` reads the same
  * applicability bounds only as an axis range's fallback (decision 5). The
  * rows a completed run still breaks are the library's, read off the outputs'
  * `warnings` (ADR-0002 decision 23) and mapped to quantities here.
  *
- * A violation is `{ quantity, bounded, role, value, bound }`, and its warning
- * sentence is assembled here from the bounded quantity's label, the bound and
- * the display unit, in the copy dictionary's words.
+ * A violation is `{ quantity, bounded, role, value, bound }`, and its
+ * violation sentence is assembled here from the bounded quantity's label, the
+ * bound and the display unit, in the copy dictionary's words.
  */
 import type { Bound, InputsInfo, ModelOutputs } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
@@ -37,12 +37,15 @@ export type { Bound };
 
 const q = quantities;
 
-/** One entered value the pre-call gate stops, with the bound it was tested against. */
-export interface OutOfRangeRow {
+/** A bound a value broke: the quantity whose row it is shown on, the value, and the bound. */
+export interface BrokenBound {
   readonly quantity: Quantity;
   readonly value: number;
   readonly bound: Bound;
 }
+
+/** One entered value the pre-call gate stops, with the bound it was tested against. */
+export type OutOfRangeRow = BrokenBound;
 
 /**
  * One applicability row a value broke, and where it appeared in the model's
@@ -51,7 +54,7 @@ export interface OutOfRangeRow {
  * differ for `vr` under air speed entry, reported on the entered `v`
  * (ADR-0002 decision 4).
  */
-export interface ViolationRow extends OutOfRangeRow {
+export interface ViolationRow extends BrokenBound {
   readonly bounded: Quantity;
   readonly role: "input" | "derived" | "output";
 }
@@ -85,8 +88,8 @@ function breaksBound(quantity: Quantity, bound: Bound, value: number): boolean {
 
 /**
  * The unit the gate judges a value of `quantity` in, whatever the session
- * shows: g/kg for the humidity ratio, not kg/kg. The range text asks the same
- * unit, so an end it writes is one the gate accepts.
+ * shows: g/kg for the humidity ratio, not kg/kg. The bound's text asks the
+ * same unit, so an end it writes is one the gate accepts.
  */
 function gateUnitFor(quantity: Quantity): DisplayUnit {
   return displayUnitFor(quantity, unitSystem.si);
@@ -306,7 +309,7 @@ export interface SlotOutOfRangeRow extends OutOfRangeRow {
 
 /**
  * What the gate says of a value a person would commit (ADR-0002 decision 84,
- * rule 2), and so what a commit of it does: **legal**, written as it is;
+ * rule 2), and so what a commit of it does: **written**, as it is;
  * **cut**, past its own bound, written as the end it is beyond, the end
  * itself in SI (decision 56); or **refused**, as it would put another value
  * out of range, written not at all, with the rows of what it would break. The
@@ -314,16 +317,16 @@ export interface SlotOutOfRangeRow extends OutOfRangeRow {
  * where the value is the session's.
  */
 export type Verdict<Row extends OutOfRangeRow = OutOfRangeRow> =
-  | { readonly kind: "legal" }
+  | { readonly kind: "written" }
   | { readonly kind: "cut"; readonly value: number; readonly bound: Bound }
   | { readonly kind: "refused"; readonly rows: readonly Row[] };
 
-const legal = { kind: "legal" } as const;
+const writtenAsItIs = { kind: "written" } as const;
 
 /**
  * The {@link Verdict} on `value` past `bound` cut to its end, then checked by
  * `rowsAt` at what would be written: refused for any row there, cut where the
- * end differs from `value`, and legal otherwise.
+ * end differs from `value`, and written otherwise.
  */
 function verdictOf<Row extends OutOfRangeRow>(
   value: number,
@@ -336,7 +339,7 @@ function verdictOf<Row extends OutOfRangeRow>(
   if (rows.length > 0) {
     return { kind: "refused", rows };
   }
-  return bound && written !== value ? { kind: "cut", value: written, bound } : legal;
+  return bound && written !== value ? { kind: "cut", value: written, bound } : writtenAsItIs;
 }
 
 /**
@@ -394,7 +397,7 @@ export function nearestEnd(value: number, bound: Bound): number {
 /**
  * Whether the session's atmospheric pressure breaks its kind's bound. Judged
  * apart from {@link outOfRangeRows}: that list is what a model switch asks
- * about and adjusts in the slot, and the pressure is neither held in a slot
+ * about and cuts in the slot, and the pressure is neither held in a slot
  * nor dependent on the model (ADR-0002 decision 49). {@link enteredBound}
  * applies a kind's bound only to a quantity the model takes, so it never
  * reaches the pressure.
@@ -427,7 +430,7 @@ export function atmosphericPressureRow(atmosphericPressure: number): OutOfRangeR
  * insulation. The gate holds an entered `v` or clothing insulation to its
  * kind's bound alone, so such a row arrives whenever a metabolic rate, an air
  * speed or a clothing insulation takes what the model is given past its row. A
- * quantity can break several limits in one role (PMV (ASHRAE 55)'s fixed
+ * quantity can break several bounds in one role (PMV (ASHRAE 55)'s fixed
  * air-speed row plus its no-control rows): those merge into one row over the
  * narrowest bound, so the person reads one sentence; the individual bounds
  * are not kept. A row is only a value shown outside its bound, as the gate
@@ -475,16 +478,16 @@ function reportedRow(model: ModelDeclaration, keyed: Quantity, modes: ValueEntry
 }
 
 /**
- * Whether the rows `now` break a limit the rows `before` did not, what a
- * slot's toast is raised for (ADR-0002 decision 84, rule 8). A limit is the
- * quantity it bounds and its role: not the row it is reported on, which an
- * entry-mode switch moves, nor its numbers, as PMV (ASHRAE 55)'s air-speed
- * rule builds its bound per call, so the same limit moves with the
- * temperature.
+ * Whether the rows `now` break a bound the rows `before` did not, what a
+ * slot's toast is raised for (ADR-0002 decision 84, rule 8). A bound is told
+ * apart by the quantity it bounds and its role: not by the row it is
+ * reported on, which an entry-mode switch moves, nor by its numbers, as
+ * PMV (ASHRAE 55)'s air-speed rule builds its bound per call, so the same
+ * bound's ends move with the temperature.
  */
-export function breaksNewLimit(before: readonly ViolationRow[], now: readonly ViolationRow[]): boolean {
-  const isSameLimit = (a: ViolationRow, b: ViolationRow) => a.bounded === b.bounded && a.role === b.role;
-  return now.some((row) => !before.some((earlier) => isSameLimit(row, earlier)));
+export function breaksNewBound(before: readonly ViolationRow[], now: readonly ViolationRow[]): boolean {
+  const isSameBound = (a: ViolationRow, b: ViolationRow) => a.bounded === b.bounded && a.role === b.role;
+  return now.some((row) => !before.some((earlier) => isSameBound(row, earlier)));
 }
 
 /**
@@ -513,18 +516,18 @@ export function formatBound(bound: Bound, quantity: Quantity, system: UnitSystem
  */
 export function boundSentence(quantity: Quantity, bound: Bound, system: UnitSystem): string {
   const unit = displayUnitFor(quantity, system);
-  return copy.applicabilityWarning(quantity.label, valueWithUnit(formatBound(bound, quantity, system), unit));
+  return copy.boundSentence(quantity.label, valueWithUnit(formatBound(bound, quantity, system), unit));
 }
 
 /** The sentence a violation row shows the user, of the bounded quantity ({@link boundSentence}). */
-export function warningFor(row: ViolationRow, unitSystem: UnitSystem): string {
+export function violationSentence(row: ViolationRow, unitSystem: UnitSystem): string {
   return boundSentence(row.bounded, row.bound, unitSystem);
 }
 
 /**
- * The lines naming the limits a run broke, a result row's icon's and an Image's Input summary's: the heading, then
- * one sentence a limit; none for a run that broke none.
+ * The lines naming the bounds a run broke, a result row's icon's and an Image's Input summary's: the heading, then
+ * one sentence a bound; none for a run that broke none.
  */
-export function limitsBrokenLines(rows: readonly ViolationRow[], unitSystem: UnitSystem): string[] {
-  return rows.length === 0 ? [] : [copy.limitsBrokenHeading, ...rows.map((row) => warningFor(row, unitSystem))];
+export function boundsBrokenLines(rows: readonly ViolationRow[], unitSystem: UnitSystem): string[] {
+  return rows.length === 0 ? [] : [copy.boundsBrokenHeading, ...rows.map((row) => violationSentence(row, unitSystem))];
 }

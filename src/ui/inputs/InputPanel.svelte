@@ -71,7 +71,7 @@
       value: enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       slotName,
-      isLegal: (si) => entryWriter.judgeEntry(position, quantity, si).kind === "legal",
+      isWithinBounds: (si) => entryWriter.judgeEntry(position, quantity, si).kind === "written",
       oncommit: (si) => raiseVerdict(entryWriter.commitEntry(position, quantity, si), { quantity, slotName }, si, unitSystem),
     };
   }

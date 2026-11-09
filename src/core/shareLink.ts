@@ -8,9 +8,9 @@
  *
  * The one module where the session's strings are read and written: a model's
  * name, the unit system's, entry modes' and chart types' ids, quantity keys
- * and option keys. An id is looked up here, privately, by walking its closed
- * set. The registry is the caller's; the codec reads declarations and the
- * entry-group table, and names no model and no entry group.
+ * and option keys. Each string is looked up here, privately, by walking its
+ * closed set. The registry is the caller's; the codec reads declarations and
+ * the entry-group table, and names no model and no entry group.
  *
  * A text is taken only where it reads back as written (decision 88 rule 4),
  * and refused whole otherwise: no partial answer. It is read with what it
@@ -243,7 +243,7 @@ function sessionFrom(json: unknown, models: readonly ModelDeclaration[]): Writte
   }
   return {
     model,
-    unitSystem: memberWithId(Object.values(unitSystem), (system) => system.id, written.unitSystem) ?? refuse(),
+    unitSystem: memberNamed(Object.values(unitSystem), (system) => system.id, written.unitSystem) ?? refuse(),
     atmosphericPressure: finiteNumberOf(written[quantities.p_atm.key]),
     compare: booleanOf(written.compare),
     enabled: [second, third],
@@ -273,11 +273,11 @@ function entryModesFrom(json: unknown): WrittenEntryModes {
     const fieldDefault = defaultEntryModes[field].mode;
     const group = valueEntryGroups.find((candidate) => candidate.modes.includes(fieldDefault));
     const mode: ValueEntryMode =
-      written[field] === undefined ? fieldDefault : (memberWithId(group?.modes ?? [], (candidate) => candidate.id, written[field]) ?? refuse());
+      written[field] === undefined ? fieldDefault : (memberNamed(group?.modes ?? [], (candidate) => candidate.id, written[field]) ?? refuse());
     values[field] = { mode };
   }
   const humidity =
-    written.humidity === undefined ? undefined : (memberWithId(Object.values(humidityMode), (mode) => mode.id, written.humidity) ?? refuse());
+    written.humidity === undefined ? undefined : (memberNamed(Object.values(humidityMode), (mode) => mode.id, written.humidity) ?? refuse());
   return { values, humidity };
 }
 
@@ -298,7 +298,7 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: ModelDeclarati
     if (key === modes.humidity?.quantity.key) {
       humidity = { mode: modes.humidity, value: finiteNumberOf(value) };
     } else {
-      const quantity = memberWithId(enterable, (candidate) => candidate.key, key);
+      const quantity = memberNamed(enterable, (candidate) => candidate.key, key);
       if (quantity) {
         values.set(quantity, finiteNumberOf(value));
       }
@@ -311,7 +311,7 @@ function slotFrom(json: unknown, modes: WrittenEntryModes, model: ModelDeclarati
       continue;
     }
     for (const [key, value] of Object.entries(recordOf(declared))) {
-      const option = memberWithId(optionsOf(owner), (candidate) => candidate.key, key);
+      const option = memberNamed(optionsOf(owner), (candidate) => candidate.key, key);
       if (option) {
         options.set(option, booleanOf(value));
       }
@@ -344,7 +344,7 @@ function chartSettingsFrom(json: unknown, model: ModelDeclaration, modes: Writte
   const written = membersOf(json, ["type", ...(dynamic ? ["axes"] : [])]);
   const { bands } = recordOf(json);
   const type =
-    memberWithId(
+    memberNamed(
       model.charts.map((chart) => chart.type),
       (candidate) => candidate.id,
       written.type,
@@ -363,7 +363,7 @@ function axesFrom(json: unknown, model: ModelDeclaration, modes: ValueEntryModes
   // under the modes (`resolvedAxes`). A model offers a quantity of a group it
   // lacks as it is, whatever the modes: Heat Index's `tdb` under operative entry.
   const axis = (key: unknown) => {
-    const quantity = memberWithId(Object.values(quantities), (candidate) => candidate.key, key) ?? refuse();
+    const quantity = memberNamed(Object.values(quantities), (candidate) => candidate.key, key) ?? refuse();
     return offered.includes(quantity) || offered.includes(underEntryModes(quantity, modes)) ? quantity : refuse();
   };
   return { x: axis(written.x), y: axis(written.y) };
@@ -380,13 +380,13 @@ function bandsFrom(json: unknown, classifier: ClassifierBins): ChartSettings["ba
 }
 
 function modelNamed(name: unknown, models: readonly ModelDeclaration[]): ModelDeclaration | undefined {
-  return memberWithId(models, (model) => model.info.name, name);
+  return memberNamed(models, (model) => model.info.name, name);
 }
 
-/** The member of `items` whose id is `id`, if any. */
-function memberWithId<T>(items: Iterable<T>, idOf: (item: T) => string, id: unknown): T | undefined {
+/** The member of `items` whose name is `name`, if any. */
+function memberNamed<T>(items: Iterable<T>, nameOf: (item: T) => string, name: unknown): T | undefined {
   for (const item of items) {
-    if (idOf(item) === id) {
+    if (nameOf(item) === name) {
       return item;
     }
   }

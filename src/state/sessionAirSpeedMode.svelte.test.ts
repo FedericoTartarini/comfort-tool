@@ -288,7 +288,7 @@ describe("a model switch under relative air speed entry", () => {
     expect(shapeOf(session.slots[0])).toEqual(before);
   });
 
-  it("adjusts the relative air speed on a yes, and keeps the mode", () => {
+  it("cuts the relative air speed on a yes, and keeps the mode", () => {
     const session = enteringRelativeAirSpeed();
 
     session.requestModel(pmvPpdIso);
@@ -300,7 +300,7 @@ describe("a model switch under relative air speed entry", () => {
     expect(session.slots[0].values.has(q.v)).toBe(false);
   });
 
-  it("keeps the mode and adjusts nothing when the model is set", () => {
+  it("keeps the mode and cuts nothing when the model is set", () => {
     const session = enteringRelativeAirSpeed();
 
     session.setModel(pmvPpdIso);

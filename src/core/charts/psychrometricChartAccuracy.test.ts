@@ -39,10 +39,10 @@ const p = DEFAULT_ATMOSPHERIC_PRESSURE;
 const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 
 /**
- * 3a's bound per model, in the model's scanned output: how far the model's
- * own number at a drawn crossing may sit from the limit. Fixed 2026-10-02
- * from the worst residual over the record's conditions, measured at or below
- * saturation.
+ * 3a's tolerance per model, in the model's scanned output: how far the
+ * model's own number at a drawn crossing may sit from the limit. Fixed
+ * 2026-10-02 from the worst residual over the record's conditions, measured
+ * at or below saturation.
  *
  * PMV (ISO 7730): measured 0.00002. The kernel is smooth, so what is left is
  * the linear interpolation between two cells.
@@ -51,14 +51,14 @@ const hrUnit = displayUnitFor(q.hr, unitSystem.si);
  * two decimals, as pythermalcomfort's does, so PMV is a staircase in the
  * temperature, a step of up to 0.0048 PMV, that no grid locates.
  */
-const renderingBounds: readonly { readonly model: ModelDeclaration; readonly bound: number }[] = [
-  { model: pmvPpdIso, bound: 0.005 },
-  { model: pmvPpdAshrae, bound: 0.01 },
+const renderingTolerances: readonly { readonly model: ModelDeclaration; readonly tolerance: number }[] = [
+  { model: pmvPpdIso, tolerance: 0.005 },
+  { model: pmvPpdAshrae, tolerance: 0.01 },
 ];
 
 /**
- * 3b's bound per standard of the record, in °C, and the registered model of
- * that standard. Loose on purpose: it holds the kernel difference and the
+ * 3b's tolerance per standard of the record, in °C, and the registered model
+ * of that standard. Loose on purpose: it holds the kernel difference and the
  * rendering together and catches a wrong binding, not a precision. Worst
  * measured 2026-10-02 over the record's zones: 0.0093 °C for ISO, 0.0228 °C
  * for ASHRAE.
@@ -73,9 +73,9 @@ const renderingBounds: readonly { readonly model: ModelDeclaration; readonly bou
  * Regenerating the record from the library would make this test circular,
  * and matching the deployed kernel is ruled out by the library's ADR 0001.
  */
-const oracleBounds = {
-  ISO: { model: pmvPpdIso, bound: 0.02 },
-  ASHRAE: { model: pmvPpdAshrae, bound: 0.03 },
+const oracleTolerances = {
+  ISO: { model: pmvPpdIso, tolerance: 0.02 },
+  ASHRAE: { model: pmvPpdAshrae, tolerance: 0.03 },
 } as const;
 
 /**
@@ -192,13 +192,13 @@ function isOutsideApplicabilityAt(model: ModelDeclaration, slot: Slot, temperatu
 }
 
 describe("criterion 3a: the psychrometric chart's zones against the library", () => {
-  it("draws each Comfort zone's vertices on its limit within the model's bound of it, for every registered model with a psychrometric chart", () => {
+  it("draws each Comfort zone's vertices on its limit within the model's tolerance of it, for every registered model with a psychrometric chart", () => {
     const psychrometricModels = registeredModels.filter((model) => psychrometricChartOf(model));
     expect(psychrometricModels.length).toBeGreaterThan(0);
     for (const model of psychrometricModels) {
-      const bound = renderingBounds.find((entry) => entry.model === model)?.bound;
-      if (bound === undefined) {
-        throw new Error(`${model.info.label} has no rendering bound: measure its worst residual and fix one`);
+      const tolerance = renderingTolerances.find((entry) => entry.model === model)?.tolerance;
+      if (tolerance === undefined) {
+        throw new Error(`${model.info.label} has no rendering tolerance: measure its worst residual and fix one`);
       }
       let worst = { residual: 0, at: "" };
       let compared = 0;
@@ -221,14 +221,14 @@ describe("criterion 3a: the psychrometric chart's zones against the library", ()
         }
       }
       expect(compared, model.info.label).toBeGreaterThan(0);
-      expect(worst.residual, `${model.info.label}, worst at ${worst.at}`).toBeLessThanOrEqual(bound);
+      expect(worst.residual, `${model.info.label}, worst at ${worst.at}`).toBeLessThanOrEqual(tolerance);
     }
   });
 });
 
 describe("criterion 3b: the psychrometric chart's zones against the deployed tool", () => {
   it.each(record.zones)("draws the record's vertices: $standard ±$pmvLimit met=$met clo=$clo", (zone) => {
-    const { model, bound } = oracleBounds[zone.standard as keyof typeof oracleBounds];
+    const { model, tolerance } = oracleTolerances[zone.standard as keyof typeof oracleTolerances];
     // The record's inputs are those the deployed tool's tracer was called on,
     // the air speed and the clothing already corrected, so they are entered
     // as such. The deployed psychrometric chart ignores local control of the
@@ -250,7 +250,7 @@ describe("criterion 3b: the psychrometric chart's zones against the deployed too
       expect(compared.length).toBeGreaterThan(0);
       const off = compared.flatMap((expected) => {
         const crossing = crossingAt(drawn, expected.hr, side);
-        return Math.abs(crossing - expected.db) <= bound ? [] : [{ expected, crossing }];
+        return Math.abs(crossing - expected.db) <= tolerance ? [] : [{ expected, crossing }];
       });
       expect(off).toEqual([]);
     }

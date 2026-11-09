@@ -211,7 +211,7 @@ test.describe("the dialog", () => {
 
 test.describe("Solar gain on people", () => {
 
-  test("opens on the method line, Posture offering Seated, Standing and Supine, seven boxes with the deployed tool's labels and their ranges, and the dock", async ({ page }) => {
+  test("opens on the method line, Posture offering Seated, Standing and Supine, seven boxes with the deployed tool's labels and their bounds, and the dock", async ({ page }) => {
     await open(page);
     const dialog = await openDialog(page, SOLAR);
     const panel = dialog.getByRole("tabpanel");

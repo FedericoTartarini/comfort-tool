@@ -56,7 +56,7 @@ describe("an input calculator's Apply", () => {
     const session = dynamicClothingSession();
     const met = session.slots[0].values.get(q.met)!;
 
-    expect(session.applyCalculator(0, customEnsemble, outputs)).toEqual({ kind: "legal" });
+    expect(session.applyCalculator(0, customEnsemble, outputs)).toEqual({ kind: "written" });
 
     expect(session.slots[0].values.get(q.clo_dynamic)).toBeCloseTo(clo_dynamic_ashrae(outputs.values.get(q.clo)!, met), 2);
   });
@@ -65,15 +65,15 @@ describe("an input calculator's Apply", () => {
 describe("a preset", () => {
   const presetOf = (label: string) => presetsFor(q.met)!.find((preset) => preset.label === label)!;
 
-  it("of a metabolic rate past PMV (ASHRAE 55)'s bound is not legal in any slot; one within is legal in each", () => {
+  it("of a metabolic rate past PMV (ASHRAE 55)'s bound is not written as it is in any slot; one within is, in each", () => {
     const session = sessionComparingThreeSlots(pmvPpdAshrae);
     const basketball = presetOf("Basketball");
     const typing = presetOf("Typing");
     expect(basketball.value).toBeGreaterThan(enteredBound(pmvPpdAshrae, q.met, session.slots[0], session.atmosphericPressure)!.max!);
 
     for (const position of slotPositions) {
-      expect(session.judgeEntry(position, q.met, basketball.value).kind).not.toBe("legal");
-      expect(session.judgeEntry(position, q.met, typing.value)).toEqual({ kind: "legal" });
+      expect(session.judgeEntry(position, q.met, basketball.value).kind).not.toBe("written");
+      expect(session.judgeEntry(position, q.met, typing.value)).toEqual({ kind: "written" });
     }
   });
 });

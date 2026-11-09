@@ -23,11 +23,11 @@
     /** The name the slot's appearance carries while the slots are named: the button is named for it. */
     slotName?: string;
     /** Whether the slot takes an SI value as it is, as the box judges a typed value; every one, without it. */
-    isLegal?: (si: number) => boolean;
+    isWithinBounds?: (si: number) => boolean;
     oncommit: (si: number) => void;
   }
 
-  let { presets, unit, slotName, isLegal, oncommit }: Props = $props();
+  let { presets, unit, slotName, isWithinBounds, oncommit }: Props = $props();
 
   let open = $state(false);
 
@@ -40,7 +40,7 @@
         key: String(index),
         label: preset.label,
         value: formatNumber(unit.fromSi(preset.value)),
-        disabled: isLegal !== undefined && !isLegal(preset.value),
+        disabled: isWithinBounds !== undefined && !isWithinBounds(preset.value),
       })),
     },
   ]);

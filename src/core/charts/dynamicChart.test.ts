@@ -100,7 +100,7 @@ describe("dynamicSpec", () => {
     expect(hoverText).toHaveLength(grid);
     expect(hoverText[0]).toHaveLength(grid);
     // The declared ranges, which are what the deployed tool draws, not
-    // ISO 7730's applicability limits.
+    // ISO 7730's applicability bounds.
     expect([x[0], last(x)]).toEqual(declaredRangeOf(q.tdb));
     expect([y[0], last(y)]).toEqual(declaredRangeOf(q.v));
   });
@@ -279,8 +279,8 @@ describe("a model's own number in the scanned field", () => {
 describe("dynamicAxisQuantities", () => {
   it("offers every entered quantity the chart declares a range for", () => {
     const separate = dynamicAxisQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate));
-    // Every entered quantity, humidity included: no standard limits `rh`, and
-    // an axis range is a viewport rather than an applicability limit.
+    // Every entered quantity, humidity included: no standard bounds `rh`, and
+    // an axis range is a viewport rather than an applicability bound.
     expect(separate).toEqual(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate)));
     expect(separate).toContain(q.rh);
   });

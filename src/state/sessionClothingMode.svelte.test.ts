@@ -340,7 +340,7 @@ describe("a model switch under dynamic clothing entry", () => {
     expect(shapeOf(session.slots[0])).toEqual(before);
   });
 
-  it("adjusts the dynamic clothing insulation on a yes, and keeps the mode", () => {
+  it("cuts the dynamic clothing insulation on a yes, and keeps the mode", () => {
     const session = enteringDynamicClothing();
 
     session.requestModel(pmvPpdAshrae);
@@ -352,7 +352,7 @@ describe("a model switch under dynamic clothing entry", () => {
     expect(session.slots[0].values.has(q.clo)).toBe(false);
   });
 
-  it("keeps the mode and the number between the two PMV models, and adjusts nothing when the model is set", () => {
+  it("keeps the mode and the number between the two PMV models, and cuts nothing when the model is set", () => {
     const session = enteringDynamicClothing();
 
     session.setModel(pmvPpdAshrae);

@@ -44,7 +44,7 @@ describe("a slot's entry, committed", () => {
   it("within its bound and every other's, is written as it is", () => {
     const session = new Session(pmvPpdAshrae);
 
-    expect(session.commitEntry(0, q.tdb, 16)).toEqual({ kind: "legal" });
+    expect(session.commitEntry(0, q.tdb, 16)).toEqual({ kind: "written" });
 
     expect(session.slots[0].values.get(q.tdb)).toBe(16);
   });
@@ -132,7 +132,7 @@ describe("an air speed or a clothing insulation, committed", () => {
       session.commitEntry(0, q.met, startMet);
       session.commitEntry(0, entered, value);
 
-      expect(session.commitEntry(0, q.met, met)).toEqual({ kind: "legal" });
+      expect(session.commitEntry(0, q.met, met)).toEqual({ kind: "written" });
 
       expect(session.slots[0].values.get(q.met)).toBe(met);
       expect(session.slots[0].values.get(entered)).toBe(value);
@@ -144,8 +144,8 @@ describe("an air speed or a clothing insulation, committed", () => {
   it.each([pmvPpdAshrae, pmvPpdIso])("on $info.label, far past the model's row, is written as it is, its bound its kind's alone", (model) => {
     const session = new Session(model);
 
-    expect(session.commitEntry(0, q.v, 5)).toEqual({ kind: "legal" });
-    expect(session.commitEntry(0, q.clo, 5)).toEqual({ kind: "legal" });
+    expect(session.commitEntry(0, q.v, 5)).toEqual({ kind: "written" });
+    expect(session.commitEntry(0, q.clo, 5)).toEqual({ kind: "written" });
 
     expect(session.slots[0].values.get(q.v)).toBe(5);
     expect(session.slots[0].values.get(q.clo)).toBe(5);
@@ -178,7 +178,7 @@ describe("the atmospheric pressure, committed", () => {
   it("within its bound and every held humidity entry's, is written as it is", () => {
     const session = new Session(pmvPpdAshrae);
 
-    expect(session.commitAtmosphericPressure(80000)).toEqual({ kind: "legal" });
+    expect(session.commitAtmosphericPressure(80000)).toEqual({ kind: "written" });
 
     expect(session.atmosphericPressure).toBe(80000);
   });
@@ -218,7 +218,7 @@ describe("the verdict for a candidate", () => {
     const session = dewPointSession();
     const before = shapeOf(session.slots[0]);
 
-    expect(session.judgeEntry(0, q.tdb, 16)).toEqual({ kind: "legal" });
+    expect(session.judgeEntry(0, q.tdb, 16)).toEqual({ kind: "written" });
     expect(session.judgeEntry(0, q.tdb, 45)).toEqual({ kind: "cut", value: 40, bound: DRY_BULB_BOUND });
     expect(session.judgeEntry(0, q.tdb, 12).kind).toBe("refused");
 
@@ -228,7 +228,7 @@ describe("the verdict for a candidate", () => {
   it("answers each of the three cases for the atmospheric pressure, writing nothing", () => {
     const session = nearSaturationInSecondSlot();
 
-    expect(session.judgeAtmosphericPressure(90000)).toEqual({ kind: "legal" });
+    expect(session.judgeAtmosphericPressure(90000)).toEqual({ kind: "written" });
     expect(session.judgeAtmosphericPressure(20000).kind).toBe("cut");
     expect(session.judgeAtmosphericPressure(110000).kind).toBe("refused");
 

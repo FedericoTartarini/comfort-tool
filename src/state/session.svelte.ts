@@ -15,7 +15,7 @@ import {
   type SlotOutOfRangeRow,
   type Verdict,
 } from "$lib/core/applicability";
-import { adjustToBounds, rehearseSwitch, settledOutOfRangeRows } from "$lib/core/modelSwitch";
+import { cutToBounds, rehearseSwitch, settledOutOfRangeRows } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import {
   defaultEntryModes,
@@ -628,7 +628,7 @@ export class Session {
     }
     this.#land(
       pending.model,
-      pending.slots.map(({ position, slot, listedRows }) => ({ position, slot: adjustToBounds(slot, listedRows) })),
+      pending.slots.map(({ position, slot, listedRows }) => ({ position, slot: cutToBounds(slot, listedRows) })),
     );
   }
 
@@ -682,7 +682,7 @@ export class Session {
    */
   #replaceCut(slot: InputSlot, held: Slot): boolean {
     const rows = settledOutOfRangeRows(held, this.model, this.atmosphericPressure);
-    slot.replaceWith(rows.length > 0 ? adjustToBounds(held, rows) : held);
+    slot.replaceWith(rows.length > 0 ? cutToBounds(held, rows) : held);
     return rows.length > 0;
   }
 

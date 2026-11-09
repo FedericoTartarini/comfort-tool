@@ -128,22 +128,22 @@ export const copy = {
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",
   inputColumn: "Input",
-  // The heading of the limits a run broke, in a result row's icon name (ADR-0002 decision 85, rule 5) and in an Image's
+  // The heading of the bounds a run broke, in a result row's icon name (ADR-0002 decision 85, rule 5) and in an Image's
   // Input summary (decision 84, rule 8), in decision 83's words: "limits", the standards' word for both kinds of bound.
-  limitsBrokenHeading: "Calculated, but outside these limits:",
+  boundsBrokenHeading: "Calculated, but outside these limits:",
   // One broken applicability row: `bound` already carries its unit.
-  applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,
+  boundSentence: (label: string, bound: string) => `${label} must be ${bound}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
   // headings: "Input" heads quantity names here and slot names in the result
   // table, so the two are not one string.
-  boundaryWarningTitle: "Boundary Range Warning",
-  boundaryWarningIntro: (modelLabel: string) => `${modelLabel} does not accept every value you entered.`,
-  boundaryWarningQuestion: "Adjust these values to the nearest allowed value and switch?",
-  boundaryWarningAccept: "Yes, switch and adjust",
-  boundaryWarningDecline: "No, stay here",
-  boundaryWarningInputColumn: "Input",
-  boundaryWarningCurrentColumn: "Current",
-  boundaryWarningAllowedColumn: "Allowed range",
+  switchCutTitle: "Boundary Range Warning",
+  switchCutIntro: (modelLabel: string) => `${modelLabel} does not accept every value you entered.`,
+  switchCutQuestion: "Adjust these values to the nearest allowed value and switch?",
+  switchCutAccept: "Yes, switch and adjust",
+  switchCutDecline: "No, stay here",
+  switchCutInputColumn: "Input",
+  switchCutCurrentColumn: "Current",
+  switchCutAllowedColumn: "Allowed range",
   // Reset and its question (ADR-0002 decision 63, rules 7 and 8).
   reset: "Reset",
   resetQuestion: "This returns the page to what a new tab at this address shows: every input, the units, the pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
@@ -169,8 +169,8 @@ export const copy = {
     reasons.length === 1
       ? `${subject} was not changed to ${value}, which would put another value out of range. ${reasons[0]}. Change it first.`
       : `${subject} was not changed to ${value}, which would put other values out of range. ${reasons.join(". ")}. Change them first.`,
-  // A run that broke a limit it did not break before (decision 84, rule 8): each reason is a bound sentence.
-  limitsBrokenToast: (reasons: readonly string[]) => `Calculated, but outside ${reasons.length === 1 ? "a limit" : "limits"}. ${reasons.join(". ")}.`,
+  // A run that broke a bound it did not break before (decision 84, rule 8): each reason is a bound sentence.
+  boundsBrokenToast: (reasons: readonly string[]) => `Calculated, but outside ${reasons.length === 1 ? "a limit" : "limits"}. ${reasons.join(". ")}.`,
   // An Image of the chart (ADR-0002 decision 64, rules 6 and 8).
   exportImage: "Export image",
   imageTitle: "Title",

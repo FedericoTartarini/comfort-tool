@@ -11,8 +11,8 @@
   spinbutton's role the number input had, which tells assistive technology
   the arrows step it, so the buttons are hidden from it, as the browser's are.
   What is typed is a draft (decision 84, rules 1 and 2, and its note of
-  2026-10-28): on a pause in the typing one its owner calls legal commits,
-  and one it does not is marked invalid and waits, never marked while it is
+  2026-10-28): on a pause in the typing one within its bounds commits, and
+  one out of range is marked invalid and waits, never marked while it is
   typed; Enter and leaving the box commit either, the owner cutting or
   refusing it, after which the box shows what was committed.
 -->
@@ -35,7 +35,7 @@
     /** Marked as an out-of-range entry is. */
     invalid?: boolean;
     /** Whether a draft of this SI value may commit on a pause; every draft may, without it. */
-    isLegal?: (si: number) => boolean;
+    isWithinBounds?: (si: number) => boolean;
     /** The box's accessible name, where no `<label>` names it. */
     ariaLabel?: string;
     /** A control inside the box, at its right end. */
@@ -43,9 +43,9 @@
     oncommit: (si: number) => void;
   }
 
-  let { id, value, unit, bound, invalid = false, isLegal, ariaLabel, end, oncommit }: Props = $props();
+  let { id, value, unit, bound, invalid = false, isWithinBounds, ariaLabel, end, oncommit }: Props = $props();
 
-  /** How long typing pauses before a legal draft commits or an illegal one is marked, [ms]. */
+  /** How long typing pauses before a draft within its bounds commits or one out of range is marked, [ms]. */
   const COMMIT_PAUSE_MS = 400;
 
   const text = $derived(formatNumber(unit.fromSi(value)));
@@ -70,8 +70,8 @@
 
   /** The draft's commit or mark waiting on the pause, while one does. */
   let pause: ReturnType<typeof setTimeout> | undefined;
-  /** Whether the draft in the box is one its owner does not call legal. */
-  let draftIllegal = $state(false);
+  /** Whether the draft in the box is out of range, by its owner's `isWithinBounds`. */
+  let draftOutOfRange = $state(false);
 
   // A pause cut short by the box's removal commits nothing.
   $effect(() => () => clearTimeout(pause));
@@ -118,12 +118,12 @@
   /** The draft's judgement dropped: nothing waits on the pause, and the box is not marked for it. */
   function dropJudgement() {
     clearTimeout(pause);
-    draftIllegal = false;
+    draftOutOfRange = false;
   }
 
-  // Once the typing pauses, a legal draft commits and an illegal one is marked
-  // and waits; while it is typed, no draft is marked. A draft ended meanwhile,
-  // its value changed from elsewhere, commits nothing.
+  // Once the typing pauses, a draft within its bounds commits and one out of
+  // range is marked and waits; while it is typed, no draft is marked. A draft
+  // ended meanwhile, its value changed from elsewhere, commits nothing.
   function judgeDraft(event: Event) {
     dropJudgement();
     draftStart = typing ?? { text, value };
@@ -135,8 +135,8 @@
       if (!typing) {
         return;
       }
-      if (isLegal && !isLegal(si)) {
-        draftIllegal = true;
+      if (isWithinBounds && !isWithinBounds(si)) {
+        draftOutOfRange = true;
       } else {
         draftStart = { text: typing.text, value: si };
         oncommit(si);
@@ -234,7 +234,7 @@
 
 <!-- The group draws the border, and the alert colour while the box inside it is invalid. -->
 <InputGroup.Root>
-  <InputGroup.Input bind:ref={box} {...boxAttributes} aria-invalid={invalid || draftIllegal || undefined} />
+  <InputGroup.Input bind:ref={box} {...boxAttributes} aria-invalid={invalid || draftOutOfRange || undefined} />
   <InputGroup.Addon align="inline-end" class="box-end">
     <div class="step-buttons" aria-hidden="true">
       <InputGroup.Button size="icon-xs" tabindex={-1} onmousedown={keepFocus} onclick={() => stepByButton(1)}>

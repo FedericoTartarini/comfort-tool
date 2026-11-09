@@ -1,11 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
- * A run that breaks a limit is calculated and shown, and its row in the
- * result table carries an amber icon named by the limits it broke, no control
+ * A run that breaks a bound is calculated and shown, and its row in the
+ * result table carries an amber icon named by the bounds it broke, no control
  * (ADR-0002 decision 84, rules 8 and 9; decision 85, rule 5); the Results card
  * has no alert above the table. A slot's toast is raised when its run breaks a
- * limit it did not break before, not again while the same limits stay broken.
+ * bound it did not break before, not again while the same bounds stay broken.
  * Both pages draw the row's icon; Compare, and so a slot's own icon, is
  * Standard's alone.
  */
@@ -15,14 +15,14 @@ const EXPLORE_ADDRESS = "/explore/pmv-ppd-ashrae";
 
 /**
  * An air speed past what PMV (ASHRAE 55) allows occupants without local control at the defaults' 25 °C operative
- * temperature, 0.64 m/s, and one further past it, which breaks the same limit.
+ * temperature, 0.64 m/s, and one further past it, which breaks the same bound.
  */
 const PAST_NO_CONTROL = "0.9";
 const FURTHER_PAST_NO_CONTROL = "1";
-const NO_CONTROL_LIMIT = "Relative air speed must be ≤ 0.64 m/s";
-/** The same limit at Input 2's 26.5 °C, the defaults' 25 °C moved by its Slot offset, which the air speed also breaks. */
-const NO_CONTROL_LIMIT_AT_INPUT_2 = "Relative air speed must be ≤ 0.8 m/s";
-const LIMITS_HEADING = "Calculated, but outside these limits:";
+const NO_CONTROL_BOUND = "Relative air speed must be ≤ 0.64 m/s";
+/** The same bound at Input 2's 26.5 °C, the defaults' 25 °C moved by its Slot offset, which the air speed also breaks. */
+const NO_CONTROL_BOUND_AT_INPUT_2 = "Relative air speed must be ≤ 0.8 m/s";
+const BOUNDS_HEADING = "Calculated, but outside these limits:";
 
 async function open(page: Page, address: string) {
   await page.clock.install();
@@ -50,19 +50,19 @@ async function commit(box: Locator, text: string) {
   await box.press("Enter");
 }
 
-/** The icons standing for broken limits in `scope`. */
-const limitsIcons = (scope: Locator) => scope.getByRole("img", { name: LIMITS_HEADING });
+/** The icons standing for broken bounds in `scope`. */
+const boundsIcons = (scope: Locator) => scope.getByRole("img", { name: BOUNDS_HEADING });
 
 /**
- * Expects `row` to carry one icon, first in its first cell, named by the heading and `limit`, the no-control limit by
- * default, on the line under it; to hold no control and no caption beside the limit; and the icon, clicked, to open
+ * Expects `row` to carry one icon, first in its first cell, named by the heading and `bound`, the no-control bound by
+ * default, on the line under it; to hold no control and no caption beside the bound; and the icon, clicked, to open
  * nothing.
  */
-async function expectIconOf(page: Page, row: Locator, limit = NO_CONTROL_LIMIT) {
-  const icon = limitsIcons(row);
+async function expectIconOf(page: Page, row: Locator, bound = NO_CONTROL_BOUND) {
+  const icon = boundsIcons(row);
   await expect(icon).toHaveCount(1);
-  await expect(icon).toHaveAccessibleName(`${LIMITS_HEADING} ${limit}`);
-  await expect(icon).toHaveAttribute("title", `${LIMITS_HEADING}\n${limit}`);
+  await expect(icon).toHaveAccessibleName(`${BOUNDS_HEADING} ${bound}`);
+  await expect(icon).toHaveAttribute("title", `${BOUNDS_HEADING}\n${bound}`);
   // Nothing the cell shows, text or a swatch, stands before the icon.
   const before = await row.getByRole("cell").first().evaluate((cell) => {
     const range = document.createRange();
@@ -72,16 +72,16 @@ async function expectIconOf(page: Page, row: Locator, limit = NO_CONTROL_LIMIT) 
   });
   expect(before).toEqual({ text: "", swatches: 0 });
   await expect(row.getByRole("button")).toHaveCount(0);
-  await expect(row).not.toContainText(NO_CONTROL_LIMIT);
+  await expect(row).not.toContainText(NO_CONTROL_BOUND);
   await icon.click();
   await expect(page.locator(`[data-slot="popover-content"]`)).toHaveCount(0);
 }
 
 for (const [name, address] of [["Standard", STANDARD_ADDRESS], ["Explore", EXPLORE_ADDRESS]] as const) {
-  test(`on ${name}, a run past the air-speed limit without local control carries the row's icon, named by the limit and opening nothing, the card has no alert, and one toast appears; a commit keeping the same limit broken raises none`, async ({ page }) => {
+  test(`on ${name}, a run past the air-speed bound without local control carries the row's icon, named by the bound and opening nothing, the card has no alert, and one toast appears; a commit keeping the same bound broken raises none`, async ({ page }) => {
     await open(page, address);
     const card = resultsCard(page);
-    await expect(limitsIcons(card)).toHaveCount(0);
+    await expect(boundsIcons(card)).toHaveCount(0);
 
     await commit(airSpeedOf(page), PAST_NO_CONTROL);
 
@@ -89,21 +89,21 @@ for (const [name, address] of [["Standard", STANDARD_ADDRESS], ["Explore", EXPLO
     await expect(card.getByRole("alert")).toHaveCount(0);
     await expect(card.getByRole("status")).toHaveCount(0);
     await expect(toasts(page)).toHaveCount(1);
-    await expect(toasts(page)).toContainText(NO_CONTROL_LIMIT);
+    await expect(toasts(page)).toContainText(NO_CONTROL_BOUND);
 
     await toasts(page).getByRole("button", { name: "Close" }).click();
     await expect(toasts(page)).toHaveCount(0);
     await commit(airSpeedOf(page), FURTHER_PAST_NO_CONTROL);
 
     await expect(airSpeedOf(page)).toHaveValue(FURTHER_PAST_NO_CONTROL);
-    await expect(limitsIcons(card)).toHaveCount(1);
+    await expect(boundsIcons(card)).toHaveCount(1);
     // Past the moment a toast the commit raised would have shown.
     await page.clock.runFor(1000);
     await expect(toasts(page)).toHaveCount(0);
   });
 }
 
-test("under Compare, only the slot whose run breaks a limit carries the icon, its toast names it, and Compare off and on again raises none", async ({ page }) => {
+test("under Compare, only the slot whose run breaks a bound carries the icon, its toast names it, and Compare off and on again raises none", async ({ page }) => {
   await open(page, STANDARD_ADDRESS);
   await page.getByRole("switch", { name: "Compare", exact: true }).click();
 
@@ -111,10 +111,10 @@ test("under Compare, only the slot whose run breaks a limit carries the icon, it
 
   const card = resultsCard(page);
   const second = card.getByRole("row", { name: /Input 2/ });
-  await expect(limitsIcons(card)).toHaveCount(1);
+  await expect(boundsIcons(card)).toHaveCount(1);
   await expect(toasts(page)).toHaveCount(1);
-  await expect(toasts(page)).toContainText(`Input 2: Calculated, but outside a limit. ${NO_CONTROL_LIMIT_AT_INPUT_2}.`);
-  await expectIconOf(page, second, NO_CONTROL_LIMIT_AT_INPUT_2);
+  await expect(toasts(page)).toContainText(`Input 2: Calculated, but outside a limit. ${NO_CONTROL_BOUND_AT_INPUT_2}.`);
+  await expectIconOf(page, second, NO_CONTROL_BOUND_AT_INPUT_2);
 
   await toasts(page).getByRole("button", { name: "Close" }).click();
   await expect(toasts(page)).toHaveCount(0);
@@ -122,7 +122,7 @@ test("under Compare, only the slot whose run breaks a limit carries the icon, it
   await compare.click();
   await compare.click();
 
-  await expect(limitsIcons(second)).toHaveCount(1);
+  await expect(boundsIcons(second)).toHaveCount(1);
   // Past the moment a toast Compare raised would have shown.
   await page.clock.runFor(1000);
   await expect(toasts(page)).toHaveCount(0);

@@ -559,19 +559,19 @@
 	background-color: var(--band-fill);
 	color: var(--band-lettering);
 }
-/* A row's limits icon (decision 85, rule 5), in the warning's amber, stands on the text's line at the text's size,
+/* A row's bounds icon (decision 85, rule 5), in the warning's amber, stands on the text's line at the text's size,
    first in the Input cell: before the swatch, spaced by the gap of the swatch's label, where the rows are named. */
-.result-table .limits-icon {
+.result-table .bounds-icon {
 	display: inline-flex;
 	vertical-align: middle;
 	color: var(--warning);
 }
-.result-table .limits-icon svg {
+.result-table .bounds-icon svg {
 	width: 1em;
 	height: 1em;
 }
-/* On a row that broke no limit the icon keeps its room and leaves the accessibility tree (decision 87, rule 9). */
-.result-table .limits-icon-hidden {
+/* On a row that broke no bound the icon keeps its room and leaves the accessibility tree (decision 87, rule 9). */
+.result-table .bounds-icon-hidden {
 	visibility: hidden;
 }
 /* The Bands panel is a compact table (decision 67, rule 4), now in the Bands dialog (decision 73, rule 8): a row as

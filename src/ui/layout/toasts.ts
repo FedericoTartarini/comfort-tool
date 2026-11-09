@@ -1,5 +1,5 @@
 import { toast } from "svelte-sonner";
-import { boundSentence, warningFor, type OutOfRangeRow, type Verdict, type ViolationRow } from "$lib/core/applicability";
+import { boundSentence, violationSentence, type OutOfRangeRow, type Verdict, type ViolationRow } from "$lib/core/applicability";
 import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import type { UnitSystem } from "$lib/core/unitSystem";
@@ -59,19 +59,19 @@ export function raiseVerdict<Row extends OutOfRangeRow>(
 }
 
 /**
- * Tell the person that the run of the slot at `position` broke a limit it did
- * not break before (ADR-0002 decision 84, rule 8): every limit it breaks now,
+ * Tell the person that the run of the slot at `position` broke a bound it did
+ * not break before (ADR-0002 decision 84, rule 8): every bound it breaks now,
  * `rows`, under `slotName` its slot's name. The slot's toast replaces its
  * earlier one, which named fewer.
  */
-export function raiseLimitsBroken(
+export function raiseBoundsBroken(
   position: SlotPosition,
   rows: readonly ViolationRow[],
   unitSystem: UnitSystem,
   slotName?: string,
 ): void {
-  const text = copy.limitsBrokenToast(rows.map((row) => warningFor(row, unitSystem)));
-  toast(slotName ? copy.slotNote(slotName, text) : text, { id: `limits-broken-${position}` });
+  const text = copy.boundsBrokenToast(rows.map((row) => violationSentence(row, unitSystem)));
+  toast(slotName ? copy.slotNote(slotName, text) : text, { id: `bounds-broken-${position}` });
 }
 
 /** Close every toast standing, as the session they speak of is replaced. */

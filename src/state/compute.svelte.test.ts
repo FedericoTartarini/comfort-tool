@@ -10,7 +10,7 @@
  * effect had come back.
  */
 import { describe, expect, it } from "vitest";
-import { violationRows, warningFor } from "$lib/core/applicability";
+import { violationRows, violationSentence } from "$lib/core/applicability";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
@@ -57,9 +57,9 @@ function runOfFirstSlot(session: Session) {
   return runOn(heldSlot(session, 0).toSlot(), session.model, session.atmosphericPressure);
 }
 
-/** The sentences a slot's violation rows show in its limits popover. */
+/** The sentences a slot's violation rows show in its bounds icon. */
 function sentencesOf(slot: SlotComputation): string[] {
-  return slot.violations.map((row) => warningFor(row, unitSystem.si));
+  return slot.violations.map((row) => violationSentence(row, unitSystem.si));
 }
 
 /**
@@ -214,7 +214,7 @@ describe("Computation", () => {
     const computation = new Computation(session);
     expect(computation.slots[0].violations.map((row) => row.quantity)).toEqual([q.pa]);
 
-    // Setting the model, which never asks and never adjusts: ISO 7730's own
+    // Setting the model, which never asks and never cuts: ISO 7730's own
     // default temperature is below the Rothfusz regression's floor, and is run.
     session.setModel(heatIndexRothfusz);
 
@@ -239,18 +239,18 @@ describe("Computation", () => {
   });
 });
 
-describe("the violation rows, in the words of the limits popover", () => {
+describe("the violation rows, in the words of the bounds icon", () => {
   it("are none at the defaults", () => {
     expect(new Computation(new Session(pmvPpdAshrae)).slots[0].violations).toEqual([]);
   });
 
-  it("name PMV (ASHRAE 55)'s air-speed limit without local control", () => {
+  it("name PMV (ASHRAE 55)'s air-speed bound without local control", () => {
     const { computation } = ashraeWithoutControlAt09();
 
     expect(sentencesOf(computation.slots[0])).toEqual(["Relative air speed must be ≤ 0.64 m/s"]);
   });
 
-  it("name the same limit under relative air speed entry", () => {
+  it("name the same bound under relative air speed entry", () => {
     const { session, computation } = ashraeWithoutControlAt09();
 
     session.setAirSpeedMode(airSpeedMode.corrected);

@@ -5,11 +5,11 @@
   decisions 57 and 63); beside it the question a waiting link asks, and the
   one toaster every toast is raised in (decision 84, rule 7), both drawn
   here, with the toast a compared slot raises when its run breaks a new
-  limit, on whichever page; the router renders the page for the current URL.
+  bound, on whichever page; the router renders the page for the current URL.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { breaksNewLimit, type ViolationRow } from "$lib/core/applicability";
+  import { breaksNewBound, type ViolationRow } from "$lib/core/applicability";
   import { narrowedToPage, toText } from "$lib/core/shareLink";
   import { registeredModels } from "$lib/models";
   import { followAddress, Router, shareLinkTo } from "$lib/routes/navigation";
@@ -20,7 +20,7 @@
   import { copy } from "$lib/text/copy";
   import QuestionDialog from "$lib/ui/inputs/QuestionDialog.svelte";
   import Toaster from "$lib/ui/layout/Toaster.svelte";
-  import { closeToasts, raiseLimitsBroken, raiseToast } from "$lib/ui/layout/toasts";
+  import { closeToasts, raiseBoundsBroken, raiseToast } from "$lib/ui/layout/toasts";
 
   const tab = new Tab(registeredModels, raiseToast);
 
@@ -43,7 +43,7 @@
     }
   });
 
-  // A compared slot's toast when the limits its run breaks gain one against
+  // A compared slot's toast when the bounds its run breaks gain one against
   // its run at the last change, a switch's and an arrival's too, and not
   // while they hold or shrink (ADR-0002 decision 84, rule 8): external
   // synchronisation, assigning no state. What was broken is remembered in a
@@ -62,8 +62,8 @@
       brokenBefore = new Map();
     }
     for (const slot of opened.computation.slots) {
-      if (breaksNewLimit(brokenBefore.get(slot.position) ?? [], slot.violations)) {
-        raiseLimitsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.appearance.name);
+      if (breaksNewBound(brokenBefore.get(slot.position) ?? [], slot.violations)) {
+        raiseBoundsBroken(slot.position, slot.violations, opened.session.unitSystem, slot.appearance.name);
       }
     }
     brokenBefore = new Map([...brokenBefore, ...opened.computation.slots.map((slot) => [slot.position, slot.violations] as const)]);
@@ -77,8 +77,8 @@
   });
   // Reset closes the toasts standing, which speak of the session it replaces
   // (the user's ruling, `.scratch/input-gate/issues/01-…md` Comments). A
-  // link's yes closes none, so a limit toast the kept session raised while
-  // the question waited stands after it (`.scratch/open-points.md` B30).
+  // link's yes closes none, so a bounds-broken toast the kept session raised
+  // while the question waited stands after it (`.scratch/open-points.md` B30).
   setTabControls({
     reset: () => {
       closeToasts();

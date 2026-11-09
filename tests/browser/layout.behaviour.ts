@@ -240,7 +240,7 @@ for (const width of [1440, 1280]) {
   test(`at ${width} px, the switch question opens and closes moving no region or the plot`, async ({ page }) => {
     await openStandard(page, width);
     // PMV holds an air speed to its kind's bound alone; 3 m/s is past Adaptive's 2, so the switch asks.
-    // Committed before the boxes are held: the run it gives breaks a limit, which its result row shows.
+    // Committed before the boxes are held: the run it gives breaks a bound, which its result row shows.
     const airSpeed = page.getByRole("spinbutton", { name: /^Air speed/ });
     await airSpeed.fill("3");
     await airSpeed.press("Enter");
@@ -1779,11 +1779,11 @@ test("at 1440 px, PMV (ASHRAE 55)'s Results card names no standard and ends at t
 });
 
 /**
- * A run that broke a limit is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no
+ * A run that broke a bound is marked on its result row (ADR-0002 decision 85, rule 5), and the Results card has no
  * alert. Every row keeps the icon's room, so no value column moves when it appears (decision 87, rule 9).
  */
-test.describe("the result row's limits icon", () => {
-  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the limit leaves no image in the Input cell, on Standard and Explore", async ({ page }) => {
+test.describe("the result row's bounds icon", () => {
+  test("at 1440 px, PMV (ASHRAE 55) at 0.9 m/s without local control puts the icon in the row's Input cell and in no value cell, the table straight under the Results heading and the compliance dash with no icon of its own, and back within the bound leaves no image in the Input cell, on Standard and Explore", async ({ page }) => {
     for (const address of [PMV_ADDRESS, EXPLORE_ADDRESS]) {
       await openStandard(page, 1440, address);
       const results = card(page, "Results");

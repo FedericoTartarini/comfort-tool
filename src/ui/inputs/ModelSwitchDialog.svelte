@@ -38,7 +38,7 @@
   // Each value as the input panel shows it: converted to the display unit and
   // formatted by the same formatters, so the dialog and the boxes behind it
   // never read differently. The symbol rides on the current value alone — the
-  // allowed range is the bound under the box without the unit that line
+  // bound reads as the line under the box, without the unit that line
   // carries since ADR-0002 decision 84, rule 10.
   const groups = $derived(
     (pending?.slots ?? [])
@@ -51,7 +51,7 @@
           return {
             quantity: row.quantity,
             current: numberWithUnit(row.value, unit),
-            allowed: formatBound(row.bound, row.quantity, unitSystem),
+            boundText: formatBound(row.bound, row.quantity, unitSystem),
           };
         }),
       })),
@@ -71,18 +71,18 @@
   {#if pending}
     <Dialog.Content>
       <Dialog.Header>
-        <Dialog.Title>{copy.boundaryWarningTitle}</Dialog.Title>
+        <Dialog.Title>{copy.switchCutTitle}</Dialog.Title>
       </Dialog.Header>
-      <p>{copy.boundaryWarningIntro(pending.model.info.label)}</p>
+      <p>{copy.switchCutIntro(pending.model.info.label)}</p>
       <Table.Root>
         <Table.Header>
           <Table.Row>
             {#if namesGroups}
               <Table.Head></Table.Head>
             {/if}
-            <Table.Head>{copy.boundaryWarningInputColumn}</Table.Head>
-            <Table.Head>{copy.boundaryWarningCurrentColumn}</Table.Head>
-            <Table.Head>{copy.boundaryWarningAllowedColumn}</Table.Head>
+            <Table.Head>{copy.switchCutInputColumn}</Table.Head>
+            <Table.Head>{copy.switchCutCurrentColumn}</Table.Head>
+            <Table.Head>{copy.switchCutAllowedColumn}</Table.Head>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -94,17 +94,17 @@
                 {/if}
                 <Table.Cell>{row.quantity.label}</Table.Cell>
                 <Table.Cell>{row.current}</Table.Cell>
-                <Table.Cell>{row.allowed}</Table.Cell>
+                <Table.Cell>{row.boundText}</Table.Cell>
               </Table.Row>
             {/each}
           {/each}
         </Table.Body>
       </Table.Root>
       <!-- The question is the dialog's description, so it is announced with the title. -->
-      <Dialog.Description>{copy.boundaryWarningQuestion}</Dialog.Description>
+      <Dialog.Description>{copy.switchCutQuestion}</Dialog.Description>
       <Dialog.Footer>
-        <Button variant="outline" onclick={ondecline}>{copy.boundaryWarningDecline}</Button>
-        <Button onclick={onaccept}>{copy.boundaryWarningAccept}</Button>
+        <Button variant="outline" onclick={ondecline}>{copy.switchCutDecline}</Button>
+        <Button onclick={onaccept}>{copy.switchCutAccept}</Button>
       </Dialog.Footer>
     </Dialog.Content>
   {/if}

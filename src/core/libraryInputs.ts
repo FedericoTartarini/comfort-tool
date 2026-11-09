@@ -58,7 +58,7 @@ export function resolveQuantities(slot: Slot, model: ModelDeclaration, atmospher
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
  * still breaks (derived, output, or the air-speed row when the relative air
- * speed breaks a limit the gate does not hold the entry to) come back on the outputs'
+ * speed breaks a bound the gate does not hold the entry to) come back on the outputs'
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
 export function toLibraryInputs(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): LibraryInputs {

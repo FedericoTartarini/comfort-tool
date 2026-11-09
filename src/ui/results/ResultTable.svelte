@@ -1,6 +1,6 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
-  import { limitsBrokenLines } from "$lib/core/applicability";
+  import { boundsBrokenLines } from "$lib/core/applicability";
   import { chartInk } from "$lib/core/bandPalette";
   import type { ModelDeclaration } from "$lib/core/modelDeclaration";
   import { formatResultCell, type ResultCell } from "$lib/core/resultCell";
@@ -14,8 +14,8 @@
     model: ModelDeclaration;
     /**
      * One row per compared slot, in slot order. While their appearances carry names, the Input column names each row
-     * beside its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's limits icon
-     * alone, hidden where the row broke no limit.
+     * beside its swatch; otherwise its heading is a screen reader's alone and its cell holds the row's bounds icon
+     * alone, hidden where the row broke no bound.
      */
     rows: readonly SlotComputation[];
     unitSystem: UnitSystem;
@@ -45,17 +45,17 @@
   {/if}
 {/snippet}
 
-<!-- A row whose run broke a limit carries an amber icon named by the limits it broke, in the bound sentence's words,
+<!-- A row whose run broke a bound carries an amber icon named by the bounds it broke, in the bound sentence's words,
      one per line: a mouse reads them on hover, a screen reader as the image's name. It is no control (ADR-0002
      decision 85, rule 5); the toast and the Image's Input summary carry the words for a keyboard and a touch. A row
      that broke none keeps it hidden, holding its room so no value column moves when it appears (decision 87,
      rule 9). -->
-{#snippet limitsIcon(row: SlotComputation)}
+{#snippet boundsIcon(row: SlotComputation)}
   <span
-    class="limits-icon"
-    class:limits-icon-hidden={row.violations.length === 0}
+    class="bounds-icon"
+    class:bounds-icon-hidden={row.violations.length === 0}
     role="img"
-    title={limitsBrokenLines(row.violations, unitSystem).join("\n")}
+    title={boundsBrokenLines(row.violations, unitSystem).join("\n")}
   >
     <TriangleAlertIcon aria-hidden="true" />
   </span>
@@ -77,22 +77,22 @@
       </Table.Row>
     </Table.Header>
     <Table.Body>
-      <!-- A row's limits icon stands first in its Input cell, before the swatch while the rows are named. -->
+      <!-- A row's bounds icon stands first in its Input cell, before the swatch while the rows are named. -->
       {#each rows as row (row)}
         <Table.Row>
           <Table.Cell>
             {#if namesRows}
               <span class="swatch-label">
-                {@render limitsIcon(row)}
+                {@render boundsIcon(row)}
                 {@render slotSwatch(row)}
                 {row.appearance.name}
               </span>
             {:else}
-              {@render limitsIcon(row)}
+              {@render boundsIcon(row)}
             {/if}
           </Table.Cell>
           {#each model.table as quantity (quantity)}
-            <!-- A dash standing for a violation carries no icon of its own: the row's limits icon explains it. -->
+            <!-- A dash standing for a violation carries no icon of its own: the row's bounds icon explains it. -->
             <Table.Cell class="value">
               {@render resultCell(formatResultCell(model, row.outputs, quantity, unitSystem, row.violations))}
             </Table.Cell>

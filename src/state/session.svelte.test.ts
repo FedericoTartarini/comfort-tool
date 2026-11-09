@@ -159,7 +159,7 @@ describe("Session.setModel", () => {
     expect(session.slots[0].values.has(q.tr)).toBe(false);
   });
 
-  it("adjusts nothing: an out-of-range value stays as entered and is what the gate names", () => {
+  it("cuts nothing: an out-of-range value stays as entered and is what the gate names", () => {
     const session = new Session(pmvPpdIso);
     // 35 °C is past ISO 7730's 30 °C, which both fixtures inherit.
     session.slots[0].setEntered(q.tdb, 35);
@@ -263,7 +263,7 @@ describe("Session.requestModel", () => {
 /**
  * What a slot does with a model's options (ADR-0002 decision 36). They are a
  * superset bag like the values: a switch seeds what the new model declares
- * and the slot lacks, and removes nothing. An option has no range, so no
+ * and the slot lacks, and removes nothing. An option has no bound, so no
  * switch ever asks about one.
  */
 describe("options", () => {

@@ -8,13 +8,13 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { registeredModels } from "$lib/models";
 import {
-  breaksNewLimit,
+  breaksNewBound,
   enteredBound,
   formatBound,
   isAtmosphericPressureOutOfRange,
   outOfRangeRows,
   violationRows,
-  warningFor,
+  violationSentence,
   type Bound,
   type ViolationRow,
 } from "./applicability";
@@ -34,8 +34,8 @@ const q = quantities;
 const LOWER_PRESSURE = 80000;
 
 /** The sentence for a bound on the relative air speed, built from its label and display unit. */
-function vrWarning(bound: string, system: UnitSystem): string {
-  return copy.applicabilityWarning(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
+function relativeAirSpeedViolationSentence(bound: string, system: UnitSystem): string {
+  return copy.boundSentence(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
 }
 
 /** A `range` row of a run's outputs' `warnings`; its unit is the library's and is not read here. */
@@ -126,7 +126,8 @@ describe("enteredBound / outOfRangeRows", () => {
   it("judges a humidity ratio at two decimals of g/kg, not of the kg/kg it is held in", () => {
     const at25 = (value: number) => withHumidity(startingSlot(pmvPpdIso), humidityMode.humidityRatio, value);
     const max = enteredBound(pmvPpdIso, q.hr, at25(0), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
-    // Saturated air at 25 °C holds about 20 g/kg. The end as the range reads it passes, and 0.01 g/kg more does not.
+    // Saturated air at 25 °C holds about 20 g/kg. The end as the bound's text reads it passes, and 0.01 g/kg more
+    // does not.
     const gramsPerKilogram = displayUnitFor(q.hr, unitSystem.si);
     const shownEnd = Number(formatNumber(gramsPerKilogram.fromSi(max)));
     expect(outOfRangeRows(at25(gramsPerKilogram.toSi(shownEnd)), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
@@ -144,7 +145,7 @@ describe("enteredBound / outOfRangeRows", () => {
     expect(outOfRangeRows(held, heatIndexRothfusz, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
-  it("has no bound for an entered quantity neither the model nor its kind limits", () => {
+  it("has no bound for an entered quantity neither the model nor its kind bounds", () => {
     expect(enteredBound(pmvPpdIso, q.wme, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
   });
 
@@ -226,7 +227,7 @@ describe("enteredBound / outOfRangeRows, on the humidity entry", () => {
   });
 
   it("leaves a wet-bulb entry's lower end open, as the library's wet bulb of 0 % is approximate", () => {
-    // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the range (open-points B28).
+    // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the bound (open-points B28).
     expect(psy_ta_rh(10, 0).wet_bulb_tmp).toBeGreaterThan(1.5);
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 10, tr: 10 }), humidityMode.wetBulb, 1.5);
     expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot, DEFAULT_ATMOSPHERIC_PRESSURE)?.min).toBeUndefined();
@@ -381,14 +382,14 @@ describe("violationRows", () => {
     ];
     const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) }, defaultEntryModes);
     expect(below).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 0.9, bound: { max: 0.2 } }]);
-    expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
-    expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("≤ 39.37", unitSystem.ip)]);
+    expect(below.map((row) => violationSentence(row, unitSystem.si))).toEqual([relativeAirSpeedViolationSentence("≤ 0.2", unitSystem.si)]);
+    expect(below.map((row) => violationSentence(row, unitSystem.ip))).toEqual([relativeAirSpeedViolationSentence("≤ 39.37", unitSystem.ip)]);
 
     const fixed = rangeRow("vr", "input", 2.5, { min: 0, max: 2 });
     const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] }, defaultEntryModes);
     expect(above).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
-    expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("0 – 0.2", unitSystem.si)]);
-    expect(above.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("0 – 39.37", unitSystem.ip)]);
+    expect(above.map((row) => violationSentence(row, unitSystem.si))).toEqual([relativeAirSpeedViolationSentence("0 – 0.2", unitSystem.si)]);
+    expect(above.map((row) => violationSentence(row, unitSystem.ip))).toEqual([relativeAirSpeedViolationSentence("0 – 39.37", unitSystem.ip)]);
   });
 
   it("names the relative air speed in the sentence on the entered v row, the quantity its bound belongs to", () => {
@@ -400,8 +401,8 @@ describe("violationRows", () => {
     };
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
-    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
-    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Relative air speed must be ≤ 0.2 m/s"]);
+    expect(rows.map((row) => violationSentence(row, unitSystem.si))).toEqual([relativeAirSpeedViolationSentence("≤ 0.2", unitSystem.si)]);
+    expect(rows.map((row) => violationSentence(row, unitSystem.si))).toEqual(["Relative air speed must be ≤ 0.2 m/s"]);
   });
 
   it("reports a relative air speed the run breaks on its own row under relative air speed entry, with no mapping", () => {
@@ -414,7 +415,7 @@ describe("violationRows", () => {
     expect(quantitiesOutOfRange(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded, value }) => [quantity, bounded, value])).toEqual([[q.vr, q.vr, 0.237]]);
-    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+    expect(rows.map((row) => violationSentence(row, unitSystem.si))).toEqual([relativeAirSpeedViolationSentence("≤ 0.2", unitSystem.si)]);
   });
 
   // The library's `clo` of a model with the clothing entry group is the dynamic clothing insulation it is given.
@@ -433,8 +434,8 @@ describe("violationRows", () => {
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     const clothing = rows.find((row) => row.quantity === q.clo);
     expect(clothing).toMatchObject({ bounded: q.clo_dynamic, value: 1.8, bound: { min: 0, max: 1.5 } });
-    expect(clothing && warningFor(clothing, unitSystem.si)).toBe(
-      copy.applicabilityWarning(q.clo_dynamic.label, valueWithUnit("0 – 1.5", displayUnitFor(q.clo_dynamic, unitSystem.si))),
+    expect(clothing && violationSentence(clothing, unitSystem.si)).toBe(
+      copy.boundSentence(q.clo_dynamic.label, valueWithUnit("0 – 1.5", displayUnitFor(q.clo_dynamic, unitSystem.si))),
     );
   });
 
@@ -534,7 +535,7 @@ describe("formatBound", () => {
     expect(formatBound({ min: 2720, max: 3700 }, q.pa, ip)).toBe("0.81 – 1.09");
   });
 
-  it("leaves the atmospheric pressure's range in IP as its ends read nearest", () => {
+  it("leaves the atmospheric pressure's bound in IP as its ends read nearest", () => {
     expect(formatBound(pressureBound, q.p_atm, ip)).toBe("8.86 – 32.48");
     expect(formatBound({ min: pressureBound.min }, q.p_atm, ip)).toBe("≥ 8.86");
   });
@@ -550,9 +551,9 @@ describe("formatBound", () => {
   });
 });
 
-/** Every number in a range's text, in the order written. */
-function endsOf(range: string): number[] {
-  return (range.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+/** Every number in a bound's text, in the order written. */
+function endsOf(boundText: string): number[] {
+  return (boundText.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 }
 
 describe("formatBound, across the registry", () => {
@@ -588,40 +589,40 @@ describe("formatBound, across the registry", () => {
   it.each([unitSystem.si, unitSystem.ip])("writes no end the gate would stop when typed back, in $id", (system) => {
     for (const [quantity, bound] of bounded) {
       const unit = displayUnitFor(quantity, system);
-      const range = formatBound(bound, quantity, system);
-      const ends = endsOf(range);
-      expect(ends.length, `${quantity.key}: ${range}`).toBe([bound.min, bound.max].filter((end) => end !== undefined).length);
+      const boundText = formatBound(bound, quantity, system);
+      const ends = endsOf(boundText);
+      expect(ends.length, `${quantity.key}: ${boundText}`).toBe([bound.min, bound.max].filter((end) => end !== undefined).length);
       for (const end of ends) {
-        expect(isShownBeyond(unit.toSi(end), bound, displayUnitFor(quantity, unitSystem.si)), `${quantity.key}: ${range}`).toBe(false);
+        expect(isShownBeyond(unit.toSi(end), bound, displayUnitFor(quantity, unitSystem.si)), `${quantity.key}: ${boundText}`).toBe(false);
       }
     }
   });
 });
 
-describe("breaksNewLimit", () => {
+describe("breaksNewBound", () => {
   const airSpeedAt = (max: number): ViolationRow => ({ quantity: q.v, bounded: q.vr, role: "derived", value: 0.9, bound: { max } });
   const pmvOutput: ViolationRow = { quantity: q.pmv, bounded: q.pmv, role: "output", value: 2.4, bound: { min: -2, max: 2 } };
 
-  it("is true when a limit is broken that was not, from none or beside another", () => {
-    expect(breaksNewLimit([], [airSpeedAt(0.64)])).toBe(true);
-    expect(breaksNewLimit([airSpeedAt(0.64)], [airSpeedAt(0.64), pmvOutput])).toBe(true);
+  it("is true when a bound is broken that was not, from none or beside another", () => {
+    expect(breaksNewBound([], [airSpeedAt(0.64)])).toBe(true);
+    expect(breaksNewBound([airSpeedAt(0.64)], [airSpeedAt(0.64), pmvOutput])).toBe(true);
   });
 
-  it("is false while the same limits stay broken, whatever the bound's numbers or the value, and while they shrink", () => {
+  it("is false while the same bounds stay broken, whatever their numbers or the value, and while fewer do", () => {
     // PMV (ASHRAE 55)'s air-speed rule builds its bound per call, so another temperature moves it.
-    expect(breaksNewLimit([airSpeedAt(0.64)], [airSpeedAt(0.8)])).toBe(false);
-    expect(breaksNewLimit([airSpeedAt(0.64), pmvOutput], [pmvOutput])).toBe(false);
-    expect(breaksNewLimit([pmvOutput], [])).toBe(false);
-    expect(breaksNewLimit([], [])).toBe(false);
+    expect(breaksNewBound([airSpeedAt(0.64)], [airSpeedAt(0.8)])).toBe(false);
+    expect(breaksNewBound([airSpeedAt(0.64), pmvOutput], [pmvOutput])).toBe(false);
+    expect(breaksNewBound([pmvOutput], [])).toBe(false);
+    expect(breaksNewBound([], [])).toBe(false);
   });
 
-  it("tells a limit apart by the quantity it bounds and its role, not by the row it is reported on", () => {
+  it("tells a bound apart by the quantity it bounds and its role, not by the row it is reported on", () => {
     // An air-speed entry-mode switch moves the relative air speed's row from the entered air speed's to its own.
     const onRelativeAirSpeed: ViolationRow = { ...airSpeedAt(0.64), quantity: q.vr };
     const asInput: ViolationRow = { ...airSpeedAt(0.64), role: "input" };
     const ofAnother: ViolationRow = { ...airSpeedAt(0.64), bounded: q.v };
-    expect(breaksNewLimit([airSpeedAt(0.64)], [onRelativeAirSpeed])).toBe(false);
-    expect(breaksNewLimit([airSpeedAt(0.64)], [asInput])).toBe(true);
-    expect(breaksNewLimit([airSpeedAt(0.64)], [ofAnother])).toBe(true);
+    expect(breaksNewBound([airSpeedAt(0.64)], [onRelativeAirSpeed])).toBe(false);
+    expect(breaksNewBound([airSpeedAt(0.64)], [asInput])).toBe(true);
+    expect(breaksNewBound([airSpeedAt(0.64)], [ofAnother])).toBe(true);
   });
 });

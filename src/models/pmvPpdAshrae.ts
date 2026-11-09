@@ -15,7 +15,7 @@ const q = quantities;
 // the deployed tool (rewrite plan, Phase 4b item 1): up to three upper bounds
 // on `vr`, at ISO 7726's air-speed-weighted operative temperature, applied
 // only below 0.7 clo and 1.3 met, and shown on the entered `v`. The deployed
-// tool checks the entered `v` against one limit clamped to 0.2–0.8 m/s, at
+// tool checks the entered `v` against one bound clamped to 0.2–0.8 m/s, at
 // `(tdb + tr) / 2`, at 0.7 clo and 1.3 met or below, where alone it offers the
 // option. The difference is not ported.
 const airSpeedControl: OptionSpec = {

@@ -1,5 +1,5 @@
 import { copy } from "$lib/text/copy";
-import { limitsBrokenLines, type ViolationRow } from "./applicability";
+import { boundsBrokenLines, type ViolationRow } from "./applicability";
 import type { BandList } from "./bands";
 import { optionsReader } from "./libraryInputs";
 import { optionsOf, standardOf, type ModelDeclaration } from "./modelDeclaration";
@@ -34,8 +34,8 @@ export type InputSummary = readonly (readonly string[])[];
  * legend (ADR-0002 decision 64, rule 3): the model's name and its standard;
  * then each run's group, headed by its slot's name where the run has one:
  * its rows as the input panel lists them for its slot, its options and its
- * pressure, and, where its run broke a limit, the limits popover's heading and
- * one line per limit in its row's sentence (decision 84, rule 8); then, given
+ * pressure, and, where its run broke a bound, the bounds icon's heading and
+ * one line per bound in its row's sentence (decision 84, rule 8); then, given
  * the Band list the chart paints, its Edges. No line names an entry mode: a
  * run's rows are those of its own modes, and their quantities say which. It
  * holds no outputs.
@@ -63,8 +63,8 @@ function runLines(model: ModelDeclaration, run: DrawnRun, unitSystem: UnitSystem
     ),
     ...optionsOf(model).map((option) => copy.summaryValue(option.label, options(option) ? copy.yes : copy.no)),
     valueLine(quantities.p_atm, atmosphericPressure, unitSystem),
-    // One line a limit: a line holding them all runs off the single-column Image, which wraps nothing.
-    ...limitsBrokenLines(violations, unitSystem),
+    // One line a bound: a line holding them all runs off the single-column Image, which wraps nothing.
+    ...boundsBrokenLines(violations, unitSystem),
   ];
 }
 

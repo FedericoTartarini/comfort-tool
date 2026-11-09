@@ -5,7 +5,7 @@
  * defaults and build the slot a model starts on; and the get-or-throws they
  * read through.
  * Turning a slot into the library's inputs is `core/libraryInputs.ts`'s and
- * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
+ * cutting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
 import { operative_tmp, v_relative } from "jsthermalcomfort";
@@ -709,7 +709,7 @@ export function declaredQuantitiesUnderEntryModes(model: ModelDeclaration, modes
  *
  * Options are seeded the same way: an option the new model declares and the
  * slot has no value for starts at its default, and every other is kept
- * (ADR-0002 decision 36). The gate never sees them — an option has no range.
+ * (ADR-0002 decision 36). The gate never sees them — an option has no bound.
  */
 export function seedDeclaredDefaults(slot: Slot, model: ModelDeclaration): Slot {
   const defaults = new Map<Quantity, number>();

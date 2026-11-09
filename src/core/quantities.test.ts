@@ -171,7 +171,7 @@ describe("the input calculators' quantities", () => {
     }
   });
 
-  it("label the solar ones in the deployed tool's words, less their ranges and symbols", () => {
+  it("label the solar ones in the deployed tool's words, less their bounds and symbols", () => {
     expect([
       quantities.sol_altitude,
       quantities.sharp,

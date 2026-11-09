@@ -7,7 +7,7 @@
  * SI, except for the ensemble's plain sum of the library's garment values
  * (ASHRAE 55 §5.2.2.2(c)), which no library function takes garment names
  * for. A dialog's bounds are `core/applicability.ts`'s `calculatorBound`: the
- * library's model info, within the kind's own range.
+ * library's model info, within the kind's own bound.
  */
 import {
   CLO_INDIVIDUAL_GARMENT_GROUPS,

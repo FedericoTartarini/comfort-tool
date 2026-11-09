@@ -66,7 +66,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(listedRowsOf(session)).toEqual(outOfRangeRows(session.slots[0], belowTheSlot, DEFAULT_ATMOSPHERIC_PRESSURE));
   });
 
-  it("lists the operative temperature against the range both temperatures allow at once", () => {
+  it("lists the operative temperature against the bound both temperatures allow at once", () => {
     const session = new Session(pmvPpdIso);
     session.setTemperatureMode(temperatureMode.operative);
     const operative = session.slots[0].values.get(q.operative_tmp);
@@ -79,7 +79,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     ]);
   });
 
-  it("gives a one-ended row for a bound with one end, and adjusts only towards it", () => {
+  it("gives a one-ended row for a bound with one end, and cuts only towards it", () => {
     const session = new Session(pmvPpdIso);
     session.slots[0].setEntered(q.met, 6);
 
@@ -112,7 +112,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(outputValueOf(computation.slots[0].outputs, q.pmv)).toBeTypeOf("number");
   });
 
-  it("leaves, on a yes in IP, the same ends held, each read in its box as the range beside it reads", () => {
+  it("leaves, on a yes in IP, the same ends held, each read in its box as the bound beside it reads", () => {
     const session = new Session(pmvPpdIso);
     const computation = new Computation(session);
     session.unitSystem = unitSystem.ip;
@@ -230,7 +230,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.model).toBe(acceptsTheSlot);
   });
 
-  it("never asks when the model is set: setting adjusts nothing and holds no question", () => {
+  it("never asks when the model is set: setting cuts nothing and holds no question", () => {
     const session = new Session(pmvPpdIso);
 
     session.setModel(belowTheSlot);

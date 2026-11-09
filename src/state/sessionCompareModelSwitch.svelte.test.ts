@@ -246,7 +246,7 @@ describe("Session.requestModel while Compare is on", () => {
 });
 
 describe("the model switch while Compare is on, by setting the model or there and back", () => {
-  it("lands the model set with every slot converted and seeded, asking nothing and adjusting nothing", () => {
+  it("lands the model set with every slot converted and seeded, asking nothing and cutting nothing", () => {
     const entries = entriesBreaking([0, 1, 2]);
     const session = comparingSlotsEntered(entries);
     session.setTemperatureMode(temperatureMode.operative);

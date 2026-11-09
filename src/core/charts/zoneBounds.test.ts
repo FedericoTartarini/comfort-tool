@@ -388,7 +388,7 @@ describe("the note of a slot whose Comfort zones are all empty", () => {
  * one. Every vertex lies on a grid line, where the scan placed it, and the run
  * one step inside it breaks no bound, so no vertex on the limit lies past a
  * bound nearer the zone. One where the library's |PMV| is within criterion
- * 3a's bound of the zone's limit lies on the limit, which
+ * 3a's tolerance of the zone's limit lies on the limit, which
  * `psychrometricChartAccuracy.test.ts` holds; every other vertex is held here
  * to the bound, so a vertex on neither fails.
  */
@@ -399,7 +399,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
     readonly slot: Slot;
     readonly frame: ScanFrame;
     readonly spec: ChartSpec;
-    readonly limitBound: number;
+    readonly limitTolerance: number;
   }[] = [
     (() => {
       const slot = inScope(false);
@@ -410,7 +410,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         slot,
         frame: dynamicScanFrameFor(pmvPpdAshrae, airSpeedAxes, request.entryModes, P),
         spec: dynamicSpec(request, airSpeedAxes),
-        limitBound: 0.01,
+        limitTolerance: 0.01,
       };
     })(),
     (() => {
@@ -422,7 +422,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         slot,
         frame: psychrometricScanFrameFor(isoDrawnPastItsBound, request.entryModes, P),
         spec: psychrometricSpec(request),
-        limitBound: 0.005,
+        limitTolerance: 0.005,
       };
     })(),
     (() => {
@@ -435,12 +435,12 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
         slot,
         frame: dynamicScanFrameFor(pmvPpdAshrae, axes, request.entryModes, P),
         spec: dynamicSpec(request, axes),
-        limitBound: 0.01,
+        limitTolerance: 0.01,
       };
     })(),
   ];
 
-  it.each(charts)("$name", ({ model, slot, frame, spec, limitBound }) => {
+  it.each(charts)("$name", ({ model, slot, frame, spec, limitTolerance }) => {
     const { x, y } = samplesOf(spec);
     const toSi = { x: displayUnitFor(frame.x.quantity, unitSystem.si).toSi, y: displayUnitFor(frame.y.quantity, unitSystem.si).toSi };
     const converted = withEntryModes(slot, frame.entryModes, model);
@@ -468,7 +468,7 @@ describe("criterion 3c: a zone's boundary on a bound, against the library", () =
           const [inside, outside] = isInsideFill(fill, ...pointAt(-step)) ? [pointAt(-step), pointAt(step)] : [pointAt(step), pointAt(-step)];
           expect(isInsideFill(fill, ...inside), label).toBe(true);
           expect(rangeRowsOf(runAtPoint(...inside)), label).toEqual([]);
-          if (Math.abs(Math.abs(outputNumber(runAtPoint(vertexX, vertexY), q.pmv)) - limit) <= limitBound) {
+          if (Math.abs(Math.abs(outputNumber(runAtPoint(vertexX, vertexY), q.pmv)) - limit) <= limitTolerance) {
             return; // On the limit.
           }
           expect(rangeRowsOf(runAtPoint(...outside)).length, label).toBeGreaterThan(0);

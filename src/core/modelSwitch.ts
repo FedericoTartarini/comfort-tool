@@ -11,7 +11,7 @@
  * the converted slot and not the original one, and the gate has to see what
  * seeding left. The gate is asked, never second-guessed: the rows are
  * `core/applicability.ts`'s and the app has no other notion of out of range.
- * It is asked again at the slot with its rows adjusted, because a bound may
+ * It is asked again at the slot with its rows cut, because a bound may
  * be read at another entry (see {@link settledOutOfRangeRows}).
  */
 import { nearestEnd, outOfRangeRows, type OutOfRangeRow } from "./applicability";
@@ -21,7 +21,7 @@ import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredV
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
-  /** What the rehearsed slot would hold: converted, then seeded. Nothing entered is adjusted here. */
+  /** What the rehearsed slot would hold: converted, then seeded. Nothing entered is cut here. */
   readonly slot: Slot;
   /**
    * The entered values the new model's Applicability rules out, as the pre-call
@@ -49,7 +49,7 @@ export function rehearseSwitch(slot: Slot, from: ModelDeclaration, model: ModelD
  * A bound may be read at another entry: the humidity entry's at the dry-bulb
  * temperature (ADR-0002 decision 46). So each entry is judged at the values
  * the cut would leave, and listed with the bound it has there: the gate is
- * asked again at the slot with the rows so far adjusted, until a pass lists
+ * asked again at the slot with the rows so far cut, until a pass lists
  * what the pass before did. Each pass settles the rows read at entries the
  * pass before settled, and no bound is read at the entry it bounds, so there
  * are no more passes than the slot has values. The cut then leaves nothing out
@@ -60,7 +60,7 @@ export function rehearseSwitch(slot: Slot, from: ModelDeclaration, model: ModelD
 export function settledOutOfRangeRows(slot: Slot, model: ModelDeclaration, atmosphericPressure: number): OutOfRangeRow[] {
   let rows = outOfRangeRows(slot, model, atmosphericPressure);
   for (let pass = 0; pass < slot.values.size; pass += 1) {
-    const next = outOfRangeRows(slot, model, atmosphericPressure, adjustToBounds(slot, rows));
+    const next = outOfRangeRows(slot, model, atmosphericPressure, cutToBounds(slot, rows));
     if (areSameRows(rows, next)) {
       break;
     }
@@ -82,7 +82,7 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
  * and no further; a bound with one end moves a value only towards that end.
  * The end itself, and not a rounding of it (ADR-0002 decision 56): a slot
  * holds the full-precision number, and the gate judges at the precision a row
- * shows, so the end passes it and reads as the range beside the row does,
+ * shows, so the end passes it and reads as the bound beside the row does,
  * a humidity entry's converted end among them, which has more decimals than a
  * row shows.
  *
@@ -91,12 +91,12 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
  * cut to the same end by its commit's verdict (`entryVerdict` in
  * `./applicability`, decision 84 rule 2).
  */
-export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
-  const adjusted = new Map<Quantity, number>();
+export function cutToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
+  const cut = new Map<Quantity, number>();
   for (const { quantity, value, bound } of rows) {
-    adjusted.set(quantity, nearestEnd(value, bound));
+    cut.set(quantity, nearestEnd(value, bound));
   }
-  return withEnteredValues(slot, adjusted);
+  return withEnteredValues(slot, cut);
 }
 
 /**
