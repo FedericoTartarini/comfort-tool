@@ -33,7 +33,7 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import XIcon from "@lucide/svelte/icons/x";
   import type { Snippet } from "svelte";
-  import { addGarment, outputOf, requireGarment, type CalculatorOutputs, type GarmentGroup } from "$lib/core/calculators";
+  import { outputOf, requireGarment, withGarment, type CalculatorOutputs, type GarmentGroup } from "$lib/core/calculators";
   import { formatNumber } from "$lib/core/numberFormat";
   import { copy } from "$lib/text/copy";
   import Grid from "$lib/ui/layout/Grid.svelte";
@@ -66,6 +66,10 @@
   ]);
   const searching = $derived(query.trim() !== "");
 
+  function addGarment(garment: string) {
+    keptGarments.set(calculator, withGarment(calculator, worn, garment));
+  }
+
   function removeGarment(garment: string) {
     keptGarments.set(calculator, worn.filter((other) => other !== garment));
   }
@@ -81,13 +85,13 @@
 
   /** A garment chosen from its row's list: worn, and the list closed. */
   function pick(garment: string) {
-    keptGarments.set(calculator, addGarment(calculator, worn, garment));
+    addGarment(garment);
     openGroup = null;
   }
 
   /** A garment chosen among the search's results: worn, and the query cleared, which hides them. */
   function pickFound(garment: string) {
-    keptGarments.set(calculator, addGarment(calculator, worn, garment));
+    addGarment(garment);
     query = "";
   }
 

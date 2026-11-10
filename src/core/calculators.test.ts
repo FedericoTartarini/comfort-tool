@@ -23,7 +23,7 @@ import {
   shownRow,
   solarGain,
   defaultInputs,
-  addGarment,
+  withGarment,
   withCalculatorOutputs,
   type Calculator,
   type CalculatorInputs,
@@ -69,15 +69,15 @@ describe("customEnsemble", () => {
   });
 });
 
-describe("addGarment", () => {
+describe("withGarment", () => {
   it("adds a garment after those worn, once", () => {
-    const worn = addGarment(customEnsemble, ["Ankle socks"], "Shoes or sandals");
+    const worn = withGarment(customEnsemble, ["Ankle socks"], "Shoes or sandals");
     expect(worn).toEqual(["Ankle socks", "Shoes or sandals"]);
-    expect(addGarment(customEnsemble, worn, "Ankle socks")).toEqual(worn);
+    expect(withGarment(customEnsemble, worn, "Ankle socks")).toEqual(worn);
   });
 
   it("puts a chair in place of the chair worn, the garments kept", () => {
-    const worn = addGarment(customEnsemble, ["Executive chair", "Ankle socks"], "Wooden stool");
+    const worn = withGarment(customEnsemble, ["Executive chair", "Ankle socks"], "Wooden stool");
     expect(worn).toEqual(["Ankle socks", "Wooden stool"]);
   });
 });

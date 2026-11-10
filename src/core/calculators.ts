@@ -159,7 +159,7 @@ function requireGroup(heading: string): GarmentGroup {
 }
 
 /** The garments worn after `garment` is put on: it joins those worn once, and a chair takes the place of the chair worn. */
-export function addGarment(calculator: GarmentCalculator, worn: readonly string[], garment: string): readonly string[] {
+export function withGarment(calculator: GarmentCalculator, worn: readonly string[], garment: string): readonly string[] {
   if (calculator.chairs.garments.includes(garment)) {
     return [...worn.filter((other) => !calculator.chairs.garments.includes(other)), garment];
   }
