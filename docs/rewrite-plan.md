@@ -550,6 +550,14 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 > `npm run test:browser` at 176. `resultValue`'s one cast is kept and rule 7 stands, B32 and B33 bugs against it (decision 90's amendment of 2026-11-05). Open points B32–B38 and D19–D22
 > stand, D22 (the lint rule's gap on the package's subpaths) left for the Vite+ migration. **Next: the
 > naming grilling (`.scratch/naming/notes.md`).**
+>
+> **2026-11-10 — position, the app on the published jsthermalcomfort `2.0.0-next.1`**: ADR-0002 decision 92, grilled
+> from the library session's handoff (`.scratch/library-2.0.0-next.1-2026-11-10.md`) and built the same day
+> (`c427ec5`): `package.json` names the exact version in place of `#v2-typescript`, `.npmrc` holds no `allow-git`, and
+> the published `lib/` is the build of `88015e5`, so no value changes and the footers read
+> `jsthermalcomfort 2.0.0-next.1` (open point D20 closed). `AGENTS.md` names the new move command. `npm test` passes at
+> 1282 tests and `npm run test:browser` at 178. **Next: the 0.5.0 deploy, after which the library deletes
+> `v2-typescript`.**
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
