@@ -281,6 +281,25 @@ test("at 1440 px, the switch question's title and yes say limits and cut, and th
   await expect(airSpeed).toHaveValue("2");
 });
 
+test("at 1440 px, the humidity menu's relative-humidity and humidity-ratio lines and Reset's question say the atmospheric pressure", async ({ page }) => {
+  await openStandard(page, 1440);
+  await page.getByRole("button", { name: "Change humidity", exact: true }).click();
+  const menu = page.getByRole("menu");
+  for (const [mode, line] of [
+    [/^Relative humidity/, "Held as the temperature or the atmospheric pressure changes; the humidity ratio follows."],
+    [/^Humidity ratio/, "Held as the temperature or the atmospheric pressure changes; the relative humidity follows."],
+  ] as const) {
+    await expect(menu.getByRole("menuitemradio", { name: mode }).locator(".caption")).toHaveText(line);
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+
+  await page.getByRole("group", { name: "Settings" }).getByRole("button", { name: "Reset" }).click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleDescription(
+    "This returns the page to what a new tab at this address shows: every input, the units, the atmospheric pressure, Compare, and the chart settings and Bands of every model. It cannot be undone.",
+  );
+});
+
 /**
  * A desktop keeps two columns at every width (decision 87, rule 3): on a
  * laptop with the sidebar open the result and chart cards stand beside the
