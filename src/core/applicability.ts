@@ -97,14 +97,14 @@ function gateUnitFor(quantity: Quantity): DisplayUnit {
 
 /** The bound between `min` and `max`, keeping only an end that is a finite number. */
 function boundOf(min: number | undefined, max: number | undefined): Bound {
-  const result: { min?: number; max?: number } = {};
+  const bound: { min?: number; max?: number } = {};
   if (min !== undefined && Number.isFinite(min)) {
-    result.min = min;
+    bound.min = min;
   }
   if (max !== undefined && Number.isFinite(max)) {
-    result.max = max;
+    bound.max = max;
   }
-  return result;
+  return bound;
 }
 
 /** The narrowest bound that satisfies every bound in `bounds`, or `undefined` for none. */

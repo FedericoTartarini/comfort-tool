@@ -372,8 +372,9 @@
 [data-slot="input-group"] {
 	background-color: var(--page-background);
 }
-/* A box takes the other colour of the surface it stands on (decision 73, rule 6): in the sidebar, which is the page
-   background, the session's atmospheric pressure box is the background. The sidebar's content is the slot both the column and the sheet carry. */
+/* A box takes the other colour of the surface it stands on (decision 73, rule 6): the sidebar is `--page-background`,
+   so the session's atmospheric pressure box there is `--background`. The sidebar's content is the slot both the
+   column and the sheet carry. */
 [data-slot="sidebar-content"] :is([data-slot="input"]:not([type="color"]), [data-slot="input-group"]) {
 	background-color: var(--background);
 }
