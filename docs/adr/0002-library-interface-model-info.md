@@ -5144,8 +5144,10 @@ notes under decisions 51 and 53:
     amount, and "one part of its axis range" for the GLOSSARY's twentieth (Q47); `Toast` (R4), which holds a toast's id;
     `ATMOSPHERIC_PRESSURE_ABOVE_RANGE` and `_BELOW_RANGE` (Q18, Q60), "range" for a bound; `switchCutAllowedColumn`
     (N8), whose text is "Limits"; the toast `copyRefused` (Q84), raised by `onsharerefused`; core's `addGarment` (Q88),
-    which only returns a list where decision 41 asks a noun phrase; `chartColors` (Q66), which holds line widths and a
-    font as well; `palette.background` (Q66), the white surface, where shadcn's `--background` is usually the page's.
+    which only returns a list where decision 41 asks a noun phrase (*ruled 2026-11-10, ticket 17: core's is
+    `withGarment` and the ensemble tab's `addGarment` puts a garment on, `2bca9ac`*); `chartColors` (Q66), which holds
+    line widths and a font as well; `palette.background` (Q66), the white surface, where shadcn's `--background` is
+    usually the page's.
     (2) Text outside the rename: `docs/rewrite-plan.md:1872-1873`, "Until then no expected text is written as a
     literal", which ticket 01's literal contradicts; GLOSSARY.md's **Violation**, "ASHRAE 55's air-speed limit", and
     **Slot**, "has no name", where the code says bound and label. (3) `ui/inputs/QuantityInput.svelte:85` keys its

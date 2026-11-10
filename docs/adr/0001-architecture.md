@@ -676,6 +676,16 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > `--plot-width` is no longer read by `.chart-plot`, which takes the card's width at `aspect-ratio: 4 / 3` under
 > `max-block-size: var(--chart-cap)` (`2fbab59`); only `--result-column-min` reads it. The `app.css` line also has
 > `.opens-in-new-tab`, the words a screen reader alone hears.
+>
+> **Noted 2026-11-10** ([ADR-0002](0002-library-interface-model-info.md) decision 91's close-out; `.scratch/naming/`):
+> the rename moves the files the tree and its notes name. `ui/outputs/` is `ui/results/`, the tree's
+> `ResultTable.svelte` in it (`a1c5ac6`), and the 2026-10-28 note's `ui/outputs/notices.ts` is `ui/layout/toasts.ts`,
+> which raises every toast (`57cd535`). The 2026-10-08 note's `core/slotBadge.ts` is `core/slotAppearance.ts`, a
+> slot's label and hue (`a1c5ac6`); the 2026-10-02 and 2026-10-12 notes' `routes/inAppSwitch.ts` is
+> `routes/inAppNavigation.ts` (`49ac5b9`); the 2026-10-02 note's `BandsPanel` is `BandsTable` (`a24b6be`), the
+> 2026-10-06 note's `CopyLinkButton.svelte` is `ShareButton.svelte` (`fea9431`), and the 2026-10-07 note's
+> `browserNotice.behaviour.ts` is `unsupportedBrowser.behaviour.ts` (`57cd535`). The other names in the tree and its
+> notes are history, read through `.scratch/naming/notes.md`'s list.
 
 ```
 src/
