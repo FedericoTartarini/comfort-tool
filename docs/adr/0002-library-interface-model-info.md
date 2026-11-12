@@ -4947,6 +4947,8 @@ notes under decisions 51 and 53:
     51's note's "when it copies slot 1" read: the slot takes slot 1's entry modes and options as they are and its values
     moved by its Slot offset. GLOSSARY.md's **Slot offset** and **Slot** hold; the first leaves to this rule the value
     with no axis range and the cut.
+    **Noted 2026-11-12 (the branch rename).** `rewrite/v1` was renamed `dev` on GitHub, so rule 1's link is
+    `blob/dev/docs/user-guide.md` (`text/copy.ts`); GitHub redirects the old `blob/rewrite/v1/` address.
 
 90. **The app moves onto jsthermalcomfort's `v2-typescript` branch and reads from the library what the library now
     defines: the classifiers, the compliance interval, the standards, the postures and the calculators' names.** Taken
@@ -5184,6 +5186,7 @@ notes under decisions 51 and 53:
     library.
     Built in `c427ec5`: `npm ci` into an empty `node_modules` passes with no `allow-git`, the lock holds no `git+`
     line, `npm test` passes at 1282 tests and `npm run test:browser` at 178.
+    **Noted 2026-11-12 (the branch rename).** Rule 3's `rewrite/v1` is `dev`, its name since 2026-11-12.
 
 ## Consequences
 

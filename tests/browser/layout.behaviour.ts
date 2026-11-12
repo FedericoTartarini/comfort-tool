@@ -852,7 +852,7 @@ test.describe("the header and the footer on a phone and on a desktop", () => {
  */
 test.describe("links to other sites", () => {
   /** The user guide's address while the rewrite is on its branch (the rewrite plan's Phase 6 item 6 moves it). */
-  const USER_GUIDE = "https://github.com/FedericoTartarini/comfort-tool/blob/rewrite/v1/docs/user-guide.md";
+  const USER_GUIDE = "https://github.com/FedericoTartarini/comfort-tool/blob/dev/docs/user-guide.md";
 
   /** Where the link's visible content, its text or its image without the words, starts and ends. */
   function visibleEdges(link: Locator) {

@@ -1881,7 +1881,7 @@ already and `v1z.` is withdrawn, so the grilling decides only what the text carr
    expected text is written as a literal.
    **Order (2026-10-07)**: the fixture needs a deployed build's text and the merge is item 6, so a preview is deployed
    before the freeze; the exact order is this phase's to settle.
-6. Merge back into `main`, remove the `git worktree`, and move the version check to `main` (Version bump and deploy,
+6. Merge `dev` back into `main` and move the version check to `main` (Version bump and deploy,
    "At the formal release"). Point the Documentation link back at `blob/main/docs/user-guide.md` (`text/copy.ts`;
    added 2026-11-02, ADR-0002 decision 89 rule 1).
 7. Visual close-out (added 2026-10-07), before item 6: every page and dialog built after Phase 5c (the calculators,
@@ -1973,16 +1973,16 @@ If either fails, stop and fix the architecture; do not work around it.
 
 ## Version bump and deploy (added 2026-10-27)
 
-Pushes to `rewrite/v1` are not checked; the version is raised for a deploy only. The development deploy runs from the
+Pushes to `dev` (named `rewrite/v1` until 2026-11-12) are not checked; the version is raised for a deploy only. The development deploy runs from the
 fork `yehui-h/comfort-tool`, whose `main` is this branch plus `firebase.json`, `.firebaserc` and
 `.github/workflows/firebase-hosting-merge.yml`: every push to the fork's `main` builds and deploys to
 https://comfort-tool-demo.web.app/ (Firebase project `yehui-comfort-tool`, site `comfort-tool-demo`). To deploy:
 
 1. Run `npm version patch|minor|major`, the author choosing the level, commit `package.json` and `package-lock.json`
-   as a Conventional Commit, and push to `rewrite/v1`. `.npmrc` sets `git-tag-version=false`, so `npm version` neither
+   as a Conventional Commit, and push to `dev`. `.npmrc` sets `git-tag-version=false`, so `npm version` neither
    commits nor tags.
-2. On GitHub, sync the fork's `rewrite/v1` with this repository's.
-3. Merge the fork's `rewrite/v1` into the fork's `main`.
+2. On GitHub, sync the fork's `dev` with this repository's.
+3. Merge the fork's `dev` into the fork's `main`.
 
 The footer shows `package.json`'s version (ADR-0002 decision 64, rule 4), so a deploy without a bump would show an
 old version. Before the build, the fork's workflow runs `node scripts/versionBump.ts "$BEFORE"`, `$BEFORE` being the

@@ -1,6 +1,6 @@
 # comfort-tool
 
-Frontend-only Svelte 5 SPA for thermal-comfort calculation, a rewrite of the CBE tool. Branch `rewrite/v1` is the rewrite in progress; `../comfort-tool-old/` (worktree on `refactor-draft`) is a behaviour reference only, do not copy code from it.
+Frontend-only Svelte 5 SPA for thermal-comfort calculation, a rewrite of the CBE tool. Branch `dev` is the rewrite in progress; branch `archive/svelte-prototype` holds the previous prototype, a behaviour reference only, do not copy code from it. On 2026-11-12 `rewrite/v1` was renamed `dev` and `refactor-draft` archived as `archive/svelte-prototype`; older docs that name the old branches mean the new ones.
 
 - Decisions: [docs/adr/](docs/adr/) wins on conflicts; ADR-0002 overrides the ADR-0001 clauses it names. Plan and current position: [docs/rewrite-plan.md](docs/rewrite-plan.md). Review checklist: [docs/code-quality-checklist.md](docs/code-quality-checklist.md).
 - `jsthermalcomfort` is installed from npm at the exact version `package.json` names, a `2.0.0-next.N` prerelease (ADR-0002 decision 92); `../jsthermalcomfort` is the local checkout of its repository. The app consumes its build output `lib/esm/`. A library change the app needs goes to the jsthermalcomfort session as a handoff file, and reaches this app once it is published as the next prerelease and the version is moved with `npm install jsthermalcomfort@<version> --save-exact`. A local link to the checkout is for trying an unpublished change and is never committed.

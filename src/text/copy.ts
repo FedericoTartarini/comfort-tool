@@ -31,7 +31,7 @@ export const copy = {
   documentation: "Documentation",
   // The user guide on the rewrite's branch, where it lives until the rewrite reaches `main` (the rewrite plan's
   // Phase 6 item 6 points it back).
-  documentationAddress: `${REPOSITORY}/blob/rewrite/v1/docs/user-guide.md`,
+  documentationAddress: `${REPOSITORY}/blob/dev/docs/user-guide.md`,
   // The words that end a link to another site, a screen reader's alone (ADR-0002 decision 89, rule 2).
   opensInNewTab: "(opens in a new tab)",
   libraryName: LIBRARY_NAME,

@@ -11,7 +11,7 @@ no backend runtime is required.
 
 > ## 🚧 Rewrite in progress
 >
-> This branch (`rewrite/v1`) is a ground-up rewrite. The previous application
+> This branch (`dev`) is a ground-up rewrite. The previous application
 > was removed and `src/` is being rebuilt against a new architecture in which
 > all thermal-comfort logic lives in the `jsthermalcomfort` library and the app
 > only declares and renders models.
@@ -19,7 +19,7 @@ no backend runtime is required.
 > - [Architecture decision record](docs/adr-0001-architecture.md)
 > - [Phased rewrite plan](docs/rewrite-plan.md)
 >
-> The previous implementation is preserved on the `refactor-draft` branch.
+> The previous implementation is preserved on the `archive/svelte-prototype` branch.
 
 ## Planned surfaces
 
